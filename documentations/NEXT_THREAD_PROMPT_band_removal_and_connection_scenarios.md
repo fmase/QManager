@@ -171,4 +171,4 @@ Row 9: [Create/Reset buttons]
 - **Async apply**: CGI spawns detached process via `setsid`, frontend polls status
 - **Render-time state sync**: No useEffect for prop→state, use "store previous prop" pattern
 - **Atomic file writes**: Write to `.tmp`, then `mv` to final path
-- **BusyBox compatible**: No jq, no rev, awk/sed for JSON construction
+- **BusyBox compatible**: jq for JSON construction/parsing, no rev, atomic file writes

@@ -629,7 +629,7 @@ Phase 1: Backend Foundation
      - mode_to_at() conversion helper
      - get_all_bands() for "unlock all" queries
      - Active profile read/write
-     - JSON construction helpers (no jq on BusyBox — awk/sed based)
+     - JSON construction via jq (`jq -n` with `--arg`/`--argjson`)
   3. Build CGI endpoints: list.sh, get.sh, save.sh, delete.sh
   4. Test: curl-based CRUD operations
 

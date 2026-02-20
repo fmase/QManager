@@ -1,6 +1,6 @@
 # QManager Task Tracker
 
-**Last Updated:** February 19, 2026
+**Last Updated:** February 20, 2026
 
 This file tracks component wiring progress, active work, and remaining tasks.  
 For architecture, AT command reference, JSON contract, and deployment notes, see `DEVELOPMENT_LOG.md`.
@@ -88,7 +88,7 @@ Full CRUD + async apply pipeline for SIM identity/connectivity profiles.
 
 | File | Purpose | Status |
 |------|---------|--------|
-| `profile_mgr.sh` | CRUD library (list, get, save, delete, validate). BusyBox-safe JSON construction. 10-profile limit. | ✅ Done |
+| `profile_mgr.sh` | CRUD library (list, get, save, delete, validate). jq-based JSON construction. 10-profile limit. | ✅ Done |
 | `qmanager_profile_apply` | Detached 3-step apply: APN → TTL/HL → IMEI. Smart diffing (skips unchanged). Modem reboot handling for IMEI. | ✅ Done |
 | `profiles/list.sh` | GET — profiles array + active ID | ✅ Done |
 | `profiles/get.sh` | GET — single profile JSON | ✅ Done |
@@ -123,10 +123,13 @@ Radio/RF configuration layer. Controls modem network mode via `AT+QNWPREFCFG="mo
 
 | File | Purpose | Status |
 |------|---------|--------|
-| `scenarios/activate.sh` | POST — maps scenario ID → AT mode_pref command via `qcmd`, persists to `/etc/qmanager/active_scenario` | ✅ Done |
+| `scenarios/activate.sh` | POST — maps scenario ID → AT mode_pref command via `qcmd`, custom scenarios also send band locks, persists to `/etc/qmanager/active_scenario` | ✅ Done |
 | `scenarios/active.sh` | GET — reads active scenario ID, defaults to "balanced" | ✅ Done |
+| `scenarios/list.sh` | GET — reads all `/etc/qmanager/scenarios/*.json`, returns array + active ID | ✅ Done |
+| `scenarios/save.sh` | POST — create/update custom scenario JSON file (max 20), ID injection via jq | ✅ Done |
+| `scenarios/delete.sh` | POST — delete custom scenario, resets active to "balanced" if deleted was active | ✅ Done |
 
-**Architecture note:** Activation is synchronous (single AT command, ~200ms) — no async pipeline or progress dialog needed. Custom scenarios (`custom-*`) are client-side only for now; backend activation returns `not_implemented`.
+**Architecture note:** Activation is synchronous (single AT command, ~200ms) — no async pipeline or progress dialog needed. Custom scenarios have full backend persistence via CRUD CGI endpoints (save.sh, delete.sh, list.sh). Custom scenario activation sends mode + optional band lock AT commands.
 
 ### Band Locking (`/cellular/settings/band-locking`) — ✅ COMPLETE
 
@@ -225,8 +228,8 @@ Per-cell tower lock management for LTE (up to 3 EARFCN+PCI pairs) and NR-SA (sin
 | # | Task | Status | Notes |
 |---|------|--------|-------|
 | 10 | **Band Locking page interaction** | ✅ Done | When a non-Balanced scenario is active, Band Locking page disables all controls (checkboxes, lock/unlock buttons, failover toggle) with `opacity-60` dimming and info banner. Per-card "Scenario Controlled" badge. Active bands/ARFCNs remain visible (read-only). Frontend-only gating — no backend cross-dependencies. |
-| 11 | **Custom scenario backend persistence** | ⬜ DEFERRED | Currently custom scenarios are client-side only (lost on refresh). Future: `/etc/qmanager/scenarios/<id>.json` storage, CRUD CGI endpoints (`save.sh`, `delete.sh`, `list.sh`), `scenario_mgr.sh` library mirroring `profile_mgr.sh` pattern. |
-| 12 | **Custom scenario band locking** | ⬜ DEFERRED | Custom scenarios could configure both network mode AND band locks. Apply script would need multi-step async pipeline (like SIM Profile apply) with `AT+QNWPREFCFG="lte_band"`, `"nsa_nr5g_band"`, `"nr5g_band"` commands. |
+| 11 | **Custom scenario backend persistence** | ✅ Done | Backend complete: `/etc/qmanager/scenarios/<id>.json` storage, 5 CGI endpoints (`save.sh`, `delete.sh`, `list.sh`, `activate.sh`, `active.sh`). Frontend `useConnectionScenarios` hook wired to all endpoints. 20-scenario limit. |
+| 12 | **Custom scenario band locking** | ✅ Done | Custom scenarios send mode + band lock AT commands via `activate.sh`. Empty band fields → AT command skipped (leave current). |
 
 ### Backend Improvements
 
@@ -261,6 +264,8 @@ Per-cell tower lock management for LTE (up to 3 EARFCN+PCI pairs) and NR-SA (sin
 - ~~Connection Scenarios → Band Locking integration~~ ✅ — Frontend-only gating. `useConnectionScenarios()` imported in band-locking coordinator. `isScenarioControlled` derived from `activeScenarioId !== "balanced"`. Alert banner, per-card "Scenario Controlled" badge, `opacity-60` dimming, disabled controls. No backend changes.
 - ~~setsid removal~~ ✅ — Replaced `setsid` (not available on BusyBox) with POSIX subshell `( cmd ) >/dev/null 2>&1 &` across all 3 scripts: `lock.sh`, `speedtest_start.sh`, `profiles/apply.sh`. Init script now auto-`chmod +x` all qmanager binaries and CGI scripts at startup.
 - ~~Tower Locking~~ ✅ — 4-card UI (settings, LTE lock, NR-SA lock, schedule). Backend: `tower_lock_mgr.sh` library, 6 CGI endpoints under `tower/`, `qmanager_tower_failover` one-shot watcher, `qmanager_tower_schedule` cron script. Frontend: `types/tower-locking.ts` + `use-tower-locking.ts` hook. Bug fix: jq `// empty` swallows boolean `false` — replaced with `has()` + `tostring` across all tower CGI endpoints.
+- ~~Custom Scenario Backend~~ ✅ — Full CRUD persistence: `/etc/qmanager/scenarios/<id>.json`, 5 CGI endpoints (save, delete, list, activate, active). 20-scenario limit. Custom activation sends mode + band locks. Frontend `useConnectionScenarios` hook wired to all endpoints.
+- ~~jq Migration~~ ✅ — All 27+ shell scripts migrated from sed/awk/printf JSON handling to jq. Removed 6 deprecated helper functions (`_json_str_escape`, `_json_extract`, `_json_extract_raw`, `json_escape`, `_esc`, `json_field`). Poller `write_cache()` went from 81-line heredoc → single `jq -n`. All CGI POST parsing uses `jq -r`. NDJSON→array uses `jq -s`. See DEVELOPMENT_LOG.md §12.
 
 </details>
 

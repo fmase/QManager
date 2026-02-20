@@ -2,7 +2,7 @@
 
 **Project:** QManager — Custom GUI for Quectel RM551E-GL 5G Modem  
 **Platform:** OpenWRT (Embedded Linux)  
-**Last Updated:** February 19, 2026 (Band Locking Complete — Failover Safety, Scenario Integration, setsid Removal)
+**Last Updated:** February 20, 2026 (jq Migration Complete — All Scripts Migrated from sed/awk/printf to jq)
 
 ---
 
@@ -94,6 +94,11 @@
 | `scripts/cgi/quecmanager/bands/failover_toggle.sh` | `/www/cgi-bin/quecmanager/bands/failover_toggle.sh` | **Failover Toggle CGI** — POST endpoint, writes enabled flag to `/etc/qmanager/band_failover_enabled` |
 | `scripts/cgi/quecmanager/bands/failover_status.sh` | `/www/cgi-bin/quecmanager/bands/failover_status.sh` | **Failover Status CGI** — GET endpoint, lightweight (zero modem contact), reads 2 flag files + checks watcher PID |
 | `scripts/usr/bin/qmanager_band_failover` | `/usr/bin/qmanager_band_failover` | **Band Failover Watcher** — One-shot script: sleeps 15s, checks `AT+QCAINFO` for signal, resets bands to policy_band defaults on failure |
+| `scripts/cgi/quecmanager/scenarios/list.sh` | `/www/cgi-bin/quecmanager/scenarios/list.sh` | **Scenarios List CGI** — GET endpoint, reads all `/etc/qmanager/scenarios/*.json` files, returns array + active scenario ID |
+| `scripts/cgi/quecmanager/scenarios/save.sh` | `/www/cgi-bin/quecmanager/scenarios/save.sh` | **Scenarios Save CGI** — POST endpoint, creates/updates custom scenario JSON file with ID injection via jq |
+| `scripts/cgi/quecmanager/scenarios/delete.sh` | `/www/cgi-bin/quecmanager/scenarios/delete.sh` | **Scenarios Delete CGI** — POST endpoint, removes custom scenario file, resets active to "balanced" if deleted was active |
+| `scripts/cgi/quecmanager/scenarios/activate.sh` | `/www/cgi-bin/quecmanager/scenarios/activate.sh` | **Scenarios Activate CGI** — POST endpoint, maps scenario ID → AT mode_pref + optional band locks, persists active ID |
+| `scripts/cgi/quecmanager/scenarios/active.sh` | `/www/cgi-bin/quecmanager/scenarios/active.sh` | **Scenarios Active CGI** — GET endpoint, reads active scenario ID, defaults to "balanced" |
 
 **Note on file extensions:** Directly-executed scripts in `/usr/bin/` have **no** `.sh` extension (`qcmd`, `qmanager_poller`, `qmanager_logread`). The logging library keeps `.sh` because it's sourced (`. /usr/lib/qmanager/qlog.sh`), not executed directly. CGI scripts keep `.sh` because the extension is part of their URL path.
 
@@ -1164,6 +1169,110 @@ Affected pattern summary for future reference:
 | `.field // empty` | ✅ | ❌ `false` produces empty | ❌ `0` produces empty |
 | `.field // "default"` | ✅ | ❌ `false` hits default | ❌ `0` hits default |
 | `if has("field") then (.field \| tostring) else "unset" end` | ✅ | ✅ | ✅ |
+
+---
+
+## 12. jq Migration — All Shell Scripts (February 20, 2026)
+
+### Background
+
+All shell scripts previously used `sed`, `awk`, `printf`, and heredocs for JSON construction and parsing. This was fragile — `sed` regex patterns couldn't handle special characters in values (backslashes, quotes, newlines), `printf '%s'` had no escaping, and awk-based JSON array construction required manual comma tracking.
+
+The tower locking subsystem (6 scripts) already required `jq` as a dependency. Since jq was already installed on the target device, we migrated all remaining scripts to use jq for JSON operations, eliminating the last sed/awk/printf-based JSON handling.
+
+### Migration Scope
+
+**27+ scripts migrated** across 4 layers:
+
+| Layer | Scripts | Key Changes |
+|-------|---------|-------------|
+| **Libraries** (3) | `profile_mgr.sh`, `events.sh`, `parse_at.sh` | Removed `_json_str_escape()`, `_json_extract()`, `_json_extract_raw()`. Profile save uses `jq -n` with 12 `--arg`/`--argjson` params. Carrier components use TSV intermediate + single `jq -Rs` call. |
+| **Utilities** (1) | `qcmd` | Removed `json_escape()`. `output_result()` uses `jq -n --arg`. |
+| **Daemons** (4) | `qmanager_ping`, `qmanager_band_failover`, `qmanager_profile_apply`, `qmanager_poller` | Poller's `write_cache()` went from 81-line heredoc + 26 null-safe locals → single `jq -n` with ~90 `--arg`/`--argjson` params. `read_ping_data()` went from 12 grep/sed calls → 2 jq calls. |
+| **CGIs** (19) | AT cmd (5), bands (4), profiles (4), scenarios (5), tower (1 extra) | All `json_field()` sed helpers removed. POST body parsing via `jq -r '.field // empty'`. NDJSON→array via `jq -s '.'`. Response construction via `jq -n`. |
+
+### Patterns Established
+
+**Parsing POST JSON:**
+```sh
+# Before (fragile — fails on nested objects, special chars):
+FIELD=$(echo "$POST_DATA" | sed -n 's/.*"field"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
+
+# After:
+FIELD=$(printf '%s' "$POST_DATA" | jq -r '.field // empty')
+```
+
+**Constructing JSON responses:**
+```sh
+# Before (no escaping — injection risk):
+printf '{"success":true,"id":"%s","name":"%s"}\n' "$ID" "$NAME"
+
+# After (auto-escaped, guaranteed valid JSON):
+jq -n --arg id "$ID" --arg name "$NAME" '{"success":true,"id":$id,"name":$name}'
+```
+
+**NDJSON file → JSON array:**
+```sh
+# Before (manual comma tracking):
+awk 'BEGIN{printf "["} NR>1{printf ","} {printf "%s",$0} END{printf "]"}'
+
+# After:
+jq -s '.'
+```
+
+**Large cache writes (poller):**
+```sh
+# Before (81-line heredoc with embedded variables, 26 null-safe locals):
+json_rsrp="${lte_rsrp:-null}"
+json_rsrq="${lte_rsrq:-null}"
+# ... 24 more ...
+cat > "$CACHE_TMP" << EOF
+{ "timestamp": $now, ... "$json_rsrp" ... }
+EOF
+
+# After (single jq call, null handled inline):
+jq -n \
+    --argjson ts "$now" \
+    --argjson rsrp "${lte_rsrp:-null}" \
+    --argjson rsrq "${lte_rsrq:-null}" \
+    ... \
+    '{ timestamp: $ts, lte: { rsrp: $rsrp, rsrq: $rsrq, ... } }' \
+    > "$CACHE_TMP"
+```
+
+**Boolean parsing (avoiding `// empty` trap — see §11):**
+```sh
+# For fields that can be boolean false:
+VAL=$(printf '%s' "$POST_DATA" | jq -r 'if has("enabled") then (.enabled | tostring) else "unset" end')
+```
+
+**In-place JSON mutation (replacing sed -i on JSON):**
+```sh
+# Before (can corrupt JSON structure):
+sed -i 's/"status":"applying"/"status":"failed"/' "$STATE_FILE"
+
+# After (structural modification, guaranteed valid):
+tmp=$(jq '.status = "failed"' "$STATE_FILE") && printf '%s\n' "$tmp" > "$STATE_FILE"
+```
+
+### Performance Note
+
+Antenna array helpers (`_sig_val`, `_antenna_to_json_array`) in `parse_at.sh` were intentionally kept as `printf` — they produce simple integer/null arrays called 3+ times per 5-second poll cycle. The overhead of spawning jq for trivial formatting was not justified.
+
+### Deprecated Functions Removed
+
+| Function | Was In | Replacement |
+|----------|--------|-------------|
+| `_json_str_escape()` | `profile_mgr.sh` | `jq -Rs` pipe or implicit `--arg` escaping |
+| `_json_extract()` | `profile_mgr.sh` | `jq -r --arg k "$2" '.[$k] // empty'` |
+| `_json_extract_raw()` | `profile_mgr.sh` | `jq -r` with `tostring` |
+| `json_escape()` | `qcmd` | Implicit via `jq -n --arg` |
+| `_esc()` | `current_settings.sh` | Implicit via `jq -n --arg` |
+| `json_field()` | 4 CGI scripts | `jq -r '.field // empty'` |
+
+### Dependency Note
+
+`jq` is now a **required system dependency** for the entire QManager backend. It was already required by the tower locking subsystem (6 scripts). This migration makes every shell script dependent on it. The OpenWrt package is `jq` (installable via `opkg install jq`).
 
 ---
 
