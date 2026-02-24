@@ -86,7 +86,7 @@ qlog_info "AT+QSCAN returned data, parsing..."
 #   +QSCAN: "NR5G",<MCC>,<MNC>,<freq>,<PCI>,<RSRP>,<RSRQ>,<srxlev>,<SCS>,<cellID>,<TAC>,<carrierBW>,<band>,<offsetToPointA>,<SSB_subcarrier_offset>,<SSB_SCS>
 #   Fields:   1      2     3     4      5     6      7      8        9      10       11    12          13
 #
-# We output: networkType\tMCC\tMNC\tfreq\tPCI\tRSRP\tRSRQ\tcellID_hex\tTAC_hex\tbandwidth\tband
+# We output: networkType\tMCC\tMNC\tfreq\tPCI\tRSRP\tRSRQ\tcellID_hex\tTAC_hex\tbandwidth\tband\tSCS
 # (one TSV row per cell)
 
 : > "$PARSED_FILE"
@@ -109,6 +109,7 @@ printf '%s\n' "$scan_lines" | while IFS= read -r line; do
     tac_hex=""
     bandwidth=""
     band=""
+    scs=""
 
     case "$net_type" in
         LTE)
@@ -119,7 +120,8 @@ printf '%s\n' "$scan_lines" | while IFS= read -r line; do
             band=$(printf '%s' "$csv" | cut -d',' -f13)
             ;;
         NR5G)
-            # NR5G ext fields: cellID(10), TAC(11), carrierBW(12), band(13)
+            # NR5G ext fields: SCS(9), cellID(10), TAC(11), carrierBW(12), band(13)
+            scs=$(printf '%s' "$csv" | cut -d',' -f9)
             cell_id_hex=$(printf '%s' "$csv" | cut -d',' -f10)
             tac_hex=$(printf '%s' "$csv" | cut -d',' -f11)
             bandwidth=$(printf '%s' "$csv" | cut -d',' -f12)
@@ -172,9 +174,9 @@ printf '%s\n' "$scan_lines" | while IFS= read -r line; do
     case "$band"       in '-') band=""       ;; esac
     case "$bw_mhz"     in '-') bw_mhz=""     ;; esac
 
-    printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
+    printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
         "$net_type" "$mcc" "$mnc" "$freq" "$pci" "$rsrp" "$rsrq" \
-        "$cell_id_dec" "$tac_dec" "$bw_mhz" "$band" >> "$PARSED_FILE"
+        "$cell_id_dec" "$tac_dec" "$bw_mhz" "$band" "$scs" >> "$PARSED_FILE"
 
 done
 
@@ -244,7 +246,8 @@ jq -Rs $OPERATOR_ARG '
             rsrq: ($row[6] // "" | if . == "" then null else tonumber end),
             mcc: ($mcc | if . == "" then 0 else tonumber end),
             mnc: ($mnc | if . == "" then 0 else tonumber end),
-            provider: $provider
+            provider: $provider,
+            scs: ($row[11] // "" | if . == "" then null else tonumber end)
         }
     )
 ' "$PARSED_FILE" > "${RESULT_FILE}.tmp"
