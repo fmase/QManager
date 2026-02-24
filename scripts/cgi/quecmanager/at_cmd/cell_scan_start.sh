@@ -74,8 +74,8 @@ rm -f "$RESULT_FILE" "$ERROR_FILE"
 # --- Launch scanner in background --------------------------------------------
 ( "$SCANNER_BIN" ) </dev/null >/dev/null 2>&1 &
 
-# Brief pause to let PID file be written
-sleep 0.3
+# Brief pause to let PID file be written (0.8s matches speedtest timing)
+sleep 0.8
 
 if [ -f "$PID_FILE" ]; then
     NEW_PID=$(cat "$PID_FILE" 2>/dev/null)
