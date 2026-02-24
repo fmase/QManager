@@ -74,16 +74,26 @@ else
 fi
 
 # --- Failover: Read supported bands from status.json cache -------------------
-# The poller collects policy_band at boot and caches it in status.json.
-# Reading from cache avoids modem lock contention during failover — important
-# since the modem may be in a degraded state when this fires.
+# Supported bands live under .device.supported_*_bands in status.json.
+# Fallback: if status.json is stale, load from /tmp/qmanager_supported_bands.env.
+# Reading from cache avoids modem lock contention during failover.
 qlog_warn "FAILOVER: Reverting to all supported bands"
 
-all_lte=$(jq -r '.supported_lte_bands // empty' "$STATUS_CACHE" 2>/dev/null)
+all_lte=$(jq -r '.device.supported_lte_bands // empty' "$STATUS_CACHE" 2>/dev/null)
+all_nsa=$(jq -r '.device.supported_nsa_nr5g_bands // empty' "$STATUS_CACHE" 2>/dev/null)
+all_sa=$(jq -r '.device.supported_sa_nr5g_bands // empty' "$STATUS_CACHE" 2>/dev/null)
 
-all_nsa=$(jq -r '.supported_nsa_nr5g_bands // empty' "$STATUS_CACHE" 2>/dev/null)
-
-all_sa=$(jq -r '.supported_sa_nr5g_bands // empty' "$STATUS_CACHE" 2>/dev/null)
+# Fallback: if status.json doesn't have it yet, source the RAM env cache
+if [ -z "$all_lte" ] && [ -z "$all_nsa" ] && [ -z "$all_sa" ]; then
+    BANDS_CACHE="/tmp/qmanager_supported_bands.env"
+    if [ -f "$BANDS_CACHE" ]; then
+        . "$BANDS_CACHE"
+        all_lte="$boot_supported_lte_bands"
+        all_nsa="$boot_supported_nsa_nr5g_bands"
+        all_sa="$boot_supported_sa_nr5g_bands"
+        qlog_info "FAILOVER: Loaded supported bands from RAM env cache"
+    fi
+fi
 
 if [ -z "$all_lte" ] && [ -z "$all_nsa" ] && [ -z "$all_sa" ]; then
     qlog_error "FAILOVER: No supported bands found in status cache — cannot revert"
