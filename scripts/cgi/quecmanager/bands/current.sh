@@ -42,7 +42,7 @@ FAILOVER_ACTIVATED_FLAG="/tmp/qmanager_band_failover"
 
 # --- HTTP Headers ------------------------------------------------------------
 echo "Content-Type: application/json"
-echo "Cache-Control: no-cache"
+echo "Cache-Control: no-cache, no-store, must-revalidate"
 echo "Access-Control-Allow-Origin: *"
 echo "Access-Control-Allow-Methods: GET, OPTIONS"
 echo "Access-Control-Allow-Headers: Content-Type"

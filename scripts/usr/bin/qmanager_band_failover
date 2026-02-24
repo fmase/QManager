@@ -7,7 +7,7 @@
 #
 # Lifecycle:
 #   1. Writes PID file for singleton tracking
-#   2. Sleeps 15 seconds (allows modem to settle after band change)
+#   2. Sleeps 5 seconds (allows modem to settle after band change)
 #   3. Queries AT+QCAINFO via qcmd to check signal (lightweight, ~200ms)
 #   4. Checks response strictly for real carrier data (lines starting with ^+QCAINFO:)
 #   5. If response has no carrier data (no signal):
@@ -41,7 +41,7 @@ qlog_init "band_failover"
 PID_FILE="/tmp/qmanager_band_failover.pid"
 ACTIVATED_FLAG="/tmp/qmanager_band_failover"
 STATUS_CACHE="/tmp/qmanager_status.json"
-SETTLE_DELAY=15  # seconds to wait after band lock before checking
+SETTLE_DELAY=5   # seconds to wait after band lock before checking
 
 # --- Write PID file ----------------------------------------------------------
 echo $$ > "$PID_FILE"

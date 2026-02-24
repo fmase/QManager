@@ -20,7 +20,7 @@ import { bandArrayToString } from "@/types/band-locking";
 // the failover safety mechanism.
 //
 // After a successful band lock (when failover is enabled), the hook polls
-// the lightweight failover_status.sh endpoint every 3s until the watcher
+// the lightweight failover_status.sh endpoint every 1s until the watcher
 // process completes. This detects whether failover activated and updates
 // the UI accordingly — without touching the modem.
 //
@@ -32,7 +32,7 @@ import { bandArrayToString } from "@/types/band-locking";
 // =============================================================================
 
 const CGI_BASE = "/cgi-bin/quecmanager/bands";
-const FAILOVER_POLL_INTERVAL = 3000; // 3s — watcher sleeps 15s then checks
+const FAILOVER_POLL_INTERVAL = 1000; // 1s — watcher sleeps 5s then checks
 
 export interface UseBandLockingReturn {
   /** Currently locked/configured bands from ue_capability_band */
@@ -57,7 +57,10 @@ export interface UseBandLockingReturn {
    * Requires the supported band list (from useModemStatus) to be passed in.
    * @returns success boolean
    */
-  unlockAll: (category: BandCategory, supportedBands: number[]) => Promise<boolean>;
+  unlockAll: (
+    category: BandCategory,
+    supportedBands: number[],
+  ) => Promise<boolean>;
   /**
    * Toggle the failover safety mechanism on/off.
    * @returns success boolean
@@ -74,7 +77,9 @@ export function useBandLocking(): UseBandLockingReturn {
     activated: false,
   });
   const [isLoading, setIsLoading] = useState(true);
-  const [lockingCategory, setLockingCategory] = useState<BandCategory | null>(null);
+  const [lockingCategory, setLockingCategory] = useState<BandCategory | null>(
+    null,
+  );
   const [error, setError] = useState<string | null>(null);
 
   const mountedRef = useRef(true);
@@ -97,7 +102,7 @@ export function useBandLocking(): UseBandLockingReturn {
   // ---------------------------------------------------------------------------
   const fetchCurrent = useCallback(async () => {
     try {
-      const resp = await fetch(`${CGI_BASE}/current.sh`);
+      const resp = await fetch(`${CGI_BASE}/current.sh?_t=${Date.now()}`);
       if (!resp.ok) {
         throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
       }
@@ -106,7 +111,9 @@ export function useBandLocking(): UseBandLockingReturn {
       if (!mountedRef.current) return;
 
       if (!data.success) {
-        setError(data.detail || data.error || "Failed to fetch band configuration");
+        setError(
+          data.detail || data.error || "Failed to fetch band configuration",
+        );
         return;
       }
 
@@ -116,7 +123,9 @@ export function useBandLocking(): UseBandLockingReturn {
     } catch (err) {
       if (!mountedRef.current) return;
       setError(
-        err instanceof Error ? err.message : "Failed to fetch band configuration",
+        err instanceof Error
+          ? err.message
+          : "Failed to fetch band configuration",
       );
     } finally {
       if (mountedRef.current) {
@@ -249,7 +258,10 @@ export function useBandLocking(): UseBandLockingReturn {
   // Unlock all bands for one category (set to full supported list)
   // ---------------------------------------------------------------------------
   const unlockAll = useCallback(
-    async (category: BandCategory, supportedBands: number[]): Promise<boolean> => {
+    async (
+      category: BandCategory,
+      supportedBands: number[],
+    ): Promise<boolean> => {
       if (supportedBands.length === 0) {
         setError("Supported bands not available");
         return false;

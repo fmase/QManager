@@ -430,9 +430,21 @@ collect_boot_data() {
     parse_mimo "$lte_mimo_result" "$nr_mimo_result"
 
     # Supported bands — AT+QNWPREFCFG="policy_band" (hardware ceiling, never changes)
-    result=$(qcmd_exec 'AT+QNWPREFCFG="policy_band"')
-    if [ $? -eq 0 ]; then
-        parse_policy_band "$result"
+    # Cache to /tmp so hotplug-triggered restarts skip the modem query.
+    # On a full device reboot /tmp is cleared, so the modem is queried once.
+    SUPPORTED_BANDS_FILE="/tmp/qmanager_supported_bands.env"
+    if [ -f "$SUPPORTED_BANDS_FILE" ]; then
+        . "$SUPPORTED_BANDS_FILE"
+        qlog_info "Loaded supported bands from RAM cache"
+    else
+        result=$(qcmd_exec 'AT+QNWPREFCFG="policy_band"')
+        if [ $? -eq 0 ]; then
+            parse_policy_band "$result"
+            printf 'boot_supported_lte_bands="%s"\nboot_supported_nsa_nr5g_bands="%s"\nboot_supported_sa_nr5g_bands="%s"\n' \
+                "$boot_supported_lte_bands" "$boot_supported_nsa_nr5g_bands" "$boot_supported_sa_nr5g_bands" \
+                > "$SUPPORTED_BANDS_FILE"
+            qlog_info "Supported bands cached to $SUPPORTED_BANDS_FILE"
+        fi
     fi
     sleep "$SIP_DELAY"
 
