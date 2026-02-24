@@ -27,6 +27,8 @@ qlog_init "cgi_bands_failover"
 
 # --- Configuration -----------------------------------------------------------
 FAILOVER_ENABLED_FILE="/etc/qmanager/band_failover_enabled"
+FAILOVER_ACTIVATED_FLAG="/tmp/qmanager_band_failover"
+FAILOVER_PID_FILE="/tmp/qmanager_band_failover.pid"
 
 # --- HTTP Headers ------------------------------------------------------------
 echo "Content-Type: application/json"
@@ -74,5 +76,19 @@ if [ "$ENABLED_VAL" = "true" ]; then
 else
     printf '0' > "$FAILOVER_ENABLED_FILE"
     qlog_info "Band failover DISABLED"
+
+    # Kill any running watcher to prevent unexpected failovers
+    if [ -f "$FAILOVER_PID_FILE" ]; then
+        old_pid=$(cat "$FAILOVER_PID_FILE" 2>/dev/null | tr -d ' \n\r')
+        if [ -n "$old_pid" ] && kill -0 "$old_pid" 2>/dev/null; then
+            kill -9 "$old_pid" 2>/dev/null
+            qlog_warn "Killed active failover watcher (PID=$old_pid) due to toggle OFF"
+        fi
+        rm -f "$FAILOVER_PID_FILE"
+    fi
+
+    # Clear any active failover flag so the UI resets from "Using Default Bands"
+    rm -f "$FAILOVER_ACTIVATED_FLAG"
+
     printf '{"success":true,"enabled":false}\n'
 fi

@@ -141,8 +141,9 @@ if [ "$failover_enabled" = "true" ] && [ -x "$FAILOVER_SCRIPT" ]; then
         rm -f "$FAILOVER_PID_FILE"
     fi
 
-    # Spawn new watcher (detached via subshell — pure POSIX, no setsid needed)
-    ( "$FAILOVER_SCRIPT" ) >/dev/null 2>&1 &
+    # Spawn new watcher (detached via double-fork to escape CGI process group)
+    # The & is INSIDE the outer (), making the script a grandchild reparented to init
+    ( "$FAILOVER_SCRIPT" </dev/null >/dev/null 2>&1 & )
     qlog_info "Failover watcher spawned"
     failover_armed="true"
 fi
