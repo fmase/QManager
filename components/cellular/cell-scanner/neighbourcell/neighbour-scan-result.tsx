@@ -44,6 +44,9 @@ export interface NeighbourCellResult {
   frequency: number;
   pci: number;
   signalStrength: number;
+  rsrq?: number | null;
+  rssi?: number | null;
+  sinr?: number | null;
 }
 
 interface NeighbourScanResultViewProps {
@@ -98,12 +101,18 @@ const columns: ColumnDef<NeighbourCellResult>[] = [
         <ArrowUpDown className="h-4 w-4" />
       </Button>
     ),
-    cell: ({ row }) => <div className="font-semibold">{row.getValue("frequency")}</div>,
+    cell: ({ row }) => {
+      const freq = row.getValue("frequency") as number;
+      return <div className="font-semibold">{freq === 0 ? "-" : freq}</div>;
+    },
   },
   {
     accessorKey: "pci",
     header: "PCI",
-    cell: ({ row }) => <div className="font-semibold">{row.getValue("pci")}</div>,
+    cell: ({ row }) => {
+      const pci = row.getValue("pci") as number;
+      return <div className="font-semibold">{pci === 0 ? "-" : pci}</div>;
+    },
   },
   {
     accessorKey: "signalStrength",
@@ -118,6 +127,13 @@ const columns: ColumnDef<NeighbourCellResult>[] = [
     ),
     cell: ({ row }) => {
       const strength = row.getValue("signalStrength") as number;
+      if (strength === 0) {
+        return (
+          <Badge className="bg-yellow-500/20 text-yellow-500 hover:bg-yellow-500/30 border border-yellow-300/50 backdrop-blur-sm">
+            No data
+          </Badge>
+        );
+      }
       return (
         <div className="flex items-center gap-2">
           {getSignalBadge(strength)}

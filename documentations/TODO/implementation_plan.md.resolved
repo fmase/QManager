@@ -1,0 +1,59 @@
+# Neighbour Cell Scanner Implementation Plan
+
+## Goal Description
+Implement the new Neighbour Cell Scanner feature. The feature requires a new backend pipeline (using OpenWRT shell scripts and CGI) to query the Quectel RM551E-GL 5G modem for LTE and 5G neighbour cells via AT commands (`AT+QENG="neighbourcell"` and `AT+QNWCFG="nr5g_meas_info"`). Once the backend makes the data available in a JSON file via a status endpoint, the frontend needs to be connected to trigger the scan, poll for status, and display the results without making major UI changes to the existing [NeighbourCellScanner](file:///d:/Projects/QM%20PROJECT/QManager/components/cellular/cell-scanner/neighbourcell/neighbour-scanner.tsx#84-116) component.
+
+## Architecture
+
+We will follow the established `QManager` singleton background worker pattern:
+1. **Frontend Hook** invokes `neighbour_scan_start.sh` via POST.
+2. **CGI Endpoint** spawn `qmanager_neighbour_scanner` daemon in a subshell, records its PID, and returns `{"success": true}` immediately.
+3. **Worker Daemon** uses [qcmd](file:///d:/Projects/QM%20PROJECT/QManager/scripts/usr/bin/qcmd) to run the AT commands, process raw output to TSV, build JSON via `jq`, and writes to `/tmp/qmanager_neighbour_scan_result.json`. (To prevent Flash write cycles, we only write to `/tmp/`).
+4. **Frontend Hook** polls `neighbour_scan_status.sh` every 1 second until the daemon PID terminates, then reads the JSON result and sets the state.
+
+## Proposed Changes
+
+### Backend Scripts (Ash)
+
+#### [NEW] /usr/bin/qmanager_neighbour_scanner
+- A backend daemon similar to `qmanager_cell_scanner`.
+- It will execute two main commands:
+  - `AT+QENG="neighbourcell"` -> extracts LTE intra/inter cells (`earfcn`, `PCID`, `RSRP`, `RSRQ`, `SINR`, `RSSI`).
+  - `AT+QNWCFG="nr5g_meas_info", 1` followed by `AT+QNWCFG="nr5g_meas_info"` -> extracts 5G cells (`ARFCN`, `PCI`, `RSRP`, `RSRQ`).
+- Since neighbour cells do not expose MCC/MNC directly, operator mapping will be skipped.
+- Converts the comma-separated AT output into TSV format and then calls `jq` to assemble an array of unified objects representing `NeighbourCellResult`s. Output is stored in `/tmp/qmanager_neighbour_scan_result.json`.
+
+#### [NEW] /www/cgi-bin/quecmanager/at_cmd/neighbour_scan_start.sh
+- Enforces single-instance scanning. Checks if `/tmp/qmanager_neighbour_scan.pid` exists and process is running.
+- Spawns `/usr/bin/qmanager_neighbour_scanner` in the background `( ... ) </dev/null >/dev/null 2>&1 &` to detach from uhttpd's lifecycle.
+- Returns JSON success indicating the process has started.
+
+#### [NEW] /www/cgi-bin/quecmanager/at_cmd/neighbour_scan_status.sh
+- Checks if the PID file exists and the process is alive.
+- If alive, returns `{"status": "running"}`.
+- If not alive but `RESULT_FILE` exists, returns `{"status": "complete", "result": [...]}`.
+- If error file exists, returns `{"status": "error", "message": "..."}`.
+
+### Frontend Components (Next.js)
+
+#### [NEW] hooks/use-neighbour-scanner.ts
+- Hook to manage the scan lifecycle, similar to `useSpeedtest`.
+- Exposes `startScan()`, `status` (`idle`, `running`, `complete`, `error`), and `results`.
+
+#### [MODIFY] components/cellular/cell-scanner/neighbourcell/neighbour-scanner.tsx
+- Integrate `useNeighbourScanner` to replace the static `mockNeighbourResults`.
+- Tie the "Start New Scan" button to `startScan()`.
+- Implement basic skeleton/loading UI inside the `CardContent` using existing UI patterns for seamless UX while scanning.
+- Wire up the CSV download button based on `results`.
+
+## Verification Plan
+
+### Automated/Unit Tests
+- N/A - The project heavily relies on end-to-end device integration.
+
+### Manual Verification
+1. Open the UI, click "Start New Scan". 
+2. Verify via SSH `logread` that `/usr/bin/qmanager_neighbour_scanner` launches and executes AT commands correctly.
+3. Check using `cat /tmp/qmanager_neighbour_scan_result.json` if standard output from the daemon produces the expected parsed format.
+4. Verify the polling completes and UI renders the parsed data gracefully.
+5. Click the "Download" button to verify correct CSV extraction.

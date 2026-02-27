@@ -1,3 +1,5 @@
+"use client";
+
 import {
   Card,
   CardContent,
@@ -7,106 +9,151 @@ import {
 } from "@/components/ui/card";
 
 import { Button } from "@/components/ui/button";
-import { DownloadIcon } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { DownloadIcon, LoaderCircleIcon, RefreshCcwIcon } from "lucide-react";
 import ScannerEmptyView from "@/components/cellular/cell-scanner/empty-view";
 import NeighbourScanResultView, {
   type NeighbourCellResult,
 } from "./neighbour-scan-result";
+import { useNeighbourScanner } from "@/hooks/use-neighbour-scanner";
 
-// Mock data for testing
-const mockNeighbourResults: NeighbourCellResult[] = [
-  {
-    id: "1",
-    networkType: "LTE",
-    cellType: "intra",
-    frequency: 150,
-    pci: 295,
-    signalStrength: -65,
-  },
-  {
-    id: "2",
-    networkType: "LTE",
-    cellType: "intra",
-    frequency: 150,
-    pci: 296,
-    signalStrength: -78,
-  },
-  {
-    id: "3",
-    networkType: "LTE",
-    cellType: "inter",
-    frequency: 1300,
-    pci: 125,
-    signalStrength: -85,
-  },
-  {
-    id: "4",
-    networkType: "NR5G-NSA",
-    cellType: "nr5g",
-    frequency: 528030,
-    pci: 262,
-    signalStrength: -72,
-  },
-  {
-    id: "5",
-    networkType: "NR5G-NSA",
-    cellType: "nr5g",
-    frequency: 528030,
-    pci: 263,
-    signalStrength: -88,
-  },
-  {
-    id: "6",
-    networkType: "NR5G-NSA",
-    cellType: "nr5g",
-    frequency: 627264,
-    pci: 791,
-    signalStrength: -95,
-  },
-  {
-    id: "7",
-    networkType: "LTE",
-    cellType: "inter",
-    frequency: 3050,
-    pci: 321,
-    signalStrength: -102,
-  },
-  {
-    id: "8",
-    networkType: "NR5G-NSA",
-    cellType: "nr5g",
-    frequency: 431810,
-    pci: 654,
-    signalStrength: -108,
-  },
-];
+// --- CSV Export Utility ------------------------------------------------------
+function downloadCSV(results: NeighbourCellResult[]) {
+  const header = "Network,Cell Type,Frequency,PCI,Signal (dBm),RSRQ,RSSI,SINR";
+  const rows = results.map((r) =>
+    [
+      r.networkType,
+      r.cellType,
+      r.frequency,
+      r.pci,
+      r.signalStrength,
+      r.rsrq ?? "",
+      r.rssi ?? "",
+      r.sinr ?? "",
+    ].join(","),
+  );
+  const csvContent = [header, ...rows].join("\r\n");
+  const filename = `neighbour_scan_${new Date().toISOString().slice(0, 10)}.csv`;
+
+  const encodedUri =
+    "data:text/csv;charset=utf-8," + encodeURIComponent(csvContent);
+  const link = document.createElement("a");
+  link.setAttribute("href", encodedUri);
+  link.setAttribute("download", filename);
+  link.style.display = "none";
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
+// --- Skeleton Loading State --------------------------------------------------
+function ScannerSkeleton() {
+  return (
+    <div className="space-y-3">
+      {/* Filter bar skeleton */}
+      <div className="flex items-center justify-between">
+        <Skeleton className="h-9 w-64 rounded-md" />
+        <Skeleton className="h-9 w-28 rounded-md" />
+      </div>
+      {/* Table skeleton */}
+      <div className="rounded-lg border overflow-hidden">
+        {/* Header */}
+        <div className="bg-muted px-4 py-3 flex gap-4">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <Skeleton key={i} className="h-4 flex-1 rounded" />
+          ))}
+        </div>
+        {/* Rows */}
+        {Array.from({ length: 5 }).map((_, rowIdx) => (
+          <div key={rowIdx} className="px-4 py-3 flex gap-4 border-t">
+            <Skeleton className="h-5 w-12 rounded-full" />
+            {Array.from({ length: 4 }).map((_, colIdx) => (
+              <Skeleton key={colIdx} className="h-4 flex-1 rounded" />
+            ))}
+          </div>
+        ))}
+      </div>
+      {/* Footer skeleton */}
+      <div className="flex items-center justify-between">
+        <Skeleton className="h-4 w-32" />
+        <div className="flex gap-2">
+          <Skeleton className="h-8 w-20 rounded-md" />
+          <Skeleton className="h-8 w-16 rounded-md" />
+        </div>
+      </div>
+    </div>
+  );
+}
 
 const NeighbourCellScanner = () => {
-  // Set to true to show mock data, false to show empty view
-  const hasScanResults = true;
+  const { status, results, error, startScan } = useNeighbourScanner();
+
+  const hasScanResults = status === "complete" && results.length > 0;
+  const isScanning = status === "running";
 
   return (
     <Card className="@container/card">
       <CardHeader>
-        <CardTitle>Neighbor Cell Scanner</CardTitle>
-        <CardDescription>
-          Scan and display neighboring cellular towers and networks.
-        </CardDescription>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle>Neighbor Cell Scanner</CardTitle>
+            <CardDescription>
+              Scan and display neighboring cellular towers and networks.
+            </CardDescription>
+          </div>
+          {isScanning && (
+            <Badge
+              variant="outline"
+              className="animate-pulse text-primary border-primary/50"
+            >
+              <LoaderCircleIcon className="h-3 w-3 animate-spin" />
+              Scanning...
+            </Badge>
+          )}
+        </div>
       </CardHeader>
       <CardContent>
         <div className="grid gap-4">
           {hasScanResults ? (
-            <NeighbourScanResultView data={mockNeighbourResults} />
+            <NeighbourScanResultView data={results} />
+          ) : isScanning ? (
+            <ScannerSkeleton />
+          ) : status === "error" ? (
+            <div className="flex flex-col items-center justify-center py-16 text-center gap-3">
+              <p className="text-destructive text-sm">
+                {error || "Scan failed"}
+              </p>
+              <Button onClick={startScan} variant="outline" size="sm">
+                <RefreshCcwIcon className="mr-1 h-4 w-4" />
+                Retry
+              </Button>
+            </div>
           ) : (
-            <ScannerEmptyView />
+            <ScannerEmptyView onStartScan={startScan} />
           )}
         </div>
-        {hasScanResults && (
+        {(hasScanResults || isScanning) && (
           <div className="mt-4 flex items-center gap-x-2">
-            <Button>Start New Scan</Button>
-            <Button>
-              <DownloadIcon />
+            <Button onClick={startScan} disabled={isScanning}>
+              {isScanning ? (
+                <>
+                  <LoaderCircleIcon className="h-4 w-4 animate-spin" />
+                  Scanning...
+                </>
+              ) : (
+                "Start New Scan"
+              )}
             </Button>
+            {hasScanResults && (
+              <Button
+                variant="outline"
+                onClick={() => downloadCSV(results)}
+                title="Download CSV"
+              >
+                <DownloadIcon />
+              </Button>
+            )}
           </div>
         )}
       </CardContent>

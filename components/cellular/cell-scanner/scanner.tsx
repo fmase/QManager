@@ -184,10 +184,10 @@ const FullScannerComponent = () => {
             {isScanning && (
               <Badge
                 variant="outline"
-                className="animate-pulse text-yellow-500 border-yellow-500/50"
+                className="animate-pulse text-primary border-primary/50"
               >
-                <LoaderCircleIcon className="h-3 w-3 mr-1 animate-spin" />
-                Scanning...
+                <LoaderCircleIcon className="h-3 w-3 animate-spin" />
+                Please wait for the scan to complete.
               </Badge>
             )}
           </div>
@@ -217,7 +217,7 @@ const FullScannerComponent = () => {
               <Button onClick={startScan} disabled={isScanning}>
                 {isScanning ? (
                   <>
-                    <LoaderCircleIcon className="mr-1 h-4 w-4 animate-spin" />
+                    <LoaderCircleIcon className="h-4 w-4 animate-spin" />
                     Scanning...
                   </>
                 ) : (
