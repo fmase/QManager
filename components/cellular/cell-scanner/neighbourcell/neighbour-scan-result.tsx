@@ -12,10 +12,13 @@ import {
   type ColumnFiltersState,
   type SortingState,
   type VisibilityState,
+  type Row,
 } from "@tanstack/react-table";
 import {
   ArrowUpDown,
   ChevronDown,
+  LockIcon,
+  MoreVertical,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -23,6 +26,7 @@ import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
@@ -51,6 +55,7 @@ export interface NeighbourCellResult {
 
 interface NeighbourScanResultViewProps {
   data: NeighbourCellResult[];
+  onLockCell?: (cell: NeighbourCellResult) => void;
 }
 
 const getSignalBadge = (strength: number) => {
@@ -77,81 +82,124 @@ const getNetworkTypeBadge = (type: string) => {
   return <Badge variant="default">{type}</Badge>;
 };
 
-const columns: ColumnDef<NeighbourCellResult>[] = [
-  {
-    accessorKey: "networkType",
-    header: () => <div className="pl-4">Network</div>,
-    cell: ({ row }) => (
-      <div className="pl-4">{getNetworkTypeBadge(row.getValue("networkType"))}</div>
-    ),
-  },
-  {
-    accessorKey: "cellType",
-    header: "Cell Type",
-    cell: ({ row }) => <div className="font-medium">{row.getValue("cellType")}</div>,
-  },
-  {
-    accessorKey: "frequency",
-    header: ({ column }) => (
-      <Button
-        variant="ghost"
-        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-      >
-        Frequency
-        <ArrowUpDown className="h-4 w-4" />
-      </Button>
-    ),
-    cell: ({ row }) => {
-      const freq = row.getValue("frequency") as number;
-      return <div className="font-semibold">{freq === 0 ? "-" : freq}</div>;
-    },
-  },
-  {
-    accessorKey: "pci",
-    header: "PCI",
-    cell: ({ row }) => {
-      const pci = row.getValue("pci") as number;
-      return <div className="font-semibold">{pci === 0 ? "-" : pci}</div>;
-    },
-  },
-  {
-    accessorKey: "signalStrength",
-    header: ({ column }) => (
-      <Button
-        variant="ghost"
-        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-      >
-        Signal
-        <ArrowUpDown className="h-4 w-4" />
-      </Button>
-    ),
-    cell: ({ row }) => {
-      const strength = row.getValue("signalStrength") as number;
-      if (strength === 0) {
-        return (
-          <Badge className="bg-yellow-500/20 text-yellow-500 hover:bg-yellow-500/30 border border-yellow-300/50 backdrop-blur-sm">
-            No data
-          </Badge>
-        );
-      }
-      return (
-        <div className="flex items-center gap-2">
-          {getSignalBadge(strength)}
-          <span className="font-semibold">{strength} dBm</span>
+function getColumns(
+  onLockCell?: (cell: NeighbourCellResult) => void,
+): ColumnDef<NeighbourCellResult>[] {
+  return [
+    {
+      accessorKey: "networkType",
+      header: () => <div className="pl-4">Network</div>,
+      cell: ({ row }) => (
+        <div className="pl-4">
+          {getNetworkTypeBadge(row.getValue("networkType"))}
         </div>
-      );
+      ),
     },
-  },
-];
+    {
+      accessorKey: "cellType",
+      header: "Cell Type",
+      cell: ({ row }) => (
+        <div className="font-medium">{row.getValue("cellType")}</div>
+      ),
+    },
+    {
+      accessorKey: "frequency",
+      header: ({ column }) => (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+        >
+          Frequency
+          <ArrowUpDown className="h-4 w-4" />
+        </Button>
+      ),
+      cell: ({ row }) => {
+        const freq = row.getValue("frequency") as number;
+        return <div className="font-semibold">{freq === 0 ? "-" : freq}</div>;
+      },
+    },
+    {
+      accessorKey: "pci",
+      header: "PCI",
+      cell: ({ row }) => {
+        const pci = row.getValue("pci") as number;
+        return <div className="font-semibold">{pci === 0 ? "-" : pci}</div>;
+      },
+    },
+    {
+      accessorKey: "signalStrength",
+      header: ({ column }) => (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+        >
+          Signal
+          <ArrowUpDown className="h-4 w-4" />
+        </Button>
+      ),
+      cell: ({ row }) => {
+        const strength = row.getValue("signalStrength") as number;
+        if (strength === 0) {
+          return (
+            <Badge className="bg-yellow-500/20 text-yellow-500 hover:bg-yellow-500/30 border border-yellow-300/50 backdrop-blur-sm">
+              No data
+            </Badge>
+          );
+        }
+        return (
+          <div className="flex items-center gap-2">
+            {getSignalBadge(strength)}
+            <span className="font-semibold">{strength} dBm</span>
+          </div>
+        );
+      },
+    },
+    {
+      id: "actions",
+      header: () => null,
+      enableHiding: false,
+      cell: ({ row }: { row: Row<NeighbourCellResult> }) => {
+        const cellData = row.original;
+        // Only LTE cells can be locked — NR5G lacks required scs/band params
+        if (cellData.networkType !== "LTE") return null;
+        return (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                className="data-[state=open]:bg-muted text-muted-foreground flex size-8"
+                size="icon"
+              >
+                <MoreVertical className="h-4 w-4" />
+                <span className="sr-only">Open menu</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-40">
+              <DropdownMenuItem onClick={() => onLockCell?.(cellData)}>
+                <LockIcon className="mr-2 h-4 w-4" />
+                Lock Cell
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        );
+      },
+    },
+  ];
+}
 
-const NeighbourScanResultView = ({ data }: NeighbourScanResultViewProps) => {
+const NeighbourScanResultView = ({
+  data,
+  onLockCell,
+}: NeighbourScanResultViewProps) => {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
-    []
+    [],
   );
   const [columnVisibility, setColumnVisibility] =
     React.useState<VisibilityState>({});
   const isMobile = useIsMobile();
+
+  const columns = React.useMemo(() => getColumns(onLockCell), [onLockCell]);
 
   const table = useReactTable({
     data,
@@ -223,7 +271,7 @@ const NeighbourScanResultView = ({ data }: NeighbourScanResultViewProps) => {
                         ? null
                         : flexRender(
                             header.column.columnDef.header,
-                            header.getContext()
+                            header.getContext(),
                           )}
                     </TableHead>
                   );
@@ -239,7 +287,7 @@ const NeighbourScanResultView = ({ data }: NeighbourScanResultViewProps) => {
                     <TableCell key={cell.id}>
                       {flexRender(
                         cell.column.columnDef.cell,
-                        cell.getContext()
+                        cell.getContext(),
                       )}
                     </TableCell>
                   ))}
