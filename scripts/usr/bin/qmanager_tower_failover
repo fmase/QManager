@@ -155,28 +155,45 @@ while true; do
     esac
 
     # --- Parse RSRP ----------------------------------------------------------
-    # LTE line format: +QENG: "LTE",<is_tdd>,<MCC>,<MNC>,<cellID>,<PCID>,<earfcn>,<band>,<UL_bw>,<DL_bw>,<TAC>,<RSRP>,<RSRQ>,<RSSI>,<SINR>,...
-    # RSRP is field 12 (0-indexed) in the LTE line
-    # NR5G-SA line format: +QENG: "servingcell",<state>,"NR5G-SA",<duplex>,<MCC>,<MNC>,<cellID>,<PCID>,<TAC>,<ARFCN>,<band>,<NR_DL_bw>,<RSRP>,...
-    # RSRP is field 13 (0-indexed) in the SA line
+    # Three distinct AT response formats (field indices are awk 1-indexed):
+    #
+    # NSA/EN-DC: LTE data on SEPARATE line (no "servingcell" prefix)
+    #   +QENG: "LTE",<is_tdd>,<MCC>,<MNC>,<cellID>,<PCID>,<earfcn>,<band>,<UL_bw>,<DL_bw>,<TAC>,<RSRP>,...
+    #   Fields:  1     2       3     4     5        6      7        8      9      10     11   12
+    #
+    # LTE-only: combined servingcell+LTE on ONE line
+    #   +QENG: "servingcell",<state>,"LTE",<is_tdd>,<MCC>,<MNC>,<cellID>,<PCID>,<earfcn>,<band>,<UL_bw>,<DL_bw>,<TAC>,<RSRP>,...
+    #   Fields:  1            2       3     4        5     6     7        8      9        10     11     12     13   14
+    #
+    # NR5G-SA: on servingcell line
+    #   +QENG: "servingcell",<state>,"NR5G-SA",<duplex>,<MCC>,<MNC>,<cellID>,<PCID>,<TAC>,<ARFCN>,<band>,<NR_DL_bw>,<RSRP>,...
+    #   Fields:  1            2       3         4        5     6     7        8      9     10      11     12         13
 
     rsrp=""
 
     if [ "$no_service" -eq 0 ]; then
-        # Try LTE line first (primary in NSA mode)
-        lte_rsrp=$(printf '%s\n' "$qeng_result" | grep '+QENG:.*"LTE"' | head -1 | \
-            awk -F',' '{print $12}' | tr -d ' \r')
+        # Detect mode: NSA has a separate LTE line (not on the "servingcell" line)
+        local lte_separate lte_combined sa_line
+        lte_separate=$(printf '%s\n' "$qeng_result" | grep '+QENG:' | grep '"LTE"' | grep -v '"servingcell"' | head -1)
+        lte_combined=$(printf '%s\n' "$qeng_result" | grep '+QENG:.*"servingcell".*"LTE"' | head -1)
+        sa_line=$(printf '%s\n' "$qeng_result" | grep '+QENG:.*"NR5G-SA"' | head -1)
 
-        # Try NR5G-SA line
-        sa_rsrp=$(printf '%s\n' "$qeng_result" | grep '+QENG:.*"NR5G-SA"' | head -1 | \
-            awk -F',' '{print $13}' | tr -d ' \r')
-
-        # Use LTE RSRP if available; fall back to NR-SA for SA-only mode
-        if [ -n "$lte_rsrp" ] && [ "$lte_rsrp" != "-" ] && [ "$lte_rsrp" -lt 0 ] 2>/dev/null; then
-            rsrp="$lte_rsrp"
-        elif [ -n "$sa_rsrp" ] && [ "$sa_rsrp" != "-" ] && [ "$sa_rsrp" -lt 0 ] 2>/dev/null; then
-            rsrp="$sa_rsrp"
+        if [ -n "$lte_separate" ]; then
+            # NSA/EN-DC: RSRP is field 12
+            rsrp=$(printf '%s' "$lte_separate" | awk -F',' '{print $12}' | tr -d ' \r')
+        elif [ -n "$lte_combined" ]; then
+            # LTE-only: RSRP is field 14
+            rsrp=$(printf '%s' "$lte_combined" | awk -F',' '{print $14}' | tr -d ' \r')
+        elif [ -n "$sa_line" ]; then
+            # NR5G-SA: RSRP is field 13
+            rsrp=$(printf '%s' "$sa_line" | awk -F',' '{print $13}' | tr -d ' \r')
         fi
+
+        # Validate RSRP is a negative number (all valid RSRP values are < 0)
+        case "$rsrp" in
+            -[0-9]*) ;; # valid
+            *) rsrp="" ;; # invalid — treat as no signal
+        esac
     fi
 
     # --- Calculate signal quality --------------------------------------------

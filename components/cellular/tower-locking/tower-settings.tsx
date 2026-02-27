@@ -23,7 +23,6 @@ import {
   TbAlertTriangleFilled,
   TbInfoCircleFilled,
   TbSquareRoundedCheckFilled,
-  TbClockFilled,
   TbCircleXFilled,
 } from "react-icons/tb";
 import { Badge } from "@/components/ui/badge";
@@ -160,10 +159,10 @@ const TowerLockingSettingsComponent = ({
       return (
         <Badge
           variant="outline"
-          className="bg-yellow-500/20 text-yellow-500 hover:bg-yellow-500/30 border border-yellow-300/50 backdrop-blur-sm"
+          className="bg-green-500/20 text-green-500 hover:bg-green-500/30 border border-green-300/50 backdrop-blur-sm"
         >
-          <TbClockFilled />
-          Checking Signal...
+          <TbSquareRoundedCheckFilled />
+          Monitoring
         </Badge>
       );
     }
@@ -250,6 +249,87 @@ const TowerLockingSettingsComponent = ({
     );
   };
 
+  // --- Connection state badge ---
+  const renderConnectionStateBadge = () => {
+    const serviceStatus = modemData?.network?.service_status;
+
+    if (!modemData && isLoading) {
+      return (
+        <Badge
+          variant="outline"
+          className="bg-muted text-muted-foreground border border-border backdrop-blur-sm"
+        >
+          <Loader2 className="w-3 h-3 animate-spin" />
+          Loading
+        </Badge>
+      );
+    }
+
+    if (!modemData || !serviceStatus) {
+      return (
+        <Badge
+          variant="outline"
+          className="bg-muted text-muted-foreground border border-border backdrop-blur-sm"
+        >
+          Unknown
+        </Badge>
+      );
+    }
+
+    switch (serviceStatus) {
+      case "optimal":
+      case "connected":
+        return (
+          <Badge
+            variant="outline"
+            className="bg-green-500/20 text-green-500 hover:bg-green-500/30 border border-green-300/50 backdrop-blur-sm"
+          >
+            <TbSquareRoundedCheckFilled />
+            Connected
+          </Badge>
+        );
+      case "limited":
+        return (
+          <Badge
+            variant="outline"
+            className="bg-yellow-500/20 text-yellow-500 hover:bg-yellow-500/30 border border-yellow-300/50 backdrop-blur-sm"
+          >
+            <TbAlertTriangleFilled />
+            Limited Service
+          </Badge>
+        );
+      case "searching":
+        return (
+          <Badge
+            variant="outline"
+            className="bg-orange-500/20 text-orange-500 hover:bg-orange-500/30 border border-orange-300/50 backdrop-blur-sm"
+          >
+            <TbAlertTriangleFilled />
+            Searching
+          </Badge>
+        );
+      case "no_service":
+        return (
+          <Badge
+            variant="outline"
+            className="bg-red-500/20 text-red-500 hover:bg-red-500/30 border border-red-300/50 backdrop-blur-sm"
+          >
+            <TbCircleXFilled />
+            No Service
+          </Badge>
+        );
+      default:
+        return (
+          <Badge
+            variant="outline"
+            className="bg-muted text-muted-foreground border border-border backdrop-blur-sm"
+          >
+            {serviceStatus}
+          </Badge>
+        );
+    }
+  };
+
   if (isLoading) {
     return (
       <Card className="@container/card">
@@ -290,6 +370,12 @@ const TowerLockingSettingsComponent = ({
             <div className="flex items-center justify-between">
               <Skeleton className="h-4 w-28" />
               <Skeleton className="h-5 w-16 rounded-full" />
+            </div>
+            <Separator />
+            {/* Connection State */}
+            <div className="flex items-center justify-between">
+              <Skeleton className="h-4 w-32" />
+              <Skeleton className="h-5 w-20 rounded-full" />
             </div>
             <Separator />
             {/* Schedule Locking Status */}
@@ -428,7 +514,6 @@ const TowerLockingSettingsComponent = ({
               {thresholdDirty && (
                 <Button
                   size="sm"
-                  variant="outline"
                   className="h-8"
                   disabled={isSavingThreshold}
                   onClick={handleThresholdSave}
@@ -466,6 +551,17 @@ const TowerLockingSettingsComponent = ({
             </p>
             <div className="flex items-center gap-1.5">
               <p className="text-sm font-semibold ">{renderFailoverBadge()}</p>
+            </div>
+          </div>
+          <Separator />
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-semibold text-muted-foreground ">
+              Connection State
+            </p>
+            <div className="flex items-center gap-1.5">
+              <p className="text-sm font-semibold ">
+                {renderConnectionStateBadge()}
+              </p>
             </div>
           </div>
           <Separator />

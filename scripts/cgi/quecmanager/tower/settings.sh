@@ -129,6 +129,16 @@ fi
 # --- Update config file using jq (atomic, safe) -----------------------------
 tower_config_update_settings "$PERSIST" "$FO_ENABLED" "$FO_THRESHOLD"
 
+# --- Spawn failover daemon if failover was just enabled + lock is active -----
+if [ "$FO_ENABLED" = "true" ] && [ "$current_fo_enabled" != "true" ]; then
+    lte_active=$(tower_config_get ".lte.enabled")
+    nr_active=$(tower_config_get ".nr_sa.enabled")
+    if [ "$lte_active" = "true" ] || [ "$nr_active" = "true" ]; then
+        tower_spawn_failover_watcher
+        qlog_info "Failover enabled — spawned daemon (active lock detected)"
+    fi
+fi
+
 # --- Kill failover daemon if failover was just disabled ----------------------
 if [ "$FO_ENABLED" = "false" ] && [ "$current_fo_enabled" = "true" ]; then
     tower_kill_failover_watcher
