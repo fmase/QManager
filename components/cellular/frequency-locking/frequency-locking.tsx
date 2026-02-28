@@ -1,0 +1,47 @@
+"use client";
+
+import React from "react";
+import LteFreqLockingComponent from "./lte-freq-locking";
+import NrFreqLockingComponent from "./nr-freq-locking";
+import { useFrequencyLocking } from "@/hooks/use-frequency-locking";
+import { useModemStatus } from "@/hooks/use-modem-status";
+
+const FrequencyLockingComponent = () => {
+  const freqLock = useFrequencyLocking();
+  const { data: modemData } = useModemStatus();
+
+  return (
+    <div className="@container/main mx-auto p-2">
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold mb-2">Frequency Locking</h1>
+        <p className="text-muted-foreground max-w-5xl">
+          Lock your modem to specific frequencies (EARFCNs) to control which
+          channels it may use. This is an experimental feature — use with
+          caution.
+        </p>
+      </div>
+      <div className="grid grid-cols-1 @xl/main:grid-cols-2 @5xl/main:grid-cols-2 grid-flow-row gap-4 *:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card *:data-[slot=card]:bg-linear-to-t *:data-[slot=card]:shadow-xs">
+        <LteFreqLockingComponent
+          modemState={freqLock.modemState}
+          modemData={modemData}
+          isLoading={freqLock.isLoading}
+          isLocking={freqLock.isLteLocking}
+          towerLockActive={freqLock.towerLockLteActive}
+          onLock={(earfcns) => freqLock.lockLte(earfcns)}
+          onUnlock={() => freqLock.unlockLte()}
+        />
+        <NrFreqLockingComponent
+          modemState={freqLock.modemState}
+          modemData={modemData}
+          isLoading={freqLock.isLoading}
+          isLocking={freqLock.isNrLocking}
+          towerLockActive={freqLock.towerLockNrActive}
+          onLock={(entries) => freqLock.lockNr(entries)}
+          onUnlock={() => freqLock.unlockNr()}
+        />
+      </div>
+    </div>
+  );
+};
+
+export default FrequencyLockingComponent;

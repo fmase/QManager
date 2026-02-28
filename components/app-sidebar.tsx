@@ -44,7 +44,7 @@ import Image from "next/image";
 const data = {
   user: {
     name: "user-test",
-    avatar: QManagerLogo,
+    avatar: QManagerLogo.src,
   },
   navMain: [
     {
@@ -96,6 +96,10 @@ const data = {
         {
           title: "Tower Locking",
           url: "/cellular/cell-locking/tower-locking",
+        },
+        {
+          title: "Frequency Locking",
+          url: "/cellular/cell-locking/frequency-locking",
         },
       ],
     },

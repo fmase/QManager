@@ -333,6 +333,22 @@ export function formatFrequency(freqMHz: number | null): string {
   return `${formatted} MHz`;
 }
 
+// --- NR SCS Inference --------------------------------------------------------
+
+/**
+ * Suggest a default SCS (kHz) for a given NR band entry.
+ *
+ * Rules from AT+QNWCFG="nr5g_earfcn_lock" documentation:
+ *   - FR1 FDD → 15 kHz
+ *   - FR1 TDD → 30 kHz
+ *   - FR2 (mmWave, dlLow >= 24250 MHz) → 60 kHz (user can override to 120)
+ */
+export function suggestNRSCS(band: NRBandEntry): number {
+  if (band.dlLow >= 24250) return 60;
+  if (band.duplexType === "FDD") return 15;
+  return 30;
+}
+
 // --- Batch Matching (used by frequency calculator) ----------------------------
 
 /**
