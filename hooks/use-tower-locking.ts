@@ -268,7 +268,11 @@ export function useTowerLocking(): UseTowerLockingReturn {
           return false;
         }
 
-        // Re-fetch full state to confirm
+        // Wait for modem to reconnect after lock/unlock command (3-5s typical).
+        // isLocking stays true so the spinner remains visible to the user.
+        await new Promise((resolve) => setTimeout(resolve, 5000));
+
+        // Re-fetch full state — modem should have reconnected by now
         await fetchStatus();
 
         // If failover is armed (watcher spawned), start polling

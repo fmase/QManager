@@ -138,12 +138,22 @@ const LTELockingComponent = ({
 
   const confirmLock = async () => {
     setShowLockDialog(false);
-    await onLock(pendingCells);
+    const success = await onLock(pendingCells);
+    if (success) {
+      toast.success("LTE tower lock applied");
+    } else {
+      toast.error("Failed to apply LTE tower lock");
+    }
   };
 
   const confirmUnlock = async () => {
     setShowUnlockDialog(false);
-    await onUnlock();
+    const success = await onUnlock();
+    if (success) {
+      toast.success("LTE tower lock cleared");
+    } else {
+      toast.error("Failed to clear LTE tower lock");
+    }
   };
 
   // "Use Current" — copy active PCell into slot 1
@@ -244,7 +254,7 @@ const LTELockingComponent = ({
                   id="lte-tower-locking"
                   checked={isEnabled}
                   onCheckedChange={handleToggle}
-                  disabled={isLocking || isWatcherRunning}
+                  disabled={isLocking}
                 />
                 <Label htmlFor="lte-tower-locking">
                   {isEnabled ? "Enabled" : "Disabled"}

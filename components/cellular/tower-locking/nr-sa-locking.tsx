@@ -107,7 +107,7 @@ const NRSALockingComponent = ({
   const isNsaMode = networkType === "5G-NSA";
   const isLteOnly = networkType === "LTE";
   const isCardDisabled = isNsaMode || isLteOnly;
-  const isDisabled = isCardDisabled || isLocking || isWatcherRunning;
+  const isDisabled = isCardDisabled || isLocking;
 
   const handleToggle = (checked: boolean) => {
     if (isWatcherRunning) {
@@ -152,13 +152,23 @@ const NRSALockingComponent = ({
   const confirmLock = async () => {
     setShowLockDialog(false);
     if (pendingCell) {
-      await onLock(pendingCell);
+      const success = await onLock(pendingCell);
+      if (success) {
+        toast.success("NR-SA tower lock applied");
+      } else {
+        toast.error("Failed to apply NR-SA tower lock");
+      }
     }
   };
 
   const confirmUnlock = async () => {
     setShowUnlockDialog(false);
-    await onUnlock();
+    const success = await onUnlock();
+    if (success) {
+      toast.success("NR-SA tower lock cleared");
+    } else {
+      toast.error("Failed to clear NR-SA tower lock");
+    }
   };
 
   // "Use Current" — copy active NR PCell into form fields
