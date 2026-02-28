@@ -383,23 +383,15 @@ calc_signal_quality() {
 # Failover Watcher Management
 # =============================================================================
 
-# Kill any running failover watcher
+# Kill any running failover watcher (delegates to init.d)
 tower_kill_failover_watcher() {
-    if [ -f "$TOWER_FAILOVER_PID" ]; then
-        local old_pid
-        old_pid=$(cat "$TOWER_FAILOVER_PID" 2>/dev/null | tr -d ' \n\r')
-        if [ -n "$old_pid" ] && kill -0 "$old_pid" 2>/dev/null; then
-            kill "$old_pid" 2>/dev/null
-            qlog_debug "Killed tower failover watcher (PID=$old_pid)"
-        fi
-        rm -f "$TOWER_FAILOVER_PID"
-    fi
+    /etc/init.d/qmanager_tower_failover stop 2>/dev/null
 }
 
-# Spawn failover watcher if enabled
+# Spawn failover watcher if enabled (delegates to init.d)
 # Returns: "true" if spawned, "false" if not
 tower_spawn_failover_watcher() {
-    # Check if failover is enabled in config using jq
+    # Check if failover is enabled in config
     local fo_enabled
     fo_enabled=$(tower_config_get ".failover.enabled")
 
@@ -408,23 +400,11 @@ tower_spawn_failover_watcher() {
         return 0
     fi
 
-    if [ ! -x "$TOWER_FAILOVER_SCRIPT" ]; then
-        qlog_warn "Failover script not found or not executable: $TOWER_FAILOVER_SCRIPT"
-        printf 'false'
-        return 1
-    fi
+    # Stop any existing watcher, then start fresh via init.d
+    /etc/init.d/qmanager_tower_failover stop 2>/dev/null
+    /etc/init.d/qmanager_tower_failover start 2>/dev/null
 
-    # Kill any existing watcher
-    tower_kill_failover_watcher
-
-    # Clear previous activation flag
-    rm -f "$TOWER_FAILOVER_FLAG"
-
-    # Spawn new watcher (detached via double-fork, survives CGI exit)
-    # The & inside () makes the script a grandchild reparented to init,
-    # escaping uhttpd's process group. Same pattern as band failover.
-    ( "$TOWER_FAILOVER_SCRIPT" </dev/null >/dev/null 2>&1 & )
-    qlog_info "Tower failover watcher spawned"
+    qlog_info "Tower failover watcher spawned via init.d"
     printf 'true'
     return 0
 }
