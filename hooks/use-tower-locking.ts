@@ -275,11 +275,17 @@ export function useTowerLocking(): UseTowerLockingReturn {
         // Re-fetch full state — modem should have reconnected by now
         await fetchStatus();
 
-        // If failover is armed (watcher spawned), start polling
+        // If failover is armed (watcher spawned), update state + start polling.
+        // lock.sh auto-enables failover in config, so sync frontend state.
         if (data.failover_armed) {
+          setConfig((prev) =>
+            prev
+              ? { ...prev, failover: { ...prev.failover, enabled: true } }
+              : prev
+          );
           setFailoverState((prev) =>
             prev
-              ? { ...prev, activated: false, watcher_running: true }
+              ? { ...prev, enabled: true, activated: false, watcher_running: true }
               : { enabled: true, activated: false, watcher_running: true }
           );
           startFailoverPolling();

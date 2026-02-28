@@ -152,8 +152,9 @@ if [ "$LOCK_TYPE" = "lte" ]; then
 
         qlog_info "LTE tower lock applied successfully"
 
-        # Update config file
+        # Update config file + auto-enable failover for this lock session
         tower_config_update_lte "true" "$c1_earfcn" "$c1_pci" "$c2_earfcn" "$c2_pci" "$c3_earfcn" "$c3_pci"
+        tower_config_update '.failover.enabled = true'
 
         # Spawn failover watcher
         failover_armed=$(tower_spawn_failover_watcher)
@@ -240,8 +241,9 @@ elif [ "$LOCK_TYPE" = "nr_sa" ]; then
 
         qlog_info "NR-SA tower lock applied successfully"
 
-        # Update config
+        # Update config + auto-enable failover for this lock session
         tower_config_update_nr "true" "$nr_pci" "$nr_arfcn" "$nr_scs" "$nr_band"
+        tower_config_update '.failover.enabled = true'
 
         # Spawn failover watcher
         failover_armed=$(tower_spawn_failover_watcher)

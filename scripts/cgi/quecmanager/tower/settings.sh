@@ -129,15 +129,23 @@ fi
 # --- Update config file using jq (atomic, safe) -----------------------------
 tower_config_update_settings "$PERSIST" "$FO_ENABLED" "$FO_THRESHOLD"
 
-# --- Spawn failover daemon if failover was just enabled + lock is active -----
+# --- Ensure failover daemon is running when enabled + lock active ------------
 watcher_spawned="false"
-if [ "$FO_ENABLED" = "true" ] && [ "$current_fo_enabled" != "true" ]; then
+if [ "$FO_ENABLED" = "true" ]; then
     lte_active=$(tower_config_get ".lte.enabled")
     nr_active=$(tower_config_get ".nr_sa.enabled")
     if [ "$lte_active" = "true" ] || [ "$nr_active" = "true" ]; then
-        spawn_result=$(tower_spawn_failover_watcher)
-        [ "$spawn_result" = "true" ] && watcher_spawned="true"
-        qlog_info "Failover enabled — spawn result=$spawn_result (active lock detected)"
+        # Only spawn if daemon is not already running (avoids resetting settle timer)
+        daemon_alive="false"
+        if [ -f "$TOWER_FAILOVER_PID" ]; then
+            wpid=$(cat "$TOWER_FAILOVER_PID" 2>/dev/null | tr -d ' \n\r')
+            [ -n "$wpid" ] && kill -0 "$wpid" 2>/dev/null && daemon_alive="true"
+        fi
+        if [ "$daemon_alive" != "true" ]; then
+            spawn_result=$(tower_spawn_failover_watcher)
+            [ "$spawn_result" = "true" ] && watcher_spawned="true"
+            qlog_info "Failover spawn attempt: result=$spawn_result"
+        fi
     fi
 fi
 

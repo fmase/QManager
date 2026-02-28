@@ -75,7 +75,9 @@ tower_config_read() {
 tower_config_get() {
     local filter="$1"
     tower_config_init
-    jq -r "$filter // empty" "$TOWER_CONFIG_FILE" 2>/dev/null
+    # NOTE: Cannot use `// empty` — jq treats `false` as falsy so
+    # `false // empty` produces nothing. Use explicit null check instead.
+    jq -r "($filter) | if . == null then empty else tostring end" "$TOWER_CONFIG_FILE" 2>/dev/null
 }
 
 # Update the config file using a jq filter expression
