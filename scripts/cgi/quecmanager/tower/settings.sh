@@ -130,12 +130,14 @@ fi
 tower_config_update_settings "$PERSIST" "$FO_ENABLED" "$FO_THRESHOLD"
 
 # --- Spawn failover daemon if failover was just enabled + lock is active -----
+watcher_spawned="false"
 if [ "$FO_ENABLED" = "true" ] && [ "$current_fo_enabled" != "true" ]; then
     lte_active=$(tower_config_get ".lte.enabled")
     nr_active=$(tower_config_get ".nr_sa.enabled")
     if [ "$lte_active" = "true" ] || [ "$nr_active" = "true" ]; then
-        tower_spawn_failover_watcher
-        qlog_info "Failover enabled — spawned daemon (active lock detected)"
+        spawn_result=$(tower_spawn_failover_watcher)
+        [ "$spawn_result" = "true" ] && watcher_spawned="true"
+        qlog_info "Failover enabled — spawn result=$spawn_result (active lock detected)"
     fi
 fi
 
@@ -143,7 +145,8 @@ fi
 if [ "$FO_ENABLED" = "false" ] && [ "$current_fo_enabled" = "true" ]; then
     tower_kill_failover_watcher
     rm -f "$TOWER_FAILOVER_FLAG"
-    qlog_info "Failover disabled — killed daemon"
+    /etc/init.d/qmanager_tower_failover disable 2>/dev/null
+    qlog_info "Failover disabled — killed daemon, disabled init.d"
 fi
 
 # --- Response ----------------------------------------------------------------
@@ -152,11 +155,13 @@ if [ "$persist_ok" = "true" ]; then
         --argjson persist "$PERSIST" \
         --argjson fo_enabled "$FO_ENABLED" \
         --argjson fo_threshold "$FO_THRESHOLD" \
-        '{success: true, persist: $persist, failover_enabled: $fo_enabled, failover_threshold: $fo_threshold}'
+        --argjson ws "$watcher_spawned" \
+        '{success: true, persist: $persist, failover_enabled: $fo_enabled, failover_threshold: $fo_threshold, watcher_spawned: $ws}'
 else
     jq -n \
         --argjson persist "$PERSIST" \
         --argjson fo_enabled "$FO_ENABLED" \
         --argjson fo_threshold "$FO_THRESHOLD" \
-        '{success: true, persist_command_failed: true, persist: $persist, failover_enabled: $fo_enabled, failover_threshold: $fo_threshold}'
+        --argjson ws "$watcher_spawned" \
+        '{success: true, persist_command_failed: true, persist: $persist, failover_enabled: $fo_enabled, failover_threshold: $fo_threshold, watcher_spawned: $ws}'
 fi

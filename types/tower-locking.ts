@@ -110,6 +110,8 @@ export interface TowerSettingsResponse {
   failover_enabled?: boolean;
   failover_threshold?: number;
   persist_command_failed?: boolean;
+  /** True if the failover watcher was spawned during this settings update */
+  watcher_spawned?: boolean;
   error?: string;
   detail?: string;
 }

@@ -389,7 +389,7 @@ tower_kill_failover_watcher() {
 }
 
 # Spawn failover watcher if enabled (delegates to init.d)
-# Returns: "true" if spawned, "false" if not
+# Returns: "true" if daemon verified running, "false" if not spawned or failed
 tower_spawn_failover_watcher() {
     # Check if failover is enabled in config
     local fo_enabled
@@ -404,7 +404,22 @@ tower_spawn_failover_watcher() {
     /etc/init.d/qmanager_tower_failover stop 2>/dev/null
     /etc/init.d/qmanager_tower_failover start 2>/dev/null
 
-    qlog_info "Tower failover watcher spawned via init.d"
-    printf 'true'
-    return 0
+    # Enable for boot auto-start (creates /etc/rc.d symlink, shows in LuCI)
+    /etc/init.d/qmanager_tower_failover enable 2>/dev/null
+
+    # Verify daemon actually started (PID file written immediately on spawn)
+    sleep 1
+    if [ -f "$TOWER_FAILOVER_PID" ]; then
+        local pid
+        pid=$(cat "$TOWER_FAILOVER_PID" 2>/dev/null | tr -d ' \n\r')
+        if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
+            qlog_info "Tower failover watcher verified running (PID=$pid)"
+            printf 'true'
+            return 0
+        fi
+    fi
+
+    qlog_warn "Tower failover watcher failed to start"
+    printf 'false'
+    return 1
 }

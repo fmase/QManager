@@ -61,6 +61,9 @@ const TowerLockingSettingsComponent = ({
   onFailoverChange,
   onThresholdChange,
 }: TowerLockingSettingsProps) => {
+  // Whether any tower lock is active (from config — matches what failover daemon checks)
+  const hasActiveLock = (config?.lte?.enabled || config?.nr_sa?.enabled) ?? false;
+
   // Local state for threshold input
   const [thresholdInput, setThresholdInput] = useState<string>("");
   const [isSavingThreshold, setIsSavingThreshold] = useState(false);
@@ -472,7 +475,7 @@ const TowerLockingSettingsComponent = ({
               <Switch
                 id="tower-failover"
                 checked={config?.failover?.enabled ?? false}
-                disabled={!config}
+                disabled={!config || !hasActiveLock}
                 onCheckedChange={(checked) => {
                   onFailoverChange(checked);
                   if (!checked) {
@@ -481,7 +484,11 @@ const TowerLockingSettingsComponent = ({
                 }}
               />
               <Label htmlFor="tower-failover">
-                {(config?.failover?.enabled ?? false) ? "Enabled" : "Disabled"}
+                {!hasActiveLock
+                  ? "No active lock"
+                  : (config?.failover?.enabled ?? false)
+                    ? "Enabled"
+                    : "Disabled"}
               </Label>
             </div>
           </div>

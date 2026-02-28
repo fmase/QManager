@@ -401,18 +401,28 @@ export function useTowerLocking(): UseTowerLockingReturn {
             : prev
         );
 
-        // Also update failoverState to match (prevents badge desync).
+        // Update failoverState to match (prevents badge desync).
         // When disabling failover, the backend kills the watcher daemon,
-        // so clear watcher_running too.
-        setFailoverState((prev) =>
-          prev
-            ? {
-                ...prev,
-                enabled: failover.enabled,
-                ...(failover.enabled ? {} : { watcher_running: false }),
-              }
-            : { enabled: failover.enabled, activated: false, watcher_running: false }
-        );
+        // so clear watcher_running. When the backend spawned the watcher
+        // (enabled failover with active lock), set watcher_running.
+        if (data.watcher_spawned) {
+          setFailoverState((prev) =>
+            prev
+              ? { ...prev, enabled: true, activated: false, watcher_running: true }
+              : { enabled: true, activated: false, watcher_running: true }
+          );
+          startFailoverPolling();
+        } else {
+          setFailoverState((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  enabled: failover.enabled,
+                  ...(failover.enabled ? {} : { watcher_running: false }),
+                }
+              : { enabled: failover.enabled, activated: false, watcher_running: false }
+          );
+        }
 
         return true;
       } catch (err) {
@@ -423,7 +433,7 @@ export function useTowerLocking(): UseTowerLockingReturn {
         return false;
       }
     },
-    []
+    [startFailoverPolling]
   );
 
   // ---------------------------------------------------------------------------
