@@ -173,13 +173,9 @@ const NRSALockingComponent = ({
       setPci(String(nrPci));
       if (nrBandNum != null) setBand(String(nrBandNum));
       if (nrScs != null) setScs(String(nrScs));
-      toast.info("Populated from active NR PCell", {
-        description: `ARFCN: ${nrArfcn}, PCI: ${nrPci}${nrBandNum ? `, Band: ${nrBandNum}` : ""}${nrScs ? `, SCS: ${nrScs} kHz` : ""}`,
-      });
+      toast.info("Populated from active NR PCell");
     } else {
-      toast.warning("No active NR cell", {
-        description: "NR PCell data is not available.",
-      });
+      toast.warning("No active NR cell");
     }
   };
 

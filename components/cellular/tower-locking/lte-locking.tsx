@@ -153,13 +153,9 @@ const LTELockingComponent = ({
     if (earfcn != null && pci != null) {
       setEarfcn1(String(earfcn));
       setPci1(String(pci));
-      toast.info("Populated from active LTE PCell", {
-        description: `EARFCN: ${earfcn}, PCI: ${pci}`,
-      });
+      toast.info("Populated from active LTE PCell");
     } else {
-      toast.warning("No active LTE cell", {
-        description: "LTE PCell data is not available.",
-      });
+      toast.warning("No active LTE cell");
     }
   };
 

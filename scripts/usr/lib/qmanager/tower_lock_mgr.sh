@@ -420,10 +420,10 @@ tower_spawn_failover_watcher() {
     # Clear previous activation flag
     rm -f "$TOWER_FAILOVER_FLAG"
 
-    # Spawn new watcher (detached via setsid, survives CGI exit)
-    # setsid creates a new session so the process isn't killed when
-    # uhttpd closes the CGI's process group.
-    setsid "$TOWER_FAILOVER_SCRIPT" >/dev/null 2>&1 &
+    # Spawn new watcher (detached via double-fork, survives CGI exit)
+    # The & inside () makes the script a grandchild reparented to init,
+    # escaping uhttpd's process group. Same pattern as band failover.
+    ( "$TOWER_FAILOVER_SCRIPT" </dev/null >/dev/null 2>&1 & )
     qlog_info "Tower failover watcher spawned"
     printf 'true'
     return 0

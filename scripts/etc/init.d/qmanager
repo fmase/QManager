@@ -97,7 +97,7 @@ EOF
         _lte=$(jq -r '.lte.enabled // false' /etc/qmanager/tower_lock.json 2>/dev/null)
         _nr=$(jq -r '.nr_sa.enabled // false' /etc/qmanager/tower_lock.json 2>/dev/null)
         if [ "$_fo" = "true" ] && { [ "$_lte" = "true" ] || [ "$_nr" = "true" ]; }; then
-            setsid /usr/bin/qmanager_tower_failover >/dev/null 2>&1 &
+            ( /usr/bin/qmanager_tower_failover </dev/null >/dev/null 2>&1 & )
             logger -t qmanager "Tower failover daemon spawned on boot (lock active + failover enabled)"
         fi
     fi
