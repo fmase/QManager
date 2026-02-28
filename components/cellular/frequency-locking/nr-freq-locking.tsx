@@ -27,6 +27,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { Separator } from "@/components/ui/separator";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -34,10 +39,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Loader2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  TbInfoCircleFilled,
-  TbAlertTriangleFilled,
-} from "react-icons/tb";
+import { TbInfoCircleFilled, TbAlertTriangleFilled } from "react-icons/tb";
 
 import { Field, FieldGroup, FieldLabel, FieldSet } from "@/components/ui/field";
 
@@ -205,8 +207,7 @@ const NrFreqLockingComponent = ({
       const entries = buildEntries();
       if (entries.length === 0) {
         toast.warning("No frequencies entered", {
-          description:
-            "Enter at least one NR-ARFCN and SCS before enabling.",
+          description: "Enter at least one NR-ARFCN and SCS before enabling.",
         });
         return;
       }
@@ -340,15 +341,10 @@ const NrFreqLockingComponent = ({
         <CardContent>
           <div className="grid gap-2">
             {/* Experimental warning */}
-            <div className="flex items-start gap-2 p-3 rounded-md bg-amber-500/10 border border-amber-500/30 text-amber-600 dark:text-amber-400 text-sm">
+            <div className="flex items-start gap-2 p-2 rounded-md bg-amber-500/10 border border-amber-500/30 text-amber-600 dark:text-amber-400 text-sm">
               <TbAlertTriangleFilled className="w-5 h-5 mt-0.5 shrink-0" />
               <div>
                 <p className="font-semibold">Experimental Feature</p>
-                <p className="text-xs mt-0.5 text-muted-foreground">
-                  Cannot be used together with NR Tower Lock
-                  (AT+QNWLOCK). SCS is auto-detected from band type but can be
-                  overridden.
-                </p>
               </div>
             </div>
 
@@ -366,7 +362,19 @@ const NrFreqLockingComponent = ({
             <Separator />
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1.5">
-                <TbInfoCircleFilled className="w-5 h-5 text-blue-500" />
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <TbInfoCircleFilled className="w-5 h-5 text-blue-500" />
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>
+                      Cannot be used together with NR Tower Lock (AT+QNWLOCK).
+                      <br />
+                      SCS is auto-detected from band type but can be overridden.
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+
                 <p className="font-semibold text-muted-foreground text-sm">
                   NR5G Frequency Lock Enabled
                 </p>
@@ -736,8 +744,7 @@ function NrBandMatchDisplay({
           <span key={b.band}>
             {i > 0 && ", "}
             <span className={isSupported ? "" : "text-destructive font-medium"}>
-              n{b.band} ({b.name})
-              {!isSupported && " — unsupported"}
+              n{b.band} ({b.name}){!isSupported && " — unsupported"}
             </span>
           </span>
         );

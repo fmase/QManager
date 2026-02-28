@@ -20,6 +20,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { Separator } from "@/components/ui/separator";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -27,10 +32,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Loader2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  TbInfoCircleFilled,
-  TbAlertTriangleFilled,
-} from "react-icons/tb";
+import { TbInfoCircleFilled, TbAlertTriangleFilled } from "react-icons/tb";
 
 import { Field, FieldGroup, FieldLabel, FieldSet } from "@/components/ui/field";
 
@@ -217,14 +219,10 @@ const LteFreqLockingComponent = ({
         <CardContent>
           <div className="grid gap-2">
             {/* Experimental warning */}
-            <div className="flex items-start gap-2 p-3 rounded-md bg-amber-500/10 border border-amber-500/30 text-amber-600 dark:text-amber-400 text-sm">
+            <div className="flex items-start gap-2 p-2 rounded-md bg-amber-500/10 border border-amber-500/30 text-amber-600 dark:text-amber-400 text-sm">
               <TbAlertTriangleFilled className="w-5 h-5 mt-0.5 shrink-0" />
               <div>
                 <p className="font-semibold">Experimental Feature</p>
-                <p className="text-xs mt-0.5 text-muted-foreground">
-                  Locking to an unsupported frequency may cause a modem crash
-                  dump. Cannot be used while Tower Lock is active.
-                </p>
               </div>
             </div>
 
@@ -242,7 +240,18 @@ const LteFreqLockingComponent = ({
             <Separator />
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1.5">
-                <TbInfoCircleFilled className="w-5 h-5 text-blue-500" />
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <TbInfoCircleFilled className="w-5 h-5 text-blue-500" />
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>
+                      Locking to an unsupported frequency may cause a modem
+                      crash dump. <br />
+                      Cannot be used while Tower Lock is active.
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
                 <p className="font-semibold text-muted-foreground text-sm">
                   LTE Frequency Lock Enabled
                 </p>
@@ -289,6 +298,7 @@ const LteFreqLockingComponent = ({
                         id="freq-earfcn1"
                         type="text"
                         placeholder="Enter EARFCN"
+                        className="max-w-sm"
                         value={earfcn1}
                         onChange={(e) => setEarfcn1(e.target.value)}
                         disabled={isDisabled}
@@ -309,6 +319,7 @@ const LteFreqLockingComponent = ({
                         id="freq-earfcn2"
                         type="text"
                         placeholder="Enter EARFCN 2"
+                        className="max-w-sm"
                         value={earfcn2}
                         onChange={(e) => setEarfcn2(e.target.value)}
                         disabled={isDisabled}
@@ -445,8 +456,7 @@ function BandMatchDisplay({
           <span key={b.band}>
             {i > 0 && ", "}
             <span className={isSupported ? "" : "text-destructive font-medium"}>
-              B{b.band} ({b.name})
-              {!isSupported && " — unsupported"}
+              B{b.band} ({b.name}){!isSupported && " — unsupported"}
             </span>
           </span>
         );
