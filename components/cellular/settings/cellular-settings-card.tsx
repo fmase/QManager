@@ -149,7 +149,7 @@ const CellularSettingsCard = ({
                   <Field>
                     <FieldLabel>Select Active U-SIM Slot</FieldLabel>
                     <Select
-                      value={simSlot}
+                      value={simSlot || (settings ? String(settings.sim_slot) : "")}
                       onValueChange={setSimSlot}
                       disabled={isSaving}
                     >
@@ -166,7 +166,7 @@ const CellularSettingsCard = ({
                   <Field>
                     <FieldLabel>Select Cellular Functionality</FieldLabel>
                     <Select
-                      value={cfun}
+                      value={cfun || (settings ? String(settings.cfun) : "")}
                       onValueChange={setCfun}
                       disabled={isSaving}
                     >
@@ -188,7 +188,7 @@ const CellularSettingsCard = ({
                   <Field>
                     <FieldLabel>Select Network (RAT) Mode</FieldLabel>
                     <Select
-                      value={modePref}
+                      value={modePref || (settings ? settings.mode_pref : "")}
                       onValueChange={setModePref}
                       disabled={isSaving}
                     >
@@ -207,7 +207,7 @@ const CellularSettingsCard = ({
                   <Field>
                     <FieldLabel>NR5G Mode Control</FieldLabel>
                     <Select
-                      value={nr5gMode}
+                      value={nr5gMode || (settings ? String(settings.nr5g_mode) : "")}
                       onValueChange={setNr5gMode}
                       disabled={isSaving}
                     >
