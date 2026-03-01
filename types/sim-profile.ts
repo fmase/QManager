@@ -124,6 +124,8 @@ export interface CurrentModemSettings {
   imei: string;
   /** Current SIM ICCID from AT+QCCID */
   iccid: string;
+  /** Active data CID (detected via QMAP/CGPADDR cross-reference) */
+  active_cid: number;
 }
 
 /** A single APN/CID pair from AT+CGDCONT? */

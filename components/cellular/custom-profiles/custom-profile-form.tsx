@@ -127,8 +127,9 @@ const CustomProfileFormComponent = ({
     const apnPrefill =
       currentSettings.apn_profiles?.length > 0
         ? (() => {
+            const activeCid = currentSettings.active_cid;
             const primary =
-              currentSettings.apn_profiles.find((a) => a.cid === 1) ||
+              currentSettings.apn_profiles.find((a) => a.cid === activeCid) ||
               currentSettings.apn_profiles[0];
             return {
               cid: primary.cid,
@@ -167,7 +168,6 @@ const CustomProfileFormComponent = ({
         ...prev,
         mno: preset.label,
         apn_name: preset.apn_name,
-        cid: preset.cid,
         ttl: preset.ttl,
         hl: preset.hl,
       }));

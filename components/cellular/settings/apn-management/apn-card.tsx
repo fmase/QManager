@@ -22,8 +22,8 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Loader2, RotateCcwIcon } from "lucide-react";
 import {
-  AUTO_APN_PRESETS,
-  getAutoApnPreset,
+  MNO_PRESETS,
+  getMnoPreset,
 } from "@/constants/mno-presets";
 import type { CurrentApnProfile } from "@/types/sim-profile";
 import type { ApnSaveRequest } from "@/types/apn-settings";
@@ -95,10 +95,9 @@ const APNSettingsCard = ({
       return;
     }
 
-    const preset = getAutoApnPreset(presetId);
+    const preset = getMnoPreset(presetId);
     if (preset) {
       setActiveApn(preset.apn_name);
-      setSelectedCid(String(preset.cid));
       setPendingTtl(preset.ttl);
       setPendingHl(preset.hl);
     }
@@ -221,7 +220,7 @@ const APNSettingsCard = ({
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="none">None</SelectItem>
-                        {AUTO_APN_PRESETS.map((p) => (
+                        {MNO_PRESETS.map((p) => (
                           <SelectItem key={p.id} value={p.id}>
                             {p.label} Auto APN
                           </SelectItem>

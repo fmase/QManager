@@ -14,7 +14,12 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { LockIcon, LockOpenIcon, RotateCcwIcon, ShieldIcon } from "lucide-react";
+import {
+  LockIcon,
+  LockOpenIcon,
+  RotateCcwIcon,
+  ShieldIcon,
+} from "lucide-react";
 import { toast } from "sonner";
 import { formatBandName, type BandCategory } from "@/types/band-locking";
 
@@ -200,7 +205,7 @@ const BandCardsComponent = ({
               variant="outline"
               className="bg-blue-500/20 text-blue-500 border-blue-300/50"
             >
-              <ShieldIcon className="mr-1 h-3 w-3" />
+              <ShieldIcon className="h-3 w-3" />
               Scenario Controlled
             </Badge>
           ) : isAllUnlocked ? (
@@ -208,7 +213,7 @@ const BandCardsComponent = ({
               variant="outline"
               className="bg-emerald-500/20 text-emerald-500 border-emerald-300/50"
             >
-              <LockOpenIcon className="mr-1 h-3 w-3" />
+              <LockOpenIcon className="h-3 w-3" />
               All Unlocked
             </Badge>
           ) : (
@@ -216,7 +221,7 @@ const BandCardsComponent = ({
               variant="outline"
               className="bg-amber-500/20 text-amber-500 border-amber-300/50"
             >
-              <LockIcon className="mr-1 h-3 w-3" />
+              <LockIcon className="h-3 w-3" />
               {currentLockedBands.length} / {supportedBands.length} Bands
             </Badge>
           )}

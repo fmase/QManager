@@ -102,12 +102,75 @@ sleep "$CMD_GAP"
 # --- 3. Current ICCID from AT+QCCID ------------------------------------------
 iccid_resp=$(run_at "AT+QCCID")
 current_iccid=$(printf '%s' "$iccid_resp" | grep -o '[0-9]\{19,20\}' | head -1)
+sleep "$CMD_GAP"
+
+# --- 4. Determine active CID (cross-reference CGPADDR + QMAP) ---------------
+active_cid=""
+
+# 4a. AT+CGPADDR — collect ALL CIDs with a real IPv4 address
+cgpaddr_resp=$(run_at "AT+CGPADDR")
+sleep "$CMD_GAP"
+
+cgpaddr_cids=""
+if [ -n "$cgpaddr_resp" ]; then
+    cgpaddr_cids=$(printf '%s' "$cgpaddr_resp" | awk -F'[,"]' '
+        /\+CGPADDR:/ {
+            cid = $1; gsub(/[^0-9]/, "", cid)
+            ip = $3
+            if (ip != "" && ip != "0.0.0.0" && ip !~ /^0+(\.0+)*$/) {
+                split(ip, octets, ".")
+                if (length(octets) == 4 && octets[1]+0 > 0) {
+                    print cid
+                }
+            }
+        }
+    ')
+fi
+
+# 4b. AT+QMAP="WWAN" — get the WAN-connected CID (authoritative)
+qmap_cid=""
+qmap_resp=$(run_at 'AT+QMAP="WWAN"')
+if [ -n "$qmap_resp" ]; then
+    # +QMAP: "WWAN",<connected>,<cid>,"<type>","<ip>"
+    qmap_cid=$(printf '%s' "$qmap_resp" | awk -F',' '
+        /\+QMAP:/ {
+            gsub(/"/, "", $5)
+            ip = $5
+            cid = $3
+            gsub(/[^0-9]/, "", cid)
+            if (ip != "" && ip != "0.0.0.0" && ip != "0:0:0:0:0:0:0:0") {
+                print cid
+                exit
+            }
+        }
+    ')
+fi
+
+# 4c. Cross-reference: QMAP is authoritative, CGPADDR is fallback
+if [ -n "$qmap_cid" ]; then
+    active_cid="$qmap_cid"
+    qlog_debug "Active CID from QMAP: $qmap_cid (CGPADDR CIDs: $cgpaddr_cids)"
+elif [ -n "$cgpaddr_cids" ]; then
+    active_cid=$(printf '%s\n' "$cgpaddr_cids" | head -1)
+    qlog_debug "Active CID from CGPADDR fallback: $active_cid"
+fi
+
+# Default to CID 1 if both detection methods failed
+[ -z "$active_cid" ] && active_cid="1"
 
 # =============================================================================
 # Build and output response JSON
 # =============================================================================
 
-jq -n --argjson apns "$apn_array" --arg imei "$current_imei" --arg iccid "$current_iccid" \
-    '{"apn_profiles":$apns,"imei":$imei,"iccid":$iccid}'
+jq -n --argjson apns "$apn_array" \
+    --arg imei "$current_imei" \
+    --arg iccid "$current_iccid" \
+    --arg active_cid "$active_cid" \
+    '{
+        "apn_profiles": $apns,
+        "imei": $imei,
+        "iccid": $iccid,
+        "active_cid": ($active_cid | tonumber)
+    }'
 
-qlog_info "Current settings query complete"
+qlog_info "Current settings query complete (active_cid=$active_cid)"

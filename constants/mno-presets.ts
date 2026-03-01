@@ -1,8 +1,9 @@
 // =============================================================================
 // mno-presets.ts — Mobile Network Operator Preset Configurations
 // =============================================================================
-// Config-driven carrier presets for the Custom SIM Profile form.
-// Selecting a preset pre-fills APN, CID, TTL, and HL fields.
+// Shared carrier presets used by both Custom SIM Profiles and APN Management.
+// Selecting a preset pre-fills APN, TTL, and HL fields.
+// CID is NOT included — it is auto-detected via QMAP/CGPADDR cross-reference.
 // Fields remain editable — the user can override any pre-filled value.
 //
 // To add a new carrier: append an entry to MNO_PRESETS below.
@@ -16,26 +17,59 @@ export interface MnoPreset {
   label: string;
   /** APN name to pre-fill */
   apn_name: string;
-  /** PDP context ID (1-15) */
-  cid: number;
-  /** IPv4 TTL value (0-255) */
+  /** IPv4 TTL value (0-255, 0 = don't change) */
   ttl: number;
-  /** IPv6 Hop Limit value (0-255) */
+  /** IPv6 Hop Limit value (0-255, 0 = don't change) */
   hl: number;
 }
 
 /**
  * Carrier preset list.
- * Add new carriers here — the form will automatically pick them up.
+ * Add new carriers here — both Custom SIM Profiles and APN Management
+ * dropdowns will automatically pick them up.
  */
 export const MNO_PRESETS: MnoPreset[] = [
   {
     id: "smart",
     label: "Smart",
-    apn_name: "SMARTBRO",
-    cid: 1,
+    apn_name: "SMARTLTE",
     ttl: 64,
     hl: 64,
+  },
+  {
+    id: "dito",
+    label: "DITO",
+    apn_name: "internet.dito.ph",
+    ttl: 0,
+    hl: 0,
+  },
+  {
+    id: "gomo",
+    label: "GOMO",
+    apn_name: "gomo.ph",
+    ttl: 0,
+    hl: 0,
+  },
+  {
+    id: "globe",
+    label: "Globe",
+    apn_name: "internet.globe.com.ph",
+    ttl: 0,
+    hl: 0,
+  },
+  {
+    id: "vzw",
+    label: "Verizon",
+    apn_name: "vzwinternet",
+    ttl: 64,
+    hl: 64,
+  },
+  {
+    id: "att_5g_phone",
+    label: "AT&T 5G Phone",
+    apn_name: "enhancedphone",
+    ttl: 0,
+    hl: 0,
   },
 ];
 
@@ -51,41 +85,4 @@ export const MNO_CUSTOM_ID = "custom";
 export function getMnoPreset(id: string): MnoPreset | undefined {
   if (id === MNO_CUSTOM_ID) return undefined;
   return MNO_PRESETS.find((p) => p.id === id);
-}
-
-// =============================================================================
-// Auto APN Presets — Predefined APN configurations for the APN Management page
-// =============================================================================
-// Selecting a preset auto-fills APN, CID, and optionally TTL/HL.
-// TTL/HL of 0 means "don't change".
-// =============================================================================
-
-/**
- * Auto APN preset list for the APN Management page.
- * Add new carriers here — the APN form will automatically pick them up.
- */
-export const AUTO_APN_PRESETS: MnoPreset[] = [
-  {
-    id: "vzw",
-    label: "Verizon",
-    apn_name: "vzwinternet",
-    cid: 1,
-    ttl: 64,
-    hl: 64,
-  },
-  {
-    id: "att_5g_phone",
-    label: "AT&T 5G Phone",
-    apn_name: "enhancedphone",
-    cid: 1,
-    ttl: 0,
-    hl: 0,
-  },
-];
-
-/**
- * Look up an Auto APN preset by ID. Returns undefined if not found.
- */
-export function getAutoApnPreset(id: string): MnoPreset | undefined {
-  return AUTO_APN_PRESETS.find((p) => p.id === id);
 }

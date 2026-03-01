@@ -1,6 +1,6 @@
 "use client"
 
-import { RefObject, useLayoutEffect, useId, useState } from "react"
+import { RefObject, useEffect, useId, useState } from "react"
 import { motion } from "motion/react"
 
 import { cn } from "@/lib/utils"
@@ -63,7 +63,7 @@ export const AnimatedBeam: React.FC<AnimatedBeamProps> = ({
         y2: ["0%", "0%"],
       }
 
-  useLayoutEffect(() => {
+  useEffect(() => {
     const updatePath = () => {
       if (containerRef.current && fromRef.current && toRef.current) {
         const containerRect = containerRef.current.getBoundingClientRect()
