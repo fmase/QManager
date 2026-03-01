@@ -10,6 +10,7 @@
 #   AT+CFUN?                            -> Functionality mode (0, 1, 4)
 #   AT+QNWPREFCFG="mode_pref"          -> Network mode (AUTO, LTE, NR5G, etc.)
 #   AT+QNWPREFCFG="nr5g_disable_mode"  -> NR5G mode (0=both, 1=SA off, 2=NSA off)
+#   AT+QNWPREFCFG="roam_pref"          -> Roaming preference (1, 3, 255)
 #   AT+QNWCFG="lte_ambr"               -> LTE AMBR per APN
 #   AT+QNWCFG="nr5g_ambr"              -> NR5G AMBR per DNN
 #
@@ -18,6 +19,7 @@
 #   AT+CFUN=<0|1|4>
 #   AT+QNWPREFCFG="mode_pref",<value>
 #   AT+QNWPREFCFG="nr5g_disable_mode",<0|1|2>
+#   AT+QNWPREFCFG="roam_pref",<1|3|255>
 #
 # Endpoint: GET/POST /cgi-bin/quecmanager/cellular/settings.sh
 # Install location: /www/cgi-bin/quecmanager/cellular/settings.sh
@@ -102,6 +104,15 @@ if [ "$REQUEST_METHOD" = "GET" ]; then
     fi
     sleep "$CMD_GAP"
 
+    # --- Roaming Preference ---
+    roam_pref="255"
+    roam_resp=$(qcmd 'AT+QNWPREFCFG="roam_pref"' 2>/dev/null)
+    if [ $? -eq 0 ] && [ -n "$roam_resp" ]; then
+        val=$(printf '%s\n' "$roam_resp" | grep '+QNWPREFCFG:' | head -1 | sed 's/.*"roam_pref",//' | tr -d ' \r')
+        [ -n "$val" ] && roam_pref="$val"
+    fi
+    sleep "$CMD_GAP"
+
     # --- LTE AMBR ---
     lte_ambr_json="[]"
     lte_ambr_resp=$(qcmd 'AT+QNWCFG="lte_ambr"' 2>/dev/null)
@@ -166,12 +177,13 @@ if [ "$REQUEST_METHOD" = "GET" ]; then
     fi
 
     # --- Build response ---
-    qlog_info "Settings: slot=$sim_slot cfun=$cfun mode=$mode_pref nr5g=$nr5g_mode"
+    qlog_info "Settings: slot=$sim_slot cfun=$cfun mode=$mode_pref nr5g=$nr5g_mode roam=$roam_pref"
     jq -n \
         --arg sim_slot "$sim_slot" \
         --arg cfun "$cfun" \
         --arg mode_pref "$mode_pref" \
         --arg nr5g_mode "$nr5g_mode" \
+        --arg roam_pref "$roam_pref" \
         --argjson lte_ambr "$lte_ambr_json" \
         --argjson nr5g_ambr "$nr5g_ambr_json" \
         '{
@@ -180,7 +192,8 @@ if [ "$REQUEST_METHOD" = "GET" ]; then
                 sim_slot: ($sim_slot | tonumber),
                 cfun: ($cfun | tonumber),
                 mode_pref: $mode_pref,
-                nr5g_mode: ($nr5g_mode | tonumber)
+                nr5g_mode: ($nr5g_mode | tonumber),
+                roam_pref: ($roam_pref | tonumber)
             },
             ambr: {
                 lte: $lte_ambr,
@@ -208,8 +221,9 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
     CFUN=$(printf '%s' "$POST_DATA" | jq -r 'if has("cfun") then (.cfun | tostring) else "unset" end')
     MODE_PREF=$(printf '%s' "$POST_DATA" | jq -r 'if has("mode_pref") then .mode_pref else "unset" end')
     NR5G_MODE=$(printf '%s' "$POST_DATA" | jq -r 'if has("nr5g_mode") then (.nr5g_mode | tostring) else "unset" end')
+    ROAM_PREF=$(printf '%s' "$POST_DATA" | jq -r 'if has("roam_pref") then (.roam_pref | tostring) else "unset" end')
 
-    qlog_info "Apply settings: slot=$SIM_SLOT cfun=$CFUN mode=$MODE_PREF nr5g=$NR5G_MODE"
+    qlog_info "Apply settings: slot=$SIM_SLOT cfun=$CFUN mode=$MODE_PREF nr5g=$NR5G_MODE roam=$ROAM_PREF"
 
     # --- Validate ---
     if [ "$SIM_SLOT" != "unset" ]; then
@@ -252,6 +266,16 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
         esac
     fi
 
+    if [ "$ROAM_PREF" != "unset" ]; then
+        case "$ROAM_PREF" in
+            1|3|255) ;;
+            *)
+                echo '{"success":false,"error":"invalid_roam_pref","detail":"Roaming preference must be 1, 3, or 255"}'
+                exit 0
+                ;;
+        esac
+    fi
+
     # --- Apply in safe order: nr5g_mode, mode_pref, sim_slot (w/ CFUN procedure), cfun ---
     errors=""
     applied=""
@@ -273,7 +297,23 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
         sleep "$CMD_GAP"
     fi
 
-    # 2. Network mode
+    # 2. Roaming preference (NVM write, takes effect immediately)
+    if [ "$ROAM_PREF" != "unset" ]; then
+        result=$(qcmd "AT+QNWPREFCFG=\"roam_pref\",$ROAM_PREF" 2>/dev/null)
+        case "$result" in
+            *ERROR*)
+                qlog_error "Failed to set roam_pref=$ROAM_PREF: $result"
+                errors="${errors}roam_pref,"
+                ;;
+            *)
+                qlog_info "Set roam_pref=$ROAM_PREF"
+                applied="${applied}roam_pref,"
+                ;;
+        esac
+        sleep "$CMD_GAP"
+    fi
+
+    # 3. Network mode
     if [ "$MODE_PREF" != "unset" ]; then
         result=$(qcmd "AT+QNWPREFCFG=\"mode_pref\",$MODE_PREF" 2>/dev/null)
         case "$result" in
@@ -289,7 +329,7 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
         sleep "$CMD_GAP"
     fi
 
-    # 3. SIM slot change (requires CFUN=0 -> sleep 2 -> QUIMSLOT -> sleep 2 -> CFUN=1)
+    # 4. SIM slot change (requires CFUN=0 -> sleep 2 -> QUIMSLOT -> sleep 2 -> CFUN=1)
     if [ "$SIM_SLOT" != "unset" ]; then
         qlog_info "SIM slot change: starting CFUN=0 -> QUIMSLOT=$SIM_SLOT -> CFUN=1 procedure"
         sim_proceed="1"
@@ -333,7 +373,7 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
         fi
     fi
 
-    # 4. CFUN change (skip if SIM procedure already restored to user's desired value)
+    # 5. CFUN change (skip if SIM procedure already restored to user's desired value)
     if [ "$CFUN" != "unset" ]; then
         if [ -n "$sim_cfun_restored" ] && [ "$CFUN" = "1" ]; then
             # SIM slot procedure already set CFUN=1

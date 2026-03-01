@@ -19,6 +19,8 @@ export interface CellularSettings {
   mode_pref: string;
   /** NR5G disable mode: 0=both enabled, 1=SA disabled (NSA only), 2=NSA disabled (SA only) */
   nr5g_mode: number;
+  /** Roaming preference: 1=home only, 3=affiliate, 255=any network */
+  roam_pref: number;
 }
 
 // --- AMBR Data ---------------------------------------------------------------

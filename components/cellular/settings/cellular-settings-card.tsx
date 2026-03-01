@@ -39,6 +39,7 @@ const CellularSettingsCard = ({
   const [cfun, setCfun] = useState<string>("");
   const [modePref, setModePref] = useState<string>("");
   const [nr5gMode, setNr5gMode] = useState<string>("");
+  const [roamPref, setRoamPref] = useState<string>("");
 
   // Sync form state from fetched settings
   useEffect(() => {
@@ -47,6 +48,7 @@ const CellularSettingsCard = ({
       setCfun(String(settings.cfun));
       setModePref(settings.mode_pref);
       setNr5gMode(String(settings.nr5g_mode));
+      setRoamPref(String(settings.roam_pref));
     }
   }, [settings]);
 
@@ -68,6 +70,9 @@ const CellularSettingsCard = ({
     if (Number(nr5gMode) !== settings.nr5g_mode) {
       changes.nr5g_mode = Number(nr5gMode);
     }
+    if (Number(roamPref) !== settings.roam_pref) {
+      changes.roam_pref = Number(roamPref);
+    }
 
     if (Object.keys(changes).length === 0) {
       toast.info("No changes to save");
@@ -88,6 +93,7 @@ const CellularSettingsCard = ({
       setCfun(String(settings.cfun));
       setModePref(settings.mode_pref);
       setNr5gMode(String(settings.nr5g_mode));
+      setRoamPref(String(settings.roam_pref));
     }
   };
 
@@ -119,6 +125,12 @@ const CellularSettingsCard = ({
               </div>
               <div className="space-y-2">
                 <Skeleton className="h-4 w-32" />
+                <Skeleton className="h-9 w-full" />
+              </div>
+            </div>
+            <div className="grid xl:grid-cols-2 grid-cols-1 gap-4">
+              <div className="space-y-2">
+                <Skeleton className="h-4 w-40" />
                 <Skeleton className="h-9 w-full" />
               </div>
             </div>
@@ -218,6 +230,26 @@ const CellularSettingsCard = ({
                         <SelectItem value="0">SA and NSA Automatic</SelectItem>
                         <SelectItem value="1">NSA Only</SelectItem>
                         <SelectItem value="2">SA Only</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </Field>
+                </div>
+
+                <div className="grid xl:grid-cols-2 grid-cols-1 grid-flow-row gap-4">
+                  <Field>
+                    <FieldLabel>Roaming Preference</FieldLabel>
+                    <Select
+                      value={roamPref || (settings ? String(settings.roam_pref) : "")}
+                      onValueChange={setRoamPref}
+                      disabled={isSaving}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Choose Roaming Preference" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="255">Any Network</SelectItem>
+                        <SelectItem value="1">Home Network Only</SelectItem>
+                        <SelectItem value="3">Affiliate Networks</SelectItem>
                       </SelectContent>
                     </Select>
                   </Field>
