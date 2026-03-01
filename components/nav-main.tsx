@@ -41,7 +41,7 @@ export function NavMain({
   React.useEffect(() => {
     const states: Record<string, boolean> = {};
     items.forEach((item) => {
-      states[item.title] = pathname === item.url;
+      states[item.title] = pathname === item.url || pathname.startsWith(item.url + "/");
     });
     setOpenItems(states);
   }, [pathname, items]);
@@ -51,7 +51,7 @@ export function NavMain({
       <SidebarGroupLabel>Dashboard</SidebarGroupLabel>
       <SidebarMenu>
         {items.map((item) => {
-          const isActive = pathname === item.url;
+          const isActive = pathname === item.url || pathname.startsWith(item.url + "/");
           return (
             <Collapsible
               key={item.title}

@@ -42,9 +42,7 @@ export function NavLocalNetwork({
   React.useEffect(() => {
     const states: Record<string, boolean> = {}
     localNetwork.forEach((item) => {
-      const isActive = pathname === item.url
-      const isChildActive = item.items?.some((subItem) => pathname === subItem.url) ?? false
-      states[item.title] = isActive || isChildActive
+      states[item.title] = pathname === item.url || (!!item.items?.length && pathname.startsWith(item.url + "/"))
     })
     setOpenItems(states)
   }, [pathname, localNetwork])
@@ -56,10 +54,7 @@ export function NavLocalNetwork({
       </SidebarGroupLabel>
       <SidebarMenu>
         {localNetwork.map((item) => {
-          // Check if current path matches this item or any of its children
-          const isActive = pathname === item.url
-          const isChildActive = item.items?.some((subItem) => pathname === subItem.url) ?? false
-          const isParentOrChildActive = isActive || isChildActive
+          const isParentOrChildActive = pathname === item.url || (!!item.items?.length && pathname.startsWith(item.url + "/"))
 
           return (
           <Collapsible
@@ -86,7 +81,7 @@ export function NavLocalNetwork({
                   <CollapsibleContent>
                     <SidebarMenuSub>
                       {item.items?.map((subItem) => {
-                        const isSubItemActive = pathname === subItem.url
+                        const isSubItemActive = pathname === subItem.url || pathname.startsWith(subItem.url + "/")
                         return (
                         <SidebarMenuSubItem key={subItem.title}>
                           <SidebarMenuSubButton asChild isActive={isSubItemActive}>
