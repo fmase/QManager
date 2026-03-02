@@ -185,6 +185,9 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
     APN=$(printf '%s' "$POST_DATA" | jq -r '.apn // empty')
     TTL=$(printf '%s' "$POST_DATA" | jq -r 'if has("ttl") then (.ttl | tostring) else "0" end')
     HL=$(printf '%s' "$POST_DATA" | jq -r 'if has("hl") then (.hl | tostring) else "0" end')
+    # Track whether TTL/HL keys were explicitly provided (for 0 = disable)
+    has_ttl=$(printf '%s' "$POST_DATA" | jq 'has("ttl")')
+    has_hl=$(printf '%s' "$POST_DATA" | jq 'has("hl")')
 
     qlog_info "Apply APN: cid=$CID pdp=$PDP_TYPE apn=$APN ttl=$TTL hl=$HL"
 
@@ -240,8 +243,8 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
             ;;
     esac
 
-    # --- Step 2: Apply TTL/HL if requested (from Auto APN presets) ---
-    if [ "$TTL" -gt 0 ] 2>/dev/null || [ "$HL" -gt 0 ] 2>/dev/null; then
+    # --- Step 2: Apply TTL/HL if explicitly provided (0 = disable custom values) ---
+    if [ "$has_ttl" = "true" ] || [ "$has_hl" = "true" ]; then
         qlog_info "Applying TTL=$TTL, HL=$HL"
 
         # Read current values from firewall rules file
