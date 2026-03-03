@@ -60,13 +60,22 @@ function formatNetworkType(type: string): string {
 
 /** Build CA summary string from network status */
 function formatCarrierAggregation(network: NetworkStatus): string {
+  const isNSA = network.type === "5G-NSA";
   const parts: string[] = [];
 
   if (network.ca_active && network.ca_count > 0) {
     parts.push(`LTE (${network.ca_count + 1} carriers)`);
+  } else if (isNSA) {
+    // NSA always has an LTE anchor — show "LTE" even without CA
+    parts.push("LTE");
   }
+
   if (network.nr_ca_active && network.nr_ca_count > 0) {
+    // Genuine NR CA — show carrier count (+1 for primary NR carrier)
     parts.push(`NR (${network.nr_ca_count + 1} carriers)`);
+  } else if (isNSA) {
+    // NSA dual connectivity: NR leg is active but not doing CA
+    parts.push("NR");
   }
 
   if (parts.length === 0) return "None";

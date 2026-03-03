@@ -496,8 +496,20 @@ parse_ca_info() {
     nr_scc_count=$(printf '%s\n' "$raw" | grep '+QCAINFO: "SCC"' | grep -c 'NR')
 
     if [ "$nr_scc_count" -gt 0 ]; then
-        t2_nr_ca_active=true
-        t2_nr_ca_count=$nr_scc_count
+        # In NSA mode, the first NR SCC is the NR leg itself (LTE is PCC).
+        # True NR CA only when there are 2+ NR SCCs.
+        if [ "$network_type" = "5G-NSA" ]; then
+            if [ "$nr_scc_count" -gt 1 ]; then
+                t2_nr_ca_active=true
+                t2_nr_ca_count=$((nr_scc_count - 1))
+            else
+                t2_nr_ca_active=false
+                t2_nr_ca_count=0
+            fi
+        else
+            t2_nr_ca_active=true
+            t2_nr_ca_count=$nr_scc_count
+        fi
     else
         t2_nr_ca_active=false
         t2_nr_ca_count=0
