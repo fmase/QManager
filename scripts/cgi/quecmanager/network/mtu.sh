@@ -4,13 +4,13 @@
 # =============================================================================
 # GET:  Reads the current MTU from the rmnet_data0 interface and checks
 #       whether a custom MTU configuration file exists.
-# POST: Applies a new MTU value to all rmnet_data interfaces, persists to
-#       /etc/firewall.user.mtu, and updates lanUtils.sh for boot persistence.
+# POST: Applies a new MTU value to all rmnet_data interfaces and persists
+#       the commands to /etc/firewall.user.mtu. The qmanager_mtu init script
+#       re-applies these at boot via the qmanager_mtu_apply daemon.
 #       Send { "mtu": "disable" } to remove custom MTU and revert to default.
 #
 # Files:
 #   /etc/firewall.user.mtu          — Persistent MTU commands (ip link set)
-#   /etc/data/lanUtils.sh           — Boot-time network configuration script
 #
 # POST body: { "mtu": 1420 }   or   { "mtu": "disable" }
 #
@@ -31,7 +31,6 @@ qlog_init "cgi_mtu"
 # --- Configuration -----------------------------------------------------------
 MTU_FIREWALL_FILE="/etc/firewall.user.mtu"
 NETWORK_INTERFACE="rmnet_data0"
-LAN_UTILS_SCRIPT="/etc/data/lanUtils.sh"
 
 # --- HTTP Headers ------------------------------------------------------------
 echo "Content-Type: application/json"
@@ -50,22 +49,6 @@ fi
 get_current_mtu() {
     ip link show "$NETWORK_INTERFACE" 2>/dev/null \
         | grep -o "mtu [0-9]*" | cut -d' ' -f2
-}
-
-# --- Helper: add or remove MTU reference in lanUtils.sh ----------------------
-update_lanutils_mtu_config() {
-    local action="$1"
-    if [ "$action" = "add" ]; then
-        if [ -f "$LAN_UTILS_SCRIPT" ]; then
-            if ! grep -q "local mtu_firewall_file=/etc/firewall.user.mtu" "$LAN_UTILS_SCRIPT"; then
-                sed -i '/local ttl_firewall_file=\/etc\/firewall.user.ttl/a local mtu_firewall_file=/etc/firewall.user.mtu' "$LAN_UTILS_SCRIPT"
-            fi
-        fi
-    elif [ "$action" = "remove" ]; then
-        if [ -f "$LAN_UTILS_SCRIPT" ]; then
-            sed -i '/local mtu_firewall_file=\/etc\/firewall.user.mtu/d' "$LAN_UTILS_SCRIPT"
-        fi
-    fi
 }
 
 # =============================================================================
@@ -120,7 +103,6 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
         qlog_info "Disabling custom MTU"
 
         rm -f "$MTU_FIREWALL_FILE"
-        update_lanutils_mtu_config "remove"
 
         default_mtu=$(get_current_mtu)
         default_mtu=${default_mtu:-1500}
@@ -161,14 +143,6 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
     for iface in $(ls /sys/class/net 2>/dev/null | grep '^rmnet_data'); do
         ip link set "$iface" mtu "$mtu_value" 2>/dev/null
     done
-
-    # --- Update lanUtils.sh ---
-    update_lanutils_mtu_config "add"
-
-    # --- Run lanUtils.sh to update network configuration ---
-    if [ -f "$LAN_UTILS_SCRIPT" ]; then
-        . "$LAN_UTILS_SCRIPT" 2>/dev/null
-    fi
 
     qlog_info "MTU set to $mtu_value"
 

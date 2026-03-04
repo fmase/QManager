@@ -32,7 +32,6 @@ qlog_init "cgi_apn"
 # --- Configuration -----------------------------------------------------------
 CMD_GAP=0.2
 TTL_FILE="/etc/firewall.user.ttl"
-TTL_INIT="/etc/init.d/quecmanager_ttl"
 
 # --- HTTP Headers ------------------------------------------------------------
 echo "Content-Type: application/json"
@@ -276,32 +275,6 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
             if [ "$HL" -gt 0 ] 2>/dev/null; then
                 echo "ip6tables -t mangle -A POSTROUTING -o rmnet+ -j HL --hl-set $HL" >> "$TTL_FILE"
                 ip6tables -t mangle -A POSTROUTING -o rmnet+ -j HL --hl-set "$HL"
-            fi
-
-            # Manage init.d script for boot persistence
-            if [ "$TTL" -gt 0 ] 2>/dev/null || [ "$HL" -gt 0 ] 2>/dev/null; then
-                if [ ! -f "$TTL_INIT" ]; then
-                    cat > "$TTL_INIT" << 'INITEOF'
-#!/bin/sh /etc/rc.common
-# QManager TTL/HL persistence
-START=99
-
-start() {
-    sleep 5
-    [ -f /etc/firewall.user.ttl ] && . /etc/firewall.user.ttl
-}
-
-stop() {
-    :
-}
-INITEOF
-                    chmod +x "$TTL_INIT"
-                    "$TTL_INIT" enable 2>/dev/null
-                fi
-            else
-                if [ -f "$TTL_INIT" ]; then
-                    "$TTL_INIT" disable 2>/dev/null
-                fi
             fi
 
             qlog_info "TTL/HL applied: TTL=$TTL, HL=$HL"

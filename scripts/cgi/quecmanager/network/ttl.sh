@@ -33,7 +33,7 @@ qlog_init "cgi_ttl"
 
 # --- Configuration -----------------------------------------------------------
 TTL_FILE="/etc/firewall.user.ttl"
-TTL_INIT="/etc/init.d/quecmanager_ttl"
+TTL_INIT="/etc/init.d/qmanager_ttl"
 
 # --- HTTP Headers ------------------------------------------------------------
 echo "Content-Type: application/json"
@@ -167,34 +167,6 @@ EOF
     if [ "$new_hl" -gt 0 ] 2>/dev/null; then
         echo "ip6tables -t mangle -A POSTROUTING -o rmnet+ -j HL --hl-set $new_hl" >> "$TTL_FILE"
         ip6tables -t mangle -A POSTROUTING -o rmnet+ -j HL --hl-set "$new_hl"
-    fi
-
-    # --- Manage init.d script for boot persistence ---
-    if [ "$new_ttl" -gt 0 ] 2>/dev/null || [ "$new_hl" -gt 0 ] 2>/dev/null; then
-        # Ensure init.d script exists
-        if [ ! -f "$TTL_INIT" ]; then
-            cat > "$TTL_INIT" << 'INITEOF'
-#!/bin/sh /etc/rc.common
-# QManager TTL/HL persistence
-START=99
-
-start() {
-    sleep 5
-    [ -f /etc/firewall.user.ttl ] && . /etc/firewall.user.ttl
-}
-
-stop() {
-    :
-}
-INITEOF
-            chmod +x "$TTL_INIT"
-        fi
-        "$TTL_INIT" enable 2>/dev/null
-    else
-        # No custom values — disable init script
-        if [ -f "$TTL_INIT" ]; then
-            "$TTL_INIT" disable 2>/dev/null
-        fi
     fi
 
     # Determine new enabled state

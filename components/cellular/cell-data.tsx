@@ -78,7 +78,7 @@ function formatCarrierAggregation(network: NetworkStatus): string {
     parts.push("NR");
   }
 
-  if (parts.length === 0) return "None";
+  if (parts.length === 0) return "Inactive";
   return parts.join(" + ");
 }
 
