@@ -81,10 +81,12 @@ export function SignalHistoryComponent() {
   // Calculate the min value for the current signal type to use as baseline
   const getBaseValue = () => {
     if (chartData.length === 0) return 0;
-    const values = chartData.flatMap((d) => [
-      d[key4G as keyof SignalChartPoint] as number | null,
-      d[key5G as keyof SignalChartPoint] as number | null,
-    ]).filter((v): v is number => v !== null);
+    const values = chartData
+      .flatMap((d) => [
+        d[key4G as keyof SignalChartPoint] as number | null,
+        d[key5G as keyof SignalChartPoint] as number | null,
+      ])
+      .filter((v): v is number => v !== null);
     if (values.length === 0) return 0;
     return Math.min(...values);
   };
@@ -100,7 +102,7 @@ export function SignalHistoryComponent() {
   return (
     <Card className="@container/card">
       <CardHeader>
-        <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
+        <CardTitle className="text-2xl font-semibold @[250px]/card:text-3xl">
           Signal Quality Monitor
         </CardTitle>
         <CardAction>

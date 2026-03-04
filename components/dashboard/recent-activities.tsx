@@ -42,9 +42,7 @@ function SeverityIcon({ severity }: { severity: EventSeverity }) {
   if (severity === "warning" || severity === "error") {
     return <TbCircleXFilled className="h-5 w-5 shrink-0 text-red-500" />;
   }
-  return (
-    <TbCircleCheckFilled className="h-5 w-5 shrink-0 text-green-500" />
-  );
+  return <TbCircleCheckFilled className="h-5 w-5 shrink-0 text-green-500" />;
 }
 
 // --- Single event row ---
@@ -91,7 +89,7 @@ const RecentActivitiesComponent = () => {
   return (
     <Card className="@container/card">
       <CardHeader className="-mb-4">
-        <CardTitle className="text-lg font-semibold tabular-nums">
+        <CardTitle className="text-lg font-semibold">
           Recent Activities
         </CardTitle>
       </CardHeader>
@@ -129,9 +127,7 @@ const RecentActivitiesComponent = () => {
                   event={event}
                 />
               ))
-              
           )}
-    
         </div>
       </CardContent>
     </Card>

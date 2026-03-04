@@ -73,7 +73,7 @@ const DeviceMetricsComponent = ({
     return (
       <Card className="@container/card">
         <CardHeader className="-mb-4">
-          <CardTitle className="text-lg font-semibold tabular-nums">
+          <CardTitle className="text-lg font-semibold">
             Device Metrics
           </CardTitle>
         </CardHeader>

@@ -40,7 +40,7 @@ interface NetworkStatusComponentProps {
 function getNetworkDisplay(
   type: string,
   caActive: boolean,
-  nrCaActive: boolean
+  nrCaActive: boolean,
 ) {
   switch (type) {
     case "5G-NSA":
@@ -108,7 +108,7 @@ function getServiceLabel(status: ServiceStatus) {
 function getServiceColor(
   type: string,
   caActive: boolean,
-  serviceStatus: ServiceStatus
+  serviceStatus: ServiceStatus,
 ): string {
   // No service / no signal → red
   if (
@@ -176,8 +176,7 @@ const NetworkStatusComponent = ({
   const networkDisplay = getNetworkDisplay(networkType, caActive, nrCaActive);
   const serviceLabel = getServiceLabel(serviceStatus);
   const serviceColor = getServiceColor(networkType, caActive, serviceStatus);
-  const serviceColors =
-    serviceColorMap[serviceColor] ?? serviceColorMap.red;
+  const serviceColors = serviceColorMap[serviceColor] ?? serviceColorMap.red;
 
   // Radio is ON when the modem is reachable (AT+CFUN=1 implied by modem responding)
   const radioOn = modemReachable;
@@ -197,7 +196,7 @@ const NetworkStatusComponent = ({
     <Card className="@container/card">
       <CardHeader>
         <div className="flex md:flex-row flex-col xl:items-center justify-center xl:justify-between gap-2">
-          <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
+          <CardTitle className="text-2xl font-semibold @[250px]/card:text-3xl">
             Network Status
           </CardTitle>
 
@@ -383,9 +382,7 @@ const NetworkStatusComponent = ({
               </div>
               <div className="grid gap-0.5 text-center">
                 <h3 className="text-md font-semibold leading-none">Service</h3>
-                <p className="text-muted-foreground text-sm">
-                  {serviceLabel}
-                </p>
+                <p className="text-muted-foreground text-sm">{serviceLabel}</p>
               </div>
             </div>
           )}

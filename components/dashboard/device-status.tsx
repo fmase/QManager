@@ -1,9 +1,11 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
+import { Button } from "@/components/ui/button";
+import { Eye, EyeOff } from "lucide-react";
 
 import type { DeviceStatus } from "@/types/modem-status";
 
@@ -16,16 +18,28 @@ const DeviceStatusComponent = ({
   data,
   isLoading,
 }: DeviceStatusComponentProps) => {
+  const [hidePrivate, setHidePrivate] = useState(false);
+
   const rows = [
     { label: "Manufacturer", value: data?.manufacturer || "-" },
     { label: "Model", value: "RM551E-GL" },
     { label: "Firmware Version", value: data?.firmware || "-" },
     { label: "Build Date", value: data?.build_date || "-" },
     { label: "QManager Version", value: "0.0.1" },
-    { label: "Phone Number", value: data?.phone_number || "-", mono: true },
-    { label: "IMSI", value: data?.imsi || "-", mono: true },
-    { label: "ICCID", value: data?.iccid || "-", mono: true },
-    { label: "Device IMEI", value: data?.imei || "-", mono: true },
+    {
+      label: "Phone Number",
+      value: data?.phone_number || "-",
+      mono: true,
+      private: true,
+    },
+    { label: "IMSI", value: data?.imsi || "-", mono: true, private: true },
+    { label: "ICCID", value: data?.iccid || "-", mono: true, private: true },
+    {
+      label: "Device IMEI",
+      value: data?.imei || "-",
+      mono: true,
+      private: true,
+    },
     {
       label: "LTE Category",
       value: data?.lte_category ? `Cat ${data.lte_category}` : "-",
@@ -67,7 +81,7 @@ const DeviceStatusComponent = ({
   return (
     <Card className="@container/card col-span-2">
       <CardHeader>
-        <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl text-center">
+        <CardTitle className="text-2xl font-semibold @[250px]/card:text-3xl text-center flex-1">
           Device Information
         </CardTitle>
       </CardHeader>
@@ -84,6 +98,22 @@ const DeviceStatusComponent = ({
           </div>
 
           <div className="grid gap-2">
+            <div className="flex justify-end">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setHidePrivate((prev) => !prev)}
+                title={
+                  hidePrivate ? "Show private details" : "Hide private details"
+                }
+              >
+                {hidePrivate ? (
+                  <EyeOff className="size-4" />
+                ) : (
+                  <Eye className="size-4" />
+                )}
+              </Button>
+            </div>
             {rows.map((row) => (
               <React.Fragment key={row.label}>
                 <Separator />
@@ -96,7 +126,7 @@ const DeviceStatusComponent = ({
                       row.mono ? "tabular-nums" : ""
                     }`}
                   >
-                    {row.value}
+                    {hidePrivate && row.private ? "••••••••••••" : row.value}
                   </p>
                 </div>
               </React.Fragment>

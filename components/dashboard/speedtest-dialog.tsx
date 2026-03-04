@@ -153,7 +153,9 @@ function ResultDisplay({
             <span className="text-2xl font-bold tabular-nums">
               {formatSpeed(result.download.bandwidth)}
             </span>
-            <span className="text-xs font-semibold text-muted-foreground">Mbps</span>
+            <span className="text-xs font-semibold text-muted-foreground">
+              Mbps
+            </span>
           </div>
         </div>
 
@@ -167,7 +169,9 @@ function ResultDisplay({
             <span className="text-2xl font-bold tabular-nums">
               {formatSpeed(result.upload.bandwidth)}
             </span>
-            <span className="text-xs font-semibold text-muted-foreground">Mbps</span>
+            <span className="text-xs font-semibold text-muted-foreground">
+              Mbps
+            </span>
           </div>
         </div>
 
@@ -181,7 +185,9 @@ function ResultDisplay({
             <span className="text-2xl font-bold tabular-nums">
               {result.ping.latency.toFixed(1)}
             </span>
-            <span className="text-xs font-semibold text-muted-foreground">ms</span>
+            <span className="text-xs font-semibold text-muted-foreground">
+              ms
+            </span>
           </div>
         </div>
       </div>
@@ -237,9 +243,7 @@ function ResultDisplay({
         <div className="flex items-center gap-1.5">
           <Server className="h-3.5 w-3.5 text-primary" />
           <span className="text-primary font-semibold">Server</span>
-          <span className="font-medium ml-auto">
-            {result.server.name}
-          </span>
+          <span className="font-medium ml-auto">{result.server.name}</span>
         </div>
         <div className="flex items-center gap-1.5">
           <Globe className="h-3.5 w-3.5 text-primary" />
@@ -442,7 +446,12 @@ export function SpeedtestDialog({ open, onOpenChange }: SpeedtestDialogProps) {
             <div className="flex flex-col items-center gap-3 py-4">
               <TriangleAlert className="h-8 w-8 text-destructive" />
               <p className="text-sm text-destructive text-center">{error}</p>
-              <Button onClick={start} variant="outline" size="sm" className="gap-2">
+              <Button
+                onClick={start}
+                variant="outline"
+                size="sm"
+                className="gap-2"
+              >
                 <Play className="h-3.5 w-3.5" />
                 Try Again
               </Button>

@@ -181,7 +181,7 @@ const LiveLatencyComponent = ({ connectivity }: LiveLatencyComponentProps) => {
           <p>{dl} Mbps</p>
         </div>
         <div className="flex items-center gap-x-0.5">
-          <TbCircleArrowUpFilled className="text-purple-500 w-5 h-5"/>
+          <TbCircleArrowUpFilled className="text-purple-500 w-5 h-5" />
           <p>{ul} Mbps</p>
         </div>
       </div>
@@ -192,7 +192,7 @@ const LiveLatencyComponent = ({ connectivity }: LiveLatencyComponentProps) => {
     <>
       <Card className="@container/card">
         <CardHeader className="-mb-4">
-          <CardTitle className="text-lg font-semibold tabular-nums">
+          <CardTitle className="text-lg font-semibold">
             Live Latency and Speed Test
           </CardTitle>
         </CardHeader>

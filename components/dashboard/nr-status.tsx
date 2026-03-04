@@ -85,7 +85,7 @@ const NrStatusComponent = ({ data, isLoading }: NrStatusComponentProps) => {
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg font-semibold tabular-nums">
+          <CardTitle className="text-lg font-semibold">
             5G Primary Status
           </CardTitle>
           <div className="grid gap-4">
