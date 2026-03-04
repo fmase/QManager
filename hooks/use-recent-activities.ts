@@ -11,7 +11,7 @@ import type { NetworkEvent } from "@/types/modem-status";
 // changes, PCI handoffs, CA activation, signal loss, etc.
 //
 // Usage:
-//   const { events, isLoading } = useRecentActivities();
+//   const { events, isLoading, refresh } = useRecentActivities();
 // =============================================================================
 
 /** How often to poll the events CGI endpoint (ms) — slower than dashboard */
@@ -34,8 +34,12 @@ export interface UseRecentActivitiesReturn {
   events: NetworkEvent[];
   /** True during the very first fetch */
   isLoading: boolean;
+  /** True during a manual refresh (non-initial fetch) */
+  isRefreshing: boolean;
   /** Error message if the last fetch failed */
   error: string | null;
+  /** Manually trigger an immediate fetch and reset the poll timer */
+  refresh: () => void;
 }
 
 export function useRecentActivities(
@@ -49,12 +53,18 @@ export function useRecentActivities(
 
   const [events, setEvents] = useState<NetworkEvent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const mountedRef = useRef(true);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const hasLoadedOnce = useRef(false);
 
   const fetchEvents = useCallback(async () => {
+    if (hasLoadedOnce.current) {
+      setIsRefreshing(true);
+    }
+
     try {
       const response = await fetch(EVENTS_ENDPOINT);
 
@@ -70,14 +80,18 @@ export function useRecentActivities(
       const reversed = [...json].reverse().slice(0, maxEvents);
       setEvents(reversed);
       setError(null);
-      setIsLoading(false);
+      hasLoadedOnce.current = true;
     } catch (err) {
       if (!mountedRef.current) return;
 
       const message =
         err instanceof Error ? err.message : "Failed to fetch events";
       setError(message);
-      setIsLoading(false);
+    } finally {
+      if (mountedRef.current) {
+        setIsLoading(false);
+        setIsRefreshing(false);
+      }
     }
   }, [maxEvents]);
 
@@ -102,5 +116,13 @@ export function useRecentActivities(
     };
   }, [fetchEvents, pollInterval, enabled]);
 
-  return { events, isLoading, error };
+  const refresh = useCallback(() => {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+    }
+    fetchEvents();
+    intervalRef.current = setInterval(fetchEvents, pollInterval);
+  }, [fetchEvents, pollInterval]);
+
+  return { events, isLoading, isRefreshing, error, refresh };
 }

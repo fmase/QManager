@@ -6,13 +6,10 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TbCircleCheckFilled, TbCircleXFilled } from "react-icons/tb";
-import type {
-  NetworkEvent,
-  NetworkEventType,
-  EventSeverity,
-} from "@/types/modem-status";
+import type { NetworkEvent, EventSeverity } from "@/types/modem-status";
 import { formatTimeAgo } from "@/types/modem-status";
 import { useRecentActivities } from "@/hooks/use-recent-activities";
+import { EVENT_LABELS } from "@/constants/network-events";
 
 import {
   Empty,
@@ -22,19 +19,6 @@ import {
   EmptyTitle,
 } from "@/components/ui/empty";
 import { CalendarX2Icon } from "lucide-react";
-
-// --- Event type to human-readable label mapping ---
-const EVENT_LABELS: Record<NetworkEventType, string> = {
-  network_mode: "Mode Change",
-  band_change: "Band Change",
-  pci_change: "Cell Handoff",
-  ca_change: "Carrier Aggregation",
-  nr_anchor: "5G Anchor",
-  signal_lost: "Signal Lost",
-  signal_restored: "Signal Restored",
-  internet_lost: "Internet Lost",
-  internet_restored: "Internet Restored",
-};
 
 // --- Severity icon component ---
 function SeverityIcon({ severity }: { severity: EventSeverity }) {
