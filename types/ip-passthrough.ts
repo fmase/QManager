@@ -26,7 +26,7 @@ export interface IpPassthroughSettingsResponse {
   success: boolean;
   /** Current passthrough mode */
   passthrough_mode: PassthroughMode;
-  /** Target device MAC/hostname — empty string when mode is disabled or no filter set */
+  /** Target device MAC — "FF:FF:FF:FF:FF:FF" = automatic, empty = none */
   target_mac: string;
   /** IPPT NAT working mode: 0=WithoutNAT, 1=WithNAT */
   ippt_nat: IpptNat;
@@ -34,8 +34,6 @@ export interface IpPassthroughSettingsResponse {
   usb_mode: UsbMode;
   /** DNS offloading status */
   dns_proxy: DnsProxy;
-  /** MAC address of the browser's device (from ARP lookup, may be empty) */
-  client_mac: string;
   error?: string;
 }
 

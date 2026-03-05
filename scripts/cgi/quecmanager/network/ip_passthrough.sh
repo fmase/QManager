@@ -44,6 +44,8 @@ qlog_init "cgi_ip_passthrough"
 
 # --- Configuration -----------------------------------------------------------
 CMD_GAP=0.2
+IPPT_CONFIG="/etc/qmanager/ippt_config.json"
+POLLER_CACHE="/tmp/qmanager_status.json"
 
 # --- HTTP Headers ------------------------------------------------------------
 echo "Content-Type: application/json"
@@ -85,40 +87,37 @@ validate_mac() {
 }
 
 # =============================================================================
-# GET — Fetch current IP Passthrough settings (from poller cache)
+# GET — Fetch current IP Passthrough settings
 # =============================================================================
 if [ "$REQUEST_METHOD" = "GET" ]; then
-    POLLER_CACHE="/tmp/qmanager_status.json"
-    qlog_info "Fetching IP Passthrough settings from cache"
+    qlog_info "Fetching IP Passthrough settings"
 
-    # --- 1-4. Read stable IPPT settings from poller cache ---
-    # These are populated at poller boot (all require reboot to change).
-    passthrough_mode=$(jq -r '.device.ippt_mode // "disabled"' "$POLLER_CACHE" 2>/dev/null)
-    target_mac=$(jq -r '.device.ippt_mac // ""' "$POLLER_CACHE" 2>/dev/null)
-    ippt_nat=$(jq -r '.device.ippt_nat // "1"' "$POLLER_CACHE" 2>/dev/null)
-    usb_mode=$(jq -r '.device.ippt_usbnet // "1"' "$POLLER_CACHE" 2>/dev/null)
-    dns_proxy=$(jq -r '.device.ippt_dhcpv4dns // "disabled"' "$POLLER_CACHE" 2>/dev/null)
+    # --- 1-4. Read settings: config file (primary) → poller cache (fallback) ---
+    # Config file is written by POST and is the authoritative source.
+    # Poller cache is populated at boot from AT commands.
+    if [ -f "$IPPT_CONFIG" ]; then
+        passthrough_mode=$(jq -r '.mode // "disabled"' "$IPPT_CONFIG" 2>/dev/null)
+        target_mac=$(jq -r '.mac // ""' "$IPPT_CONFIG" 2>/dev/null)
+        ippt_nat=$(jq -r '.nat // "1"' "$IPPT_CONFIG" 2>/dev/null)
+        usb_mode=$(jq -r '.usb_mode // "1"' "$IPPT_CONFIG" 2>/dev/null)
+        dns_proxy=$(jq -r '.dns_proxy // "disabled"' "$IPPT_CONFIG" 2>/dev/null)
+        qlog_debug "config: mode=$passthrough_mode nat=$ippt_nat usb=$usb_mode dns=$dns_proxy"
+    else
+        passthrough_mode=$(jq -r '.device.ippt_mode // "disabled"' "$POLLER_CACHE" 2>/dev/null)
+        target_mac=$(jq -r '.device.ippt_mac // ""' "$POLLER_CACHE" 2>/dev/null)
+        ippt_nat=$(jq -r '.device.ippt_nat // "1"' "$POLLER_CACHE" 2>/dev/null)
+        usb_mode=$(jq -r '.device.ippt_usbnet // "1"' "$POLLER_CACHE" 2>/dev/null)
+        dns_proxy=$(jq -r '.device.ippt_dhcpv4dns // "disabled"' "$POLLER_CACHE" 2>/dev/null)
+        qlog_debug "cache fallback: mode=$passthrough_mode nat=$ippt_nat usb=$usb_mode dns=$dns_proxy"
+    fi
 
-    # Validate values from cache (guard against corrupted cache)
+    # Validate values (guard against corrupted source)
     case "$passthrough_mode" in disabled|eth|usb) ;; *) passthrough_mode="disabled" ;; esac
     case "$ippt_nat" in 0|1) ;; *) ippt_nat="1" ;; esac
     case "$usb_mode" in 0|1|2|3) ;; *) usb_mode="1" ;; esac
     case "$dns_proxy" in enabled|disabled) ;; *) dns_proxy="disabled" ;; esac
 
-    qlog_debug "cache: mode=$passthrough_mode nat=$ippt_nat usb=$usb_mode dns=$dns_proxy"
-
-    # --- 5. Client MAC from ARP (for "This Device" option) ---
-    client_mac=""
-    if [ -n "$REMOTE_ADDR" ]; then
-        client_mac=$(awk -v ip="$REMOTE_ADDR" '$1==ip{print $4; exit}' /proc/net/arp 2>/dev/null)
-        # Sanitize: must look like a MAC address
-        case "$client_mac" in
-            [0-9A-Fa-f][0-9A-Fa-f]:[0-9A-Fa-f][0-9A-Fa-f]:*) ;;
-            *) client_mac="" ;;
-        esac
-    fi
-
-    qlog_info "GET: mode=$passthrough_mode nat=$ippt_nat usb=$usb_mode dns=$dns_proxy client=$client_mac"
+    qlog_info "GET: mode=$passthrough_mode nat=$ippt_nat usb=$usb_mode dns=$dns_proxy"
 
     jq -n \
         --arg mode "$passthrough_mode" \
@@ -126,15 +125,13 @@ if [ "$REQUEST_METHOD" = "GET" ]; then
         --arg nat "$ippt_nat" \
         --arg usb "$usb_mode" \
         --arg dns "$dns_proxy" \
-        --arg client "$client_mac" \
         '{
             success: true,
             passthrough_mode: $mode,
             target_mac: $mac,
             ippt_nat: $nat,
             usb_mode: $usb,
-            dns_proxy: $dns,
-            client_mac: $client
+            dns_proxy: $dns
         }'
     exit 0
 fi
@@ -303,7 +300,19 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
                 ;;
         esac
 
-        qlog_info "All settings applied — rebooting now"
+        qlog_info "All settings applied — saving config and rebooting"
+
+        # --- Step 5: Persist settings to config file ---
+        # This is the authoritative source read back by GET after reboot.
+        mkdir -p /etc/qmanager
+        jq -n \
+            --arg mode "$PASSTHROUGH_MODE" \
+            --arg mac  "$TARGET_MAC" \
+            --arg nat  "$IPPT_NAT" \
+            --arg usb  "$USB_MODE" \
+            --arg dns  "$DNS_PROXY" \
+            '{mode:$mode, mac:$mac, nat:$nat, usb_mode:$usb, dns_proxy:$dns}' \
+            > "$IPPT_CONFIG" 2>/dev/null || qlog_warn "Failed to write ippt_config.json (non-fatal)"
 
         # Return response BEFORE rebooting so HTTP is flushed
         jq -n '{"success":true}'

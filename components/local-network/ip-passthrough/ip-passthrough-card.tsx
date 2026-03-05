@@ -42,8 +42,8 @@ import type {
   UsbMode,
 } from "@/types/ip-passthrough";
 
-// MAC source: "client" = use client_mac from server, "manual" = text input
-type MacSource = "client" | "manual";
+// MAC source: "automatic" = FF:FF:FF:FF:FF:FF (first connected device), "manual" = text input
+type MacSource = "automatic" | "manual";
 
 // Local-only types — descriptive strings avoid Radix Select "0"-as-falsy bug
 type NatMode = "nat-on" | "nat-off";
@@ -69,7 +69,6 @@ const IPPassthroughCard = () => {
     ipptNat,
     usbMode,
     dnsProxy,
-    clientMac,
     isLoading,
     isSaving,
     error,
@@ -79,7 +78,7 @@ const IPPassthroughCard = () => {
   // Local form state — NatMode and UsbModeLocal use descriptive strings to
   // avoid Radix Select treating "0" as falsy and showing the placeholder
   const [localMode, setLocalMode] = useState<PassthroughMode>("disabled");
-  const [localMacSource, setLocalMacSource] = useState<MacSource>("client");
+  const [localMacSource, setLocalMacSource] = useState<MacSource>("automatic");
   const [localMacInput, setLocalMacInput] = useState<string>("");
   const [localIpptNat, setLocalIpptNat] = useState<NatMode | "">("");
   const [localUsbMode, setLocalUsbMode] = useState<UsbModeLocal>("ecm");
@@ -101,27 +100,25 @@ const IPPassthroughCard = () => {
       passthroughMode !== "disabled" &&
       targetMac !== null
     ) {
-      if (targetMac === "") {
-        // Passthrough active but no IPPT_info set — default to "client" source
-        setLocalMacSource("client");
+      if (targetMac === "" || targetMac === "FF:FF:FF:FF:FF:FF") {
+        setLocalMacSource("automatic");
         setLocalMacInput("");
-      } else if (clientMac && targetMac === clientMac) {
-        // Stored MAC matches this device
-        setLocalMacSource("client");
       } else {
         setLocalMacSource("manual");
         setLocalMacInput(targetMac);
       }
     }
-  }, [passthroughMode, targetMac, ipptNat, usbMode, dnsProxy, clientMac]);
+  }, [passthroughMode, targetMac, ipptNat, usbMode, dnsProxy]);
 
   // Resolved MAC to send to backend
   const resolvedMac =
-    localMacSource === "client" ? (clientMac ?? "") : localMacInput;
+    localMacSource === "automatic" ? "FF:FF:FF:FF:FF:FF" : localMacInput;
 
   const macRequired = localMode !== "disabled";
   const macValid =
-    !macRequired || /^[0-9A-Fa-f]{2}(:[0-9A-Fa-f]{2}){5}$/.test(resolvedMac);
+    !macRequired ||
+    localMacSource === "automatic" ||
+    /^[0-9A-Fa-f]{2}(:[0-9A-Fa-f]{2}){5}$/.test(localMacInput);
 
   const resetToServer = () => {
     if (passthroughMode !== null) setLocalMode(passthroughMode);
@@ -130,17 +127,15 @@ const IPPassthroughCard = () => {
     if (dnsProxy !== null) setLocalDnsProxy(dnsProxy);
 
     if (passthroughMode !== "disabled" && targetMac) {
-      if (clientMac && targetMac === clientMac) {
-        setLocalMacSource("client");
-      } else if (targetMac !== "") {
+      if (targetMac === "" || targetMac === "FF:FF:FF:FF:FF:FF") {
+        setLocalMacSource("automatic");
+        setLocalMacInput("");
+      } else {
         setLocalMacSource("manual");
         setLocalMacInput(targetMac);
-      } else {
-        setLocalMacSource("client");
-        setLocalMacInput("");
       }
     } else {
-      setLocalMacSource("client");
+      setLocalMacSource("automatic");
       setLocalMacInput("");
     }
   };
@@ -149,10 +144,6 @@ const IPPassthroughCard = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (macRequired && resolvedMac === "") {
-      toast.error("A target device MAC address is required");
-      return;
-    }
     if (!macValid) {
       toast.error("Enter a valid MAC address (XX:XX:XX:XX:XX:XX)");
       return;
@@ -314,11 +305,9 @@ const IPPassthroughCard = () => {
                               <SelectValue placeholder="Select Target" />
                             </SelectTrigger>
                             <SelectContent>
-                              {clientMac && (
-                                <SelectItem value="client">
-                                  This Device (Recommended)
-                                </SelectItem>
-                              )}
+                              <SelectItem value="automatic">
+                                Automatic — First Connected Device
+                              </SelectItem>
                               <SelectItem value="manual">
                                 Enter Manually…
                               </SelectItem>
@@ -347,8 +336,8 @@ const IPPassthroughCard = () => {
                                   disabled={isSaving}
                                 />
                                 <p className="text-xs text-muted-foreground mt-1">
-                                  Only this specific device will receive the WAN
-                                  IP.
+                                  Enter the MAC address of the device that will
+                                  receive the WAN IP.
                                 </p>
                               </motion.div>
                             )}

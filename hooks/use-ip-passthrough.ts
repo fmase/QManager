@@ -35,7 +35,7 @@ export interface IpPassthroughApplyData {
 export interface UseIpPassthroughReturn {
   /** Current passthrough mode (null before first fetch) */
   passthroughMode: PassthroughMode | null;
-  /** Target device MAC — empty string when disabled/unconfigured (null before first fetch) */
+  /** Target device MAC — "FF:FF:FF:FF:FF:FF" = automatic, empty = none (null before first fetch) */
   targetMac: string | null;
   /** IPPT NAT mode (null before first fetch) */
   ipptNat: IpptNat | null;
@@ -43,8 +43,6 @@ export interface UseIpPassthroughReturn {
   usbMode: UsbMode | null;
   /** DNS offloading state (null before first fetch) */
   dnsProxy: DnsProxy | null;
-  /** MAC address of the requesting browser device (null before first fetch) */
-  clientMac: string | null;
   /** True while initial fetch is in progress */
   isLoading: boolean;
   /** True while a save operation is in progress */
@@ -68,7 +66,6 @@ export function useIpPassthrough(): UseIpPassthroughReturn {
   const [ipptNat, setIpptNat] = useState<IpptNat | null>(null);
   const [usbMode, setUsbMode] = useState<UsbMode | null>(null);
   const [dnsProxy, setDnsProxy] = useState<DnsProxy | null>(null);
-  const [clientMac, setClientMac] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -108,7 +105,6 @@ export function useIpPassthrough(): UseIpPassthroughReturn {
       setIpptNat(data.ippt_nat);
       setUsbMode(data.usb_mode);
       setDnsProxy(data.dns_proxy);
-      setClientMac(data.client_mac);
     } catch (err) {
       if (!mountedRef.current) return;
       setError(
@@ -186,7 +182,6 @@ export function useIpPassthrough(): UseIpPassthroughReturn {
     ipptNat,
     usbMode,
     dnsProxy,
-    clientMac,
     isLoading,
     isSaving,
     error,
