@@ -77,6 +77,11 @@ boot_lte_category=""
 boot_supported_lte_bands=""
 boot_supported_nsa_nr5g_bands=""
 boot_supported_sa_nr5g_bands=""
+boot_ippt_mode="disabled"
+boot_ippt_mac=""
+boot_ippt_nat="1"
+boot_ippt_usbnet="1"
+boot_ippt_dhcpv4dns="disabled"
 
 # Tier 2 data (updated periodically)
 t2_temperature=""
@@ -454,10 +459,28 @@ collect_boot_data() {
     qcmd_exec 'AT+QNWCFG="nr5g_time_advance",1' >/dev/null 2>&1
     sleep "$SIP_DELAY"
 
+    # IP Passthrough settings (stable — require reboot to change)
+    result=$(qcmd_exec 'AT+QMAP="MPDN_RULE"')
+    [ $? -eq 0 ] && parse_ippt_mpdn_rule "$result"
+    sleep "$SIP_DELAY"
+
+    result=$(qcmd_exec 'AT+QMAP="IPPT_NAT"')
+    [ $? -eq 0 ] && parse_ippt_nat "$result"
+    sleep "$SIP_DELAY"
+
+    result=$(qcmd_exec 'AT+QCFG="usbnet"')
+    [ $? -eq 0 ] && parse_ippt_usbnet "$result"
+    sleep "$SIP_DELAY"
+
+    result=$(qcmd_exec 'AT+QMAP="DHCPV4DNS"')
+    [ $? -eq 0 ] && parse_ippt_dhcpv4dns "$result"
+    sleep "$SIP_DELAY"
+
     log_info "Boot data: FW=$boot_firmware BUILD=$boot_build_date MFG=$boot_manufacturer"
     log_info "Boot data: IMEI=$boot_imei IMSI=$boot_imsi ICCID=$boot_iccid"
     log_info "Boot data: PHONE=$boot_phone_number CAT=$boot_lte_category MIMO=$t2_mimo"
     log_info "Boot data: LTE_BANDS=$boot_supported_lte_bands NSA_BANDS=$boot_supported_nsa_nr5g_bands SA_BANDS=$boot_supported_sa_nr5g_bands"
+    log_info "Boot data: IPPT mode=$boot_ippt_mode nat=$boot_ippt_nat usb=$boot_ippt_usbnet dns=$boot_ippt_dhcpv4dns"
 }
 
 # =============================================================================
@@ -885,6 +908,11 @@ write_cache() {
         --arg sup_lte "$boot_supported_lte_bands" \
         --arg sup_nsa "$boot_supported_nsa_nr5g_bands" \
         --arg sup_sa "$boot_supported_sa_nr5g_bands" \
+        --arg ippt_mode "$boot_ippt_mode" \
+        --arg ippt_mac  "$boot_ippt_mac" \
+        --arg ippt_nat  "$boot_ippt_nat" \
+        --arg ippt_usb  "$boot_ippt_usbnet" \
+        --arg ippt_dns  "$boot_ippt_dhcpv4dns" \
         --argjson rx_rate "${rx_bytes_per_sec:-0}" \
         --argjson tx_rate "${tx_bytes_per_sec:-0}" \
         --argjson rx_total "${total_rx_bytes:-0}" \
@@ -956,7 +984,12 @@ write_cache() {
                 lte_category: $lte_cat, mimo: $mimo,
                 supported_lte_bands: $sup_lte,
                 supported_nsa_nr5g_bands: $sup_nsa,
-                supported_sa_nr5g_bands: $sup_sa
+                supported_sa_nr5g_bands: $sup_sa,
+                ippt_mode: $ippt_mode,
+                ippt_mac: $ippt_mac,
+                ippt_nat: $ippt_nat,
+                ippt_usbnet: $ippt_usb,
+                ippt_dhcpv4dns: $ippt_dns
             },
             traffic: {
                 rx_bytes_per_sec: $rx_rate, tx_bytes_per_sec: $tx_rate,

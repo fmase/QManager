@@ -81,7 +81,7 @@ const IPPassthroughCard = () => {
   const [localMode, setLocalMode] = useState<PassthroughMode>("disabled");
   const [localMacSource, setLocalMacSource] = useState<MacSource>("client");
   const [localMacInput, setLocalMacInput] = useState<string>("");
-  const [localIpptNat, setLocalIpptNat] = useState<NatMode>("nat-off");
+  const [localIpptNat, setLocalIpptNat] = useState<NatMode | "">("");
   const [localUsbMode, setLocalUsbMode] = useState<UsbModeLocal>("ecm");
   const [localDnsProxy, setLocalDnsProxy] = useState<DnsProxy>("disabled");
 
@@ -364,7 +364,14 @@ const IPPassthroughCard = () => {
                   <Field>
                     <FieldLabel>NAT Mode</FieldLabel>
                     <Select
-                      value={localIpptNat}
+                      value={
+                        localIpptNat ||
+                        (ipptNat !== null
+                          ? ipptNat === "1"
+                            ? "nat-on"
+                            : "nat-off"
+                          : "")
+                      }
                       onValueChange={(v) => setLocalIpptNat(v as NatMode)}
                       disabled={isSaving}
                     >

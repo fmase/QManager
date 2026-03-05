@@ -883,3 +883,79 @@ parse_policy_band() {
 
     qlog_debug "policy_band: LTE=$boot_supported_lte_bands NSA=$boot_supported_nsa_nr5g_bands SA=$boot_supported_sa_nr5g_bands"
 }
+
+# =============================================================================
+# IP Passthrough (IPPT) — boot-time parsers
+# =============================================================================
+
+# AT+QMAP="MPDN_RULE" → boot_ippt_mode ("disabled"|"eth"|"usb"), boot_ippt_mac
+parse_ippt_mpdn_rule() {
+    local raw="$1"
+    local rule0 ippt_mode
+
+    boot_ippt_mode="disabled"
+    boot_ippt_mac=""
+
+    rule0=$(printf '%s\n' "$raw" | grep '"MPDN_rule",0,')
+    [ -z "$rule0" ] && return 0
+
+    # Field 5 = IPPT_mode; +0 avoids BusyBox gsub $N rebuild bug
+    ippt_mode=$(printf '%s' "$rule0" | awk -F',' '{print $5+0}')
+    case "$ippt_mode" in
+        1)
+            boot_ippt_mode="eth"
+            boot_ippt_mac=$(printf '%s' "$rule0" | awk -F',' 'NF>=7 {gsub(/"/, "", $7); print $7}')
+            ;;
+        3)
+            boot_ippt_mode="usb"
+            boot_ippt_mac=$(printf '%s' "$rule0" | awk -F',' 'NF>=7 {gsub(/"/, "", $7); print $7}')
+            ;;
+    esac
+
+    qlog_debug "ippt_mpdn_rule: mode=$boot_ippt_mode mac=$boot_ippt_mac"
+}
+
+# AT+QMAP="IPPT_NAT" → boot_ippt_nat ("0"|"1")
+parse_ippt_nat() {
+    local raw="$1"
+    local nat_val
+
+    boot_ippt_nat="1"
+
+    nat_val=$(printf '%s\n' "$raw" | awk -F',' '/IPPT_NAT/{print $2+0; exit}')
+    case "$nat_val" in
+        0|1) boot_ippt_nat="$nat_val" ;;
+    esac
+
+    qlog_debug "ippt_nat: $boot_ippt_nat"
+}
+
+# AT+QCFG="usbnet" → boot_ippt_usbnet ("0"|"1"|"2"|"3")
+parse_ippt_usbnet() {
+    local raw="$1"
+    local usb_val
+
+    boot_ippt_usbnet="1"
+
+    usb_val=$(printf '%s\n' "$raw" | awk -F',' '/usbnet/{print $2+0; exit}')
+    case "$usb_val" in
+        0|1|2|3) boot_ippt_usbnet="$usb_val" ;;
+    esac
+
+    qlog_debug "ippt_usbnet: $boot_ippt_usbnet"
+}
+
+# AT+QMAP="DHCPV4DNS" → boot_ippt_dhcpv4dns ("enabled"|"disabled")
+parse_ippt_dhcpv4dns() {
+    local raw="$1"
+    local dns_val
+
+    boot_ippt_dhcpv4dns="disabled"
+
+    dns_val=$(printf '%s\n' "$raw" | awk -F'"' '/DHCPV4DNS/{print $4; exit}')
+    case "$dns_val" in
+        enable) boot_ippt_dhcpv4dns="enabled" ;;
+    esac
+
+    qlog_debug "ippt_dhcpv4dns: $boot_ippt_dhcpv4dns"
+}

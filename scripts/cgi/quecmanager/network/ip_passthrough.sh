@@ -85,94 +85,27 @@ validate_mac() {
 }
 
 # =============================================================================
-# GET — Fetch current IP Passthrough settings
+# GET — Fetch current IP Passthrough settings (from poller cache)
 # =============================================================================
 if [ "$REQUEST_METHOD" = "GET" ]; then
-    qlog_info "Fetching IP Passthrough settings"
+    POLLER_CACHE="/tmp/qmanager_status.json"
+    qlog_info "Fetching IP Passthrough settings from cache"
 
-    # --- 1. Passthrough mode + IPPT_info from MPDN_RULE ---
-    # Field layout (awk -F','): $1="MPDN_rule" $2=rule_num $3=profileID
-    #   $4=VLAN_ID $5=IPPT_mode $6=auto_connect [$7=IPPT_info]
-    passthrough_mode="disabled"
-    target_mac=""
+    # --- 1-4. Read stable IPPT settings from poller cache ---
+    # These are populated at poller boot (all require reboot to change).
+    passthrough_mode=$(jq -r '.device.ippt_mode // "disabled"' "$POLLER_CACHE" 2>/dev/null)
+    target_mac=$(jq -r '.device.ippt_mac // ""' "$POLLER_CACHE" 2>/dev/null)
+    ippt_nat=$(jq -r '.device.ippt_nat // "1"' "$POLLER_CACHE" 2>/dev/null)
+    usb_mode=$(jq -r '.device.ippt_usbnet // "1"' "$POLLER_CACHE" 2>/dev/null)
+    dns_proxy=$(jq -r '.device.ippt_dhcpv4dns // "disabled"' "$POLLER_CACHE" 2>/dev/null)
 
-    mpdn_resp=$(run_at 'AT+QMAP="MPDN_RULE"')
-    sleep "$CMD_GAP"
+    # Validate values from cache (guard against corrupted cache)
+    case "$passthrough_mode" in disabled|eth|usb) ;; *) passthrough_mode="disabled" ;; esac
+    case "$ippt_nat" in 0|1) ;; *) ippt_nat="1" ;; esac
+    case "$usb_mode" in 0|1|2|3) ;; *) usb_mode="1" ;; esac
+    case "$dns_proxy" in enabled|disabled) ;; *) dns_proxy="disabled" ;; esac
 
-    if [ -n "$mpdn_resp" ]; then
-        # Grab line for rule 0
-        rule0=$(printf '%s' "$mpdn_resp" | grep '"MPDN_rule",0,')
-
-        if [ -n "$rule0" ]; then
-            # Extract IPPT_mode (field 5) — use +0 to avoid gsub field-rebuild bug in BusyBox awk
-            ippt_mode=$(printf '%s' "$rule0" | awk -F',' '{print $5+0}')
-
-            case "$ippt_mode" in
-                1)
-                    passthrough_mode="eth"
-                    # IPPT_info is field 7 (quoted MAC) — only present when NF >= 7
-                    target_mac=$(printf '%s' "$rule0" | awk -F',' 'NF>=7 {gsub(/"/, "", $7); print $7}')
-                    ;;
-                3)
-                    passthrough_mode="usb"
-                    # IPPT_info is field 7 (quoted MAC/hostname) — only present when NF >= 7
-                    target_mac=$(printf '%s' "$rule0" | awk -F',' 'NF>=7 {gsub(/"/, "", $7); print $7}')
-                    ;;
-                *)
-                    passthrough_mode="disabled"
-                    target_mac=""
-                    ;;
-            esac
-        fi
-    fi
-
-    qlog_debug "MPDN_RULE: ippt_mode=$ippt_mode mode=$passthrough_mode mac=$target_mac"
-
-    # --- 2. IPPT NAT mode ---
-    ippt_nat="0"
-
-    nat_resp=$(run_at 'AT+QMAP="IPPT_NAT"')
-    sleep "$CMD_GAP"
-
-    if [ -n "$nat_resp" ]; then
-        # +QMAP: "IPPT_NAT",<0|1> — pattern-match to skip empty lines
-        nat_val=$(printf '%s' "$nat_resp" | awk -F',' '/IPPT_NAT/{print $2+0; exit}')
-        case "$nat_val" in
-            0|1) ippt_nat="$nat_val" ;;
-        esac
-    fi
-
-    qlog_debug "IPPT_NAT: $ippt_nat"
-
-    # --- 3. USB modem protocol from QCFG usbnet ---
-    usb_mode="1"
-
-    usbnet_resp=$(run_at 'AT+QCFG="usbnet"')
-    sleep "$CMD_GAP"
-
-    if [ -n "$usbnet_resp" ]; then
-        # +QCFG: "usbnet",<mode> — pattern-match to skip empty lines
-        usb_mode=$(printf '%s' "$usbnet_resp" | awk -F',' '/usbnet/{print $2+0; exit}')
-        [ -z "$usb_mode" ] && usb_mode="1"
-    fi
-
-    qlog_debug "usbnet mode=$usb_mode"
-
-    # --- 4. DNS offloading from DHCPV4DNS ---
-    dns_proxy="disabled"
-
-    dhcp_resp=$(run_at 'AT+QMAP="DHCPV4DNS"')
-
-    if [ -n "$dhcp_resp" ]; then
-        # +QMAP: "DHCPV4DNS","enable" or "disable"
-        dns_val=$(printf '%s' "$dhcp_resp" | awk -F'"' '{print $4}')
-        case "$dns_val" in
-            enable) dns_proxy="enabled" ;;
-            *)      dns_proxy="disabled" ;;
-        esac
-    fi
-
-    qlog_debug "DHCPV4DNS: dns_proxy=$dns_proxy"
+    qlog_debug "cache: mode=$passthrough_mode nat=$ippt_nat usb=$usb_mode dns=$dns_proxy"
 
     # --- 5. Client MAC from ARP (for "This Device" option) ---
     client_mac=""
