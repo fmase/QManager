@@ -56,11 +56,6 @@ const data = {
   ],
   navSecondary: [
     {
-      title: "SMS Center",
-      url: "#",
-      icon: MessageCircleIcon,
-    },
-    {
       title: "About Device",
       url: "#",
       icon: RouterIcon,
@@ -76,6 +71,11 @@ const data = {
       title: "Cellular Information",
       url: "/cellular",
       icon: RadioTowerIcon,
+    },
+    {
+      title: "SMS Center",
+      url: "/cellular/sms",
+      icon: MessageCircleIcon,
     },
     {
       title: "Custom Profiles",
