@@ -47,6 +47,7 @@ cycle_count=0
 
 # --- Event Detection State ---------------------------------------------------
 EVENTS_FILE="/tmp/qmanager_events.json"
+PCI_STATE_FILE="/tmp/qmanager_pci_state.json"
 MAX_EVENTS=50
 events_initialized=false
 
@@ -64,6 +65,13 @@ prev_ev_ca_count=""
 prev_ev_nr_ca_active=""
 prev_ev_nr_ca_count=""
 prev_ev_service_status=""
+prev_ev_carrier_components=""
+
+# Data connection quality event debounce state
+ev_high_lat_streak=0
+ev_high_loss_streak=0
+ev_lat_alerted=false
+ev_loss_alerted=false
 
 # Boot-only data (populated once)
 boot_firmware=""

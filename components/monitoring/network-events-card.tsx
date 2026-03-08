@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import {
   RefreshCw,
   Activity,
-  Zap,
+  Wifi,
   Radio,
   Signal,
   AlertCircle,
@@ -275,13 +275,13 @@ const NetworkEventsCard = () => {
                       <span className="hidden md:inline">Band Changes</span>
                       <Radio className="md:hidden" />
                     </TabsTrigger>
-                    <TabsTrigger value="caEvents">
-                      <span className="hidden md:inline">CA Events</span>
-                      <Zap className="md:hidden" />
-                    </TabsTrigger>
-                    <TabsTrigger value="networkEvents">
-                      <span className="hidden md:inline">Network Events</span>
+                    <TabsTrigger value="networkMode">
+                      <span className="hidden md:inline">Network Mode</span>
                       <Signal className="md:hidden" />
+                    </TabsTrigger>
+                    <TabsTrigger value="dataConnection">
+                      <span className="hidden md:inline">Data Connection</span>
+                      <Wifi className="md:hidden" />
                     </TabsTrigger>
                   </TabsList>
                   <div className="ml-auto flex items-center gap-2">
@@ -401,8 +401,8 @@ const NetworkEventsCard = () => {
                     <CardHeader>
                       <CardTitle>Band Changes</CardTitle>
                       <CardDescription>
-                        Events related to cellular band changes and frequency
-                        shifts.
+                        Band changes, cell handoffs, 5G anchor transitions, and
+                        carrier aggregation events.
                       </CardDescription>
                     </CardHeader>
                     <CardContent>
@@ -420,34 +420,10 @@ const NetworkEventsCard = () => {
                   </Card>
                 </TabsContent>
 
-                <TabsContent value="caEvents">
+                <TabsContent value="networkMode">
                   <Card>
                     <CardHeader>
-                      <CardTitle>Carrier Aggregation Events</CardTitle>
-                      <CardDescription>
-                        Events related to carrier aggregation changes and
-                        multi-carrier operations.
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <EventsTable
-                        events={displayedEvents}
-                        isLoading={isLoading}
-                        emptyIcon={
-                          <Zap className="h-8 w-8 text-muted-foreground" />
-                        }
-                        emptyMessage="No CA events found"
-                        totalCount={filteredEvents.length}
-                        lastUpdate={lastUpdate}
-                      />
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-
-                <TabsContent value="networkEvents">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Network Events</CardTitle>
+                      <CardTitle>Network Mode</CardTitle>
                       <CardDescription>
                         Signal quality changes and network mode transitions.
                       </CardDescription>
@@ -459,7 +435,30 @@ const NetworkEventsCard = () => {
                         emptyIcon={
                           <Signal className="h-8 w-8 text-muted-foreground" />
                         }
-                        emptyMessage="No network events found"
+                        emptyMessage="No network mode events found"
+                        totalCount={filteredEvents.length}
+                        lastUpdate={lastUpdate}
+                      />
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+
+                <TabsContent value="dataConnection">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Data Connection</CardTitle>
+                      <CardDescription>
+                        Internet connectivity, latency, and packet loss events.
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <EventsTable
+                        events={displayedEvents}
+                        isLoading={isLoading}
+                        emptyIcon={
+                          <Wifi className="h-8 w-8 text-muted-foreground" />
+                        }
+                        emptyMessage="No data connection events found"
                         totalCount={filteredEvents.length}
                         lastUpdate={lastUpdate}
                       />

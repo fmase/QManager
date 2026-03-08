@@ -406,15 +406,20 @@ export function formatJitter(jitterMs: number | null): string {
 
 /** Event types emitted by the poller's change detection */
 export type NetworkEventType =
-  | "network_mode"      // Network mode changed (LTE → 5G-NSA, etc.)
-  | "band_change"       // LTE or NR band changed
-  | "pci_change"        // Cell handoff (PCI changed)
-  | "ca_change"         // Carrier Aggregation activated/deactivated/count changed
-  | "nr_anchor"         // 5G NR anchor gained or lost
-  | "signal_lost"       // Modem became unreachable
-  | "signal_restored"   // Modem signal restored
-  | "internet_lost"     // Internet connectivity lost
-  | "internet_restored"; // Internet connectivity restored
+  | "network_mode"        // Network mode changed (LTE → 5G-NSA, etc.)
+  | "band_change"         // LTE or NR band changed
+  | "pci_change"          // PCC cell handoff (PCI changed)
+  | "scc_pci_change"      // SCC cell handoff (secondary carrier PCI changed)
+  | "ca_change"           // Carrier Aggregation activated/deactivated/count changed
+  | "nr_anchor"           // 5G NR anchor gained or lost
+  | "signal_lost"         // Modem became unreachable
+  | "signal_restored"     // Modem signal restored
+  | "internet_lost"       // Internet connectivity lost
+  | "internet_restored"   // Internet connectivity restored
+  | "high_latency"        // Latency exceeded 90ms threshold
+  | "latency_recovered"   // Latency returned below threshold
+  | "high_packet_loss"    // Packet loss exceeded 20% threshold
+  | "packet_loss_recovered"; // Packet loss returned below threshold
 
 /** Severity level for UI icon coloring */
 export type EventSeverity = "info" | "warning" | "error";

@@ -20,6 +20,7 @@ import {
   RouterIcon,
   TimerIcon,
   User2Icon,
+  HeartIcon,
 } from "lucide-react";
 
 import QManagerLogo from "@/public/qmanager-logo.svg";
@@ -64,6 +65,11 @@ const data = {
       title: "Support",
       url: "#",
       icon: LifeBuoy,
+    },
+    {
+      title: "Donate to the Project",
+      url: "#",
+      icon: HeartIcon,
     },
   ],
   cellular: [
