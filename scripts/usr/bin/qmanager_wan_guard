@@ -1,0 +1,156 @@
+#!/bin/sh
+# =============================================================================
+# qmanager_wan_guard — One-Shot WAN Interface Guard Daemon
+# =============================================================================
+# Spawned by /etc/init.d/qmanager_wan_guard at boot.
+# Waits for modem readiness, queries AT+CGDCONT? for defined CIDs, then
+# checks each rmnet WAN interface's profile number. If the profile maps to
+# a CID that doesn't exist on the modem, the interface is disabled (bind=0)
+# and brought down to prevent netifd's retry loop (~1s cycle, 15%+ CPU).
+#
+# Also disables the corresponding _v6 interface when a WAN is disabled.
+#
+# Flow:
+#   1. Sleep 10s for modem AT interface readiness
+#   2. Query AT+CGDCONT? once → extract list of defined CID numbers
+#   3. For each wan interface: read UCI profile, check CID exists
+#   4. If no matching CID → set bind=0 + ifdown
+#   5. UCI commit if any changes made
+#   6. Exit
+#
+# Dependencies: qcmd, qlog.sh
+# Install location: /usr/bin/qmanager_wan_guard
+# =============================================================================
+
+# --- Logging -----------------------------------------------------------------
+. /usr/lib/qmanager/qlog.sh 2>/dev/null || {
+    qlog_init() { :; }
+    qlog_info() { :; }
+    qlog_warn() { :; }
+    qlog_error() { :; }
+    qlog_debug() { :; }
+}
+qlog_init "wan_guard"
+
+# --- Constants ---------------------------------------------------------------
+SETTLE_TIME=10
+WAN_INTERFACES="wan wan2 wan3 wan4"
+
+# --- Helper: strip command echo + OK/ERROR from sms_tool output --------------
+strip_at_response() {
+    printf '%s' "$1" | tr -d '\r' | sed '1d' | sed '/^OK$/d' | sed '/^ERROR$/d'
+}
+
+# --- Helper: Execute AT command via qcmd, return stripped response -----------
+run_at() {
+    local raw
+    raw=$(qcmd "$1" 2>/dev/null)
+    local rc=$?
+    if [ $rc -ne 0 ] || [ -z "$raw" ]; then
+        return 1
+    fi
+    case "$raw" in
+        *ERROR*) return 1 ;;
+    esac
+    strip_at_response "$raw"
+}
+
+# --- Settle: wait for modem AT interface readiness ---------------------------
+qlog_info "Settling ${SETTLE_TIME}s for modem AT readiness"
+
+i=0
+while [ "$i" -lt "$SETTLE_TIME" ]; do
+    sleep 1
+    i=$((i + 1))
+done
+
+# --- Query modem for defined CIDs -------------------------------------------
+qlog_info "Querying AT+CGDCONT? for defined CIDs"
+
+cgdcont_resp=$(run_at "AT+CGDCONT?")
+if [ -z "$cgdcont_resp" ]; then
+    qlog_error "AT+CGDCONT? returned empty or failed — exiting (fail-safe: no changes)"
+    exit 1
+fi
+
+# Extract CID numbers from +CGDCONT: <cid>,"<pdp_type>","<apn>",...
+# Result: newline-separated list of CID numbers (e.g., "1\n2\n3")
+defined_cids=$(printf '%s' "$cgdcont_resp" | awk -F',' '
+    /\+CGDCONT:/ {
+        gsub(/[^0-9]/, "", $1)
+        if ($1 != "") print $1
+    }
+')
+
+if [ -z "$defined_cids" ]; then
+    qlog_warn "No CIDs found in CGDCONT response — exiting (fail-safe: no changes)"
+    exit 0
+fi
+
+qlog_info "Defined CIDs: $(printf '%s' "$defined_cids" | tr '\n' ' ')"
+
+# --- Helper: Check if a CID exists in the defined list ----------------------
+cid_exists() {
+    printf '%s\n' "$defined_cids" | grep -qx "$1"
+}
+
+# --- Check each WAN interface -----------------------------------------------
+changes_made=0
+
+for iface in $WAN_INTERFACES; do
+    # Check if the interface uses rmnet proto
+    proto=$(uci get "network.${iface}.proto" 2>/dev/null)
+    if [ "$proto" != "rmnet" ]; then
+        qlog_debug "Interface $iface: proto=$proto (not rmnet) — skipping"
+        continue
+    fi
+
+    # Read the profile number from UCI
+    profile=$(uci get "network.${iface}.profile" 2>/dev/null)
+    if [ -z "$profile" ]; then
+        qlog_debug "Interface $iface: no profile configured — skipping"
+        continue
+    fi
+
+    if cid_exists "$profile"; then
+        qlog_debug "Interface $iface: profile=$profile has matching CID — OK"
+    else
+        qlog_warn "Interface $iface: profile=$profile has NO matching CID — disabling"
+
+        # Only modify if currently bound (avoid unnecessary UCI writes)
+        current_bind=$(uci get "network.${iface}.bind" 2>/dev/null)
+        if [ "$current_bind" != "0" ]; then
+            uci set "network.${iface}.bind=0"
+            changes_made=$((changes_made + 1))
+            qlog_info "Set network.${iface}.bind=0"
+        fi
+
+        # Bring down the interface to stop the retry loop
+        ifdown "$iface" 2>/dev/null
+        qlog_info "ifdown $iface"
+
+        # Also handle the v6 counterpart
+        v6_iface="${iface}_v6"
+        v6_proto=$(uci get "network.${v6_iface}.proto" 2>/dev/null)
+        if [ -n "$v6_proto" ]; then
+            v6_bind=$(uci get "network.${v6_iface}.bind" 2>/dev/null)
+            if [ "$v6_bind" != "0" ]; then
+                uci set "network.${v6_iface}.bind=0"
+                changes_made=$((changes_made + 1))
+                qlog_info "Set network.${v6_iface}.bind=0"
+            fi
+            ifdown "$v6_iface" 2>/dev/null
+            qlog_info "ifdown $v6_iface"
+        fi
+    fi
+done
+
+# --- Commit UCI changes if any -----------------------------------------------
+if [ "$changes_made" -gt 0 ]; then
+    uci commit network
+    qlog_info "UCI committed — $changes_made interface(s) disabled"
+else
+    qlog_info "All WAN interfaces have valid CIDs — no changes needed"
+fi
+
+exit 0
