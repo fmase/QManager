@@ -42,6 +42,10 @@ SIP_DELAY=0.1          # Delay between AT commands (seconds)
 SIGNAL_HISTORY_FILE="/tmp/qmanager_signal_history.json"
 SIGNAL_HISTORY_MAX=180 # 30 min at 10s intervals
 
+# Ping history (NDJSON file for latency chart data)
+PING_HISTORY_FILE="/tmp/qmanager_ping_history.json"
+PING_HISTORY_MAX=8640  # 24h at 10s intervals
+
 # --- State Variables ---------------------------------------------------------
 cycle_count=0
 
@@ -580,6 +584,33 @@ append_signal_history() {
     fi
 }
 
+# Append current ping/connectivity stats as one NDJSON line to the ping history file.
+# Capped at PING_HISTORY_MAX lines (~24h at 10s intervals).
+# Uses conn_ variables already populated by read_ping_data().
+append_ping_history() {
+    local ts
+    ts=$(date +%s)
+
+    jq -n -c \
+        --argjson ts "$ts" \
+        --argjson lat "${conn_latency:-null}" \
+        --argjson avg "${conn_avg_latency:-null}" \
+        --argjson min "${conn_min_latency:-null}" \
+        --argjson max "${conn_max_latency:-null}" \
+        --argjson loss "${conn_packet_loss:-0}" \
+        --argjson jit "${conn_jitter:-null}" \
+        '{ts:$ts,lat:$lat,avg:$avg,min:$min,max:$max,loss:$loss,jit:$jit}' >> "$PING_HISTORY_FILE"
+
+    # Trim to max entries
+    local count
+    count=$(wc -l < "$PING_HISTORY_FILE" 2>/dev/null || echo 0)
+    if [ "$count" -gt "$PING_HISTORY_MAX" ]; then
+        local tmp="${PING_HISTORY_FILE}.tmp"
+        tail -n "$PING_HISTORY_MAX" "$PING_HISTORY_FILE" > "$tmp"
+        mv "$tmp" "$PING_HISTORY_FILE"
+    fi
+}
+
 # =============================================================================
 # TIER 2: WARM DATA (every N cycles)
 # =============================================================================
@@ -1029,6 +1060,10 @@ poll_cycle() {
         system_state="scan_in_progress"
         update_proc_metrics
         read_ping_data
+        # Ping history (every Tier 1.5 interval — 10s)
+        if [ $((cycle_count % TIER1_5_EVERY)) -eq 0 ]; then
+            append_ping_history
+        fi
         update_conn_uptime
         write_cache
         return
@@ -1054,6 +1089,10 @@ poll_cycle() {
 
     update_proc_metrics
     read_ping_data
+    # Ping history (every Tier 1.5 interval — 10s)
+    if [ $((cycle_count % TIER1_5_EVERY)) -eq 0 ]; then
+        append_ping_history
+    fi
     update_conn_uptime
     determine_service_status
     detect_events

@@ -359,6 +359,28 @@ export interface SignalHistoryEntry {
   nr_sinr: (number | null)[];
 }
 
+/**
+ * A single entry from the ping history NDJSON file.
+ * One line is appended every 10 seconds (Tier 1.5 interval).
+ * Short field names match the backend NDJSON output for minimal transfer size.
+ */
+export interface PingHistoryEntry {
+  /** Unix epoch (seconds) */
+  ts: number;
+  /** Last RTT in ms, or null if ping failed at that sample */
+  lat: number | null;
+  /** Rolling average RTT in ms */
+  avg: number | null;
+  /** Minimum RTT in ms over ping daemon's history window */
+  min: number | null;
+  /** Maximum RTT in ms over ping daemon's history window */
+  max: number | null;
+  /** Packet loss percentage (0-100) */
+  loss: number;
+  /** Jitter in ms, or null if insufficient data */
+  jit: number | null;
+}
+
 // --- Connectivity Utility Functions ------------------------------------------
 
 /** Latency quality thresholds (ms) — lower is better */
