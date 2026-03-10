@@ -20,12 +20,7 @@
 
 SIGNAL_HISTORY_FILE="/tmp/qmanager_signal_history.json"
 
-# --- HTTP Headers ------------------------------------------------------------
+qlog_init "cgi_fetch_signal_history"
+cgi_headers
 
-# --- Serve signal history as JSON array --------------------------------------
-if [ -f "$SIGNAL_HISTORY_FILE" ] && [ -s "$SIGNAL_HISTORY_FILE" ]; then
-    # Convert NDJSON (one object per line) to a JSON array
-    jq -s '.' "$SIGNAL_HISTORY_FILE"
-else
-    echo "[]"
-fi
+serve_ndjson_as_array "$SIGNAL_HISTORY_FILE"

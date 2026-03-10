@@ -157,3 +157,20 @@ validate_imei() {
         *) return 1 ;;
     esac
 }
+
+# ---------------------------------------------------------------------------
+# wait_modem_ready <seconds>
+# Block for <seconds> to allow the modem AT interface to come up after boot.
+# Used by one-shot boot daemons that must wait before issuing AT commands.
+#
+# Usage:
+#   wait_modem_ready "$SETTLE_TIME"
+# ---------------------------------------------------------------------------
+wait_modem_ready() {
+    local secs="${1:-10}"
+    local i=0
+    while [ "$i" -lt "$secs" ]; do
+        sleep 1
+        i=$((i + 1))
+    done
+}

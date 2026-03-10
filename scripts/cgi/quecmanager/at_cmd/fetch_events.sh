@@ -17,12 +17,7 @@
 
 EVENTS_FILE="/tmp/qmanager_events.json"
 
-# --- HTTP Headers ------------------------------------------------------------
+qlog_init "cgi_fetch_events"
+cgi_headers
 
-# --- Serve events as JSON array ----------------------------------------------
-if [ -f "$EVENTS_FILE" ] && [ -s "$EVENTS_FILE" ]; then
-    # Convert NDJSON (one object per line) to a JSON array
-    jq -s '.' "$EVENTS_FILE"
-else
-    echo "[]"
-fi
+serve_ndjson_as_array "$EVENTS_FILE"

@@ -20,12 +20,7 @@
 
 PING_HISTORY_FILE="/tmp/qmanager_ping_history.json"
 
-# --- HTTP Headers ------------------------------------------------------------
+qlog_init "cgi_fetch_ping_history"
+cgi_headers
 
-# --- Serve ping history as JSON array ----------------------------------------
-if [ -f "$PING_HISTORY_FILE" ] && [ -s "$PING_HISTORY_FILE" ]; then
-    # Convert NDJSON (one object per line) to a JSON array
-    jq -s '.' "$PING_HISTORY_FILE"
-else
-    echo "[]"
-fi
+serve_ndjson_as_array "$PING_HISTORY_FILE"

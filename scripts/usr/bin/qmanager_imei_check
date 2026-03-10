@@ -67,12 +67,7 @@ fi
 
 qlog_info "IMEI check pending — settling ${SETTLE_TIME}s for modem readiness"
 
-# --- Settle (wait for modem to register and potentially get rejected) --------
-i=0
-while [ "$i" -lt "$SETTLE_TIME" ]; do
-    sleep 1
-    i=$((i + 1))
-done
+wait_modem_ready "$SETTLE_TIME"
 
 # --- Query AT+QNETRC? -------------------------------------------------------
 qlog_info "Querying network reject cause..."

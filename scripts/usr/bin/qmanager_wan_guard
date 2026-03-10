@@ -40,12 +40,7 @@ WAN_INTERFACES="wan wan2 wan3 wan4"
 # --- Helper: strip command echo + OK/ERROR from sms_tool output --------------
 # --- Settle: wait for modem AT interface readiness ---------------------------
 qlog_info "Settling ${SETTLE_TIME}s for modem AT readiness"
-
-i=0
-while [ "$i" -lt "$SETTLE_TIME" ]; do
-    sleep 1
-    i=$((i + 1))
-done
+wait_modem_ready "$SETTLE_TIME"
 
 # --- Query modem for defined CIDs -------------------------------------------
 qlog_info "Querying AT+CGDCONT? for defined CIDs"

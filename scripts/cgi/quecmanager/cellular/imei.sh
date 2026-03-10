@@ -207,12 +207,7 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
     if [ "$ACTION" = "reboot" ]; then
         qlog_info "Device reboot requested via IMEI settings"
 
-        # Return response BEFORE rebooting
-        jq -n '{"success":true}'
-
-        # Schedule reboot with delay to ensure HTTP response is flushed
-        ( sleep 1 && reboot ) &
-        exit 0
+        cgi_reboot_response
     fi
 
     # --- Unknown action ---

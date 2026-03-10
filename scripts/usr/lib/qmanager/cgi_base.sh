@@ -94,3 +94,19 @@ cgi_reboot_response() {
     ( sleep 1 && reboot ) &
     exit 0
 }
+
+# ---------------------------------------------------------------------------
+# NDJSON File Server
+# Serve an NDJSON file (one JSON object per line) as a JSON array.
+# Outputs "[]" if file doesn't exist or is empty.
+#
+# Usage:
+#   serve_ndjson_as_array "/tmp/myfile.json"
+# ---------------------------------------------------------------------------
+serve_ndjson_as_array() {
+    if [ -f "$1" ] && [ -s "$1" ]; then
+        jq -s '.' "$1"
+    else
+        echo "[]"
+    fi
+}
