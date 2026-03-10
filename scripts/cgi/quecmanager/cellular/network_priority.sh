@@ -1,5 +1,6 @@
 #!/bin/sh
 . /usr/lib/qmanager/cgi_base.sh
+. /usr/lib/qmanager/cgi_at.sh
 # =============================================================================
 # network_priority.sh — CGI Endpoint: RAT Acquisition Order (GET + POST)
 # =============================================================================
@@ -22,24 +23,6 @@ cgi_handle_options
 # --- HTTP Headers ------------------------------------------------------------
 
 # --- Handle CORS preflight ---------------------------------------------------
-
-# --- Helper: Execute AT command via qcmd, return stripped response -----------
-strip_at_response() {
-    printf '%s' "$1" | tr -d '\r' | sed '1d' | sed '/^OK$/d' | sed '/^ERROR$/d'
-}
-
-run_at() {
-    local raw
-    raw=$(qcmd "$1" 2>/dev/null)
-    local rc=$?
-    if [ $rc -ne 0 ] || [ -z "$raw" ]; then
-        return 1
-    fi
-    case "$raw" in
-        *ERROR*) return 1 ;;
-    esac
-    strip_at_response "$raw"
-}
 
 # =============================================================================
 # GET — Fetch current RAT acquisition order

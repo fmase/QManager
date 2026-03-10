@@ -1,5 +1,6 @@
 #!/bin/sh
 . /usr/lib/qmanager/cgi_base.sh
+. /usr/lib/qmanager/cgi_at.sh
 # =============================================================================
 # ip_passthrough.sh — CGI Endpoint: IP Passthrough (IPPT) Settings (GET + POST)
 # =============================================================================
@@ -46,24 +47,6 @@ POLLER_CACHE="/tmp/qmanager_status.json"
 # --- HTTP Headers ------------------------------------------------------------
 
 # --- Handle CORS preflight ---------------------------------------------------
-
-# --- Helper: Execute AT command via qcmd, return stripped response -----------
-strip_at_response() {
-    printf '%s' "$1" | tr -d '\r' | sed '1d' | sed '/^OK$/d' | sed '/^ERROR$/d'
-}
-
-run_at() {
-    local raw
-    raw=$(qcmd "$1" 2>/dev/null)
-    local rc=$?
-    if [ $rc -ne 0 ] || [ -z "$raw" ]; then
-        return 1
-    fi
-    case "$raw" in
-        *ERROR*) return 1 ;;
-    esac
-    strip_at_response "$raw"
-}
 
 # --- Helper: Validate MAC address (XX:XX:XX:XX:XX:XX) -----------------------
 validate_mac() {

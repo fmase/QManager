@@ -34,6 +34,7 @@
     qlog_error() { :; }
 }
 qlog_init "profile_apply"
+. /usr/lib/qmanager/cgi_at.sh
 
 # --- Source profile manager library ------------------------------------------
 . /usr/lib/qmanager/profile_mgr.sh
@@ -76,30 +77,6 @@ trap cleanup EXIT INT TERM
 # --- Helper: strip command echo + response prefix from sms_tool output -------
 # sms_tool returns: "AT+CMD\r\nRESPONSE\r\nOK"
 # We want only the content between the first line and the trailing OK/ERROR.
-strip_at_response() {
-    printf '%s' "$1" | tr -d '\r' | sed '1d' | sed '/^OK$/d' | sed '/^ERROR$/d'
-}
-
-# --- Helper: Execute AT command via qcmd, return stripped response -----------
-run_at() {
-    local cmd="$1"
-    local raw
-    raw=$(qcmd "$cmd" 2>/dev/null)
-    local rc=$?
-    if [ $rc -ne 0 ] || [ -z "$raw" ]; then
-        qlog_warn "AT command failed: $cmd (rc=$rc)"
-        return 1
-    fi
-    # Check for ERROR in response
-    case "$raw" in
-        *ERROR*)
-            qlog_warn "AT command returned ERROR: $cmd"
-            return 1
-            ;;
-    esac
-    strip_at_response "$raw"
-}
-
 # =============================================================================
 # State File Management
 # =============================================================================

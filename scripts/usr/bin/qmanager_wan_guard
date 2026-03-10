@@ -31,30 +31,13 @@
     qlog_debug() { :; }
 }
 qlog_init "wan_guard"
+. /usr/lib/qmanager/cgi_at.sh
 
 # --- Constants ---------------------------------------------------------------
 SETTLE_TIME=10
 WAN_INTERFACES="wan wan2 wan3 wan4"
 
 # --- Helper: strip command echo + OK/ERROR from sms_tool output --------------
-strip_at_response() {
-    printf '%s' "$1" | tr -d '\r' | sed '1d' | sed '/^OK$/d' | sed '/^ERROR$/d'
-}
-
-# --- Helper: Execute AT command via qcmd, return stripped response -----------
-run_at() {
-    local raw
-    raw=$(qcmd "$1" 2>/dev/null)
-    local rc=$?
-    if [ $rc -ne 0 ] || [ -z "$raw" ]; then
-        return 1
-    fi
-    case "$raw" in
-        *ERROR*) return 1 ;;
-    esac
-    strip_at_response "$raw"
-}
-
 # --- Settle: wait for modem AT interface readiness ---------------------------
 qlog_info "Settling ${SETTLE_TIME}s for modem AT readiness"
 

@@ -1,5 +1,6 @@
 #!/bin/sh
 . /usr/lib/qmanager/cgi_base.sh
+. /usr/lib/qmanager/cgi_at.sh
 # =============================================================================
 # imei.sh — CGI Endpoint: IMEI Mangling Settings (GET + POST)
 # =============================================================================
@@ -32,24 +33,6 @@ CMD_GAP=0.2
 # --- HTTP Headers ------------------------------------------------------------
 
 # --- Handle CORS preflight ---------------------------------------------------
-
-# --- Helper: Execute AT command via qcmd, return stripped response -----------
-strip_at_response() {
-    printf '%s' "$1" | tr -d '\r' | sed '1d' | sed '/^OK$/d' | sed '/^ERROR$/d'
-}
-
-run_at() {
-    local raw
-    raw=$(qcmd "$1" 2>/dev/null)
-    local rc=$?
-    if [ $rc -ne 0 ] || [ -z "$raw" ]; then
-        return 1
-    fi
-    case "$raw" in
-        *ERROR*) return 1 ;;
-    esac
-    strip_at_response "$raw"
-}
 
 # --- Helper: Validate IMEI (exactly 15 digits) ------------------------------
 validate_imei() {
