@@ -24,6 +24,7 @@
 # --- Logging -----------------------------------------------------------------
 qlog_init "cgi_current_settings"
 cgi_headers
+cgi_handle_options
 
 # --- Configuration -----------------------------------------------------------
 CMD_GAP=0.2   # Gap between AT commands (seconds)

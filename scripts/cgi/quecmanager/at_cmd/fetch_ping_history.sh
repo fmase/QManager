@@ -22,5 +22,6 @@ PING_HISTORY_FILE="/tmp/qmanager_ping_history.json"
 
 qlog_init "cgi_fetch_ping_history"
 cgi_headers
+cgi_handle_options
 
 serve_ndjson_as_array "$PING_HISTORY_FILE"

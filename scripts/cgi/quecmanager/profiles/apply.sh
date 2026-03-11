@@ -83,7 +83,7 @@ rm -f "$STATE_FILE"
 qlog_info "Spawning profile apply for: $PROFILE_ID"
 
 # Detach via subshell (pure POSIX, no setsid needed)
-( "$APPLY_BIN" "$PROFILE_ID" ) >/dev/null 2>&1 &
+( "$APPLY_BIN" "$PROFILE_ID" </dev/null >/dev/null 2>&1 & )
 
 # Give the script time to start and write its PID file
 sleep 0.5

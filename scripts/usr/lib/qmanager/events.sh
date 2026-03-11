@@ -102,7 +102,7 @@ detect_scc_pci_changes() {
         # Find matching entry in previous state
         p_pci=$(printf '%s' "$prev_sccs" | \
             jq -r --arg t "$c_tech" --arg b "$c_band" \
-            '[.[] | select(.tech == $t and .band == $b)] | .[0].pci // empty')
+            '[.[] | select(.tech == $t and .band == $b)] | .[0].pci | if . == null then empty else tostring end')
 
         # If previous PCI exists and differs, emit event
         if [ -n "$p_pci" ] && [ "$p_pci" != "null" ] && [ "$p_pci" != "$c_pci" ]; then

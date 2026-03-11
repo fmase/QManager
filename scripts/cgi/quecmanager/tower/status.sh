@@ -21,6 +21,7 @@
 # --- Logging -----------------------------------------------------------------
 qlog_init "cgi_tower_status"
 cgi_headers
+cgi_handle_options
 
 # --- Load library ------------------------------------------------------------
 . /usr/lib/qmanager/tower_lock_mgr.sh 2>/dev/null

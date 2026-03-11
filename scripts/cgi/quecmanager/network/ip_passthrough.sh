@@ -278,7 +278,7 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
         cgi_success
 
         # Reboot with short delay to ensure response is sent
-        ( sleep 2 && reboot ) &
+        ( ( sleep 2 && reboot ) </dev/null >/dev/null 2>&1 & )
         exit 0
     fi
 

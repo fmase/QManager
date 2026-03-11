@@ -19,6 +19,7 @@
 # --- Logging -----------------------------------------------------------------
 qlog_init "cgi_freq_status"
 cgi_headers
+cgi_handle_options
 
 # --- Load tower lock library (for tower_read_lte_lock / tower_read_nr_lock) --
 . /usr/lib/qmanager/tower_lock_mgr.sh 2>/dev/null

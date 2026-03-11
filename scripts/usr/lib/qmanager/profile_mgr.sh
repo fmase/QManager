@@ -23,6 +23,9 @@
 #   clear_active_profile    → Clear active profile
 # =============================================================================
 
+[ -n "$_PROFILE_MGR_LOADED" ] && return 0
+_PROFILE_MGR_LOADED=1
+
 # --- Configuration -----------------------------------------------------------
 PROFILE_DIR="/etc/qmanager/profiles"
 ACTIVE_PROFILE_FILE="/etc/qmanager/active_profile"

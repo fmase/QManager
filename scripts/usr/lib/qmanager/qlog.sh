@@ -191,7 +191,7 @@ qlog_at_cmd() {
     # Truncate response for logging (first 200 chars)
     local truncated
     if [ ${#response} -gt 200 ]; then
-        truncated="$(echo "$response" | head -c 200)...[truncated]"
+        truncated="$(printf '%s' "$response" | cut -c1-200)...[truncated]"
     else
         truncated="$response"
     fi

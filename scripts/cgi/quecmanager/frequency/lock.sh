@@ -77,7 +77,7 @@ if [ "$LOCK_TYPE" = "lte" ]; then
         earfcn_list=""
         i=0
         while [ "$i" -lt "$earfcn_count" ]; do
-            val=$(printf '%s' "$POST_DATA" | jq -r ".earfcns[$i] // empty" 2>/dev/null)
+            val=$(printf '%s' "$POST_DATA" | jq -r "(.earfcns[$i]) | if . == null then empty else tostring end" 2>/dev/null)
 
             # Validate numeric
             case "$val" in
@@ -171,8 +171,8 @@ elif [ "$LOCK_TYPE" = "nr" ]; then
         arfcn_list=""
         i=0
         while [ "$i" -lt "$nr_count" ]; do
-            arfcn=$(printf '%s' "$POST_DATA" | jq -r ".entries[$i].arfcn // empty" 2>/dev/null)
-            scs=$(printf '%s' "$POST_DATA" | jq -r ".entries[$i].scs // empty" 2>/dev/null)
+            arfcn=$(printf '%s' "$POST_DATA" | jq -r "(.entries[$i].arfcn) | if . == null then empty else tostring end" 2>/dev/null)
+            scs=$(printf '%s' "$POST_DATA" | jq -r "(.entries[$i].scs) | if . == null then empty else tostring end" 2>/dev/null)
 
             # Validate ARFCN is numeric
             case "$arfcn" in

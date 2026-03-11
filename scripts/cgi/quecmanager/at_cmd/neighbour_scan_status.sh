@@ -21,7 +21,9 @@ PID_FILE="/tmp/qmanager_neighbour_scan.pid"
 RESULT_FILE="/tmp/qmanager_neighbour_scan_result.json"
 ERROR_FILE="/tmp/qmanager_neighbour_scan_error"
 
+qlog_init "cgi_neighbour_scan_status"
 cgi_headers
+cgi_handle_options
 
 # --- Check: scanner process running? -----------------------------------------
 if [ -f "$PID_FILE" ]; then

@@ -15,10 +15,9 @@
 # --- Logging -----------------------------------------------------------------
 qlog_init "cgi_fetch"
 cgi_headers
+cgi_handle_options
 
 CACHE_FILE="/tmp/qmanager_status.json"
-
-# --- HTTP Headers ------------------------------------------------------------
 
 # --- Serve the cache ---------------------------------------------------------
 if [ -f "$CACHE_FILE" ]; then

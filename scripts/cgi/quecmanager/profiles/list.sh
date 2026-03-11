@@ -15,6 +15,7 @@
 # --- Logging -----------------------------------------------------------------
 qlog_init "cgi_profile_list"
 cgi_headers
+cgi_handle_options
 
 # --- Source profile manager library ------------------------------------------
 . /usr/lib/qmanager/profile_mgr.sh

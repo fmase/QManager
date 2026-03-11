@@ -19,5 +19,6 @@ EVENTS_FILE="/tmp/qmanager_events.json"
 
 qlog_init "cgi_fetch_events"
 cgi_headers
+cgi_handle_options
 
 serve_ndjson_as_array "$EVENTS_FILE"

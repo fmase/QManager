@@ -116,7 +116,7 @@ chmod +x "$WRAPPER_SCRIPT"
 # --- Launch in a new session -------------------------------------------------
 # setsid detaches from uhttpd's process group so the test survives CGI exit.
 # Detach via subshell (pure POSIX, no setsid needed)
-( "$WRAPPER_SCRIPT" ) >/dev/null 2>&1 &
+( "$WRAPPER_SCRIPT" </dev/null >/dev/null 2>&1 & )
 
 # Give the wrapper time to source profile, start, and write PID
 sleep 0.8

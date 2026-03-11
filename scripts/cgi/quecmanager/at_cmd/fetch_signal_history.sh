@@ -22,5 +22,6 @@ SIGNAL_HISTORY_FILE="/tmp/qmanager_signal_history.json"
 
 qlog_init "cgi_fetch_signal_history"
 cgi_headers
+cgi_handle_options
 
 serve_ndjson_as_array "$SIGNAL_HISTORY_FILE"

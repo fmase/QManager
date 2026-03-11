@@ -30,6 +30,7 @@
 # --- Logging -----------------------------------------------------------------
 qlog_init "cgi_bands_current"
 cgi_headers
+cgi_handle_options
 
 # --- Configuration -----------------------------------------------------------
 FAILOVER_ENABLED_FILE="/etc/qmanager/band_failover_enabled"

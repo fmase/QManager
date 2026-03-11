@@ -68,7 +68,7 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
 
     cgi_read_post
 
-    mtu_value=$(printf '%s' "$POST_DATA" | jq -r '.mtu // empty')
+    mtu_value=$(printf '%s' "$POST_DATA" | jq -r '(.mtu) | if . == null then empty else tostring end')
 
     if [ -z "$mtu_value" ]; then
         cgi_error "missing_field" "mtu field is required"

@@ -55,7 +55,7 @@ fi
 rm -f "$RESULT_FILE" "$ERROR_FILE"
 
 # --- Launch scanner in background --------------------------------------------
-( "$SCANNER_BIN" ) </dev/null >/dev/null 2>&1 &
+( "$SCANNER_BIN" </dev/null >/dev/null 2>&1 & )
 
 # Brief pause to let PID file be written
 sleep 0.8

@@ -24,6 +24,7 @@
 # --- Logging -----------------------------------------------------------------
 qlog_init "cgi_logs"
 cgi_headers
+cgi_handle_options
 
 # --- Constants ---------------------------------------------------------------
 LOG_FILE="/tmp/qmanager.log"

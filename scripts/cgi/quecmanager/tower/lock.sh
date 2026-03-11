@@ -62,12 +62,12 @@ if [ "$LOCK_TYPE" = "lte" ]; then
 
     if [ "$ACTION" = "lock" ]; then
         # --- Parse cells array from POST data using jq ---
-        c1_earfcn=$(printf '%s' "$POST_DATA" | jq -r '.cells[0].earfcn // empty' 2>/dev/null)
-        c1_pci=$(printf '%s' "$POST_DATA" | jq -r '.cells[0].pci // empty' 2>/dev/null)
-        c2_earfcn=$(printf '%s' "$POST_DATA" | jq -r '.cells[1].earfcn // empty' 2>/dev/null)
-        c2_pci=$(printf '%s' "$POST_DATA" | jq -r '.cells[1].pci // empty' 2>/dev/null)
-        c3_earfcn=$(printf '%s' "$POST_DATA" | jq -r '.cells[2].earfcn // empty' 2>/dev/null)
-        c3_pci=$(printf '%s' "$POST_DATA" | jq -r '.cells[2].pci // empty' 2>/dev/null)
+        c1_earfcn=$(printf '%s' "$POST_DATA" | jq -r '(.cells[0].earfcn) | if . == null then empty else tostring end' 2>/dev/null)
+        c1_pci=$(printf '%s' "$POST_DATA" | jq -r '(.cells[0].pci) | if . == null then empty else tostring end' 2>/dev/null)
+        c2_earfcn=$(printf '%s' "$POST_DATA" | jq -r '(.cells[1].earfcn) | if . == null then empty else tostring end' 2>/dev/null)
+        c2_pci=$(printf '%s' "$POST_DATA" | jq -r '(.cells[1].pci) | if . == null then empty else tostring end' 2>/dev/null)
+        c3_earfcn=$(printf '%s' "$POST_DATA" | jq -r '(.cells[2].earfcn) | if . == null then empty else tostring end' 2>/dev/null)
+        c3_pci=$(printf '%s' "$POST_DATA" | jq -r '(.cells[2].pci) | if . == null then empty else tostring end' 2>/dev/null)
 
         # Count valid cells
         num_cells=0
@@ -173,7 +173,7 @@ if [ "$LOCK_TYPE" = "lte" ]; then
             qlog_info "No active locks — failover stopped and disabled"
         fi
 
-        echo '{"success":true,"type":"lte","action":"unlock"}'
+        jq -n '{"success":true,"type":"lte","action":"unlock"}'
     else
         cgi_error "invalid_action" "action must be lock or unlock"
         exit 0
@@ -185,10 +185,10 @@ if [ "$LOCK_TYPE" = "lte" ]; then
 elif [ "$LOCK_TYPE" = "nr_sa" ]; then
 
     if [ "$ACTION" = "lock" ]; then
-        nr_pci=$(printf '%s' "$POST_DATA" | jq -r '.pci // empty' 2>/dev/null)
-        nr_arfcn=$(printf '%s' "$POST_DATA" | jq -r '.arfcn // empty' 2>/dev/null)
-        nr_scs=$(printf '%s' "$POST_DATA" | jq -r '.scs // empty' 2>/dev/null)
-        nr_band=$(printf '%s' "$POST_DATA" | jq -r '.band // empty' 2>/dev/null)
+        nr_pci=$(printf '%s' "$POST_DATA" | jq -r '(.pci) | if . == null then empty else tostring end' 2>/dev/null)
+        nr_arfcn=$(printf '%s' "$POST_DATA" | jq -r '(.arfcn) | if . == null then empty else tostring end' 2>/dev/null)
+        nr_scs=$(printf '%s' "$POST_DATA" | jq -r '(.scs) | if . == null then empty else tostring end' 2>/dev/null)
+        nr_band=$(printf '%s' "$POST_DATA" | jq -r '(.band) | if . == null then empty else tostring end' 2>/dev/null)
 
         # Validate all fields present
         if [ -z "$nr_pci" ] || [ -z "$nr_arfcn" ] || [ -z "$nr_scs" ] || [ -z "$nr_band" ]; then
@@ -269,7 +269,7 @@ elif [ "$LOCK_TYPE" = "nr_sa" ]; then
             qlog_info "No active locks — failover stopped and disabled"
         fi
 
-        echo '{"success":true,"type":"nr_sa","action":"unlock"}'
+        jq -n '{"success":true,"type":"nr_sa","action":"unlock"}'
     else
         cgi_error "invalid_action" "action must be lock or unlock"
         exit 0
