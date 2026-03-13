@@ -215,7 +215,7 @@ const NetworkStatusComponent = ({
                   className="bg-warning/15 text-warning hover:bg-warning/20 border-warning/30"
                 >
                   <div className="w-2 h-2 rounded-full bg-warning" />
-                  Stale Data
+                  Data Delayed
                 </Badge>
               )}
 
@@ -254,7 +254,11 @@ const NetworkStatusComponent = ({
                         : "text-muted-foreground"
                   }
                 />
-                Internet
+                {internetAvailable === true
+                  ? "Online"
+                  : internetAvailable === false
+                    ? "Offline"
+                    : "Internet"}
               </Badge>
             </div>
           )}

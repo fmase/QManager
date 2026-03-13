@@ -113,9 +113,9 @@ const BandSettingsComponent = ({
   const handleFailoverToggle = async (checked: boolean) => {
     const success = await onToggleFailover(checked);
     if (success) {
-      toast.success(`Failover ${checked ? "enabled" : "disabled"}`);
+      toast.success(`Band failover ${checked ? "enabled" : "disabled"}`);
     } else {
-      toast.error("Failed to toggle failover");
+      toast.error("Failed to update band failover");
     }
   };
 
@@ -142,7 +142,7 @@ const BandSettingsComponent = ({
           className="bg-warning/15 text-warning hover:bg-warning/20 border-warning/30"
         >
           <TriangleAlertIcon className="h-3 w-3" />
-          Using Default Bands
+          Fallback Active
         </Badge>
       );
     }
@@ -163,7 +163,7 @@ const BandSettingsComponent = ({
       <CardHeader>
         <CardTitle>Band Locking Settings</CardTitle>
         <CardDescription>
-          Configure your cellular band locking preferences below.
+          Restrict the modem to specific LTE and 5G bands. Enable failover to fall back to all bands if locked bands lose signal.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -187,7 +187,7 @@ const BandSettingsComponent = ({
                 </TooltipContent>
               </Tooltip>
               <p className="font-semibold text-muted-foreground text-sm">
-                Failover
+                Band Failover
               </p>
             </div>
             <div className="flex items-center space-x-2">
@@ -213,7 +213,7 @@ const BandSettingsComponent = ({
           {/* Failover Status */}
           <div className="flex items-center justify-between">
             <p className="text-sm font-semibold text-muted-foreground">
-              Failover Status
+              Band Failover Status
             </p>
             <div className="flex items-center gap-1.5">
               {renderFailoverStatus()}
@@ -239,7 +239,7 @@ const BandSettingsComponent = ({
           {/* Active LTE EARFCNs */}
           <div className="flex items-center justify-between">
             <p className="text-sm font-semibold text-muted-foreground">
-              Active LTE EARFCNs
+              Active LTE Channels
             </p>
             <div className="flex items-center gap-1.5">
               {isLoading ? (
@@ -254,7 +254,7 @@ const BandSettingsComponent = ({
           {/* Active NR Bands */}
           <div className="flex items-center justify-between">
             <p className="text-sm font-semibold text-muted-foreground">
-              Active NR5G Bands
+              Active 5G Bands
             </p>
             <div className="flex items-center gap-1.5">
               {isLoading ? (
@@ -269,7 +269,7 @@ const BandSettingsComponent = ({
           {/* Active NR ARFCNs */}
           <div className="flex items-center justify-between">
             <p className="text-sm font-semibold text-muted-foreground">
-              Active NR5G ARFCNs
+              Active 5G Channels
             </p>
             <div className="flex items-center gap-1.5">
               {isLoading ? (

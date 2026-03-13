@@ -20,7 +20,7 @@ const IMEISettings = () => {
   return (
     <div className="@container/main mx-auto p-2">
       <div className="mb-6">
-        <h1 className="text-3xl font-bold mb-2">IMEI Mangling Settings</h1>
+        <h1 className="text-3xl font-bold mb-2">IMEI Settings</h1>
         <p className="text-muted-foreground">
           View, modify, or back up the device IMEI.
         </p>

@@ -85,14 +85,14 @@ const FPLMNCard = () => {
       if (!mountedRef.current) return;
 
       if (data.success) {
-        toast.success("FPLMN list cleared");
+        toast.success("Blocked networks cleared");
         await fetchStatus(true);
       } else {
-        toast.error(data.detail || "Failed to clear FPLMN list");
+        toast.error(data.detail || "Failed to clear blocked networks");
       }
     } catch {
       if (mountedRef.current) {
-        toast.error("Failed to clear FPLMN list");
+        toast.error("Failed to clear blocked networks");
       }
     } finally {
       if (mountedRef.current) {
@@ -108,11 +108,11 @@ const FPLMNCard = () => {
     return (
       <Card className="@container/card">
         <CardHeader>
-          <CardTitle>FPLMN Status</CardTitle>
+          <CardTitle>Blocked Networks</CardTitle>
           <CardDescription>
-            The FPLMN list stores networks that your device has been unable to
-            connect to. Clearing this list may improve network connectivity and
-            roaming performance.
+            Your SIM stores a list of networks that previously rejected your
+            device. Clearing this list may restore connectivity and improve
+            roaming.
             <a
               href="https://onomondo.com/blog/how-to-clear-the-fplmn-list-on-a-sim/"
               target="_blank"
@@ -139,11 +139,11 @@ const FPLMNCard = () => {
   return (
     <Card className="@container/card">
       <CardHeader>
-        <CardTitle>FPLMN Status</CardTitle>
+        <CardTitle>Blocked Networks</CardTitle>
         <CardDescription>
-          The FPLMN list stores networks that your device has been unable to
-          connect to. Clearing this list may improve network connectivity and
-          roaming performance.
+          Your SIM stores a list of networks that previously rejected your
+          device. Clearing this list may restore connectivity and improve
+          roaming.
           <a
             href="https://onomondo.com/blog/how-to-clear-the-fplmn-list-on-a-sim/"
             target="_blank"
@@ -162,10 +162,10 @@ const FPLMNCard = () => {
               <EmptyMedia variant="icon" className="bg-destructive rounded-xl">
                 <AlertTriangleIcon className="text-destructive-foreground w-6 h-6" />
               </EmptyMedia>
-              <EmptyTitle>FPLMN Entries Detected</EmptyTitle>
+              <EmptyTitle>Blocked Networks Found</EmptyTitle>
               <EmptyDescription className="max-w-xs text-pretty">
-                The forbidden network list contains entries that may be blocking
-                network connectivity. Clearing is recommended.
+                Your SIM has blocked one or more networks, which may prevent
+                connection. Clearing the list is recommended.
               </EmptyDescription>
             </EmptyHeader>
             <EmptyContent>
@@ -180,7 +180,7 @@ const FPLMNCard = () => {
                     Clearing...
                   </>
                 ) : (
-                  "Clear FPLMN List"
+                  "Clear Blocked Networks"
                 )}
               </Button>
             </EmptyContent>
@@ -191,9 +191,9 @@ const FPLMNCard = () => {
               <EmptyMedia variant="icon" className="bg-primary rounded-xl">
                 <CircleCheckIcon className="text-primary-foreground w-6 h-6" />
               </EmptyMedia>
-              <EmptyTitle>FPLMN List is Clean</EmptyTitle>
+              <EmptyTitle>No Blocked Networks</EmptyTitle>
               <EmptyDescription className="max-w-xs text-pretty">
-                The forbidden network list is empty and does not need clearing.
+                Your SIM has no blocked networks. No action needed.
               </EmptyDescription>
             </EmptyHeader>
             <EmptyContent>

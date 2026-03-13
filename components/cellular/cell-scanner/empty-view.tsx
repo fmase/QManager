@@ -23,10 +23,10 @@ const ScannerEmptyView = ({ onStartScan }: ScannerEmptyViewProps) => {
         <EmptyMedia variant="icon">
           <ScanSearchIcon />
         </EmptyMedia>
-        <EmptyTitle>No Scans Available</EmptyTitle>
+        <EmptyTitle>No Scan Results</EmptyTitle>
         <EmptyDescription>
-          There are currently no cellular scans available. Please initiate a new
-          scan to discover nearby networks and towers.
+          No scan results yet. Run a scan to discover nearby towers and
+          networks.
         </EmptyDescription>
       </EmptyHeader>
       <EmptyContent>

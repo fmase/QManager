@@ -236,7 +236,7 @@ export function ProfileTable({
                   colSpan={columns.length}
                   className="h-24 text-center"
                 >
-                  No profiles found.
+                  No profiles yet. Create one to get started.
                 </TableCell>
               </TableRow>
             )}
@@ -286,8 +286,8 @@ export function ProfileTable({
             <AlertDialogTitle>Delete Profile</AlertDialogTitle>
             <AlertDialogDescription>
               Are you sure you want to delete &ldquo;{deleteTarget?.name}
-              &rdquo;? This action cannot be undone. The modem&apos;s current
-              settings will not be reverted.
+              &rdquo;? This action cannot be undone. Deleting this profile
+              won&apos;t change your current modem configuration.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

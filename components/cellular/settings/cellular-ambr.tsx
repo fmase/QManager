@@ -30,11 +30,10 @@ const CellularAMBRCard = ({ ambr, isLoading }: CellularAMBRCardProps) => {
     return (
       <Card className="@container/card">
         <CardHeader>
-          <CardTitle>Active AMBR View</CardTitle>
+          <CardTitle>Data Rate Limits</CardTitle>
           <CardDescription>
-            Aggregate Maximum Bit Rate (AMBR) is a parameter used in cellular
-            networks to define the maximum data transfer rate that a user
-            equipment (UE) can achieve.
+            The maximum upload and download speeds your carrier allows for each
+            data connection. These limits are set by your carrier&apos;s network policy.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -62,11 +61,10 @@ const CellularAMBRCard = ({ ambr, isLoading }: CellularAMBRCardProps) => {
   return (
     <Card className="@container/card">
       <CardHeader>
-        <CardTitle>Active AMBR View</CardTitle>
+        <CardTitle>Data Rate Limits</CardTitle>
         <CardDescription>
-          Aggregate Maximum Bit Rate (AMBR) is a parameter used in cellular
-          networks to define the maximum data transfer rate that a user
-          equipment (UE) can achieve.
+          The maximum upload and download speeds your carrier allows for each
+          data connection. These limits are set by your carrier&apos;s network policy.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -89,7 +87,7 @@ const CellularAMBRCard = ({ ambr, isLoading }: CellularAMBRCardProps) => {
                   </p>
                 </TooltipContent>
               </Tooltip>
-              <h2 className="font-semibold text-sm">LTE AMBR</h2>
+              <h2 className="font-semibold text-sm">LTE Rates</h2>
             </div>
 
             <Separator />
@@ -121,7 +119,7 @@ const CellularAMBRCard = ({ ambr, isLoading }: CellularAMBRCardProps) => {
             ) : (
               <>
                 <p className="text-sm text-muted-foreground">
-                  No LTE AMBR data available
+                  No LTE rate data — not connected to LTE
                 </p>
                 <Separator />
               </>
@@ -146,7 +144,7 @@ const CellularAMBRCard = ({ ambr, isLoading }: CellularAMBRCardProps) => {
                   </p>
                 </TooltipContent>
               </Tooltip>
-              <h2 className="font-semibold text-sm">NR5G AMBR</h2>
+              <h2 className="font-semibold text-sm">5G Rates</h2>
             </div>
             <Separator />
             {ambr && ambr.nr5g.length > 0 ? (
@@ -177,7 +175,7 @@ const CellularAMBRCard = ({ ambr, isLoading }: CellularAMBRCardProps) => {
             ) : (
               <>
                 <p className="text-sm text-muted-foreground">
-                  No NR5G AMBR data available
+                  No 5G rate data — not connected to 5G
                 </p>
                 <Separator />
               </>

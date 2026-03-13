@@ -232,8 +232,8 @@ const NetworkEventsCard = () => {
       <CardHeader>
         <CardTitle>Network Events</CardTitle>
         <CardDescription>
-          Displays recent network events, such as connection changes, errors,
-          and data usage.
+          Recent network events including band changes, connection drops, and
+          signal changes.
         </CardDescription>
       </CardHeader>
       <CardContent>

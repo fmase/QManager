@@ -170,8 +170,8 @@ const BackupIMEICard = ({
       <CardHeader>
         <CardTitle>Backup Device IMEI</CardTitle>
         <CardDescription>
-          Automatically sets up a backup IMEI for your device to ensure
-          connectivity in case of primary IMEI issues.
+          If the network rejects the current IMEI after a reboot, the device
+          can automatically switch to a backup IMEI and restart.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -223,10 +223,9 @@ const BackupIMEICard = ({
                       </TooltipTrigger>
                       <TooltipContent>
                         <p>
-                          We are not responsible for any legal issues arising
-                          from IMEI modifications.
+                          IMEI modification regulations vary by country.
                           <br />
-                          Ensure compliance with local laws.
+                          Check your local laws before changing the IMEI.
                         </p>
                       </TooltipContent>
                     </Tooltip>
@@ -281,7 +280,7 @@ const BackupIMEICard = ({
                 Cancel
               </AlertDialogCancel>
               <AlertDialogAction onClick={handleInfoConfirm}>
-                I Understand
+                Enable Backup
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

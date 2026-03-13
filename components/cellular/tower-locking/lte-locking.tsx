@@ -115,8 +115,7 @@ const LTELockingComponent = ({
   const handleToggle = (checked: boolean) => {
     if (isWatcherRunning) {
       toast.warning("Failover check in progress", {
-        description:
-          "Please wait for the failover watcher to finish before toggling the lock.",
+        description: "Signal quality check is running, please wait.",
       });
       return;
     }
@@ -124,7 +123,7 @@ const LTELockingComponent = ({
       const cells = buildCells();
       if (cells.length === 0) {
         toast.warning("No cell targets", {
-          description: "Enter at least one EARFCN + PCI pair before enabling.",
+          description: "Enter a channel and cell ID first.",
         });
         return;
       }
@@ -142,7 +141,7 @@ const LTELockingComponent = ({
     if (success) {
       toast.success("LTE tower lock applied");
     } else {
-      toast.error("Failed to apply LTE tower lock");
+      toast.error("Failed to lock tower — check modem connection");
     }
   };
 
@@ -152,7 +151,7 @@ const LTELockingComponent = ({
     if (success) {
       toast.success("LTE tower lock cleared");
     } else {
-      toast.error("Failed to clear LTE tower lock");
+      toast.error("Failed to remove tower lock");
     }
   };
 
@@ -163,9 +162,9 @@ const LTELockingComponent = ({
     if (earfcn != null && pci != null) {
       setEarfcn1(String(earfcn));
       setPci1(String(pci));
-      toast.info("Populated from active LTE PCell");
+      toast.info("Filled from current connected tower");
     } else {
-      toast.warning("No active LTE cell");
+      toast.warning("No active LTE connection");
     }
   };
 
@@ -178,7 +177,7 @@ const LTELockingComponent = ({
         <CardHeader>
           <CardTitle>LTE Tower Locking</CardTitle>
           <CardDescription>
-            Manage LTE tower locking settings for your device.
+            Lock to a specific LTE cell tower by entering its channel and cell ID.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -233,7 +232,7 @@ const LTELockingComponent = ({
         <CardHeader>
           <CardTitle>LTE Tower Locking</CardTitle>
           <CardDescription>
-            Manage LTE tower locking settings for your device.
+            Lock to a specific LTE cell tower by entering its channel and cell ID.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -272,7 +271,7 @@ const LTELockingComponent = ({
                     <div className="grid grid-cols-2 gap-4">
                       <Field>
                         <div className="flex items-center justify-between">
-                          <FieldLabel htmlFor="earfcn1">E/ARFCN</FieldLabel>
+                          <FieldLabel htmlFor="earfcn1">Channel (EARFCN)</FieldLabel>
                           <Button
                             type="button"
                             size="sm"
@@ -286,14 +285,14 @@ const LTELockingComponent = ({
                         <Input
                           id="earfcn1"
                           type="text"
-                          placeholder="Enter E/ARFCN"
+                          placeholder="Enter EARFCN"
                           value={earfcn1}
                           onChange={(e) => setEarfcn1(e.target.value)}
                           disabled={isLocking}
                         />
                       </Field>
                       <Field>
-                        <FieldLabel htmlFor="pci1">PCI</FieldLabel>
+                        <FieldLabel htmlFor="pci1">Cell ID (PCI)</FieldLabel>
                         <Input
                           id="pci1"
                           type="text"
@@ -307,18 +306,18 @@ const LTELockingComponent = ({
                     {/* Optional locking entry 2 */}
                     <div className="grid grid-cols-2 gap-4">
                       <Field>
-                        <FieldLabel htmlFor="earfcn2">E/ARFCN 2</FieldLabel>
+                        <FieldLabel htmlFor="earfcn2">Channel (EARFCN) 2</FieldLabel>
                         <Input
                           id="earfcn2"
                           type="text"
-                          placeholder="Enter E/ARFCN 2"
+                          placeholder="Enter EARFCN 2"
                           value={earfcn2}
                           onChange={(e) => setEarfcn2(e.target.value)}
                           disabled={isLocking}
                         />
                       </Field>
                       <Field>
-                        <FieldLabel htmlFor="pci2">PCI 2</FieldLabel>
+                        <FieldLabel htmlFor="pci2">Cell ID (PCI) 2</FieldLabel>
                         <Input
                           id="pci2"
                           type="text"
@@ -332,18 +331,18 @@ const LTELockingComponent = ({
                     {/* Optional locking entry 3 */}
                     <div className="grid grid-cols-2 gap-4">
                       <Field>
-                        <FieldLabel htmlFor="earfcn3">E/ARFCN 3</FieldLabel>
+                        <FieldLabel htmlFor="earfcn3">Channel (EARFCN) 3</FieldLabel>
                         <Input
                           id="earfcn3"
                           type="text"
-                          placeholder="Enter E/ARFCN 3"
+                          placeholder="Enter EARFCN 3"
                           value={earfcn3}
                           onChange={(e) => setEarfcn3(e.target.value)}
                           disabled={isLocking}
                         />
                       </Field>
                       <Field>
-                        <FieldLabel htmlFor="pci3">PCI 3</FieldLabel>
+                        <FieldLabel htmlFor="pci3">Cell ID (PCI) 3</FieldLabel>
                         <Input
                           id="pci3"
                           type="text"
@@ -400,7 +399,7 @@ const LTELockingComponent = ({
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={confirmUnlock}>
-              Unlock
+              Remove Lock
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

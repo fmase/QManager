@@ -70,7 +70,7 @@ const MTUSettingsCard = () => {
       if (success) {
         toast.success("Custom MTU disabled");
       } else {
-        toast.error(error || "Failed to disable MTU");
+        toast.error(error || "Failed to disable MTU settings");
       }
       return;
     }
@@ -85,7 +85,7 @@ const MTUSettingsCard = () => {
     if (success) {
       toast.success(`MTU set to ${mtu}`);
     } else {
-      toast.error(error || "Failed to apply MTU");
+      toast.error(error || "Failed to apply MTU settings");
     }
   }, [isEnabled, mtuValue, saveMtu, disableMtu, error]);
 
@@ -94,8 +94,8 @@ const MTUSettingsCard = () => {
       <CardHeader>
         <CardTitle>Maximum Transmission Unit (MTU) Configuration</CardTitle>
         <CardDescription>
-          Manage Maximum Transmission Unit (MTU) settings for your network
-          devices.
+          Set the packet size (MTU) on the cellular data interface to match
+          your network requirements.
         </CardDescription>
       </CardHeader>
       <CardContent>

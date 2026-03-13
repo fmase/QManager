@@ -45,12 +45,12 @@ const BAND_CARDS: {
   {
     category: "nsa_nr5g",
     title: "NSA Band Locking",
-    description: "Select the NR5G NSA bands to lock for your device.",
+    description: "Select the 5G NSA bands to lock (5G via LTE anchor).",
   },
   {
     category: "sa_nr5g",
     title: "SA Band Locking",
-    description: "Select the NR5G SA bands to lock for your device.",
+    description: "Select the 5G SA bands to lock (standalone 5G).",
   },
 ];
 

@@ -234,11 +234,11 @@ const SystemLogsCard = () => {
         setShowClearDialog(false);
         await fetchLogs(true);
       } else {
-        toast.error(data.detail || "Failed to clear logs");
+        toast.error(data.detail || "Failed to clear log files");
       }
     } catch {
       if (mountedRef.current) {
-        toast.error("Failed to clear logs");
+        toast.error("Failed to clear log files");
       }
     } finally {
       if (mountedRef.current) {
@@ -356,7 +356,7 @@ const SystemLogsCard = () => {
                 htmlFor="include-rotated"
                 className="text-sm text-muted-foreground whitespace-nowrap"
               >
-                Include rotated
+                Include archived
               </label>
             </div>
 

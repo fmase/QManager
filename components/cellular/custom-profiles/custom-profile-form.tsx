@@ -248,7 +248,7 @@ const CustomProfileFormComponent = ({
         <CardDescription>
           {isEditing
             ? `Editing "${editingProfile?.name}". Update the fields below.`
-            : "Fill out the form below to create a custom SIM profile."}
+            : "Create a custom SIM profile with specific APN, TTL, and IMEI settings."}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -323,7 +323,7 @@ const CustomProfileFormComponent = ({
 
               <div className="grid grid-cols-1 @md/card:grid-cols-2 gap-4">
                 <Field>
-                  <FieldLabel>PDP Type</FieldLabel>
+                  <FieldLabel>IP Protocol</FieldLabel>
                   <Select
                     value={form.pdp_type}
                     onValueChange={(v) => updateField("pdp_type", v)}
@@ -343,7 +343,7 @@ const CustomProfileFormComponent = ({
                   </Select>
                 </Field>
                 <Field>
-                  <FieldLabel htmlFor="apnCid">CID</FieldLabel>
+                  <FieldLabel htmlFor="apnCid">Profile Slot (CID)</FieldLabel>
                   <Input
                     id="apnCid"
                     type="number"
@@ -390,7 +390,7 @@ const CustomProfileFormComponent = ({
                   {errors.ttl && <FieldError id="ttl-error">{errors.ttl}</FieldError>}
                 </Field>
                 <Field>
-                  <FieldLabel htmlFor="hl">HL Value (IPv6)</FieldLabel>
+                  <FieldLabel htmlFor="hl">Hop Limit</FieldLabel>
                   <Input
                     id="hl"
                     type="number"

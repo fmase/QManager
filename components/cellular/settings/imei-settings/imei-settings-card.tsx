@@ -84,10 +84,10 @@ const IMEISettingsCard = ({
 
     const success = await onSave(imei);
     if (success) {
-      toast.success("IMEI updated");
+      toast.success("IMEI saved — reboot required to apply");
       setShowRebootDialog(true);
     } else {
-      toast.error("Failed to write IMEI");
+      toast.error("Failed to save IMEI");
     }
   };
 
@@ -103,7 +103,7 @@ const IMEISettingsCard = ({
     if (sent) {
       toast.success("Device is rebooting...");
     } else {
-      toast.error("Failed to send reboot command");
+      toast.error("Reboot failed — restart the device manually");
       setIsRebooting(false);
     }
   };
@@ -146,8 +146,8 @@ const IMEISettingsCard = ({
       <CardHeader>
         <CardTitle>IMEI Settings</CardTitle>
         <CardDescription>
-          Please proceed with caution when modifying IMEI settings. Incorrect
-          changes may lead to device malfunctions or legal issues.
+          Change the device&apos;s IMEI identifier. A reboot is required after changes.
+          Check your local regulations before modifying.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -176,10 +176,9 @@ const IMEISettingsCard = ({
                         </TooltipTrigger>
                         <TooltipContent>
                           <p>
-                            We are not responsible for any legal issues arising
-                            from IMEI modifications.
+                            IMEI modification regulations vary by country.
                             <br />
-                            Ensure compliance with local laws.
+                            Check your local laws before changing the IMEI.
                           </p>
                         </TooltipContent>
                       </Tooltip>
@@ -204,7 +203,7 @@ const IMEISettingsCard = ({
                   Saving...
                 </>
               ) : (
-                "Save Settings"
+                "Write IMEI"
               )}
             </Button>
             <Button

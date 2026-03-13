@@ -183,10 +183,10 @@ const IPPassthroughCard = () => {
     return (
       <Card className="@container/card">
         <CardHeader>
-          <CardTitle>IP Passthrough (IPPT) Configuration</CardTitle>
+          <CardTitle>IP Passthrough Configuration</CardTitle>
           <CardDescription>
-            Manage your IP Passthrough settings to optimize network performance
-            and connectivity for your devices.
+            Assign the modem's public IP directly to a downstream device,
+            bypassing the router's NAT.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -230,10 +230,10 @@ const IPPassthroughCard = () => {
   return (
     <Card className="@container/card">
       <CardHeader>
-        <CardTitle>IP Passthrough (IPPT) Configuration</CardTitle>
+        <CardTitle>IP Passthrough Configuration</CardTitle>
         <CardDescription>
-          Manage your IP Passthrough settings to optimize network performance
-          and connectivity for your devices.
+          Assign the modem's public IP directly to a downstream device,
+          bypassing the router's NAT.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -351,7 +351,7 @@ const IPPassthroughCard = () => {
                 <div className="grid xl:grid-cols-2 grid-cols-1 grid-flow-row gap-4">
                   {/* Field 3: IPPT NAT Mode */}
                   <Field>
-                    <FieldLabel>NAT Mode</FieldLabel>
+                    <FieldLabel>NAT Mode (Network Address Translation)</FieldLabel>
                     <Select
                       value={
                         localIpptNat ||
@@ -364,7 +364,7 @@ const IPPassthroughCard = () => {
                       onValueChange={(v) => setLocalIpptNat(v as NatMode)}
                       disabled={isSaving}
                     >
-                      <SelectTrigger aria-label="NAT Mode">
+                      <SelectTrigger aria-label="NAT Mode (Network Address Translation)">
                         <SelectValue placeholder="Select NAT Mode" />
                       </SelectTrigger>
                       <SelectContent>
@@ -400,14 +400,14 @@ const IPPassthroughCard = () => {
                 <div className="grid xl:grid-cols-2 grid-cols-1 grid-flow-row gap-4">
                   {/* Field 5: DNS Offloading */}
                   <Field>
-                    <FieldLabel>DNS Offloading</FieldLabel>
+                    <FieldLabel>Modem DNS Handling</FieldLabel>
                     <Select
                       name="dns_mode"
                       value={localDnsProxy}
                       onValueChange={(v) => setLocalDnsProxy(v as DnsProxy)}
                       disabled={isSaving}
                     >
-                      <SelectTrigger aria-label="DNS Offloading">
+                      <SelectTrigger aria-label="Modem DNS Handling">
                         <SelectValue placeholder="Select DNS Strategy" />
                       </SelectTrigger>
                       <SelectContent>

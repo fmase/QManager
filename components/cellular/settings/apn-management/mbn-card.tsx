@@ -79,7 +79,7 @@ const MBNCard = ({
     if (localAutoSel === "1" && currentAutoSel !== "1") {
       const success = await onSave({ action: "auto_sel", auto_sel: 1 });
       if (success) {
-        toast.success("Auto-select enabled");
+        toast.success("Auto-select enabled — reboot required");
         setShowRebootDialog(true);
       } else {
         toast.error("Failed to enable auto-select");
@@ -91,7 +91,7 @@ const MBNCard = ({
     if (localAutoSel === "0" && currentAutoSel !== "0" && selectedProfile === currentProfile?.name) {
       const success = await onSave({ action: "auto_sel", auto_sel: 0 });
       if (success) {
-        toast.success("Auto-select disabled");
+        toast.success("Auto-select disabled — reboot required");
         setShowRebootDialog(true);
       } else {
         toast.error("Failed to disable auto-select");
@@ -106,10 +106,10 @@ const MBNCard = ({
         profile_name: selectedProfile,
       });
       if (success) {
-        toast.success("MBN profile applied");
+        toast.success("Carrier profile applied — reboot required");
         setShowRebootDialog(true);
       } else {
-        toast.error("Failed to apply MBN profile");
+        toast.error("Failed to apply carrier profile");
       }
       return;
     }
@@ -133,7 +133,7 @@ const MBNCard = ({
     if (sent) {
       toast.success("Device is rebooting...");
     } else {
-      toast.error("Failed to send reboot command");
+      toast.error("Reboot failed — restart the device manually");
       setIsRebooting(false);
     }
   };
@@ -142,9 +142,9 @@ const MBNCard = ({
     return (
       <Card className="@container/card">
         <CardHeader>
-          <CardTitle>MBN Configuration</CardTitle>
+          <CardTitle>Carrier Profile</CardTitle>
           <CardDescription>
-            Manage MBN (Mobile Broadband Network) profiles and settings.
+            Select which carrier firmware profile is active on the modem. A reboot is required after changes.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -170,9 +170,9 @@ const MBNCard = ({
   return (
     <Card className="@container/card">
       <CardHeader>
-        <CardTitle>MBN Configuration</CardTitle>
+        <CardTitle>Carrier Profile</CardTitle>
         <CardDescription>
-          Manage MBN (Mobile Broadband Network) profiles and settings.
+          Select which carrier firmware profile is active on the modem. A reboot is required after changes.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -181,7 +181,7 @@ const MBNCard = ({
             <FieldSet>
               <FieldGroup>
                 <Field className="max-w-md">
-                  <FieldLabel>Auto-Carrier Matching</FieldLabel>
+                  <FieldLabel>Auto-Select Profile</FieldLabel>
                   <Select
                     value={
                       localAutoSel ||
@@ -190,8 +190,8 @@ const MBNCard = ({
                     onValueChange={setLocalAutoSel}
                     disabled={isSaving}
                   >
-                    <SelectTrigger aria-label="Auto-Carrier Matching">
-                      <SelectValue placeholder="Choose Auto-Carrier Matching" />
+                    <SelectTrigger aria-label="Auto-Select Profile">
+                      <SelectValue placeholder="Choose Auto-Select" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="1">Enabled</SelectItem>
@@ -201,7 +201,7 @@ const MBNCard = ({
                 </Field>
 
                 <Field className="max-w-md">
-                  <FieldLabel>Firmware Carrier Profile</FieldLabel>
+                  <FieldLabel>Carrier Configuration</FieldLabel>
                   <Select
                     value={
                       selectedProfile ||
@@ -212,8 +212,8 @@ const MBNCard = ({
                     onValueChange={setSelectedProfile}
                     disabled={isSaving || localAutoSel === "1"}
                   >
-                    <SelectTrigger aria-label="Firmware Carrier Profile">
-                      <SelectValue placeholder="Choose Firmware Carrier Profile" />
+                    <SelectTrigger aria-label="Carrier Configuration">
+                      <SelectValue placeholder="Choose Carrier Configuration" />
                     </SelectTrigger>
                     <SelectContent>
                       {profiles?.map((p) => (
@@ -256,7 +256,7 @@ const MBNCard = ({
             <AlertDialogHeader>
               <AlertDialogTitle>Reboot Required</AlertDialogTitle>
               <AlertDialogDescription>
-                MBN profile changes require a device reboot to take effect.
+                Carrier profile changes require a device reboot to take effect.
                 Would you like to reboot now?
               </AlertDialogDescription>
             </AlertDialogHeader>

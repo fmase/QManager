@@ -119,7 +119,7 @@ const LteFreqLockingComponent = ({
       const earfcns = buildEarfcns();
       if (earfcns.length === 0) {
         toast.warning("No frequencies entered", {
-          description: "Enter at least one EARFCN before enabling.",
+          description: "Enter at least one channel number before enabling.",
         });
         return;
       }
@@ -170,9 +170,9 @@ const LteFreqLockingComponent = ({
     const earfcn = modemData?.lte?.earfcn;
     if (earfcn != null) {
       setEarfcn1(String(earfcn));
-      toast.info("Populated from active LTE PCell");
+      toast.info("Filled from current connected tower");
     } else {
-      toast.warning("No active LTE cell");
+      toast.warning("No active LTE connection");
     }
   };
 
@@ -184,7 +184,7 @@ const LteFreqLockingComponent = ({
         <CardHeader>
           <CardTitle>LTE Frequency Locking</CardTitle>
           <CardDescription>
-            Lock to specific LTE frequencies (EARFCNs).
+            Lock to specific LTE channel frequencies.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -213,7 +213,7 @@ const LteFreqLockingComponent = ({
         <CardHeader>
           <CardTitle>LTE Frequency Locking</CardTitle>
           <CardDescription>
-            Lock to specific LTE frequencies (EARFCNs). Maximum 2 frequencies.
+            Lock to specific LTE channel frequencies. Maximum 2 channels.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -245,8 +245,8 @@ const LteFreqLockingComponent = ({
                   </TooltipTrigger>
                   <TooltipContent>
                     <p>
-                      Locking to an unsupported frequency may cause a modem
-                      crash dump. <br />
+                      Locking to an unsupported frequency may cause the modem
+                      to restart unexpectedly. <br />
                       Cannot be used while Tower Lock is active.
                     </p>
                   </TooltipContent>
@@ -282,7 +282,7 @@ const LteFreqLockingComponent = ({
                     {/* EARFCN 1 */}
                     <Field>
                       <div className="flex items-center justify-between">
-                        <FieldLabel htmlFor="freq-earfcn1">EARFCN</FieldLabel>
+                        <FieldLabel htmlFor="freq-earfcn1">Channel (EARFCN)</FieldLabel>
                         <Button
                           type="button"
                           size="sm"
@@ -312,7 +312,7 @@ const LteFreqLockingComponent = ({
                     {/* EARFCN 2 */}
                     <Field>
                       <FieldLabel htmlFor="freq-earfcn2">
-                        EARFCN 2 (Optional)
+                        Channel 2 (Optional)
                       </FieldLabel>
                       <Input
                         id="freq-earfcn2"
@@ -371,12 +371,12 @@ const LteFreqLockingComponent = ({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle className="text-destructive">
-              Possible Crash Dump Risk
+              Unsupported Frequency Warning
             </AlertDialogTitle>
             <AlertDialogDescription>
-              The EARFCN(s) you entered map to bands not supported by your
-              modem. Locking to an unsupported frequency may cause a modem crash
-              dump according to Qualcomm documentation.
+              The frequencies you entered match bands not supported by your
+              modem. Locking to an unsupported frequency may cause the modem to
+              restart unexpectedly.
               <br />
               <br />
               <strong>Matched bands:</strong>{" "}
@@ -416,7 +416,7 @@ const LteFreqLockingComponent = ({
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={confirmUnlock}>
-              Unlock
+              Remove Lock
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -440,7 +440,7 @@ function BandMatchDisplay({
   if (bands.length === 0) {
     return (
       <p className="text-xs text-destructive mt-1">
-        No matching bands found for this EARFCN
+        No matching bands found for this channel
       </p>
     );
   }

@@ -207,7 +207,7 @@ const APNSettingsCard = ({
                   </Field>
 
                   <Field>
-                    <FieldLabel>Auto APN</FieldLabel>
+                    <FieldLabel>Carrier Preset</FieldLabel>
                     <Select
                       value={
                         autoApnPreset ||
@@ -217,13 +217,13 @@ const APNSettingsCard = ({
                       disabled={isSaving}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Choose Auto APN" />
+                        <SelectValue placeholder="Choose Carrier Preset" />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="none">None</SelectItem>
                         {MNO_PRESETS.map((p) => (
                           <SelectItem key={p.id} value={p.id}>
-                            {p.label} Auto APN
+                            {p.label}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -233,7 +233,7 @@ const APNSettingsCard = ({
 
                 <div className="grid xl:grid-cols-2 grid-cols-1 grid-flow-row gap-4">
                   <Field>
-                    <FieldLabel>Carrier Profiles</FieldLabel>
+                    <FieldLabel>Connection Profile</FieldLabel>
                     <Select
                       value={
                         selectedCid ||
@@ -243,13 +243,13 @@ const APNSettingsCard = ({
                       disabled={isSaving}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Choose Carrier Profile" />
+                        <SelectValue placeholder="Choose Connection Profile" />
                       </SelectTrigger>
                       <SelectContent>
                         {profiles?.map((p) => (
                           <SelectItem key={p.cid} value={String(p.cid)}>
-                            CID {p.cid} - {p.apn || "(empty)"}
-                            {p.cid === activeCid ? " (Data)" : ""}
+                            Profile {p.cid} — {p.apn || "(empty)"}
+                            {p.cid === activeCid ? " (Active)" : ""}
                           </SelectItem>
                         ))}
                       </SelectContent>

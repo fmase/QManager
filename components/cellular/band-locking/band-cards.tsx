@@ -284,7 +284,7 @@ const BandCardsComponent = ({
             onClick={handleSelectNone}
             disabled={isDisabled}
           >
-            Clear
+            Deselect All
           </Button>
         </div>
       </CardFooter>

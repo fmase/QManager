@@ -81,9 +81,9 @@ const CellularSettingsCard = ({
 
     const success = await onSave(changes);
     if (success) {
-      toast.success("Settings applied successfully");
+      toast.success("Modem settings saved");
     } else {
-      toast.error("Failed to apply settings");
+      toast.error("Failed to save modem settings");
     }
   };
 
@@ -147,9 +147,9 @@ const CellularSettingsCard = ({
   return (
     <Card className="@container/card">
       <CardHeader>
-        <CardTitle>Cellular Basic Settings</CardTitle>
+        <CardTitle>Modem Radio Settings</CardTitle>
         <CardDescription>
-          Manage your cellular connection settings.
+          Configure SIM slot, radio power, network type, and roaming preferences.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -159,37 +159,37 @@ const CellularSettingsCard = ({
               <FieldGroup>
                 <div className="grid xl:grid-cols-2 grid-cols-1 grid-flow-row gap-4">
                   <Field>
-                    <FieldLabel>Select Active U-SIM Slot</FieldLabel>
+                    <FieldLabel>SIM Slot</FieldLabel>
                     <Select
                       value={simSlot || (settings ? String(settings.sim_slot) : "")}
                       onValueChange={setSimSlot}
                       disabled={isSaving}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Choose U-SIM Slot" />
+                        <SelectValue placeholder="Choose SIM Slot" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="1">U-SIM 1</SelectItem>
-                        <SelectItem value="2">U-SIM 2</SelectItem>
+                        <SelectItem value="1">SIM 1</SelectItem>
+                        <SelectItem value="2">SIM 2</SelectItem>
                       </SelectContent>
                     </Select>
                   </Field>
 
                   <Field>
-                    <FieldLabel>Select Cellular Functionality</FieldLabel>
+                    <FieldLabel>Radio Power</FieldLabel>
                     <Select
                       value={cfun || (settings ? String(settings.cfun) : "")}
                       onValueChange={setCfun}
                       disabled={isSaving}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Choose Cellular Functionality" />
+                        <SelectValue placeholder="Choose Radio Power Mode" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="0">Minimum Functionality</SelectItem>
-                        <SelectItem value="1">Full Functionality</SelectItem>
+                        <SelectItem value="0">Radio Off (Low Power)</SelectItem>
+                        <SelectItem value="1">Normal Operation</SelectItem>
                         <SelectItem value="4">
-                          Disable Cellular (RF Off)
+                          Airplane Mode (RF Off)
                         </SelectItem>
                       </SelectContent>
                     </Select>
@@ -198,38 +198,38 @@ const CellularSettingsCard = ({
 
                 <div className="grid xl:grid-cols-2 grid-cols-1 grid-flow-row gap-4">
                   <Field>
-                    <FieldLabel>Select Network (RAT) Mode</FieldLabel>
+                    <FieldLabel>Preferred Network Type</FieldLabel>
                     <Select
                       value={modePref || (settings ? settings.mode_pref : "")}
                       onValueChange={setModePref}
                       disabled={isSaving}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Choose Network Mode" />
+                        <SelectValue placeholder="Choose Network Type" />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="AUTO">Automatic</SelectItem>
                         <SelectItem value="LTE">LTE Only</SelectItem>
-                        <SelectItem value="NR5G">NR5G Only</SelectItem>
-                        <SelectItem value="LTE:NR5G">LTE + NR5G</SelectItem>
+                        <SelectItem value="NR5G">5G Only</SelectItem>
+                        <SelectItem value="LTE:NR5G">LTE + 5G</SelectItem>
                       </SelectContent>
                     </Select>
                   </Field>
 
                   <Field>
-                    <FieldLabel>NR5G Mode Control</FieldLabel>
+                    <FieldLabel>5G Architecture</FieldLabel>
                     <Select
                       value={nr5gMode || (settings ? String(settings.nr5g_mode) : "")}
                       onValueChange={setNr5gMode}
                       disabled={isSaving}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Choose NR5G Mode" />
+                        <SelectValue placeholder="Choose 5G Mode" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="0">SA and NSA Automatic</SelectItem>
-                        <SelectItem value="1">NSA Only</SelectItem>
-                        <SelectItem value="2">SA Only</SelectItem>
+                        <SelectItem value="0">Auto (SA + NSA)</SelectItem>
+                        <SelectItem value="1">NSA Only (5G via LTE)</SelectItem>
+                        <SelectItem value="2">SA Only (Standalone)</SelectItem>
                       </SelectContent>
                     </Select>
                   </Field>
@@ -249,7 +249,7 @@ const CellularSettingsCard = ({
                       <SelectContent>
                         <SelectItem value="255">Any Network</SelectItem>
                         <SelectItem value="1">Home Network Only</SelectItem>
-                        <SelectItem value="3">Affiliate Networks</SelectItem>
+                        <SelectItem value="3">Partner Networks</SelectItem>
                       </SelectContent>
                     </Select>
                   </Field>

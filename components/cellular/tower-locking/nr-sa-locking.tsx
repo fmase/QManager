@@ -112,8 +112,7 @@ const NRSALockingComponent = ({
   const handleToggle = (checked: boolean) => {
     if (isWatcherRunning) {
       toast.warning("Failover check in progress", {
-        description:
-          "Please wait for the failover watcher to finish before toggling the lock.",
+        description: "Signal quality check is running, please wait.",
       });
       return;
     }
@@ -130,8 +129,7 @@ const NRSALockingComponent = ({
         isNaN(parsedScs)
       ) {
         toast.warning("Incomplete fields", {
-          description:
-            "All four fields (ARFCN, PCI, Band, SCS) are required to enable NR-SA locking.",
+          description: "Please fill in all required tower fields before locking.",
         });
         return;
       }
@@ -156,7 +154,7 @@ const NRSALockingComponent = ({
       if (success) {
         toast.success("NR-SA tower lock applied");
       } else {
-        toast.error("Failed to apply NR-SA tower lock");
+        toast.error("Failed to lock tower — check modem connection");
       }
     }
   };
@@ -167,7 +165,7 @@ const NRSALockingComponent = ({
     if (success) {
       toast.success("NR-SA tower lock cleared");
     } else {
-      toast.error("Failed to clear NR-SA tower lock");
+      toast.error("Failed to remove tower lock");
     }
   };
 
@@ -183,9 +181,9 @@ const NRSALockingComponent = ({
       setPci(String(nrPci));
       if (nrBandNum != null) setBand(String(nrBandNum));
       if (nrScs != null) setScs(String(nrScs));
-      toast.info("Populated from active NR PCell");
+      toast.info("Filled from current connected tower");
     } else {
-      toast.warning("No active NR cell");
+      toast.warning("No active 5G SA connection");
     }
   };
 
@@ -198,7 +196,7 @@ const NRSALockingComponent = ({
         <CardHeader>
           <CardTitle>NR-SA Tower Locking</CardTitle>
           <CardDescription>
-            Manage NR-SA tower locking settings for your device.
+            Lock to a specific 5G SA cell tower by entering its channel, cell ID, band, and subcarrier spacing.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -243,7 +241,7 @@ const NRSALockingComponent = ({
         <CardHeader>
           <CardTitle>NR-SA Tower Locking</CardTitle>
           <CardDescription>
-            Manage NR-SA tower locking settings for your device.
+            Lock to a specific 5G SA cell tower by entering its channel, cell ID, band, and subcarrier spacing.
             {isNsaMode && " Not compatible with NR5G-NSA mode."}
             {isLteOnly && " No NR connection available."}
           </CardDescription>
@@ -284,7 +282,7 @@ const NRSALockingComponent = ({
                     <div className="grid grid-cols-2 gap-4">
                       <Field>
                         <div className="flex items-center justify-between">
-                          <FieldLabel htmlFor="nrarfcn1">NR ARFCN</FieldLabel>
+                          <FieldLabel htmlFor="nrarfcn1">Channel (ARFCN)</FieldLabel>
                           <Button
                             type="button"
                             size="sm"
@@ -298,18 +296,18 @@ const NRSALockingComponent = ({
                         <Input
                           id="nrarfcn1"
                           type="text"
-                          placeholder="Enter NR ARFCN"
+                          placeholder="Enter ARFCN"
                           value={arfcn}
                           onChange={(e) => setArfcn(e.target.value)}
                           disabled={isDisabled}
                         />
                       </Field>
                       <Field>
-                        <FieldLabel htmlFor="nrpci">NR PCI</FieldLabel>
+                        <FieldLabel htmlFor="nrpci">Cell ID (PCI)</FieldLabel>
                         <Input
                           id="nrpci"
                           type="text"
-                          placeholder="Enter NR PCI"
+                          placeholder="Enter PCI"
                           value={pci}
                           onChange={(e) => setPci(e.target.value)}
                           disabled={isDisabled}
@@ -329,7 +327,7 @@ const NRSALockingComponent = ({
                         />
                       </Field>
                       <Field>
-                        <FieldLabel htmlFor="scs">SCS</FieldLabel>
+                        <FieldLabel htmlFor="scs">Subcarrier Spacing</FieldLabel>
                         <Select
                           value={scs}
                           onValueChange={setScs}
@@ -394,7 +392,7 @@ const NRSALockingComponent = ({
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={confirmUnlock}>
-              Unlock
+              Remove Lock
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

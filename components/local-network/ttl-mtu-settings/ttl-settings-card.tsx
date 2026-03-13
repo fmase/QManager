@@ -122,10 +122,10 @@ const TTLSettingsCard = () => {
       toast.success(
         ttl > 0 || hl > 0
           ? `TTL/HL applied (TTL=${ttl}, HL=${hl})`
-          : "TTL/HL disabled",
+          : "TTL/Hop Limit disabled",
       );
     } else {
-      toast.error(error || "Failed to apply TTL/HL");
+      toast.error(error || "Failed to apply TTL/Hop Limit settings");
     }
   }, [isEnabled, ttlValue, hlValue, saveTtlHl, error]);
 

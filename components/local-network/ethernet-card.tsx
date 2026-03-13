@@ -196,8 +196,7 @@ const EthernetStatusCard = () => {
         <CardHeader>
           <CardTitle>Ethernet Status</CardTitle>
           <CardDescription>
-            Displays the current status of the Ethernet connection, including
-            speed and connectivity.
+            Current Ethernet link status, speed, and duplex settings.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -230,8 +229,7 @@ const EthernetStatusCard = () => {
           <div>
             <CardTitle>Ethernet Status</CardTitle>
             <CardDescription>
-              Displays the current status of the Ethernet connection, including
-              speed and connectivity.
+              Current Ethernet link status, speed, and duplex settings.
             </CardDescription>
           </div>
           <Button

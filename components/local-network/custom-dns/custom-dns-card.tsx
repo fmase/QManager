@@ -87,7 +87,7 @@ const CustomDNSCard = () => {
           : "Reverted to carrier DNS",
       );
     } else {
-      toast.error(error || "Failed to apply DNS settings");
+      toast.error(error || "Failed to apply DNS settings — check connection");
     }
   }, [data, isEnabled, dns1, dns2, dns3, saveDns, error]);
 

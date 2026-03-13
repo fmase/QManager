@@ -344,7 +344,7 @@ const TowerLockingSettingsComponent = ({
         <CardHeader>
           <CardTitle>Tower Locking Settings</CardTitle>
           <CardDescription>
-            Configure cellular tower locking for the Primary Cell (PCell).
+            Lock the modem to a specific cell tower. Keeps your connection stable instead of roaming between towers.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -415,8 +415,7 @@ const TowerLockingSettingsComponent = ({
       <CardHeader>
         <CardTitle>Tower Locking Settings</CardTitle>
         <CardDescription>
-          Configure cellular tower locking for the Primary Cell (PCell). Not
-          compatible with NR5G-NSA.
+          Lock the modem to a specific cell tower. Keeps your connection stable instead of roaming between towers. Not compatible with 5G NSA.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -430,13 +429,13 @@ const TowerLockingSettingsComponent = ({
                 </TooltipTrigger>
                 <TooltipContent>
                   <p>
-                    When enabled, the device will persist tower locking settings
-                    across reboots.
+                    When enabled, tower lock is restored automatically
+                    after a reboot.
                   </p>
                 </TooltipContent>
               </Tooltip>
               <p className="font-semibold text-muted-foreground text-sm">
-                Persist Locking
+                Keep Lock After Reboot
               </p>
             </div>
             <div className="flex items-center space-x-2">
@@ -468,7 +467,7 @@ const TowerLockingSettingsComponent = ({
                 </TooltipContent>
               </Tooltip>
               <p className="font-semibold text-muted-foreground text-sm">
-                Failover
+                Signal Failover
               </p>
             </div>
             <div className="flex items-center space-x-2">
@@ -509,7 +508,7 @@ const TowerLockingSettingsComponent = ({
                 </TooltipContent>
               </Tooltip>
               <p className="font-semibold text-muted-foreground text-sm">
-                Failover Threshold
+                Failover Threshold (%)
               </p>
             </div>
             <div className="flex items-center space-x-2">
@@ -593,7 +592,7 @@ const TowerLockingSettingsComponent = ({
           <Separator />
           <div className="flex items-center justify-between">
             <p className="text-sm font-semibold text-muted-foreground ">
-              Active PCell E/AFRCN
+              Current Channel (EARFCN)
             </p>
             <div className="flex items-center gap-1.5">
               <p className="text-sm font-semibold ">
@@ -604,7 +603,7 @@ const TowerLockingSettingsComponent = ({
           <Separator />
           <div className="flex items-center justify-between">
             <p className="text-sm font-semibold text-muted-foreground ">
-              Active PCell ID (PCI)
+              Current Cell ID (PCI)
             </p>
             <div className="flex items-center gap-1.5">
               <p className="text-sm font-semibold ">
