@@ -288,9 +288,7 @@ profile_save() {
     }
 
     # Atomic replace
-    mv "$tmp_file" "$final_file"
-
-    if [ $? -ne 0 ]; then
+    if ! mv "$tmp_file" "$final_file"; then
         qlog_error "Failed to write profile: $id" 2>/dev/null
         rm -f "$tmp_file"
         printf '{"success":false,"error":"write_failed","detail":"Failed to save profile to disk"}\n'
@@ -320,9 +318,7 @@ profile_delete() {
     fi
 
     # Remove the file
-    rm -f "$file"
-
-    if [ $? -ne 0 ]; then
+    if ! rm -f "$file"; then
         qlog_error "Failed to delete profile: $id" 2>/dev/null
         printf '{"success":false,"error":"delete_failed","detail":"Failed to remove profile file"}\n'
         return 1

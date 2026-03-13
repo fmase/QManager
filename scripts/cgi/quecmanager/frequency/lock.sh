@@ -138,7 +138,7 @@ if [ "$LOCK_TYPE" = "lte" ]; then
         esac
 
         qlog_info "LTE freq lock cleared"
-        echo '{"success":true,"type":"lte","action":"unlock"}'
+        jq -n '{"success":true,"type":"lte","action":"unlock"}'
     else
         cgi_error "invalid_action" "action must be lock or unlock"
         exit 0
@@ -242,7 +242,7 @@ elif [ "$LOCK_TYPE" = "nr" ]; then
         esac
 
         qlog_info "NR freq lock cleared"
-        echo '{"success":true,"type":"nr","action":"unlock"}'
+        jq -n '{"success":true,"type":"nr","action":"unlock"}'
     else
         cgi_error "invalid_action" "action must be lock or unlock"
         exit 0

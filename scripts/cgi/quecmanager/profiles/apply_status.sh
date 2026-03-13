@@ -27,7 +27,7 @@ cgi_handle_options
 
 # --- Case 1: No state file — nothing has been applied yet --------------------
 if [ ! -f "$STATE_FILE" ]; then
-    echo '{"status":"idle"}'
+    jq -n '{"status":"idle"}'
     exit 0
 fi
 
@@ -41,13 +41,17 @@ if [ "$STATE_STATUS" = "applying" ]; then
         APPLY_PID=$(cat "$PID_FILE" 2>/dev/null)
         if [ -n "$APPLY_PID" ] && ! kill -0 "$APPLY_PID" 2>/dev/null; then
             # Process died but state says "applying" — correct to "failed"
-            tmp=$(jq '.status = "failed"' "$STATE_FILE" 2>/dev/null) && printf '%s\n' "$tmp" > "$STATE_FILE"
+            tmp=$(jq '.status = "failed"' "$STATE_FILE" 2>/dev/null) && {
+                printf '%s\n' "$tmp" > "${STATE_FILE}.tmp" && mv "${STATE_FILE}.tmp" "$STATE_FILE"
+            }
             rm -f "$PID_FILE"
         fi
     else
         # No PID file but state says "applying" — process exited and cleaned up
         # but never wrote a final state. Mark as failed.
-        tmp=$(jq '.status = "failed"' "$STATE_FILE" 2>/dev/null) && printf '%s\n' "$tmp" > "$STATE_FILE"
+        tmp=$(jq '.status = "failed"' "$STATE_FILE" 2>/dev/null) && {
+            printf '%s\n' "$tmp" > "${STATE_FILE}.tmp" && mv "${STATE_FILE}.tmp" "$STATE_FILE"
+        }
     fi
 fi
 

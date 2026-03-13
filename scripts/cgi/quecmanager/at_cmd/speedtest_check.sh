@@ -18,7 +18,7 @@ cgi_handle_options
 
 # --- Check for speedtest binary ----------------------------------------------
 if command -v speedtest >/dev/null 2>&1; then
-    echo '{"available":true}'
+    jq -n '{"available":true}'
 else
-    echo '{"available":false}'
+    jq -n '{"available":false}'
 fi

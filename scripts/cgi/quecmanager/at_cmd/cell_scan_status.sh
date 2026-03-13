@@ -29,7 +29,7 @@ cgi_handle_options
 if [ -f "$PID_FILE" ]; then
     SCAN_PID=$(cat "$PID_FILE" 2>/dev/null)
     if [ -n "$SCAN_PID" ] && kill -0 "$SCAN_PID" 2>/dev/null; then
-        echo '{"status":"running"}'
+        jq -n '{"status":"running"}'
         exit 0
     fi
     # Process died — clean up stale PID
@@ -52,4 +52,4 @@ if [ -f "$RESULT_FILE" ]; then
 fi
 
 # --- Default: idle (no scan has been run yet) ---------------------------------
-echo '{"status":"idle"}'
+jq -n '{"status":"idle"}'

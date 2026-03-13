@@ -28,6 +28,9 @@
 #   calc_signal_quality <rsrp>    → Returns 0-100 integer
 # =============================================================================
 
+[ -n "$_TOWER_LOCK_MGR_LOADED" ] && return 0
+_TOWER_LOCK_MGR_LOADED=1
+
 # --- Configuration -----------------------------------------------------------
 TOWER_CONFIG_FILE="/etc/qmanager/tower_lock.json"
 TOWER_FAILOVER_FLAG="/tmp/qmanager_tower_failover"

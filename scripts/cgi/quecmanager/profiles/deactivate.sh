@@ -34,4 +34,4 @@ qlog_info "Profile deactivate request"
 # --- Clear active profile ----------------------------------------------------
 clear_active_profile
 
-echo '{"success":true}'
+cgi_success

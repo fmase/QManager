@@ -129,6 +129,14 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
             exit 0
         fi
 
+        # Sanitize: only allow safe characters in profile name
+        # (alphanumeric, underscores, dots, hyphens, spaces)
+        clean=$(printf '%s' "$PROFILE_NAME" | tr -d 'A-Za-z0-9_. -')
+        if [ -n "$clean" ]; then
+            cgi_error "invalid_profile" "Profile name contains invalid characters"
+            exit 0
+        fi
+
         qlog_info "Applying MBN profile: $PROFILE_NAME"
 
         # Step 1: Disable auto-select

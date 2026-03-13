@@ -9,6 +9,9 @@
 # Install location: /usr/lib/qmanager/parse_at.sh
 # =============================================================================
 
+[ -n "$_PARSE_AT_LOADED" ] && return 0
+_PARSE_AT_LOADED=1
+
 # --- Sentinel Value Mapping ---------------------------------------------------
 # Maps Quectel sentinel values to JSON null for inactive/unavailable antennas.
 # NOTE: _sig_val and _antenna_to_json_array use printf for performance — these

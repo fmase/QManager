@@ -105,7 +105,7 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
         fi
 
         if [ "$NEW_IMEI" = "$current_imei" ]; then
-            echo '{"success":true,"detail":"IMEI already set to this value","reboot_required":false}'
+            jq -n '{"success":true,"detail":"IMEI already set to this value","reboot_required":false}'
             exit 0
         fi
 

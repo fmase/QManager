@@ -92,12 +92,17 @@ fi
 # Use jq to set the id field (handles both insert and replace safely)
 SAVE_DATA=$(printf '%s' "$POST_DATA" | jq --arg id "$SCENARIO_ID" '.id = $id')
 
-# --- Write to file ------------------------------------------------------------
+# --- Write to file (atomic: temp + mv) ----------------------------------------
 SCENARIO_FILE="$SCENARIOS_DIR/${SCENARIO_ID}.json"
-printf '%s' "$SAVE_DATA" > "$SCENARIO_FILE"
-
-if [ $? -ne 0 ]; then
+SCENARIO_TMP="${SCENARIO_FILE}.tmp"
+if ! printf '%s' "$SAVE_DATA" > "$SCENARIO_TMP"; then
+    rm -f "$SCENARIO_TMP"
     cgi_error "write_failed" "Failed to write scenario file"
+    exit 0
+fi
+if ! mv "$SCENARIO_TMP" "$SCENARIO_FILE"; then
+    rm -f "$SCENARIO_TMP"
+    cgi_error "write_failed" "Failed to save scenario file"
     exit 0
 fi
 

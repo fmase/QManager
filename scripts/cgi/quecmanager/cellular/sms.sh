@@ -393,14 +393,23 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
 
         qlog_info "Deleting SMS indexes: $INDEXES_JSON"
         fail_count=0
-        printf '%s' "$INDEXES_JSON" | jq -r '.[]' | while read -r idx; do
+        idx_tmp="/tmp/qmanager_sms_idx.tmp"
+        printf '%s' "$INDEXES_JSON" | jq -r '.[]' > "$idx_tmp"
+        while read -r idx; do
             result=$(sms_tool delete "$idx" 2>&1)
             rc=$?
             if [ $rc -ne 0 ]; then
                 qlog_warn "Failed to delete index $idx: $result"
                 fail_count=$((fail_count + 1))
             fi
-        done
+        done < "$idx_tmp"
+        rm -f "$idx_tmp"
+
+        if [ "$fail_count" -gt 0 ]; then
+            qlog_warn "SMS delete completed with $fail_count failure(s)"
+            cgi_error "partial_failure" "$fail_count message(s) failed to delete"
+            exit 0
+        fi
 
         qlog_info "SMS delete complete"
         cgi_success

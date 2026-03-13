@@ -51,7 +51,7 @@ mkdir -p "$(dirname "$FAILOVER_ENABLED_FILE")" 2>/dev/null
 if [ "$ENABLED_VAL" = "true" ]; then
     printf '1' > "$FAILOVER_ENABLED_FILE"
     qlog_info "Band failover ENABLED"
-    printf '{"success":true,"enabled":true}\n'
+    jq -n '{"success":true,"enabled":true}'
 else
     printf '0' > "$FAILOVER_ENABLED_FILE"
     qlog_info "Band failover DISABLED"
@@ -69,5 +69,5 @@ else
     # Clear any active failover flag so the UI resets from "Using Default Bands"
     rm -f "$FAILOVER_ACTIVATED_FLAG"
 
-    printf '{"success":true,"enabled":false}\n'
+    jq -n '{"success":true,"enabled":false}'
 fi

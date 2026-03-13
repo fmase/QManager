@@ -262,17 +262,23 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
 
         qlog_info "All settings applied — saving config and rebooting"
 
-        # --- Step 5: Persist settings to config file ---
+        # --- Step 5: Persist settings to config file (atomic: temp + mv) ---
         # This is the authoritative source read back by GET after reboot.
         mkdir -p /etc/qmanager
-        jq -n \
+        IPPT_TMP="${IPPT_CONFIG}.tmp"
+        if jq -n \
             --arg mode "$PASSTHROUGH_MODE" \
             --arg mac  "$TARGET_MAC" \
             --arg nat  "$IPPT_NAT" \
             --arg usb  "$USB_MODE" \
             --arg dns  "$DNS_PROXY" \
             '{mode:$mode, mac:$mac, nat:$nat, usb_mode:$usb, dns_proxy:$dns}' \
-            > "$IPPT_CONFIG" 2>/dev/null || qlog_warn "Failed to write ippt_config.json (non-fatal)"
+            > "$IPPT_TMP" 2>/dev/null; then
+            mv "$IPPT_TMP" "$IPPT_CONFIG" 2>/dev/null || { rm -f "$IPPT_TMP"; qlog_warn "Failed to save ippt_config.json"; }
+        else
+            rm -f "$IPPT_TMP"
+            qlog_warn "Failed to write ippt_config.json (non-fatal)"
+        fi
 
         # Return response BEFORE rebooting so HTTP is flushed
         cgi_success

@@ -18,6 +18,9 @@
 #          ev_lat_alerted, ev_loss_alerted, events_initialized
 # =============================================================================
 
+[ -n "$_EVENTS_LOADED" ] && return 0
+_EVENTS_LOADED=1
+
 PCI_STATE_FILE="/tmp/qmanager_pci_state.json"
 
 # Append a single event to the events file (NDJSON — one JSON per line)
@@ -40,8 +43,11 @@ append_event() {
     count=$(wc -l < "$EVENTS_FILE" 2>/dev/null || echo 0)
     if [ "$count" -gt "$MAX_EVENTS" ]; then
         local tmp="${EVENTS_FILE}.tmp"
-        tail -n "$MAX_EVENTS" "$EVENTS_FILE" > "$tmp"
-        mv "$tmp" "$EVENTS_FILE"
+        if tail -n "$MAX_EVENTS" "$EVENTS_FILE" > "$tmp" 2>/dev/null; then
+            mv "$tmp" "$EVENTS_FILE" 2>/dev/null || rm -f "$tmp"
+        else
+            rm -f "$tmp"
+        fi
     fi
 
     qlog_info "EVENT [${etype}] ${message}"
