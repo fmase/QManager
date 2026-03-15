@@ -96,9 +96,14 @@ check_email_alert() {
     # Skip if disabled or not fully configured
     [ "$_ea_enabled" != "true" ] && return 0
 
-    # Skip null/stale ping state
-    [ "$conn_internet_available" = "null" ] && return 0
-    [ -z "$conn_internet_available" ] && return 0
+    # Null/stale ping state: skip ONLY if not already tracking downtime.
+    # If we're already tracking, stale data likely means the poller was stuck
+    # on AT commands during an outage — keep the downtime timer running.
+    if [ "$conn_internet_available" = "null" ] || [ -z "$conn_internet_available" ]; then
+        [ "$_ea_was_down" != "true" ] && return 0
+        # Already tracking downtime — keep going (don't reset)
+        return 0
+    fi
 
     if [ "$conn_internet_available" = "false" ]; then
         # Internet is down — record start time if not already tracking
@@ -110,16 +115,20 @@ check_email_alert() {
 
     elif [ "$conn_internet_available" = "true" ] && [ "$_ea_was_down" = "true" ]; then
         # Internet recovered — check if downtime exceeded threshold
-        local now duration threshold_secs
+        local now
+        local duration
+        local threshold_secs
         now=$(date +%s)
         duration=$((now - _ea_downtime_start))
         threshold_secs=$((_ea_threshold_minutes * 60))
 
+        qlog_info "Email alerts: recovery detected — measured downtime=${duration}s, threshold=${threshold_secs}s"
+
         if [ "$duration" -ge "$threshold_secs" ]; then
-            qlog_info "Email alerts: sending recovery email (downtime=${duration}s, threshold=${threshold_secs}s)"
+            qlog_info "Email alerts: threshold exceeded, sending recovery email"
             _ea_send_recovery_email "$_ea_downtime_start" "$duration"
         else
-            qlog_debug "Email alerts: downtime ${duration}s < threshold ${threshold_secs}s, no email"
+            qlog_info "Email alerts: downtime ${duration}s < threshold ${threshold_secs}s — skipped (ping debounce eats ~25s)"
         fi
 
         # Reset tracking
@@ -151,13 +160,32 @@ _ea_send_recovery_email() {
     local html
     html=$(_ea_build_recovery_html "$start_time" "$dur_text" "$_ea_threshold_minutes")
 
-    # Send
+    # Send with retry — DNS may not be ready immediately after recovery.
+    # Recovery emails fire at the moment connectivity returns, but the DNS
+    # resolver often needs a few more seconds to stabilize.
     local trigger_text="Connection recovered (down ${dur_text})"
-    if _ea_do_send "Connection Recovered" "$html"; then
-        _ea_log_event "$trigger_text" "sent" "$_ea_recipient"
-    else
-        _ea_log_event "$trigger_text" "failed" "$_ea_recipient"
-    fi
+    local attempt=0
+    local max_attempts=3
+    local retry_delay=10
+
+    while [ "$attempt" -lt "$max_attempts" ]; do
+        attempt=$((attempt + 1))
+
+        if [ "$attempt" -gt 1 ]; then
+            qlog_info "Email alerts: retry $attempt/$max_attempts after ${retry_delay}s..."
+            sleep "$retry_delay"
+        fi
+
+        if _ea_do_send "Connection Recovered" "$html"; then
+            _ea_log_event "$trigger_text" "sent" "$_ea_recipient"
+            return
+        fi
+
+        qlog_warn "Email alerts: send attempt $attempt/$max_attempts failed"
+    done
+
+    qlog_error "Email alerts: all $max_attempts send attempts failed"
+    _ea_log_event "$trigger_text" "failed" "$_ea_recipient"
 }
 
 # =============================================================================
@@ -201,13 +229,15 @@ _ea_do_send() {
         printf "Content-Type: text/html; charset=UTF-8\r\n"
         printf "\r\n"
         printf "%s" "$html_body"
-    } | msmtp -C "$_EA_MSMTP_CONFIG" "$_ea_recipient" 2>/dev/null
+    } | msmtp -C "$_EA_MSMTP_CONFIG" "$_ea_recipient" 2>/tmp/msmtp_last_err.log
 
     local rc=$?
     if [ $rc -eq 0 ]; then
         qlog_info "Email alerts: email sent successfully to $_ea_recipient"
     else
-        qlog_error "Email alerts: msmtp failed with exit code $rc"
+        local err_detail
+        err_detail=$(cat /tmp/msmtp_last_err.log 2>/dev/null)
+        qlog_error "Email alerts: msmtp failed (rc=$rc): $err_detail"
     fi
     return $rc
 }
@@ -216,7 +246,9 @@ _ea_do_send() {
 # _ea_log_event — Append entry to NDJSON log file
 # =============================================================================
 _ea_log_event() {
-    local trigger="$1" status="$2" recipient="$3"
+    local trigger="$1"
+    local status="$2"
+    local recipient="$3"
     local ts
     ts=$(date "+%Y-%m-%d %H:%M:%S")
 
@@ -246,7 +278,9 @@ _ea_log_event() {
 # =============================================================================
 _ea_format_duration() {
     local secs="$1"
-    local hours mins remaining
+    local hours
+    local mins
+    local remaining
 
     hours=$((secs / 3600))
     remaining=$((secs % 3600))

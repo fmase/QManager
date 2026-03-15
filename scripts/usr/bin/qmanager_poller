@@ -293,12 +293,14 @@ update_proc_metrics() {
     cpu_line=$(head -1 /proc/stat 2>/dev/null)
     if [ -n "$cpu_line" ]; then
         # /proc/stat format: cpu user nice system idle iowait irq softirq steal
-        local cur_idle cur_total
+        local cur_idle
+        local cur_total
         cur_idle=$(echo "$cpu_line" | awk '{print $5}')
         cur_total=$(echo "$cpu_line" | awk '{print $2+$3+$4+$5+$6+$7+$8+$9}')
 
         if [ "$prev_cpu_total" -gt 0 ] 2>/dev/null; then
-            local diff_idle diff_total
+            local diff_idle
+            local diff_total
             diff_idle=$((cur_idle - prev_cpu_idle))
             diff_total=$((cur_total - prev_cpu_total))
 
@@ -313,7 +315,8 @@ update_proc_metrics() {
     fi
 
     # --- Memory ---
-    local mem_total mem_available
+    local mem_total
+    local mem_available
     mem_total=$(grep '^MemTotal:' /proc/meminfo 2>/dev/null | awk '{print $2}')
     mem_available=$(grep '^MemAvailable:' /proc/meminfo 2>/dev/null | awk '{print $2}')
 
@@ -448,7 +451,8 @@ collect_boot_data() {
     sleep "$SIP_DELAY"
 
     # MIMO layers — LTE + NR (initial reading, will be re-polled in Tier 2)
-    local lte_mimo_result nr_mimo_result
+    local lte_mimo_result
+    local nr_mimo_result
     lte_mimo_result=$(qcmd_exec 'AT+QNWCFG="lte_mimo_layers"')
     sleep "$SIP_DELAY"
     nr_mimo_result=$(qcmd_exec 'AT+QNWCFG="nr5g_mimo_layers"' 2>/dev/null)
@@ -694,7 +698,8 @@ poll_tier2() {
     sleep "$SIP_DELAY"
 
     # MIMO layers — LTE + NR (dynamic, changes with signal conditions)
-    local lte_mimo_result nr_mimo_result
+    local lte_mimo_result
+    local nr_mimo_result
     lte_mimo_result=$(qcmd_exec 'AT+QNWCFG="lte_mimo_layers"')
     sleep "$SIP_DELAY"
     nr_mimo_result=$(qcmd_exec 'AT+QNWCFG="nr5g_mimo_layers"' 2>/dev/null)
@@ -793,8 +798,10 @@ read_ping_data() {
     fi
 
     # Check staleness (ping daemon may have crashed)
-    local ping_ts now age
-    ping_ts=$(jq -r '.timestamp // empty' "$PING_CACHE" 2>/dev/null)
+    local ping_ts
+    local now
+    local age
+    ping_ts=$(jq -r '.timestamp | if . == null then empty else tostring end' "$PING_CACHE" 2>/dev/null)
     now=$(date +%s)
 
     if [ -n "$ping_ts" ]; then
@@ -819,10 +826,10 @@ read_ping_data() {
     # ping.json no longer carries stats/history — those are computed here from raw file.
     local _pdata
     _pdata=$(jq -r '[
-        (.reachable // "null" | tostring),
-        (.last_rtt_ms // "null" | tostring),
-        (.during_recovery // false | tostring),
-        (.interval_sec // 5 | tostring),
+        ((.reachable) | if . == null then "null" else tostring end),
+        ((.last_rtt_ms) | if . == null then "null" else tostring end),
+        ((.during_recovery) | if . == null then "false" else tostring end),
+        ((.interval_sec) | if . == null then "5" else tostring end),
         (.targets[0] // "")
     ] | @tsv' "$PING_CACHE" 2>/dev/null)
 
@@ -1100,13 +1107,17 @@ write_cache() {
 # =============================================================================
 
 poll_cycle() {
+    # --- Ping-based checks FIRST (no modem dependency) ---
+    # These must run before AT commands in case qcmd blocks on serial I/O.
+    update_proc_metrics
+    read_ping_data
+    check_email_alert
+
     if [ -f "$LONG_FLAG" ]; then
         if [ "$system_state" != "scan_in_progress" ]; then
             qlog_state_change "system_state" "$system_state" "scan_in_progress"
         fi
         system_state="scan_in_progress"
-        update_proc_metrics
-        read_ping_data
         # Ping history (every Tier 1.5 interval — 10s)
         if [ $((cycle_count % TIER1_5_EVERY)) -eq 0 ]; then
             append_ping_history
@@ -1119,7 +1130,7 @@ poll_cycle() {
     errors=""
     system_state="normal"
 
-    # Tier 1
+    # Tier 1 (AT commands — may block if modem is unresponsive)
     poll_serving_cell
     sleep "$SIP_DELAY"
 
@@ -1134,8 +1145,6 @@ poll_cycle() {
         poll_tier2
     fi
 
-    update_proc_metrics
-    read_ping_data
     # Ping history (every Tier 1.5 interval — 10s)
     if [ $((cycle_count % TIER1_5_EVERY)) -eq 0 ]; then
         append_ping_history
@@ -1143,7 +1152,6 @@ poll_cycle() {
     update_conn_uptime
     determine_service_status
     detect_events
-    check_email_alert
     write_cache
 
     cycle_count=$((cycle_count + 1))

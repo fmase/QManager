@@ -47,6 +47,7 @@ CACHE_FILE="/tmp/qmanager_ping.json"
 CACHE_TMP="/tmp/qmanager_ping.json.tmp"
 HISTORY_FILE="/tmp/qmanager_ping_history"
 RECOVERY_FLAG="/tmp/qmanager_recovery_active"
+PID_FILE="/tmp/qmanager_ping.pid"
 
 # --- State Variables ---------------------------------------------------------
 streak_success=0
@@ -134,8 +135,23 @@ write_cache() {
 # =============================================================================
 
 main() {
+    # Prevent duplicate instances
+    if [ -f "$PID_FILE" ]; then
+        local old_pid
+        old_pid=$(cat "$PID_FILE" 2>/dev/null)
+        if [ -n "$old_pid" ] && kill -0 "$old_pid" 2>/dev/null; then
+            qlog_error "Another ping daemon already running (PID $old_pid), exiting"
+            exit 1
+        fi
+        rm -f "$PID_FILE"
+    fi
+    echo $$ > "$PID_FILE"
+
+    # Remove PID file on exit
+    trap 'rm -f "$PID_FILE" "$CACHE_TMP"' EXIT INT TERM
+
     qlog_info "========================================"
-    qlog_info "QManager Ping Daemon starting"
+    qlog_info "QManager Ping Daemon starting (PID $$)"
     qlog_info "Targets: ${PING_TARGET_1}, ${PING_TARGET_2}"
     qlog_info "Interval: ${PING_INTERVAL}s, Fail threshold: ${FAIL_THRESHOLD}, Recover threshold: ${RECOVER_THRESHOLD}"
     qlog_info "History size: ${HISTORY_SIZE}, Timeout: ${PING_TIMEOUT}s"
