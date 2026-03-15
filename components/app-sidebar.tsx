@@ -188,9 +188,8 @@ const data = {
     },
     {
       title: "Email Alerts",
-      url: "#",
+      url: "/monitoring/email-alerts",
       icon: MailIcon,
-      disabled: true,
     },
     {
       title: "Tailscale",

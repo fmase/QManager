@@ -35,6 +35,7 @@ const routeNameMap: Record<string, string> = {
   monitoring: 'Monitoring',
   latency: 'Latency Monitor',
   logs: 'Logs',
+  'email-alerts': 'Email Alerts',
 };
 
 export function useBreadcrumbs(): BreadcrumbItem[] {
