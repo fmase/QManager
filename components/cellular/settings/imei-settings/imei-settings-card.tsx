@@ -171,8 +171,14 @@ const IMEISettingsCard = ({
                     />
                     <InputGroupAddon align="inline-start">
                       <Tooltip>
-                        <TooltipTrigger className="pl-1.5">
-                          <AlertTriangleIcon className="text-muted-foreground size-4" />
+                        <TooltipTrigger asChild>
+                          <button
+                            type="button"
+                            className="pl-1.5 inline-flex items-center"
+                            aria-label="IMEI legal warning"
+                          >
+                            <AlertTriangleIcon className="text-muted-foreground size-4" />
+                          </button>
                         </TooltipTrigger>
                         <TooltipContent>
                           <p>
@@ -211,6 +217,7 @@ const IMEISettingsCard = ({
               variant="outline"
               onClick={handleReset}
               disabled={isSaving}
+              aria-label="Reset to saved values"
             >
               <RotateCcwIcon />
             </Button>

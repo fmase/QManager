@@ -206,7 +206,9 @@ const DeviceMetricsComponent = ({
             <div className="flex items-center gap-1.5">
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <TbInfoCircleFilled className="w-5 h-5 text-info" />
+                  <button type="button" className="inline-flex" aria-label="More info">
+                    <TbInfoCircleFilled className="w-5 h-5 text-info" />
+                  </button>
                 </TooltipTrigger>
                 <TooltipContent>
                   {/* Will show in Hexadecimal form */}
@@ -236,7 +238,9 @@ const DeviceMetricsComponent = ({
             <div className="flex items-center gap-1.5">
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <TbInfoCircleFilled className="w-5 h-5 text-info" />
+                  <button type="button" className="inline-flex" aria-label="More info">
+                    <TbInfoCircleFilled className="w-5 h-5 text-info" />
+                  </button>
                 </TooltipTrigger>
                 <TooltipContent>
                   {/* Will show in Hexadecimal form */}

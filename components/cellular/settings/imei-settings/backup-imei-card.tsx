@@ -183,7 +183,9 @@ const BackupIMEICard = ({
                   <FieldLabel htmlFor="backup-imei-toggle">
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <TbInfoCircleFilled className="w-5 h-5 text-info" />
+                        <button type="button" className="inline-flex" aria-label="More info">
+                          <TbInfoCircleFilled className="w-5 h-5 text-info" />
+                        </button>
                       </TooltipTrigger>
                       <TooltipContent>
                         <p>
@@ -218,8 +220,14 @@ const BackupIMEICard = ({
                   />
                   <InputGroupAddon align="inline-start">
                     <Tooltip>
-                      <TooltipTrigger className="pl-1.5">
-                        <AlertTriangleIcon className="text-muted-foreground size-4" />
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          className="pl-1.5 inline-flex items-center"
+                          aria-label="IMEI legal warning"
+                        >
+                          <AlertTriangleIcon className="text-muted-foreground size-4" />
+                        </button>
                       </TooltipTrigger>
                       <TooltipContent>
                         <p>
@@ -257,6 +265,7 @@ const BackupIMEICard = ({
               variant="outline"
               onClick={handleReset}
               disabled={isSaving}
+              aria-label="Reset to saved values"
             >
               <RotateCcwIcon />
             </Button>

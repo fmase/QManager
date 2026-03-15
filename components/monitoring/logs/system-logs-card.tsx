@@ -323,8 +323,12 @@ const SystemLogsCard = () => {
 
             {/* Search input */}
             <div className="relative flex-1 min-w-48">
+              <label htmlFor="log-search" className="sr-only">
+                Search logs
+              </label>
               <SearchIcon className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
+                id="log-search"
                 placeholder="Search logs..."
                 value={searchInput}
                 onChange={(e) => handleSearchChange(e.target.value)}

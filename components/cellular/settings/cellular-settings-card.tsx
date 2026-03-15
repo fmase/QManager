@@ -273,6 +273,7 @@ const CellularSettingsCard = ({
               variant="outline"
               onClick={handleReset}
               disabled={isSaving}
+              aria-label="Reset to saved values"
             >
               <RotateCcwIcon />
             </Button>

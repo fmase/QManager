@@ -32,6 +32,7 @@ const FPLMNCard = () => {
   const [hasEntries, setHasEntries] = useState<boolean | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isClearing, setIsClearing] = useState(false);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   const mountedRef = useRef(true);
 
@@ -47,6 +48,7 @@ const FPLMNCard = () => {
   // ---------------------------------------------------------------------------
   const fetchStatus = useCallback(async (silent = false) => {
     if (!silent) setIsLoading(true);
+    setFetchError(null);
 
     try {
       const resp = await fetch(CGI_ENDPOINT);
@@ -57,9 +59,13 @@ const FPLMNCard = () => {
 
       if (data.success) {
         setHasEntries(data.has_entries);
+      } else {
+        setFetchError(data.detail || "Failed to read blocked networks");
       }
     } catch {
-      // silently fail — keep current state
+      if (mountedRef.current) {
+        setFetchError("Unable to connect to device");
+      }
     } finally {
       if (mountedRef.current && !silent) {
         setIsLoading(false);
@@ -104,26 +110,30 @@ const FPLMNCard = () => {
   // ---------------------------------------------------------------------------
   // Render
   // ---------------------------------------------------------------------------
+  const cardHeader = (
+    <CardHeader>
+      <CardTitle>Blocked Networks</CardTitle>
+      <CardDescription>
+        Your SIM stores a list of networks that previously rejected your
+        device. Clearing this list may restore connectivity and improve
+        roaming.
+        <a
+          href="https://onomondo.com/blog/how-to-clear-the-fplmn-list-on-a-sim/"
+          target="_blank"
+          rel="noreferrer"
+          className="underline ml-1 text-primary hover:text-primary/80"
+        >
+          Learn more
+        </a>
+        .
+      </CardDescription>
+    </CardHeader>
+  );
+
   if (isLoading) {
     return (
       <Card className="@container/card">
-        <CardHeader>
-          <CardTitle>Blocked Networks</CardTitle>
-          <CardDescription>
-            Your SIM stores a list of networks that previously rejected your
-            device. Clearing this list may restore connectivity and improve
-            roaming.
-            <a
-              href="https://onomondo.com/blog/how-to-clear-the-fplmn-list-on-a-sim/"
-              target="_blank"
-              rel="noreferrer"
-              className="underline ml-1 text-primary hover:text-primary/80"
-            >
-              Learn more
-            </a>
-            .
-          </CardDescription>
-        </CardHeader>
+        {cardHeader}
         <CardContent>
           <div className="flex flex-col items-center justify-center gap-4 py-8">
             <Skeleton className="h-12 w-12 rounded-xl" />
@@ -136,25 +146,36 @@ const FPLMNCard = () => {
     );
   }
 
+  if (fetchError) {
+    return (
+      <Card className="@container/card">
+        {cardHeader}
+        <CardContent>
+          <Empty className="bg-destructive/5 h-full">
+            <EmptyHeader>
+              <EmptyMedia variant="icon" className="bg-destructive rounded-xl">
+                <AlertTriangleIcon className="text-destructive-foreground w-6 h-6" />
+              </EmptyMedia>
+              <EmptyTitle>Unable to Check</EmptyTitle>
+              <EmptyDescription className="max-w-xs text-pretty">
+                {fetchError}
+              </EmptyDescription>
+            </EmptyHeader>
+            <EmptyContent>
+              <Button variant="outline" onClick={() => fetchStatus()}>
+                <RefreshCcwIcon />
+                Retry
+              </Button>
+            </EmptyContent>
+          </Empty>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card className="@container/card">
-      <CardHeader>
-        <CardTitle>Blocked Networks</CardTitle>
-        <CardDescription>
-          Your SIM stores a list of networks that previously rejected your
-          device. Clearing this list may restore connectivity and improve
-          roaming.
-          <a
-            href="https://onomondo.com/blog/how-to-clear-the-fplmn-list-on-a-sim/"
-            target="_blank"
-            rel="noreferrer"
-            className="underline ml-1 text-primary hover:text-primary/80"
-          >
-            Learn more
-          </a>
-          .
-        </CardDescription>
-      </CardHeader>
+      {cardHeader}
       <CardContent>
         {hasEntries ? (
           <Empty className="bg-destructive/5 h-full">

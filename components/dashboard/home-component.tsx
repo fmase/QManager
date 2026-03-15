@@ -15,7 +15,12 @@ const HomeComponent = () => {
   const { data, isLoading, isStale, error } = useModemStatus();
 
   return (
-    <div className="grid grid-cols-1 gap-6 px-4 lg:px-6 @xl/main:grid-cols-2 @5xl/main:grid-cols-5">
+    <div className="grid grid-cols-1 gap-6 px-4 lg:px-6 @xl/main:grid-cols-2 @5xl/main:grid-cols-5" aria-live="polite" aria-atomic="false">
+      {error && !isLoading && (
+        <div role="alert" className="col-span-full rounded-lg bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          Unable to reach the modem. Data shown may be outdated.
+        </div>
+      )}
       <div className="grid gap-4 @xl/main:col-span-3 @5xl/main:col-span-3 col-span-1">
         <NetworkStatusComponent
           data={data?.network ?? null}

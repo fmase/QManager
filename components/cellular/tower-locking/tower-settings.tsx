@@ -425,7 +425,9 @@ const TowerLockingSettingsComponent = ({
             <div className="flex items-center gap-1.5">
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <TbInfoCircleFilled className="w-5 h-5 text-info" />
+                  <button type="button" className="inline-flex" aria-label="Keep Lock After Reboot info">
+                    <TbInfoCircleFilled className="w-5 h-5 text-info" />
+                  </button>
                 </TooltipTrigger>
                 <TooltipContent>
                   <p>
@@ -434,9 +436,9 @@ const TowerLockingSettingsComponent = ({
                   </p>
                 </TooltipContent>
               </Tooltip>
-              <p className="font-semibold text-muted-foreground text-sm">
+              <span className="font-semibold text-muted-foreground text-sm">
                 Keep Lock After Reboot
-              </p>
+              </span>
             </div>
             <div className="flex items-center space-x-2">
               <Switch
@@ -455,7 +457,9 @@ const TowerLockingSettingsComponent = ({
             <div className="flex items-center gap-1.5">
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <TbInfoCircleFilled className="w-5 h-5 text-info" />
+                  <button type="button" className="inline-flex" aria-label="Signal Failover info">
+                    <TbInfoCircleFilled className="w-5 h-5 text-info" />
+                  </button>
                 </TooltipTrigger>
                 <TooltipContent>
                   <p>
@@ -466,9 +470,9 @@ const TowerLockingSettingsComponent = ({
                   </p>
                 </TooltipContent>
               </Tooltip>
-              <p className="font-semibold text-muted-foreground text-sm">
+              <span className="font-semibold text-muted-foreground text-sm">
                 Signal Failover
-              </p>
+              </span>
             </div>
             <div className="flex items-center space-x-2">
               <Switch
@@ -496,7 +500,9 @@ const TowerLockingSettingsComponent = ({
             <div className="flex items-center gap-1.5">
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <TbInfoCircleFilled className="w-5 h-5 text-info" />
+                  <button type="button" className="inline-flex" aria-label="Failover Threshold info">
+                    <TbInfoCircleFilled className="w-5 h-5 text-info" />
+                  </button>
                 </TooltipTrigger>
                 <TooltipContent>
                   <p>
@@ -507,13 +513,17 @@ const TowerLockingSettingsComponent = ({
                   </p>
                 </TooltipContent>
               </Tooltip>
-              <p className="font-semibold text-muted-foreground text-sm">
+              <label
+                htmlFor="failover-threshold"
+                className="font-semibold text-muted-foreground text-sm"
+              >
                 Failover Threshold (%)
-              </p>
+              </label>
             </div>
             <div className="flex items-center space-x-2">
               <InputGroup>
                 <InputGroupInput
+                  id="failover-threshold"
                   type="text"
                   placeholder="Enter threshold"
                   className="w-10 h-6"
@@ -545,70 +555,66 @@ const TowerLockingSettingsComponent = ({
           </div>
           <Separator />
           <div className="flex items-center justify-between">
-            <p className="text-sm font-semibold text-muted-foreground ">
+            <span className="text-sm font-semibold text-muted-foreground">
               Current Signal Quality
-            </p>
+            </span>
             <div className="flex items-center gap-1.5">
-              <p className="text-sm font-semibold ">
-                <Badge
-                  variant="outline"
-                  className={qualityBadgeStyles[qualityLvl]}
-                >
-                  {qualityIcons[qualityLvl]}
-                  {activeRsrp !== null ? `${signalQualityPct}%` : "N/A"}
-                </Badge>
-              </p>
+              <Badge
+                variant="outline"
+                className={qualityBadgeStyles[qualityLvl]}
+              >
+                {qualityIcons[qualityLvl]}
+                {activeRsrp !== null ? `${signalQualityPct}%` : "N/A"}
+              </Badge>
             </div>
           </div>
           <Separator />
           <div className="flex items-center justify-between">
-            <p className="text-sm font-semibold text-muted-foreground ">
+            <span className="text-sm font-semibold text-muted-foreground">
               Failover Status
-            </p>
+            </span>
             <div className="flex items-center gap-1.5">
-              <p className="text-sm font-semibold ">{renderFailoverBadge()}</p>
+              {renderFailoverBadge()}
             </div>
           </div>
           <Separator />
           <div className="flex items-center justify-between">
-            <p className="text-sm font-semibold text-muted-foreground ">
+            <span className="text-sm font-semibold text-muted-foreground">
               Connection State
-            </p>
+            </span>
             <div className="flex items-center gap-1.5">
-              <p className="text-sm font-semibold ">
-                {renderConnectionStateBadge()}
-              </p>
+              {renderConnectionStateBadge()}
             </div>
           </div>
           <Separator />
           <div className="flex items-center justify-between">
-            <p className="text-sm font-semibold text-muted-foreground ">
+            <span className="text-sm font-semibold text-muted-foreground">
               Schedule Locking Status
-            </p>
+            </span>
             <div className="flex items-center gap-1.5">
-              <p className="text-sm font-semibold ">{renderScheduleBadge()}</p>
+              {renderScheduleBadge()}
             </div>
           </div>
           <Separator />
           <div className="flex items-center justify-between">
-            <p className="text-sm font-semibold text-muted-foreground ">
+            <span className="text-sm font-semibold text-muted-foreground">
               Current Channel (EARFCN)
-            </p>
+            </span>
             <div className="flex items-center gap-1.5">
-              <p className="text-sm font-semibold ">
+              <span className="text-sm font-semibold">
                 {activeEarfcn !== null ? String(activeEarfcn) : "-"}
-              </p>
+              </span>
             </div>
           </div>
           <Separator />
           <div className="flex items-center justify-between">
-            <p className="text-sm font-semibold text-muted-foreground ">
+            <span className="text-sm font-semibold text-muted-foreground">
               Current Cell ID (PCI)
-            </p>
+            </span>
             <div className="flex items-center gap-1.5">
-              <p className="text-sm font-semibold ">
+              <span className="text-sm font-semibold">
                 {activePci !== null ? String(activePci) : "-"}
-              </p>
+              </span>
             </div>
           </div>
           <Separator />

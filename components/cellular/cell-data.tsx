@@ -215,7 +215,9 @@ const CellDataComponent = ({
               {cellId != null && enodebId != null ? (
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <TbInfoCircleFilled className="w-5 h-5 text-info" />
+                    <button type="button" className="inline-flex" aria-label="More info">
+                      <TbInfoCircleFilled className="w-5 h-5 text-info" />
+                    </button>
                   </TooltipTrigger>
                   <TooltipContent>
                     <div className="grid">
@@ -252,7 +254,9 @@ const CellDataComponent = ({
               {tac != null ? (
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <TbInfoCircleFilled className="w-5 h-5 text-info" />
+                    <button type="button" className="inline-flex" aria-label="More info">
+                      <TbInfoCircleFilled className="w-5 h-5 text-info" />
+                    </button>
                   </TooltipTrigger>
                   <TooltipContent>
                     <p>
@@ -276,7 +280,9 @@ const CellDataComponent = ({
               {network?.bandwidth_details ? (
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <TbInfoCircleFilled className="w-5 h-5 text-info" />
+                    <button type="button" className="inline-flex" aria-label="More info">
+                      <TbInfoCircleFilled className="w-5 h-5 text-info" />
+                    </button>
                   </TooltipTrigger>
                   <TooltipContent>
                     <p>{network.bandwidth_details}</p>
@@ -332,7 +338,9 @@ const CellDataComponent = ({
               {network?.wan_ipv6 && network.wan_ipv6.length > 20 ? (
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <TbInfoCircleFilled className="w-5 h-5 text-info" />
+                    <button type="button" className="inline-flex" aria-label="More info">
+                      <TbInfoCircleFilled className="w-5 h-5 text-info" />
+                    </button>
                   </TooltipTrigger>
                   <TooltipContent>
                     <p>{network.wan_ipv6}</p>

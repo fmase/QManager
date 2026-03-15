@@ -441,6 +441,7 @@ const IPPassthroughCard = () => {
               variant="outline"
               onClick={resetToServer}
               disabled={isSaving}
+              aria-label="Reset to saved values"
             >
               <RotateCcwIcon />
             </Button>

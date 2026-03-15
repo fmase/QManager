@@ -3,7 +3,7 @@ import "./globals.css";
 
 import Euclid from "next/font/local";
 import { Manrope } from "next/font/google";
-import { ThemeProvider } from "next-themes";
+import { ThemeProvider } from "@/components/theme-provider";
 
 import { Toaster } from "@/components/ui/sonner";
 
