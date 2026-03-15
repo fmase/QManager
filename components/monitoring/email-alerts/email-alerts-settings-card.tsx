@@ -61,8 +61,8 @@ const EmailAlertsSettingsCard = () => {
       setIsEnabled(settings.enabled);
       setSenderEmail(settings.sender_email);
       setRecipientEmail(settings.recipient_email);
+      setAppPassword(settings.app_password);
       setThresholdMinutes(String(settings.threshold_minutes));
-      // appPassword intentionally NOT synced — never pre-fill passwords
     }
   }, [settings]);
 
@@ -99,7 +99,7 @@ const EmailAlertsSettingsCard = () => {
       senderEmail !== settings.sender_email ||
       recipientEmail !== settings.recipient_email ||
       thresholdMinutes !== String(settings.threshold_minutes) ||
-      appPassword !== "" // typing any new password = dirty
+      appPassword !== settings.app_password
     );
   }, [
     settings,
@@ -130,15 +130,14 @@ const EmailAlertsSettingsCard = () => {
         threshold_minutes: parseInt(thresholdMinutes, 10),
       };
 
-      // Only include password when user typed a new one
-      if (appPassword !== "") {
+      // Only include password if it changed from the saved value
+      if (appPassword !== (settings?.app_password ?? "")) {
         payload.app_password = appPassword;
       }
 
       const success = await saveSettings(payload);
       if (success) {
         toast.success("Email alert settings saved");
-        setAppPassword(""); // clear after successful save
       } else {
         toast.error(error || "Failed to save email alert settings");
       }
@@ -167,7 +166,7 @@ const EmailAlertsSettingsCard = () => {
   // Test button enabled only when fully configured and saved
   const canSendTest =
     settings?.enabled &&
-    settings?.app_password_set &&
+    !!settings?.app_password &&
     EMAIL_REGEX.test(senderEmail) &&
     EMAIL_REGEX.test(recipientEmail) &&
     !isSaving &&
@@ -290,21 +289,12 @@ const EmailAlertsSettingsCard = () => {
               <Field>
                 <FieldLabel htmlFor="app-password">
                   Gmail App Password
-                  {settings?.app_password_set && (
-                    <span className="ml-2 text-xs text-success font-normal">
-                      (password saved)
-                    </span>
-                  )}
                 </FieldLabel>
                 <div className="relative max-w-sm">
                   <Input
                     id="app-password"
                     type={showPassword ? "text" : "password"}
-                    placeholder={
-                      settings?.app_password_set
-                        ? "Enter new password to replace"
-                        : "xxxx xxxx xxxx xxxx"
-                    }
+                    placeholder="xxxx xxxx xxxx xxxx"
                     className="pr-10"
                     value={appPassword}
                     onChange={(e) => setAppPassword(e.target.value)}
@@ -326,9 +316,16 @@ const EmailAlertsSettingsCard = () => {
                   </button>
                 </div>
                 <FieldDescription>
-                  Generate an App Password in your Google Account under Security
-                  &rsaquo; 2-Step Verification. Leave blank to keep the existing
-                  password.
+                  Generate an{" "}
+                  <a
+                    href="https://myaccount.google.com/apppasswords"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-info underline underline-offset-2 hover:text-info/80"
+                  >
+                    App Password
+                  </a>{" "}
+                  in your Google Account.
                 </FieldDescription>
               </Field>
 

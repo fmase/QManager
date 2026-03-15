@@ -20,8 +20,8 @@ export interface EmailAlertsSettings {
   enabled: boolean;
   sender_email: string;
   recipient_email: string;
-  /** Backend never returns the actual password — only whether one is set */
-  app_password_set: boolean;
+  /** Stored app password (empty string if not set) */
+  app_password: string;
   threshold_minutes: number;
 }
 

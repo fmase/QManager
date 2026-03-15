@@ -37,18 +37,11 @@ if [ "$REQUEST_METHOD" = "GET" ]; then
         app_password=$(jq -r '.app_password // ""' "$CONFIG" 2>/dev/null)
         threshold_minutes=$(jq -r '.threshold_minutes // 5' "$CONFIG" 2>/dev/null)
 
-        # Never return actual password — only whether it's set
-        if [ -n "$app_password" ]; then
-            app_password_set="true"
-        else
-            app_password_set="false"
-        fi
-
         jq -n \
             --argjson enabled "$enabled" \
             --arg sender_email "$sender_email" \
             --arg recipient_email "$recipient_email" \
-            --argjson app_password_set "$app_password_set" \
+            --arg app_password "$app_password" \
             --argjson threshold_minutes "$threshold_minutes" \
             '{
                 success: true,
@@ -56,13 +49,13 @@ if [ "$REQUEST_METHOD" = "GET" ]; then
                     enabled: $enabled,
                     sender_email: $sender_email,
                     recipient_email: $recipient_email,
-                    app_password_set: $app_password_set,
+                    app_password: $app_password,
                     threshold_minutes: $threshold_minutes
                 }
             }'
     else
         # No config yet — return defaults
-        echo '{"success":true,"settings":{"enabled":false,"sender_email":"","recipient_email":"","app_password_set":false,"threshold_minutes":5}}'
+        echo '{"success":true,"settings":{"enabled":false,"sender_email":"","recipient_email":"","app_password":"","threshold_minutes":5}}'
     fi
     exit 0
 fi
