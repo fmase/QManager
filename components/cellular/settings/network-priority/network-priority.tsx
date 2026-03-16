@@ -1,4 +1,3 @@
-import React from "react";
 import NetworkPriorityCard from "./network-priority-card";
 
 const NetworkPrioritySettings = () => {

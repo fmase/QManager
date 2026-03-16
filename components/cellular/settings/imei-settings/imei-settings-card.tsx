@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import { useState, useEffect, type FormEvent, type ChangeEvent } from "react";
 import { toast } from "sonner";
 import {
   Card,
@@ -71,7 +71,7 @@ const IMEISettingsCard = ({
   const hasChanged = imei !== (currentImei ?? "");
   const showImeiError = imei.length > 0 && !isValidImei;
 
-  const handleSave = async (e: React.FormEvent) => {
+  const handleSave = async (e: FormEvent) => {
     e.preventDefault();
 
     if (!isValidImei) return;
@@ -108,7 +108,7 @@ const IMEISettingsCard = ({
   };
 
   // Only allow digits in the input
-  const handleImeiChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImeiChange = (e: ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value.replace(/\D/g, "").slice(0, 15);
     setImei(value);
   };

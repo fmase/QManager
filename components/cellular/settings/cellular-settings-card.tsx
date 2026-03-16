@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import { useState, useEffect, type FormEvent } from "react";
 import { toast } from "sonner";
 import { Field, FieldGroup, FieldLabel, FieldSet } from "@/components/ui/field";
 import {
@@ -52,7 +52,7 @@ const CellularSettingsCard = ({
     }
   }, [settings]);
 
-  const handleSave = async (e: React.FormEvent) => {
+  const handleSave = async (e: FormEvent) => {
     e.preventDefault();
     if (!settings) return;
 
@@ -108,7 +108,7 @@ const CellularSettingsCard = ({
         </CardHeader>
         <CardContent>
           <div className="grid gap-4">
-            <div className="grid xl:grid-cols-2 grid-cols-1 gap-4">
+            <div className="grid @md/card:grid-cols-2 grid-cols-1 gap-4">
               <div className="space-y-2">
                 <Skeleton className="h-4 w-36" />
                 <Skeleton className="h-9 w-full" />
@@ -118,7 +118,7 @@ const CellularSettingsCard = ({
                 <Skeleton className="h-9 w-full" />
               </div>
             </div>
-            <div className="grid xl:grid-cols-2 grid-cols-1 gap-4">
+            <div className="grid @md/card:grid-cols-2 grid-cols-1 gap-4">
               <div className="space-y-2">
                 <Skeleton className="h-4 w-40" />
                 <Skeleton className="h-9 w-full" />
@@ -128,7 +128,7 @@ const CellularSettingsCard = ({
                 <Skeleton className="h-9 w-full" />
               </div>
             </div>
-            <div className="grid xl:grid-cols-2 grid-cols-1 gap-4">
+            <div className="grid @md/card:grid-cols-2 grid-cols-1 gap-4">
               <div className="space-y-2">
                 <Skeleton className="h-4 w-40" />
                 <Skeleton className="h-9 w-full" />
@@ -157,7 +157,7 @@ const CellularSettingsCard = ({
           <div className="w-full">
             <FieldSet>
               <FieldGroup>
-                <div className="grid xl:grid-cols-2 grid-cols-1 grid-flow-row gap-4">
+                <div className="grid @md/card:grid-cols-2 grid-cols-1 grid-flow-row gap-4">
                   <Field>
                     <FieldLabel>SIM Slot</FieldLabel>
                     <Select
@@ -196,7 +196,7 @@ const CellularSettingsCard = ({
                   </Field>
                 </div>
 
-                <div className="grid xl:grid-cols-2 grid-cols-1 grid-flow-row gap-4">
+                <div className="grid @md/card:grid-cols-2 grid-cols-1 grid-flow-row gap-4">
                   <Field>
                     <FieldLabel>Preferred Network Type</FieldLabel>
                     <Select
@@ -235,7 +235,7 @@ const CellularSettingsCard = ({
                   </Field>
                 </div>
 
-                <div className="grid xl:grid-cols-2 grid-cols-1 grid-flow-row gap-4">
+                <div className="grid @md/card:grid-cols-2 grid-cols-1 grid-flow-row gap-4">
                   <Field>
                     <FieldLabel>Roaming Preference</FieldLabel>
                     <Select

@@ -1,6 +1,5 @@
 "use client";
 
-import React from "react";
 import IMEISettingsCard from "./imei-settings-card";
 import BackupIMEICard from "./backup-imei-card";
 import { useImeiSettings } from "@/hooks/use-imei-settings";

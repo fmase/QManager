@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import { useState, useEffect, type FormEvent } from "react";
 import { toast } from "sonner";
 import {
   Card,
@@ -103,7 +103,7 @@ const APNSettingsCard = ({
     }
   };
 
-  const handleSave = async (e: React.FormEvent) => {
+  const handleSave = async (e: FormEvent) => {
     e.preventDefault();
     if (!profiles) return;
 
@@ -148,7 +148,7 @@ const APNSettingsCard = ({
         </CardHeader>
         <CardContent>
           <div className="grid gap-4">
-            <div className="grid xl:grid-cols-2 grid-cols-1 gap-4">
+            <div className="grid @md/card:grid-cols-2 grid-cols-1 gap-4">
               <div className="space-y-2">
                 <Skeleton className="h-4 w-28" />
                 <Skeleton className="h-9 w-full" />
@@ -158,7 +158,7 @@ const APNSettingsCard = ({
                 <Skeleton className="h-9 w-full" />
               </div>
             </div>
-            <div className="grid xl:grid-cols-2 grid-cols-1 gap-4">
+            <div className="grid @md/card:grid-cols-2 grid-cols-1 gap-4">
               <div className="space-y-2">
                 <Skeleton className="h-4 w-32" />
                 <Skeleton className="h-9 w-full" />
@@ -192,7 +192,7 @@ const APNSettingsCard = ({
           <div className="w-full">
             <FieldSet>
               <FieldGroup>
-                <div className="grid xl:grid-cols-2 grid-cols-1 grid-flow-row gap-4">
+                <div className="grid @md/card:grid-cols-2 grid-cols-1 grid-flow-row gap-4">
                   <Field>
                     <FieldLabel htmlFor="active-apn">Active APN *</FieldLabel>
                     <Input
@@ -231,7 +231,7 @@ const APNSettingsCard = ({
                   </Field>
                 </div>
 
-                <div className="grid xl:grid-cols-2 grid-cols-1 grid-flow-row gap-4">
+                <div className="grid @md/card:grid-cols-2 grid-cols-1 grid-flow-row gap-4">
                   <Field>
                     <FieldLabel>Connection Profile</FieldLabel>
                     <Select

@@ -1,6 +1,5 @@
 "use client";
 
-import React from "react";
 import APNSettingsCard from "./apn-card";
 import MBNCard from "./mbn-card";
 import { useApnSettings } from "@/hooks/use-apn-settings";

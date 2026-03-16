@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { toast } from "sonner";
 import {
   closestCenter,
@@ -45,10 +45,10 @@ const RAT_DISPLAY: Record<string, string> = {
   WCDMA: "WCDMA",
 };
 
-const RAT_COLORS: Record<string, string> = {
-  NR5G: "bg-info",
-  LTE: "bg-success",
-  WCDMA: "bg-destructive",
+const RAT_COLORS: Record<string, { bg: string; fg: string }> = {
+  NR5G: { bg: "bg-info", fg: "text-info-foreground" },
+  LTE: { bg: "bg-success", fg: "text-success-foreground" },
+  WCDMA: { bg: "bg-destructive", fg: "text-destructive-foreground" },
 };
 
 interface NetworkItem {
@@ -107,10 +107,10 @@ function DraggableNetworkItem({
       <div className="flex items-center gap-x-3">
         <div
           className={`rounded-lg size-7 p-1 ${
-            RAT_COLORS[network.id] || "bg-gray-600"
+            RAT_COLORS[network.id]?.bg ?? "bg-muted-foreground"
           } flex justify-center items-center`}
         >
-          <AiFillSignal className="size-4 text-white" />
+          <AiFillSignal className={`size-4 ${RAT_COLORS[network.id]?.fg ?? "text-background"}`} />
         </div>
         <span className="font-medium text-sm">{network.name}</span>
       </div>

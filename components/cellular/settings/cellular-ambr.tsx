@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import { Fragment } from "react";
 import {
   Card,
   CardContent,
@@ -95,7 +95,7 @@ const CellularAMBRCard = ({ ambr, isLoading }: CellularAMBRCardProps) => {
             <Separator />
             {ambr && ambr.lte.length > 0 ? (
               ambr.lte.map((entry, index) => (
-                <React.Fragment key={`lte-${index}`}>
+                <Fragment key={`lte-${index}`}>
                   <div className="flex items-center justify-between">
                     <p className="font-semibold text-muted-foreground text-sm">
                       {entry.apn}
@@ -116,7 +116,7 @@ const CellularAMBRCard = ({ ambr, isLoading }: CellularAMBRCardProps) => {
                     </div>
                   </div>
                   <Separator />
-                </React.Fragment>
+                </Fragment>
               ))
             ) : (
               <>
@@ -153,7 +153,7 @@ const CellularAMBRCard = ({ ambr, isLoading }: CellularAMBRCardProps) => {
             <Separator />
             {ambr && ambr.nr5g.length > 0 ? (
               ambr.nr5g.map((entry, index) => (
-                <React.Fragment key={`nr5g-${index}`}>
+                <Fragment key={`nr5g-${index}`}>
                   <div className="flex items-center justify-between">
                     <p className="font-semibold text-muted-foreground text-sm">
                       {entry.dnn}
@@ -174,7 +174,7 @@ const CellularAMBRCard = ({ ambr, isLoading }: CellularAMBRCardProps) => {
                     </div>
                   </div>
                   <Separator />
-                </React.Fragment>
+                </Fragment>
               ))
             ) : (
               <>

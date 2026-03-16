@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import { useState, useEffect, type FormEvent } from "react";
 import { toast } from "sonner";
 import {
   Card,
@@ -68,7 +68,7 @@ const MBNCard = ({
     }
   }, [profiles, autoSel]);
 
-  const handleSave = async (e: React.FormEvent) => {
+  const handleSave = async (e: FormEvent) => {
     e.preventDefault();
     if (!profiles) return;
 
@@ -149,11 +149,11 @@ const MBNCard = ({
         </CardHeader>
         <CardContent>
           <div className="grid gap-4">
-            <div className="space-y-2 max-w-md">
+            <div className="space-y-2 ">
               <Skeleton className="h-4 w-36" />
               <Skeleton className="h-9 w-full" />
             </div>
-            <div className="space-y-2 max-w-md">
+            <div className="space-y-2 ">
               <Skeleton className="h-4 w-44" />
               <Skeleton className="h-9 w-full" />
             </div>
@@ -180,8 +180,8 @@ const MBNCard = ({
           <div className="w-full">
             <FieldSet>
               <FieldGroup>
-                <Field className="max-w-md">
-                  <FieldLabel>Auto-Select Profile</FieldLabel>
+                <Field>
+                  <FieldLabel htmlFor="mbn-auto-select">Auto-Select Profile</FieldLabel>
                   <Select
                     value={
                       localAutoSel ||
@@ -190,7 +190,7 @@ const MBNCard = ({
                     onValueChange={setLocalAutoSel}
                     disabled={isSaving}
                   >
-                    <SelectTrigger aria-label="Auto-Select Profile">
+                    <SelectTrigger id="mbn-auto-select" aria-label="Auto-Select Profile">
                       <SelectValue placeholder="Choose Auto-Select" />
                     </SelectTrigger>
                     <SelectContent>
@@ -200,8 +200,8 @@ const MBNCard = ({
                   </Select>
                 </Field>
 
-                <Field className="max-w-md">
-                  <FieldLabel>Carrier Configuration</FieldLabel>
+                <Field>
+                  <FieldLabel htmlFor="mbn-carrier-config">Carrier Configuration</FieldLabel>
                   <Select
                     value={
                       selectedProfile ||
@@ -212,7 +212,7 @@ const MBNCard = ({
                     onValueChange={setSelectedProfile}
                     disabled={isSaving || localAutoSel === "1"}
                   >
-                    <SelectTrigger aria-label="Carrier Configuration">
+                    <SelectTrigger id="mbn-carrier-config" aria-label="Carrier Configuration">
                       <SelectValue placeholder="Choose Carrier Configuration" />
                     </SelectTrigger>
                     <SelectContent>

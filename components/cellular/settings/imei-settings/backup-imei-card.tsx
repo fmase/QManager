@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import { useState, useEffect, type FormEvent, type ChangeEvent } from "react";
 import { toast } from "sonner";
 import {
   Card,
@@ -93,7 +93,7 @@ const BackupIMEICard = ({
     // Switch stays OFF
   };
 
-  const handleSave = async (e: React.FormEvent) => {
+  const handleSave = async (e: FormEvent) => {
     e.preventDefault();
 
     if (localEnabled && !isValidImei) {
@@ -128,7 +128,7 @@ const BackupIMEICard = ({
   };
 
   // Only allow digits in the input
-  const handleImeiChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImeiChange = (e: ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value.replace(/\D/g, "").slice(0, 15);
     setLocalImei(value);
   };

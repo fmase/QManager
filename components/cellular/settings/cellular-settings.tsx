@@ -1,6 +1,5 @@
 "use client";
 
-import React from "react";
 import CellularSettingsCard from "./cellular-settings-card";
 import CellularAMBRCard from "./cellular-ambr";
 import { useCellularSettings } from "@/hooks/use-cellular-settings";
