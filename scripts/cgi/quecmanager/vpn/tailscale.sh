@@ -79,7 +79,7 @@ if [ "$REQUEST_METHOD" = "GET" ]; then
         jq -n '{
             success: true,
             installed: false,
-            install_hint: "opkg update && opkg install tailscale tailscaled"
+            install_hint: "opkg update && opkg install luci-app-tailscale"
         }'
         exit 0
     fi
@@ -230,7 +230,7 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
 
     # All POST actions require tailscale to be installed
     if ! is_installed; then
-        cgi_error "not_installed" "Tailscale is not installed. Install via: opkg update && opkg install tailscale tailscaled"
+        cgi_error "not_installed" "Tailscale is not installed. Install via: opkg update && opkg install luci-app-tailscale"
         exit 0
     fi
 

@@ -165,7 +165,7 @@ export function TailscaleConnectionCard({
               onClick={() => {
                 const cmd =
                   status.install_hint ||
-                  "opkg update && opkg install tailscale tailscaled";
+                  "opkg update && opkg install luci-app-tailscale";
                 navigator.clipboard.writeText(cmd).then(() => {
                   toast.success("Copied to clipboard");
                 });
@@ -173,7 +173,7 @@ export function TailscaleConnectionCard({
               title="Click to copy"
             >
               {status.install_hint ||
-                "opkg update && opkg install tailscale tailscaled"}
+                "opkg update && opkg install luci-app-tailscale"}
             </button>
             <Button variant="outline" size="sm" onClick={() => refresh()}>
               <RefreshCcwIcon className="size-3.5" />
