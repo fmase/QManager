@@ -75,15 +75,20 @@ EOF
     procd_close_instance
 
     # -----------------------------------------------------------------
-    # Instance 3: Watchcat Daemon (future — uncomment when implemented)
+    # Instance 3: Watchcat Daemon (connection health monitor)
+    # Only starts if enabled in UCI config.
     # -----------------------------------------------------------------
-    # procd_open_instance "watchcat"
-    # procd_set_param command /usr/bin/qmanager_watchcat
-    # procd_set_param env QLOG_LEVEL="$log_level"
-    # procd_set_param stdout 1
-    # procd_set_param stderr 1
-    # procd_set_param respawn 3600 5 5
-    # procd_close_instance
+    local wc_enabled
+    wc_enabled=$(uci -q get quecmanager.watchcat.enabled 2>/dev/null)
+    if [ "$wc_enabled" = "1" ]; then
+        procd_open_instance "watchcat"
+        procd_set_param command /usr/bin/qmanager_watchcat
+        procd_set_param env QLOG_LEVEL="$log_level"
+        procd_set_param stdout 1
+        procd_set_param stderr 1
+        procd_set_param respawn 3600 5 5
+        procd_close_instance
+    fi
 
     # Tower failover daemon is managed by its own init.d script:
     # /etc/init.d/qmanager_tower_failover (enable it once after install)
@@ -94,6 +99,8 @@ stop_service() {
     rm -f /tmp/qmanager_long_running
     rm -f /var/lock/qmanager.pid
     rm -f /tmp/qmanager_recovery_active
+    rm -f /tmp/qmanager_watchcat.pid
+    rm -f /tmp/qmanager_watchcat.lock
     # Note: Ping cache and history are left for post-mortem debugging
     # Note: Logs in /tmp/qmanager.log are preserved for post-mortem debugging
 }

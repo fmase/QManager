@@ -127,6 +127,15 @@ detect_scc_pci_changes() {
 # Data connection quality checks (debounced — 3 consecutive readings)
 # ---------------------------------------------------------------------------
 detect_data_connection_events() {
+    # Suppress internet events during active watchcat recovery.
+    # Prevents spurious internet_lost/restored events from recovery actions
+    # (Tier 1 ifup/ifdown, Tier 2 CFUN toggle, Tier 3 SIM switch).
+    # Also prevents email alerts from firing during recovery.
+    if [ "$conn_during_recovery" = "true" ]; then
+        prev_ev_internet="$conn_internet_available"   # keep state in sync
+        return
+    fi
+
     # --- Internet connectivity ---
     if [ "$conn_internet_available" != "$prev_ev_internet" ]; then
         if [ "$conn_internet_available" = "true" ] && [ "$prev_ev_internet" = "false" ]; then

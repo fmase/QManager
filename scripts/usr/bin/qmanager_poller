@@ -430,6 +430,41 @@ collect_boot_data() {
     fi
     sleep "$SIP_DELAY"
 
+    # --- SIM Swap Detection (boot-time, one-shot) ---
+    LAST_ICCID_FILE="/etc/qmanager/last_iccid"
+    SIM_SWAP_FLAG="/tmp/qmanager_sim_swap_detected"
+    if [ -n "$boot_iccid" ]; then
+        if [ -f "$LAST_ICCID_FILE" ]; then
+            local stored_iccid
+            stored_iccid=$(cat "$LAST_ICCID_FILE" 2>/dev/null | tr -d ' \r\n')
+            if [ -n "$stored_iccid" ] && [ "$stored_iccid" != "$boot_iccid" ]; then
+                qlog_warn "SIM SWAP DETECTED: old=...${stored_iccid: -4} new=...${boot_iccid: -4}"
+                local match_name="" match_id=""
+                local pf
+                for pf in /etc/qmanager/profiles/*.json; do
+                    [ -f "$pf" ] || continue
+                    local pf_iccid
+                    pf_iccid=$(jq -r '(.sim_iccid) | if . == null then empty else . end' "$pf" 2>/dev/null)
+                    if [ "$pf_iccid" = "$boot_iccid" ]; then
+                        match_name=$(jq -r '(.name) | if . == null then empty else . end' "$pf" 2>/dev/null)
+                        match_id=$(jq -r '(.id) | if . == null then empty else . end' "$pf" 2>/dev/null)
+                        break
+                    fi
+                done
+                jq -n -c \
+                    --argjson ts "$(date +%s)" \
+                    --arg prev "$stored_iccid" \
+                    --arg curr "$boot_iccid" \
+                    --arg pid "$match_id" \
+                    --arg pname "$match_name" \
+                    '{detected_at:$ts,previous_iccid:$prev,current_iccid:$curr,matching_profile_id:$pid,matching_profile_name:$pname,dismissed:false}' \
+                    > "$SIM_SWAP_FLAG"
+                append_event "sim_swap_detected" "New SIM detected (ICCID: ...${boot_iccid: -4})" "info"
+            fi
+        fi
+        printf '%s' "$boot_iccid" > "$LAST_ICCID_FILE"
+    fi
+
     # Phone number — AT+CNUM
     result=$(qcmd_exec 'AT+CNUM')
     if [ $? -eq 0 ]; then
@@ -916,6 +951,92 @@ read_ping_data() {
 }
 
 # =============================================================================
+# WATCHCAT & SIM STATE READERS
+# =============================================================================
+
+# Watchcat state variables (populated by read_watchcat_state)
+wc_enabled="false"
+wc_state="disabled"
+wc_current_tier=0
+wc_failure_count=0
+wc_last_recovery_time="null"
+wc_last_recovery_tier="null"
+wc_total_recoveries=0
+wc_cooldown_remaining=0
+wc_reboots_this_hour=0
+WATCHCAT_CACHE="/tmp/qmanager_watchcat.json"
+
+# SIM failover state variables
+sim_fo_active="false"
+sim_fo_original_slot="null"
+sim_fo_current_slot="null"
+sim_fo_switched_at="null"
+SIM_FAILOVER_FILE="/tmp/qmanager_sim_failover"
+
+# SIM swap detection state variables
+sim_swap_detected="false"
+sim_swap_profile_id=""
+sim_swap_profile_name=""
+
+read_watchcat_state() {
+    if [ ! -f "$WATCHCAT_CACHE" ]; then
+        wc_enabled="false"; wc_state="disabled"
+        return
+    fi
+    local _wdata
+    _wdata=$(jq -r '[
+        ((.enabled) | if . == null then "false" else tostring end),
+        (.state // "unknown"),
+        ((.current_tier) | if . == null then "0" else tostring end),
+        ((.failure_count) | if . == null then "0" else tostring end),
+        ((.last_recovery_time) | if . == null then "null" else tostring end),
+        ((.last_recovery_tier) | if . == null then "null" else tostring end),
+        ((.total_recoveries) | if . == null then "0" else tostring end),
+        ((.cooldown_remaining) | if . == null then "0" else tostring end),
+        ((.reboots_this_hour) | if . == null then "0" else tostring end)
+    ] | @tsv' "$WATCHCAT_CACHE" 2>/dev/null)
+
+    [ -z "$_wdata" ] && return
+
+    wc_enabled=$(printf '%s' "$_wdata" | cut -f1)
+    wc_state=$(printf '%s' "$_wdata" | cut -f2)
+    wc_current_tier=$(printf '%s' "$_wdata" | cut -f3)
+    wc_failure_count=$(printf '%s' "$_wdata" | cut -f4)
+    wc_last_recovery_time=$(printf '%s' "$_wdata" | cut -f5)
+    wc_last_recovery_tier=$(printf '%s' "$_wdata" | cut -f6)
+    wc_total_recoveries=$(printf '%s' "$_wdata" | cut -f7)
+    wc_cooldown_remaining=$(printf '%s' "$_wdata" | cut -f8)
+    wc_reboots_this_hour=$(printf '%s' "$_wdata" | cut -f9)
+}
+
+read_sim_state() {
+    # SIM swap flag (boot-time, changes rarely)
+    sim_swap_detected="false"
+    sim_swap_profile_id=""
+    sim_swap_profile_name=""
+    if [ -f "$SIM_SWAP_FLAG" ]; then
+        local _dismissed
+        _dismissed=$(jq -r '(.dismissed) | if . == null then "false" else tostring end' "$SIM_SWAP_FLAG" 2>/dev/null)
+        if [ "$_dismissed" != "true" ]; then
+            sim_swap_detected="true"
+            sim_swap_profile_id=$(jq -r '.matching_profile_id // empty' "$SIM_SWAP_FLAG" 2>/dev/null)
+            sim_swap_profile_name=$(jq -r '.matching_profile_name // empty' "$SIM_SWAP_FLAG" 2>/dev/null)
+        fi
+    fi
+    # SIM failover state (written by watchcat Tier 3)
+    sim_fo_active="false"
+    sim_fo_original_slot="null"
+    sim_fo_current_slot="null"
+    sim_fo_switched_at="null"
+    if [ -f "$SIM_FAILOVER_FILE" ]; then
+        sim_fo_active=$(jq -r '(.active) | if . == null then "false" else tostring end' "$SIM_FAILOVER_FILE" 2>/dev/null)
+        sim_fo_original_slot=$(jq -r '(.original_slot) | if . == null then "null" else tostring end' "$SIM_FAILOVER_FILE" 2>/dev/null)
+        sim_fo_current_slot=$(jq -r '(.current_slot) | if . == null then "null" else tostring end' "$SIM_FAILOVER_FILE" 2>/dev/null)
+        sim_fo_switched_at=$(jq -r '(.switched_at) | if . == null then "null" else tostring end' "$SIM_FAILOVER_FILE" 2>/dev/null)
+    fi
+}
+
+# =============================================================================
 # JSON CACHE WRITER
 # =============================================================================
 
@@ -1023,6 +1144,22 @@ write_cache() {
         --argjson hist_int "${conn_history_interval:-2}" \
         --argjson hist_size "${CONN_HISTORY_SIZE:-60}" \
         --argjson during_rec "${conn_during_recovery:-false}" \
+        --argjson wc_enabled "${wc_enabled:-false}" \
+        --arg wc_state "${wc_state:-disabled}" \
+        --argjson wc_tier "${wc_current_tier:-0}" \
+        --argjson wc_failures "${wc_failure_count:-0}" \
+        --argjson wc_last_time "${wc_last_recovery_time:-null}" \
+        --argjson wc_last_tier "${wc_last_recovery_tier:-null}" \
+        --argjson wc_total "${wc_total_recoveries:-0}" \
+        --argjson wc_cooldown "${wc_cooldown_remaining:-0}" \
+        --argjson wc_reboots "${wc_reboots_this_hour:-0}" \
+        --argjson sf_active "${sim_fo_active:-false}" \
+        --argjson sf_orig "${sim_fo_original_slot:-null}" \
+        --argjson sf_curr "${sim_fo_current_slot:-null}" \
+        --argjson sf_time "${sim_fo_switched_at:-null}" \
+        --argjson ss_detected "${sim_swap_detected:-false}" \
+        --arg ss_profile_id "$sim_swap_profile_id" \
+        --arg ss_profile_name "$sim_swap_profile_name" \
         '{
             timestamp: $timestamp,
             system_state: $system_state,
@@ -1096,6 +1233,26 @@ write_cache() {
                 ping_target: $ping_tgt, latency_history: $lat_hist,
                 history_interval_sec: $hist_int, history_size: $hist_size,
                 during_recovery: $during_rec
+            },
+            watchcat: {
+                enabled: $wc_enabled, state: $wc_state,
+                current_tier: $wc_tier, failure_count: $wc_failures,
+                last_recovery_time: $wc_last_time,
+                last_recovery_tier: $wc_last_tier,
+                total_recoveries: $wc_total,
+                cooldown_remaining: $wc_cooldown,
+                reboots_this_hour: $wc_reboots
+            },
+            sim_failover: {
+                active: $sf_active,
+                original_slot: $sf_orig,
+                current_slot: $sf_curr,
+                switched_at: $sf_time
+            },
+            sim_swap: {
+                detected: $ss_detected,
+                matching_profile_id: $ss_profile_id,
+                matching_profile_name: $ss_profile_name
             }
         }' > "$CACHE_TMP"
 
@@ -1134,15 +1291,17 @@ poll_cycle() {
     poll_serving_cell
     sleep "$SIP_DELAY"
 
-    # Tier 1.5 (per-antenna signal history)
+    # Tier 1.5 (per-antenna signal history + watchcat state)
     if [ $((cycle_count % TIER1_5_EVERY)) -eq 0 ]; then
         poll_per_antenna_signal
         sleep "$SIP_DELAY"
+        read_watchcat_state
     fi
 
-    # Tier 2
+    # Tier 2 (warm data + SIM state)
     if [ $((cycle_count % TIER2_EVERY)) -eq 0 ]; then
         poll_tier2
+        read_sim_state
     fi
 
     # Ping history (every Tier 1.5 interval — 10s)
