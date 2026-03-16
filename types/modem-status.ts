@@ -218,6 +218,8 @@ export interface DeviceStatus {
   build_date: string;
   /** Modem manufacturer, e.g. "Quectel" (from AT+CVERSION) */
   manufacturer: string;
+  /** Modem model name, e.g. "RM551E-GL" (from AT+CGMM) */
+  model: string;
   /** Device IMEI (15-digit) */
   imei: string;
   /** SIM IMSI */

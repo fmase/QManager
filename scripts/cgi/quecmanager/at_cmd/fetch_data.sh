@@ -45,7 +45,7 @@ else
   "device": {
     "temperature": null, "cpu_usage": 0, "memory_used_mb": 0, "memory_total_mb": 0,
     "uptime_seconds": 0, "conn_uptime_seconds": 0,
-    "firmware": "", "build_date": "", "manufacturer": "",
+    "firmware": "", "build_date": "", "manufacturer": "", "model": "",
     "imei": "", "imsi": "", "iccid": "", "phone_number": "",
     "lte_category": "", "mimo": ""
   },

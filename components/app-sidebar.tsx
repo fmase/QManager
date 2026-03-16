@@ -59,9 +59,8 @@ const data = {
   navSecondary: [
     {
       title: "About Device",
-      url: "#",
+      url: "/about-device",
       icon: RouterIcon,
-      disabled: true,
     },
     {
       title: "Support",

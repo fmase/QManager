@@ -81,6 +81,7 @@ ev_loss_alerted=false
 boot_firmware=""
 boot_build_date=""
 boot_manufacturer=""
+boot_model=""
 boot_imei=""
 boot_imsi=""
 boot_iccid=""
@@ -409,6 +410,13 @@ collect_boot_data() {
     fi
     sleep "$SIP_DELAY"
 
+    # Modem model — AT+CGMM (e.g. "RM551E-GL")
+    result=$(qcmd_exec 'AT+CGMM')
+    if [ $? -eq 0 ]; then
+        boot_model=$(printf '%s\n' "$result" | grep -v '^$' | grep -v '^AT' | grep -v '^OK' | head -1 | tr -d '\r')
+    fi
+    sleep "$SIP_DELAY"
+
     # IMEI — AT+CGSN
     result=$(qcmd_exec 'AT+CGSN')
     if [ $? -eq 0 ]; then
@@ -535,7 +543,7 @@ collect_boot_data() {
     [ $? -eq 0 ] && parse_ippt_dhcpv4dns "$result"
     sleep "$SIP_DELAY"
 
-    log_info "Boot data: FW=$boot_firmware BUILD=$boot_build_date MFG=$boot_manufacturer"
+    log_info "Boot data: FW=$boot_firmware BUILD=$boot_build_date MFG=$boot_manufacturer MODEL=$boot_model"
     log_info "Boot data: IMEI=$boot_imei IMSI=$boot_imsi ICCID=$boot_iccid"
     log_info "Boot data: PHONE=$boot_phone_number CAT=$boot_lte_category MIMO=$t2_mimo"
     log_info "Boot data: LTE_BANDS=$boot_supported_lte_bands NSA_BANDS=$boot_supported_nsa_nr5g_bands SA_BANDS=$boot_supported_sa_nr5g_bands"
@@ -1113,6 +1121,7 @@ write_cache() {
         --arg firmware "$boot_firmware" \
         --arg build_date "$boot_build_date" \
         --arg mfr "$boot_manufacturer" \
+        --arg model "$boot_model" \
         --arg imei "$boot_imei" \
         --arg imsi "$boot_imsi" \
         --arg iccid "$boot_iccid" \
@@ -1209,7 +1218,8 @@ write_cache() {
                 memory_used_mb: $mem_used, memory_total_mb: $mem_total,
                 uptime_seconds: $uptime, conn_uptime_seconds: $conn_up,
                 firmware: $firmware, build_date: $build_date,
-                manufacturer: $mfr, imei: $imei, imsi: $imsi,
+                manufacturer: $mfr, model: $model,
+                imei: $imei, imsi: $imsi,
                 iccid: $iccid, phone_number: $phone,
                 lte_category: $lte_cat, mimo: $mimo,
                 supported_lte_bands: $sup_lte,

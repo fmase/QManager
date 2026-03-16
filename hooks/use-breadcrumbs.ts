@@ -38,6 +38,7 @@ const routeNameMap: Record<string, string> = {
   'email-alerts': 'Email Alerts',
   watchdog: 'Watchdog',
   tailscale: 'Tailscale',
+  'about-device': 'About Device',
 };
 
 export function useBreadcrumbs(): BreadcrumbItem[] {
