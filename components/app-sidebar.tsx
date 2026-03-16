@@ -193,9 +193,8 @@ const data = {
     },
     {
       title: "Tailscale",
-      url: "#",
+      url: "/monitoring/tailscale",
       icon: MonitorCloudIcon,
-      disabled: true,
     },
     {
       title: "Watchdog",

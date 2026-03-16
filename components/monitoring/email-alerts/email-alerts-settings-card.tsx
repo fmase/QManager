@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { toast } from "sonner";
 
 import {
@@ -29,6 +29,7 @@ import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import {
   useEmailAlerts,
   type EmailAlertsSavePayload,
+  type EmailAlertsSettings,
 } from "@/hooks/use-email-alerts";
 
 // =============================================================================
@@ -53,7 +54,8 @@ const EmailAlertsSettingsCard = ({ onTestEmailSent }: EmailAlertsSettingsCardPro
     refresh,
   } = useEmailAlerts();
 
-  // --- Local form state (synced from hook via useEffect) ---------------------
+  // --- Local form state (synced from server data during render) --------------
+  const [prevSettings, setPrevSettings] = useState<EmailAlertsSettings | null>(null);
   const [isEnabled, setIsEnabled] = useState(false);
   const [senderEmail, setSenderEmail] = useState("");
   const [recipientEmail, setRecipientEmail] = useState("");
@@ -61,16 +63,15 @@ const EmailAlertsSettingsCard = ({ onTestEmailSent }: EmailAlertsSettingsCardPro
   const [thresholdMinutes, setThresholdMinutes] = useState("5");
   const [showPassword, setShowPassword] = useState(false);
 
-  // Sync form state when server data arrives
-  useEffect(() => {
-    if (settings) {
-      setIsEnabled(settings.enabled);
-      setSenderEmail(settings.sender_email);
-      setRecipientEmail(settings.recipient_email);
-      setAppPassword(settings.app_password);
-      setThresholdMinutes(String(settings.threshold_minutes));
-    }
-  }, [settings]);
+  // Adjust state during render when server data changes (React-recommended pattern)
+  if (settings && settings !== prevSettings) {
+    setPrevSettings(settings);
+    setIsEnabled(settings.enabled);
+    setSenderEmail(settings.sender_email);
+    setRecipientEmail(settings.recipient_email);
+    setAppPassword(settings.app_password);
+    setThresholdMinutes(String(settings.threshold_minutes));
+  }
 
   // --- Validation ------------------------------------------------------------
   const senderEmailError =
