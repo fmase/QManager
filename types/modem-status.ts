@@ -34,6 +34,12 @@ export interface ModemStatus {
   connectivity: ConnectivityStatus;
   /** Per-antenna signal values (from AT+QRSRP/QRSRQ/QSINR, Tier 1.5) */
   signal_per_antenna: SignalPerAntenna;
+  /** Watchcat state machine data */
+  watchcat: WatchcatStatus;
+  /** SIM failover state (active when running on backup SIM) */
+  sim_failover: SimFailoverStatus;
+  /** SIM swap detection (physical SIM card change at boot) */
+  sim_swap: SimSwapStatus;
 }
 
 // --- Enums & Unions ----------------------------------------------------------
@@ -328,6 +334,41 @@ export interface ConnectivityStatus {
   during_recovery: boolean;
 }
 
+// --- Watchcat State (from /tmp/qmanager_watchcat.json via poller) ------------
+
+export type WatchcatState =
+  | "monitor"
+  | "suspect"
+  | "recovery"
+  | "cooldown"
+  | "locked"
+  | "disabled";
+
+export interface WatchcatStatus {
+  enabled: boolean;
+  state: WatchcatState;
+  current_tier: number;
+  failure_count: number;
+  last_recovery_time: number | null;
+  last_recovery_tier: number | null;
+  total_recoveries: number;
+  cooldown_remaining: number;
+  reboots_this_hour: number;
+}
+
+export interface SimFailoverStatus {
+  active: boolean;
+  original_slot: number | null;
+  current_slot: number | null;
+  switched_at: number | null;
+}
+
+export interface SimSwapStatus {
+  detected: boolean;
+  matching_profile_id: string | null;
+  matching_profile_name: string | null;
+}
+
 // --- Per-Antenna Signal Data -------------------------------------------------
 
 /**
@@ -441,7 +482,10 @@ export type NetworkEventType =
   | "high_latency"        // Latency exceeded 90ms threshold
   | "latency_recovered"   // Latency returned below threshold
   | "high_packet_loss"    // Packet loss exceeded 20% threshold
-  | "packet_loss_recovered"; // Packet loss returned below threshold
+  | "packet_loss_recovered" // Packet loss returned below threshold
+  | "watchcat_recovery"   // Watchcat executed a recovery action (Tier 1-4)
+  | "sim_failover"        // SIM failover event (Tier 3 switch/fallback)
+  | "sim_swap_detected";  // Physical SIM card swap detected at boot
 
 /** Severity level for UI icon coloring */
 export type EventSeverity = "info" | "warning" | "error";

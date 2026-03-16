@@ -20,6 +20,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { AppSidebar } from "@/components/app-sidebar";
 import { useBreadcrumbs } from "@/hooks/use-breadcrumbs";
+import { SimSwapBanner } from "@/components/monitoring/watchdog/sim-swap-banner";
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const breadcrumbs = useBreadcrumbs();
@@ -67,6 +68,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             </Breadcrumb>
           </div>
         </header>
+        <SimSwapBanner />
         <div id="main-content" className="px-2 lg:px-6 py-4">{children}</div>
       </SidebarInset>
     </SidebarProvider>

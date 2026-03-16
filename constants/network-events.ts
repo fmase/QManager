@@ -16,6 +16,9 @@ export const EVENT_LABELS: Record<NetworkEventType, string> = {
   latency_recovered: "Latency Recovered",
   high_packet_loss: "High Packet Loss",
   packet_loss_recovered: "Packet Loss Recovered",
+  watchcat_recovery: "Watchdog Recovery",
+  sim_failover: "SIM Failover",
+  sim_swap_detected: "SIM Swap Detected",
 };
 
 /** Tab categories used by the monitoring Network Events card */
@@ -38,4 +41,7 @@ export const EVENT_TAB_CATEGORIES: Record<NetworkEventType, EventTabCategory> =
     latency_recovered: "dataConnection",
     high_packet_loss: "dataConnection",
     packet_loss_recovered: "dataConnection",
+    watchcat_recovery: "dataConnection",
+    sim_failover: "dataConnection",
+    sim_swap_detected: "dataConnection",
   };

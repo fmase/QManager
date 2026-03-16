@@ -9,7 +9,6 @@ import {
   HomeIcon,
   RadioTowerIcon,
   LucideSignal,
-  RadarIcon,
   MailIcon,
   EthernetPortIcon,
   MonitorCloudIcon,
@@ -21,6 +20,7 @@ import {
   TimerIcon,
   User2Icon,
   HeartIcon,
+  ScanIcon
 } from "lucide-react";
 
 import QManagerLogo from "@/public/qmanager-logo.svg";
@@ -116,7 +116,7 @@ const data = {
     {
       title: "Cell Scanner",
       url: "/cellular/cell-scanner",
-      icon: RadarIcon,
+      icon: ScanIcon,
       items: [
         {
           title: "Neighboring Cells",
@@ -199,9 +199,8 @@ const data = {
     },
     {
       title: "Watchdog",
-      url: "#",
+      url: "/monitoring/watchdog",
       icon: DogIcon,
-      disabled: true,
     },
     {
       title: "Logs",
