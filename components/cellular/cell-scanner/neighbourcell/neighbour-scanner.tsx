@@ -12,7 +12,6 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
 import { DownloadIcon, LoaderCircleIcon, RefreshCcwIcon } from "lucide-react";
 import {
   AlertDialog,
@@ -25,16 +24,17 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
+import { downloadCSV } from "@/lib/download-csv";
+import { ScannerSkeleton } from "@/components/cellular/cell-scanner/scanner-skeleton";
 import ScannerEmptyView from "@/components/cellular/cell-scanner/empty-view";
 import NeighbourScanResultView, {
   type NeighbourCellResult,
 } from "./neighbour-scan-result";
 import { useNeighbourScanner } from "@/hooks/use-neighbour-scanner";
 
-// --- CSV Export Utility ------------------------------------------------------
-function downloadCSV(results: NeighbourCellResult[]) {
-  const header = "Network,Cell Type,Frequency,PCI,Signal (dBm),RSRQ,RSSI,SINR";
-  const rows = results.map((r) =>
+// --- CSV row builder for neighbour scan results ------------------------------
+function buildCsvRows(results: NeighbourCellResult[]): string[] {
+  return results.map((r) =>
     [
       r.networkType,
       r.cellType,
@@ -46,58 +46,10 @@ function downloadCSV(results: NeighbourCellResult[]) {
       r.sinr ?? "",
     ].join(","),
   );
-  const csvContent = [header, ...rows].join("\r\n");
-  const filename = `neighbour_scan_${new Date().toISOString().slice(0, 10)}.csv`;
-
-  const encodedUri =
-    "data:text/csv;charset=utf-8," + encodeURIComponent(csvContent);
-  const link = document.createElement("a");
-  link.setAttribute("href", encodedUri);
-  link.setAttribute("download", filename);
-  link.style.display = "none";
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
 }
 
-// --- Skeleton Loading State --------------------------------------------------
-function ScannerSkeleton() {
-  return (
-    <div className="space-y-3">
-      {/* Filter bar skeleton */}
-      <div className="flex items-center justify-between">
-        <Skeleton className="h-9 w-64 rounded-md" />
-        <Skeleton className="h-9 w-28 rounded-md" />
-      </div>
-      {/* Table skeleton */}
-      <div className="rounded-lg border overflow-hidden">
-        {/* Header */}
-        <div className="bg-muted px-4 py-3 flex gap-4">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <Skeleton key={i} className="h-4 flex-1 rounded" />
-          ))}
-        </div>
-        {/* Rows */}
-        {Array.from({ length: 5 }).map((_, rowIdx) => (
-          <div key={rowIdx} className="px-4 py-3 flex gap-4 border-t">
-            <Skeleton className="h-5 w-12 rounded-full" />
-            {Array.from({ length: 4 }).map((_, colIdx) => (
-              <Skeleton key={colIdx} className="h-4 flex-1 rounded" />
-            ))}
-          </div>
-        ))}
-      </div>
-      {/* Footer skeleton */}
-      <div className="flex items-center justify-between">
-        <Skeleton className="h-4 w-32" />
-        <div className="flex gap-2">
-          <Skeleton className="h-8 w-20 rounded-md" />
-          <Skeleton className="h-8 w-16 rounded-md" />
-        </div>
-      </div>
-    </div>
-  );
-}
+const NEIGHBOUR_CSV_HEADER =
+  "Network,Cell Type,Frequency,PCI,Signal (dBm),RSRQ,RSSI,SINR";
 
 const NeighbourCellScanner = () => {
   const { status, results, error, startScan } = useNeighbourScanner();
@@ -167,7 +119,7 @@ const NeighbourCellScanner = () => {
             {isScanning && (
               <Badge
                 variant="outline"
-                className="animate-pulse text-primary border-primary/50"
+                className="text-primary border-primary/50"
               >
                 <LoaderCircleIcon className="h-3 w-3 animate-spin" />
                 Scanning...
@@ -183,14 +135,14 @@ const NeighbourCellScanner = () => {
                 onLockCell={handleLockCell}
               />
             ) : isScanning ? (
-              <ScannerSkeleton />
+              <ScannerSkeleton headerCols={5} rowCols={4} />
             ) : status === "error" ? (
               <div className="flex flex-col items-center justify-center py-16 text-center gap-3">
                 <p className="text-destructive text-sm">
                   {error || "Scan failed"}
                 </p>
                 <Button onClick={startScan} variant="outline" size="sm">
-                  <RefreshCcwIcon className="mr-1 size-4" />
+                  <RefreshCcwIcon className="size-4" />
                   Retry
                 </Button>
               </div>
@@ -213,8 +165,14 @@ const NeighbourCellScanner = () => {
               {hasScanResults && (
                 <Button
                   variant="outline"
-                  onClick={() => downloadCSV(results)}
-                  title="Download CSV"
+                  onClick={() =>
+                    downloadCSV(
+                      NEIGHBOUR_CSV_HEADER,
+                      buildCsvRows(results),
+                      `neighbour_scan_${new Date().toISOString().slice(0, 10)}.csv`,
+                    )
+                  }
+                  aria-label="Download CSV"
                 >
                   <DownloadIcon />
                 </Button>

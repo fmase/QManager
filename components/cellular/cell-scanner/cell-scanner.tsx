@@ -1,4 +1,3 @@
-import React from "react";
 import FullScannerComponent from "./scanner";
 
 const CellScannerComponent = () => {

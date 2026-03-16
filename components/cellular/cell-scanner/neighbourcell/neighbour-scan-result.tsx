@@ -34,7 +34,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { useIsMobile } from "@/hooks/use-mobile";
 
 export interface NeighbourCellResult {
   id: string;
@@ -192,8 +191,6 @@ const NeighbourScanResultView = ({
   );
   const [columnVisibility, setColumnVisibility] =
     React.useState<VisibilityState>({});
-  const isMobile = useIsMobile();
-
   const columns = React.useMemo(() => getColumns(onLockCell), [onLockCell]);
 
   const table = useReactTable({
@@ -215,7 +212,7 @@ const NeighbourScanResultView = ({
 
   return (
     <div className="relative flex flex-col gap-4 overflow-hidden">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
+      <div className="flex flex-col @sm/card:flex-row items-start @sm/card:items-center gap-2">
         <Input
           placeholder="Filter by cell type..."
           value={
@@ -224,12 +221,12 @@ const NeighbourScanResultView = ({
           onChange={(event) =>
             table.getColumn("cellType")?.setFilterValue(event.target.value)
           }
-          className="max-w-sm"
+          className="w-full @sm/card:max-w-sm"
         />
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="sm:ml-auto">
+            <Button variant="outline" className="@sm/card:ml-auto">
               Columns <ChevronDown className="size-4" />
             </Button>
           </DropdownMenuTrigger>
@@ -255,7 +252,7 @@ const NeighbourScanResultView = ({
         </DropdownMenu>
       </div>
       <div className="overflow-x-auto rounded-lg border">
-        <Table className={isMobile ? "min-w-[600px]" : ""}>
+        <Table className="min-w-[600px]">
           <TableHeader className="bg-muted sticky top-0 z-10">
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
@@ -303,7 +300,8 @@ const NeighbourScanResultView = ({
       </div>
       <div className="flex items-center justify-end space-x-2 py-4">
         <div className="text-muted-foreground flex-1 text-sm">
-          {table.getFilteredRowModel().rows.length} cell(s) found.
+          {table.getFilteredRowModel().rows.length}{" "}
+          {table.getFilteredRowModel().rows.length === 1 ? "cell" : "cells"} found
         </div>
         <div className="space-x-2">
           <Button

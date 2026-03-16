@@ -45,7 +45,6 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { useIsMobile } from "@/hooks/use-mobile";
 
 export interface CellScanResult {
   id: string;
@@ -120,7 +119,9 @@ const createColumns = (
           <span className="font-semibold">{cell.provider}</span>
           <Tooltip>
             <TooltipTrigger asChild>
-              <Info className="h-3 w-3 cursor-pointer" />
+              <button type="button" className="inline-flex" aria-label="MCC/MNC details">
+                <Info className="h-3 w-3" />
+              </button>
             </TooltipTrigger>
             <TooltipContent>
               <p>
@@ -238,8 +239,6 @@ const ScanResultView = ({ data, onLockCell }: ScanResultViewProps) => {
   );
   const [columnVisibility, setColumnVisibility] =
     React.useState<VisibilityState>({});
-  const isMobile = useIsMobile();
-
   const columns = React.useMemo(() => createColumns(onLockCell), [onLockCell]);
 
   const table = useReactTable({
@@ -261,7 +260,7 @@ const ScanResultView = ({ data, onLockCell }: ScanResultViewProps) => {
 
   return (
     <div className="relative flex flex-col gap-4 overflow-hidden">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
+      <div className="flex flex-col @sm/card:flex-row items-start @sm/card:items-center gap-2">
         <Input
           placeholder="Filter by provider..."
           value={
@@ -270,12 +269,12 @@ const ScanResultView = ({ data, onLockCell }: ScanResultViewProps) => {
           onChange={(event) =>
             table.getColumn("provider")?.setFilterValue(event.target.value)
           }
-          className="max-w-sm"
+          className="w-full @sm/card:max-w-sm"
         />
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="sm:ml-auto">
+            <Button variant="outline" className="@sm/card:ml-auto">
               Columns <ChevronDown className="size-4" />
             </Button>
           </DropdownMenuTrigger>
@@ -301,7 +300,7 @@ const ScanResultView = ({ data, onLockCell }: ScanResultViewProps) => {
         </DropdownMenu>
       </div>
       <div className="overflow-x-auto rounded-lg border">
-        <Table className={isMobile ? "min-w-[800px]" : ""}>
+        <Table className="min-w-[800px]">
           <TableHeader className="bg-muted sticky top-0 z-10">
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
@@ -349,7 +348,8 @@ const ScanResultView = ({ data, onLockCell }: ScanResultViewProps) => {
       </div>
       <div className="flex items-center justify-end space-x-2 py-4">
         <div className="text-muted-foreground flex-1 text-sm">
-          {table.getFilteredRowModel().rows.length} cell(s) found.
+          {table.getFilteredRowModel().rows.length}{" "}
+          {table.getFilteredRowModel().rows.length === 1 ? "cell" : "cells"} found
         </div>
         <div className="space-x-2">
           <Button

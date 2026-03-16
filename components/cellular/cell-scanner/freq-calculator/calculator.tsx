@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import { useState, useEffect, type KeyboardEvent } from "react";
 import {
   Card,
   CardContent,
@@ -262,7 +262,7 @@ const FrequencyCalculator = () => {
     setHistory([]);
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") {
       handleCalculate();
     }

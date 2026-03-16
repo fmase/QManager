@@ -1,4 +1,3 @@
-import React from "react";
 import NeighbourCellScanner from "./neighbour-scanner";
 
 const NeighbourcellComponent = () => {

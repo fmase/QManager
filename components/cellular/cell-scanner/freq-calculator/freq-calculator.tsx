@@ -1,4 +1,3 @@
-import React from "react";
 import FrequencyCalculator from "./calculator";
 
 const FrequencyCalculatorComponent = () => {

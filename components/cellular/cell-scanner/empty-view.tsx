@@ -1,5 +1,3 @@
-import React from "react";
-
 import { RefreshCcwIcon, ScanSearchIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";

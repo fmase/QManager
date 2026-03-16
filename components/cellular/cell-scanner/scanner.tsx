@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useState } from "react";
+import { useCallback, useState } from "react";
 
 import {
   Card,
@@ -16,8 +16,9 @@ import { Button } from "@/components/ui/button";
 import { DownloadIcon, LoaderCircleIcon, RefreshCcwIcon } from "lucide-react";
 import { useCellScanner } from "@/hooks/use-cell-scanner";
 import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
+import { downloadCSV } from "@/lib/download-csv";
+import { ScannerSkeleton } from "./scanner-skeleton";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -29,11 +30,9 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-// --- CSV Export Utility ------------------------------------------------------
-function downloadCSV(results: CellScanResult[]) {
-  const header =
-    "Network,Provider,MCC,MNC,Band,EARFCN,PCI,Cell ID,TAC,Bandwidth,Signal (dBm)";
-  const rows = results.map((r) =>
+// --- CSV row builder for cell scan results -----------------------------------
+function buildCsvRows(results: CellScanResult[]): string[] {
+  return results.map((r) =>
     [
       r.networkType,
       `"${(r.provider || "").replace(/"/g, '""')}"`,
@@ -48,59 +47,10 @@ function downloadCSV(results: CellScanResult[]) {
       r.signalStrength,
     ].join(","),
   );
-  const csvContent = [header, ...rows].join("\r\n");
-  const filename = `cell_scan_${new Date().toISOString().slice(0, 10)}.csv`;
-
-  // Use data URI approach — more reliable across browsers than createObjectURL
-  const encodedUri =
-    "data:text/csv;charset=utf-8," + encodeURIComponent(csvContent);
-  const link = document.createElement("a");
-  link.setAttribute("href", encodedUri);
-  link.setAttribute("download", filename);
-  link.style.display = "none";
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
 }
 
-// --- Skeleton Loading State --------------------------------------------------
-function ScannerSkeleton() {
-  return (
-    <div className="space-y-3">
-      {/* Filter bar skeleton */}
-      <div className="flex items-center justify-between">
-        <Skeleton className="h-9 w-64 rounded-md" />
-        <Skeleton className="h-9 w-28 rounded-md" />
-      </div>
-      {/* Table skeleton */}
-      <div className="rounded-lg border overflow-hidden">
-        {/* Header */}
-        <div className="bg-muted px-4 py-3 flex gap-4">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <Skeleton key={i} className="h-4 flex-1 rounded" />
-          ))}
-        </div>
-        {/* Rows */}
-        {Array.from({ length: 5 }).map((_, rowIdx) => (
-          <div key={rowIdx} className="px-4 py-3 flex gap-4 border-t">
-            <Skeleton className="h-5 w-12 rounded-full" />
-            {Array.from({ length: 7 }).map((_, colIdx) => (
-              <Skeleton key={colIdx} className="h-4 flex-1 rounded" />
-            ))}
-          </div>
-        ))}
-      </div>
-      {/* Footer skeleton */}
-      <div className="flex items-center justify-between">
-        <Skeleton className="h-4 w-32" />
-        <div className="flex gap-2">
-          <Skeleton className="h-8 w-20 rounded-md" />
-          <Skeleton className="h-8 w-16 rounded-md" />
-        </div>
-      </div>
-    </div>
-  );
-}
+const CELL_SCAN_CSV_HEADER =
+  "Network,Provider,MCC,MNC,Band,EARFCN,PCI,Cell ID,TAC,Bandwidth,Signal (dBm)";
 
 const FullScannerComponent = () => {
   const { status, results, error, startScan } = useCellScanner();
@@ -184,10 +134,10 @@ const FullScannerComponent = () => {
             {isScanning && (
               <Badge
                 variant="outline"
-                className="animate-pulse text-primary border-primary/50"
+                className="text-primary border-primary/50"
               >
                 <LoaderCircleIcon className="h-3 w-3 animate-spin" />
-                Please wait for the scan to complete.
+                Scanning...
               </Badge>
             )}
           </div>
@@ -204,7 +154,7 @@ const FullScannerComponent = () => {
                   {error || "Scan failed"}
                 </p>
                 <Button onClick={startScan} variant="outline" size="sm">
-                  <RefreshCcwIcon className="mr-1 size-4" />
+                  <RefreshCcwIcon className="size-4" />
                   Retry
                 </Button>
               </div>
@@ -227,8 +177,14 @@ const FullScannerComponent = () => {
               {hasScanResults && (
                 <Button
                   variant="outline"
-                  onClick={() => downloadCSV(results)}
-                  title="Download CSV"
+                  onClick={() =>
+                    downloadCSV(
+                      CELL_SCAN_CSV_HEADER,
+                      buildCsvRows(results),
+                      `cell_scan_${new Date().toISOString().slice(0, 10)}.csv`,
+                    )
+                  }
+                  aria-label="Download CSV"
                 >
                   <DownloadIcon />
                 </Button>
@@ -263,7 +219,7 @@ const FullScannerComponent = () => {
             <AlertDialogAction onClick={confirmLockCell} disabled={isLocking}>
               {isLocking ? (
                 <>
-                  <LoaderCircleIcon className="mr-1 size-4 animate-spin" />
+                  <LoaderCircleIcon className="size-4 animate-spin" />
                   Locking...
                 </>
               ) : (
