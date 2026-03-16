@@ -16,7 +16,7 @@ import {
   TbRefresh,
   TbPlus,
 } from "react-icons/tb";
-import { Loader2, Trash2 } from "lucide-react";
+import { AlertCircleIcon, Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -75,6 +75,8 @@ interface SmsInboxCardProps {
   data: SmsData | null;
   isLoading: boolean;
   isSaving: boolean;
+  /** Error from the hook (fetch or mutation failure) */
+  error: string | null;
   onSend: (phone: string, message: string) => Promise<boolean>;
   onDelete: (indexes: number[]) => Promise<boolean>;
   onDeleteAll: () => Promise<boolean>;
@@ -85,6 +87,7 @@ export default function SmsInboxCard({
   data,
   isLoading,
   isSaving,
+  error,
   onSend,
   onDelete,
   onDeleteAll,
@@ -182,23 +185,32 @@ export default function SmsInboxCard({
         accessorKey: "sender",
         header: "From",
         cell: ({ row }) => (
-          <div className="font-medium">{row.original.sender}</div>
+          <div className="min-w-0">
+            <div className="font-medium truncate">{row.original.sender}</div>
+            <span className="block text-xs text-muted-foreground @sm/card:hidden">
+              {row.original.timestamp}
+            </span>
+          </div>
         ),
       },
       {
         accessorKey: "content",
-        header: "Message",
+        header: () => (
+          <span className="hidden @md/card:inline">Message</span>
+        ),
         cell: ({ row }) => (
-          <div className="max-w-[300px] truncate text-muted-foreground">
+          <div className="hidden @md/card:block max-w-xs truncate text-muted-foreground">
             {row.original.content}
           </div>
         ),
       },
       {
         id: "date",
-        header: "Date",
+        header: () => (
+          <span className="hidden @sm/card:inline">Date</span>
+        ),
         cell: ({ row }) => (
-          <span className="text-muted-foreground text-sm whitespace-nowrap">
+          <span className="hidden @sm/card:inline text-muted-foreground text-sm whitespace-nowrap">
             {row.original.timestamp}
           </span>
         ),
@@ -278,12 +290,42 @@ export default function SmsInboxCard({
     );
   }
 
+  // --- Error state (fetch failed, no data) ----------------------------------
+  if (error && !data) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Inbox</CardTitle>
+          <CardDescription>
+            View and manage your SMS messages
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div
+            role="alert"
+            className="flex flex-col items-center gap-3 py-8 text-center"
+          >
+            <AlertCircleIcon className="size-8 text-destructive" />
+            <div className="space-y-1">
+              <p className="text-sm font-medium">Failed to load messages</p>
+              <p className="text-xs text-muted-foreground">{error}</p>
+            </div>
+            <Button variant="outline" size="sm" onClick={onRefresh}>
+              <TbRefresh className="size-4" />
+              Retry
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   const messages = data?.messages ?? [];
   const storage = data?.storage;
 
   return (
     <>
-      <Card>
+      <Card className="@container/card">
         <CardHeader>
           <CardTitle>Inbox</CardTitle>
           <CardDescription>
@@ -299,6 +341,7 @@ export default function SmsInboxCard({
                 size="sm"
                 onClick={onRefresh}
                 disabled={isSaving}
+                aria-label="Refresh inbox"
               >
                 <TbRefresh className="size-4" />
               </Button>
@@ -308,9 +351,12 @@ export default function SmsInboxCard({
                   size="sm"
                   onClick={() => setShowDeleteSelected(true)}
                   disabled={isSaving}
+                  aria-label={`Delete ${selectedCount} selected`}
                 >
                   <Trash2 className="size-4" />
-                  Delete ({selectedCount})
+                  <span className="hidden @sm/card:inline">
+                    Delete ({selectedCount})
+                  </span>
                 </Button>
               )}
               {messages.length > 0 && selectedCount === 0 && (
@@ -319,9 +365,10 @@ export default function SmsInboxCard({
                   size="sm"
                   onClick={() => setShowDeleteAll(true)}
                   disabled={isSaving}
+                  aria-label="Delete all messages"
                 >
                   <Trash2 className="size-4" />
-                  Delete All
+                  <span className="hidden @sm/card:inline">Delete All</span>
                 </Button>
               )}
               <Button
@@ -330,7 +377,7 @@ export default function SmsInboxCard({
                 disabled={isSaving}
               >
                 <TbPlus className="size-4" />
-                New Message
+                <span className="hidden @xs/card:inline">New Message</span>
               </Button>
             </div>
           </CardAction>
@@ -361,7 +408,7 @@ export default function SmsInboxCard({
                       key={row.id}
                       className="cursor-pointer"
                       tabIndex={0}
-                      role="button"
+                      aria-label={`Message from ${row.original.sender}`}
                       onClick={() => setViewMessage(row.original)}
                       onKeyDown={(e) => {
                         if (e.key === "Enter" || e.key === " ") {
@@ -407,11 +454,10 @@ export default function SmsInboxCard({
                     onClick={() => table.previousPage()}
                     disabled={!table.getCanPreviousPage()}
                   >
-                    Previous
+                    Prev
                   </Button>
-                  <span className="text-sm">
-                    Page {table.getState().pagination.pageIndex + 1} of{" "}
-                    {table.getPageCount()}
+                  <span className="text-sm text-muted-foreground whitespace-nowrap">
+                    {table.getState().pagination.pageIndex + 1} / {table.getPageCount()}
                   </span>
                   <Button
                     variant="outline"
@@ -464,7 +510,14 @@ export default function SmsInboxCard({
               disabled={isDeleting}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {isDeleting ? "Deleting\u2026" : "Delete"}
+              {isDeleting ? (
+                <>
+                  <Loader2 className="size-4 animate-spin" />
+                  Deleting&hellip;
+                </>
+              ) : (
+                "Delete"
+              )}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
