@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { authFetch } from "@/lib/auth-fetch";
 import type { NetworkEvent } from "@/types/modem-status";
 
 // =============================================================================
@@ -66,7 +67,7 @@ export function useRecentActivities(
     }
 
     try {
-      const response = await fetch(EVENTS_ENDPOINT);
+      const response = await authFetch(EVENTS_ENDPOINT);
 
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);

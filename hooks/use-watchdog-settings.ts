@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from "react";
+import { authFetch } from "@/lib/auth-fetch";
 
 const CGI_ENDPOINT = "/cgi-bin/quecmanager/monitoring/watchdog.sh";
 
@@ -96,7 +97,7 @@ export function useWatchdogSettings(): UseWatchdogSettingsReturn {
     setError(null);
 
     try {
-      const resp = await fetch(CGI_ENDPOINT);
+      const resp = await authFetch(CGI_ENDPOINT);
       if (!resp.ok) {
         throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
       }
@@ -141,7 +142,7 @@ export function useWatchdogSettings(): UseWatchdogSettingsReturn {
       setIsSaving(true);
 
       try {
-        const resp = await fetch(CGI_ENDPOINT, {
+        const resp = await authFetch(CGI_ENDPOINT, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
@@ -182,7 +183,7 @@ export function useWatchdogSettings(): UseWatchdogSettingsReturn {
   // ---------------------------------------------------------------------------
   const dismissSimSwap = useCallback(async (): Promise<boolean> => {
     try {
-      const resp = await fetch(CGI_ENDPOINT, {
+      const resp = await authFetch(CGI_ENDPOINT, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "dismiss_sim_swap" }),
@@ -209,7 +210,7 @@ export function useWatchdogSettings(): UseWatchdogSettingsReturn {
   // ---------------------------------------------------------------------------
   const revertSim = useCallback(async (): Promise<boolean> => {
     try {
-      const resp = await fetch(CGI_ENDPOINT, {
+      const resp = await authFetch(CGI_ENDPOINT, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "revert_sim" }),

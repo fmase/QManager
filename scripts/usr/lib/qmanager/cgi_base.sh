@@ -23,6 +23,28 @@ _CGI_BASE_LOADED=1
 }
 
 # ---------------------------------------------------------------------------
+# Authentication — source cgi_auth.sh with no-op fallbacks if missing
+# ---------------------------------------------------------------------------
+. /usr/lib/qmanager/cgi_auth.sh 2>/dev/null || {
+    require_auth()       { :; }
+    is_setup_required()  { return 1; }
+    _extract_bearer_token() { return 1; }
+    qm_validate_token()  { return 1; }
+    qm_create_session()  { :; }
+    qm_destroy_session() { :; }
+    qm_verify_password() { return 1; }
+    qm_save_password()   { :; }
+    qm_check_rate_limit(){ return 0; }
+    qm_record_failed_attempt() { :; }
+    qm_clear_attempts()  { :; }
+}
+
+# Auto-enforce auth unless the calling script set _SKIP_AUTH=1
+if [ "$_SKIP_AUTH" != "1" ]; then
+    require_auth
+fi
+
+# ---------------------------------------------------------------------------
 # HTTP Headers
 # Emit full JSON + CORS headers followed by the required blank line.
 # Call once, before writing any response body.
@@ -32,7 +54,7 @@ cgi_headers() {
     echo "Cache-Control: no-cache, no-store, must-revalidate"
     echo "Access-Control-Allow-Origin: *"
     echo "Access-Control-Allow-Methods: GET, POST, OPTIONS"
-    echo "Access-Control-Allow-Headers: Content-Type"
+    echo "Access-Control-Allow-Headers: Content-Type, Authorization"
     echo ""
 }
 

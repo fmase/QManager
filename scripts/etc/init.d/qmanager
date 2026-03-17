@@ -36,6 +36,9 @@ start_service() {
         [ -f "$f" ] && chmod +x "$f"
     done
 
+    # Ensure auth config has restrictive permissions if it exists
+    [ -f /etc/qmanager/auth.json ] && chmod 600 /etc/qmanager/auth.json
+
     # Create default long commands list if it doesn't exist
     if [ ! -f /etc/qmanager/long_commands.list ]; then
         cat > /etc/qmanager/long_commands.list << 'EOF'

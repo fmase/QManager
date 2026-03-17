@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from "react";
+import { authFetch } from "@/lib/auth-fetch";
 import type {
   BackupImeiConfig,
   ImeiSettingsResponse,
@@ -69,7 +70,7 @@ export function useImeiSettings(): UseImeiSettingsReturn {
     setError(null);
 
     try {
-      const resp = await fetch(CGI_ENDPOINT);
+      const resp = await authFetch(CGI_ENDPOINT);
       if (!resp.ok) {
         throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
       }
@@ -112,7 +113,7 @@ export function useImeiSettings(): UseImeiSettingsReturn {
 
       try {
         const request: ImeiSaveRequest = { action: "set_imei", imei };
-        const resp = await fetch(CGI_ENDPOINT, {
+        const resp = await authFetch(CGI_ENDPOINT, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(request),
@@ -162,7 +163,7 @@ export function useImeiSettings(): UseImeiSettingsReturn {
           enabled: config.enabled,
           backup_imei: config.imei,
         };
-        const resp = await fetch(CGI_ENDPOINT, {
+        const resp = await authFetch(CGI_ENDPOINT, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(request),
@@ -207,7 +208,7 @@ export function useImeiSettings(): UseImeiSettingsReturn {
   // ---------------------------------------------------------------------------
   const rebootDevice = useCallback(async (): Promise<boolean> => {
     try {
-      const resp = await fetch(CGI_ENDPOINT, {
+      const resp = await authFetch(CGI_ENDPOINT, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "reboot" }),

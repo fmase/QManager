@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from "react";
+import { authFetch } from "@/lib/auth-fetch";
 import type {
   MbnProfile,
   MbnSettingsResponse,
@@ -63,7 +64,7 @@ export function useMbnSettings(): UseMbnSettingsReturn {
     setError(null);
 
     try {
-      const resp = await fetch(CGI_ENDPOINT);
+      const resp = await authFetch(CGI_ENDPOINT);
       if (!resp.ok) {
         throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
       }
@@ -104,7 +105,7 @@ export function useMbnSettings(): UseMbnSettingsReturn {
       setIsSaving(true);
 
       try {
-        const resp = await fetch(CGI_ENDPOINT, {
+        const resp = await authFetch(CGI_ENDPOINT, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(request),
@@ -145,7 +146,7 @@ export function useMbnSettings(): UseMbnSettingsReturn {
   // ---------------------------------------------------------------------------
   const rebootDevice = useCallback(async (): Promise<boolean> => {
     try {
-      const resp = await fetch(CGI_ENDPOINT, {
+      const resp = await authFetch(CGI_ENDPOINT, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "reboot" }),

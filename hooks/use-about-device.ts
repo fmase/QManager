@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from "react";
+import { authFetch } from "@/lib/auth-fetch";
 import type { AboutDeviceData, AboutDeviceResponse } from "@/types/about-device";
 
 // =============================================================================
@@ -40,7 +41,7 @@ export function useAboutDevice(): UseAboutDeviceReturn {
     setError(null);
 
     try {
-      const resp = await fetch(CGI_ENDPOINT);
+      const resp = await authFetch(CGI_ENDPOINT);
       if (!resp.ok) {
         throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
       }

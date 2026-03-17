@@ -4,6 +4,7 @@ import "./globals.css";
 import Euclid from "next/font/local";
 import { Manrope } from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider";
+import { AuthProvider } from "@/components/auth/auth-provider";
 
 import { Toaster } from "@/components/ui/sonner";
 
@@ -69,7 +70,9 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          {children}
+          <AuthProvider>
+            {children}
+          </AuthProvider>
           <Toaster />
         </ThemeProvider>
       </body>

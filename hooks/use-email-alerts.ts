@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from "react";
+import { authFetch } from "@/lib/auth-fetch";
 
 // =============================================================================
 // useEmailAlerts — Fetch & Save Hook for Email Alert Settings
@@ -71,7 +72,7 @@ export function useEmailAlerts(): UseEmailAlertsReturn {
     setError(null);
 
     try {
-      const resp = await fetch(CGI_ENDPOINT);
+      const resp = await authFetch(CGI_ENDPOINT);
       if (!resp.ok) {
         throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
       }
@@ -113,7 +114,7 @@ export function useEmailAlerts(): UseEmailAlertsReturn {
       setIsSaving(true);
 
       try {
-        const resp = await fetch(CGI_ENDPOINT, {
+        const resp = await authFetch(CGI_ENDPOINT, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
@@ -156,7 +157,7 @@ export function useEmailAlerts(): UseEmailAlertsReturn {
     setIsSendingTest(true);
 
     try {
-      const resp = await fetch(CGI_ENDPOINT, {
+      const resp = await authFetch(CGI_ENDPOINT, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "send_test" }),

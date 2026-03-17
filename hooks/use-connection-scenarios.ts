@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { authFetch } from "@/lib/auth-fetch";
 import type {
   ScenarioListResponse,
   ScenarioActivateResponse,
@@ -80,7 +81,7 @@ export function useConnectionScenarios(): UseConnectionScenariosReturn {
   // ---------------------------------------------------------------------------
   const fetchScenarios = useCallback(async () => {
     try {
-      const resp = await fetch(`${CGI_BASE}/list.sh`);
+      const resp = await authFetch(`${CGI_BASE}/list.sh`);
       if (!resp.ok) {
         throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
       }
@@ -128,7 +129,7 @@ export function useConnectionScenarios(): UseConnectionScenariosReturn {
           if (config.sa_nr_bands) body.sa_nr_bands = config.sa_nr_bands;
         }
 
-        const resp = await fetch(`${CGI_BASE}/activate.sh`, {
+        const resp = await authFetch(`${CGI_BASE}/activate.sh`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(body),
@@ -174,7 +175,7 @@ export function useConnectionScenarios(): UseConnectionScenariosReturn {
       setError(null);
 
       try {
-        const resp = await fetch(`${CGI_BASE}/save.sh`, {
+        const resp = await authFetch(`${CGI_BASE}/save.sh`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(scenario),
@@ -214,7 +215,7 @@ export function useConnectionScenarios(): UseConnectionScenariosReturn {
       setError(null);
 
       try {
-        const resp = await fetch(`${CGI_BASE}/delete.sh`, {
+        const resp = await authFetch(`${CGI_BASE}/delete.sh`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ id }),

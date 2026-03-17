@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { authFetch } from "@/lib/auth-fetch";
 import type { ModemStatus } from "@/types/modem-status";
 
 // =============================================================================
@@ -61,7 +62,7 @@ export function useModemStatus(
 
   const fetchData = useCallback(async () => {
     try {
-      const response = await fetch(FETCH_ENDPOINT);
+      const response = await authFetch(FETCH_ENDPOINT);
 
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);

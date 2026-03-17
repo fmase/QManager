@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import { authFetch } from "@/lib/auth-fetch";
 
 import {
   Card,
@@ -77,7 +78,7 @@ const NeighbourCellScanner = () => {
         cells: [{ earfcn: lockTarget.frequency, pci: lockTarget.pci }],
       };
 
-      const res = await fetch("/cgi-bin/quecmanager/tower/lock.sh", {
+      const res = await authFetch("/cgi-bin/quecmanager/tower/lock.sh", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),

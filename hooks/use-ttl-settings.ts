@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from "react";
+import { authFetch } from "@/lib/auth-fetch";
 
 // =============================================================================
 // useTtlSettings — One-Shot TTL/HL Fetch & Save Hook
@@ -63,7 +64,7 @@ export function useTtlSettings(): UseTtlSettingsReturn {
     setError(null);
 
     try {
-      const resp = await fetch(CGI_ENDPOINT);
+      const resp = await authFetch(CGI_ENDPOINT);
       if (!resp.ok) {
         throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
       }
@@ -108,7 +109,7 @@ export function useTtlSettings(): UseTtlSettingsReturn {
       setIsSaving(true);
 
       try {
-        const resp = await fetch(CGI_ENDPOINT, {
+        const resp = await authFetch(CGI_ENDPOINT, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ ttl, hl }),

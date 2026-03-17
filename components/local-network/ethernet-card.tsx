@@ -3,6 +3,7 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import Image from "next/image";
 import { toast } from "sonner";
+import { authFetch } from "@/lib/auth-fetch";
 import deviceIcon from "@/public/device-icon.svg";
 
 import {
@@ -69,7 +70,7 @@ const EthernetStatusCard = () => {
     if (!silent) setIsLoading(true);
 
     try {
-      const resp = await fetch(CGI_ENDPOINT);
+      const resp = await authFetch(CGI_ENDPOINT);
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
 
       const data = await resp.json();
@@ -115,7 +116,7 @@ const EthernetStatusCard = () => {
     setIsSaving(true);
 
     try {
-      const resp = await fetch(CGI_ENDPOINT, {
+      const resp = await authFetch(CGI_ENDPOINT, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ speed_limit: value }),

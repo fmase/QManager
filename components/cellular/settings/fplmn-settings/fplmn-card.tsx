@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useRef, useEffect } from "react";
 import { toast } from "sonner";
+import { authFetch } from "@/lib/auth-fetch";
 import {
   Card,
   CardContent,
@@ -51,7 +52,7 @@ const FPLMNCard = () => {
     setFetchError(null);
 
     try {
-      const resp = await fetch(CGI_ENDPOINT);
+      const resp = await authFetch(CGI_ENDPOINT);
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
 
       const data = await resp.json();
@@ -84,7 +85,7 @@ const FPLMNCard = () => {
     setIsClearing(true);
 
     try {
-      const resp = await fetch(CGI_ENDPOINT, { method: "POST" });
+      const resp = await authFetch(CGI_ENDPOINT, { method: "POST" });
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
 
       const data = await resp.json();

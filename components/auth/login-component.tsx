@@ -1,5 +1,7 @@
 "use client";
 
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import {
   Field,
@@ -8,83 +10,181 @@ import {
   FieldLabel,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import Link from "next/link";
+import { Spinner } from "@/components/ui/spinner";
 
-const LoginComponent = () => {
+export default function LoginComponent() {
+  const { status, login, setup } = useAuth();
+
+  const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [error, setError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [retryAfter, setRetryAfter] = useState(0);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const isSetup = status === "setup_required";
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (status === "authenticated") {
+      window.location.href = "/dashboard/";
+    }
+  }, [status]);
+
+  // Rate limit countdown timer
+  useEffect(() => {
+    if (retryAfter <= 0) {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+      return;
+    }
+
+    timerRef.current = setInterval(() => {
+      setRetryAfter((prev) => {
+        if (prev <= 1) return 0;
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, [retryAfter > 0]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleSubmit = useCallback(
+    async (e: React.FormEvent) => {
+      e.preventDefault();
+      setError("");
+      setIsSubmitting(true);
+
+      try {
+        if (isSetup) {
+          if (password.length < 6) {
+            setError("Password must be at least 6 characters.");
+            return;
+          }
+          if (password !== confirm) {
+            setError("Passwords do not match.");
+            return;
+          }
+          const result = await setup(password, confirm);
+          if (!result.success) {
+            setError(result.error || "Setup failed.");
+          }
+        } else {
+          const result = await login(password);
+          if (!result.success) {
+            if (result.retry_after) {
+              setRetryAfter(result.retry_after);
+              setError(
+                `Too many failed attempts. Try again in ${result.retry_after} seconds.`
+              );
+            } else {
+              setError(result.error || "Invalid password.");
+            }
+          }
+        }
+      } finally {
+        setIsSubmitting(false);
+      }
+    },
+    [isSetup, password, confirm, login, setup]
+  );
+
+  if (status === "loading") {
+    return (
+      <div className="flex flex-col items-center gap-4 py-12">
+        <Spinner className="size-6" />
+        <p className="text-sm text-muted-foreground">Checking session...</p>
+      </div>
+    );
+  }
+
+  if (status === "authenticated") {
+    return null;
+  }
+
   return (
     <div className="flex flex-col gap-6">
-      <form
-        method="post"
-        onSubmit={(e) => {
-          e.preventDefault();
-          const form = e.currentTarget;
-          const data = new FormData(form);
-          // Submit via POST body — never in query string
-          fetch("/cgi-bin/quecmanager/auth/login.sh", {
-            method: "POST",
-            body: data,
-          })
-            .then((r) => r.json())
-            .then((res) => {
-              if (res.success) {
-                window.location.href = "/dashboard";
-              } else {
-                // Show inline error
-                const errEl = document.getElementById("login-error");
-                if (errEl) {
-                  errEl.textContent =
-                    res.message || "Invalid password. Please try again.";
-                  errEl.classList.remove("hidden");
-                }
-              }
-            })
-            .catch(() => {
-              const errEl = document.getElementById("login-error");
-              if (errEl) {
-                errEl.textContent = "Connection failed. Please try again.";
-                errEl.classList.remove("hidden");
-              }
-            });
-        }}
-      >
+      <form onSubmit={handleSubmit}>
         <FieldGroup>
           <div className="flex flex-col items-center gap-2 text-center">
-            <div className="flex flex-col items-center gap-2 font-medium">
-              <div className="flex size-16 p-1 items-center justify-center rounded-md">
-                <img
-                  src="/qmanager-logo.svg"
-                  alt="QManager Logo"
-                  className="size-full"
-                />
-              </div>
+            <div className="flex size-16 p-1 items-center justify-center rounded-md">
+              <img
+                src="/qmanager-logo.svg"
+                alt="QManager Logo"
+                className="size-full"
+              />
             </div>
-            <h1 className="text-xl font-bold">Welcome to QManager</h1>
+            <h1 className="text-xl font-bold">
+              {isSetup ? "Set Up QManager" : "Welcome to QManager"}
+            </h1>
             <FieldDescription>
-              Enter your device password to continue.
+              {isSetup
+                ? "Create a password to secure your QManager interface."
+                : "Enter your QManager password to continue."}
             </FieldDescription>
           </div>
+
           <Field>
-            <FieldLabel htmlFor="password">Password</FieldLabel>
+            <FieldLabel htmlFor="password">
+              {isSetup ? "New Password" : "Password"}
+            </FieldLabel>
             <Input
               id="password"
-              name="password"
               type="password"
-              placeholder="Enter your password"
-              autoComplete="current-password"
+              placeholder={isSetup ? "Create a password" : "Enter your password"}
+              autoComplete={isSetup ? "new-password" : "current-password"}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
               required
-            />
-            <p
-              id="login-error"
-              role="alert"
-              className="hidden text-sm text-destructive"
+              disabled={isSubmitting}
             />
           </Field>
+
+          {isSetup && (
+            <Field>
+              <FieldLabel htmlFor="confirm">Confirm Password</FieldLabel>
+              <Input
+                id="confirm"
+                type="password"
+                placeholder="Confirm your password"
+                autoComplete="new-password"
+                value={confirm}
+                onChange={(e) => setConfirm(e.target.value)}
+                required
+                disabled={isSubmitting}
+              />
+            </Field>
+          )}
+
+          {error && (
+            <p role="alert" className="text-sm text-destructive">
+              {error}
+            </p>
+          )}
+
           <Field>
-            {/* Temporary redirect link to dashboard */}
-            {/* TODO: Auth Logic */}
-            <Link href="/dashboard">
-              <Button type="submit">Login</Button>
-            </Link>
+            <Button
+              type="submit"
+              className="w-full"
+              disabled={isSubmitting || retryAfter > 0}
+            >
+              {isSubmitting ? (
+                <>
+                  <Spinner className="mr-2" />
+                  {isSetup ? "Setting up..." : "Logging in..."}
+                </>
+              ) : retryAfter > 0 ? (
+                `Locked (${retryAfter}s)`
+              ) : isSetup ? (
+                "Create Password"
+              ) : (
+                "Login"
+              )}
+            </Button>
           </Field>
         </FieldGroup>
       </form>
@@ -93,6 +193,4 @@ const LoginComponent = () => {
       </FieldDescription>
     </div>
   );
-};
-
-export default LoginComponent;
+}

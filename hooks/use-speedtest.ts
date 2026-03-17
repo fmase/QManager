@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { authFetch } from "@/lib/auth-fetch";
 import type {
   SpeedtestCheckResponse,
   SpeedtestStartResponse,
@@ -86,7 +87,7 @@ export function useSpeedtest(): UseSpeedtestReturn {
   useEffect(() => {
     const check = async () => {
       try {
-        const resp = await fetch(`${CGI_BASE}/speedtest_check.sh`);
+        const resp = await authFetch(`${CGI_BASE}/speedtest_check.sh`);
         if (!resp.ok) {
           setIsAvailable(false);
           return;
@@ -117,7 +118,7 @@ export function useSpeedtest(): UseSpeedtestReturn {
   // ---------------------------------------------------------------------------
   const pollStatus = useCallback(async () => {
     try {
-      const resp = await fetch(`${CGI_BASE}/speedtest_status.sh`);
+      const resp = await authFetch(`${CGI_BASE}/speedtest_status.sh`);
       if (!resp.ok) return;
       const data: SpeedtestStatusResponse = await resp.json();
       if (!mountedRef.current) return;
@@ -190,7 +191,7 @@ export function useSpeedtest(): UseSpeedtestReturn {
     setCurrentProgress(null);
 
     try {
-      const resp = await fetch(`${CGI_BASE}/speedtest_start.sh`, {
+      const resp = await authFetch(`${CGI_BASE}/speedtest_start.sh`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: "{}",
@@ -234,7 +235,7 @@ export function useSpeedtest(): UseSpeedtestReturn {
   // ---------------------------------------------------------------------------
   const refreshStatus = useCallback(async () => {
     try {
-      const resp = await fetch(`${CGI_BASE}/speedtest_status.sh`);
+      const resp = await authFetch(`${CGI_BASE}/speedtest_status.sh`);
       if (!resp.ok) return;
       const data: SpeedtestStatusResponse = await resp.json();
       if (!mountedRef.current) return;

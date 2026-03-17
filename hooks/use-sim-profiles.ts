@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { authFetch } from "@/lib/auth-fetch";
 import type {
   SimProfile,
   ProfileSummary,
@@ -87,7 +88,7 @@ export function useSimProfiles(): UseSimProfilesReturn {
   // ---------------------------------------------------------------------------
   const fetchProfiles = useCallback(async () => {
     try {
-      const resp = await fetch(`${CGI_BASE}/list.sh`);
+      const resp = await authFetch(`${CGI_BASE}/list.sh`);
       if (!resp.ok) {
         throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
       }
@@ -122,7 +123,7 @@ export function useSimProfiles(): UseSimProfilesReturn {
     async (data: ProfileFormData): Promise<string | null> => {
       setError(null);
       try {
-        const resp = await fetch(`${CGI_BASE}/save.sh`, {
+        const resp = await authFetch(`${CGI_BASE}/save.sh`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(data),
@@ -161,7 +162,7 @@ export function useSimProfiles(): UseSimProfilesReturn {
       try {
         // Include the existing ID so profile_save() knows it's an update
         const payload = { ...data, id };
-        const resp = await fetch(`${CGI_BASE}/save.sh`, {
+        const resp = await authFetch(`${CGI_BASE}/save.sh`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
@@ -197,7 +198,7 @@ export function useSimProfiles(): UseSimProfilesReturn {
     async (id: string): Promise<boolean> => {
       setError(null);
       try {
-        const resp = await fetch(`${CGI_BASE}/delete.sh`, {
+        const resp = await authFetch(`${CGI_BASE}/delete.sh`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ id }),
@@ -232,7 +233,7 @@ export function useSimProfiles(): UseSimProfilesReturn {
   const deactivateProfile = useCallback(async (): Promise<boolean> => {
     setError(null);
     try {
-      const resp = await fetch(`${CGI_BASE}/deactivate.sh`, {
+      const resp = await authFetch(`${CGI_BASE}/deactivate.sh`, {
         method: "POST",
       });
 
@@ -265,7 +266,7 @@ export function useSimProfiles(): UseSimProfilesReturn {
   const getProfile = useCallback(
     async (id: string): Promise<SimProfile | null> => {
       try {
-        const resp = await fetch(`${CGI_BASE}/get.sh?id=${encodeURIComponent(id)}`);
+        const resp = await authFetch(`${CGI_BASE}/get.sh?id=${encodeURIComponent(id)}`);
         if (!resp.ok) {
           throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
         }

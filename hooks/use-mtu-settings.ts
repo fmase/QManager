@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from "react";
+import { authFetch } from "@/lib/auth-fetch";
 
 // =============================================================================
 // useMtuSettings — One-Shot MTU Fetch & Save Hook
@@ -61,7 +62,7 @@ export function useMtuSettings(): UseMtuSettingsReturn {
     setError(null);
 
     try {
-      const resp = await fetch(CGI_ENDPOINT);
+      const resp = await authFetch(CGI_ENDPOINT);
       if (!resp.ok) {
         throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
       }
@@ -104,7 +105,7 @@ export function useMtuSettings(): UseMtuSettingsReturn {
       setIsSaving(true);
 
       try {
-        const resp = await fetch(CGI_ENDPOINT, {
+        const resp = await authFetch(CGI_ENDPOINT, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ mtu }),
@@ -146,7 +147,7 @@ export function useMtuSettings(): UseMtuSettingsReturn {
     setIsSaving(true);
 
     try {
-      const resp = await fetch(CGI_ENDPOINT, {
+      const resp = await authFetch(CGI_ENDPOINT, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ mtu: "disable" }),

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { authFetch } from "@/lib/auth-fetch";
 import type { PingHistoryEntry } from "@/types/modem-status";
 
 // =============================================================================
@@ -55,7 +56,7 @@ export function useLatencyHistory(
 
   const fetchHistory = useCallback(async () => {
     try {
-      const response = await fetch(HISTORY_ENDPOINT);
+      const response = await authFetch(HISTORY_ENDPOINT);
 
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);

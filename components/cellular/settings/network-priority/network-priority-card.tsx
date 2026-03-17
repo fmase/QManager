@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { toast } from "sonner";
+import { authFetch } from "@/lib/auth-fetch";
 import {
   closestCenter,
   DndContext,
@@ -158,7 +159,7 @@ const NetworkPriorityCard = () => {
     if (!silent) setIsLoading(true);
 
     try {
-      const resp = await fetch(CGI_ENDPOINT);
+      const resp = await authFetch(CGI_ENDPOINT);
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
 
       const data = await resp.json();
@@ -220,7 +221,7 @@ const NetworkPriorityCard = () => {
     setIsSaving(true);
 
     try {
-      const resp = await fetch(CGI_ENDPOINT, {
+      const resp = await authFetch(CGI_ENDPOINT, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ order: newOrder }),

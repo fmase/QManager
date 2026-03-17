@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { authFetch } from "@/lib/auth-fetch";
 import type { ProfileApplyState, ApplyStatus } from "@/types/sim-profile";
 
 // =============================================================================
@@ -66,7 +67,7 @@ export function useProfileApply(): UseProfileApplyReturn {
   // ---------------------------------------------------------------------------
   const pollStatus = useCallback(async () => {
     try {
-      const resp = await fetch(`${CGI_BASE}/apply_status.sh`);
+      const resp = await authFetch(`${CGI_BASE}/apply_status.sh`);
       if (!resp.ok) return;
 
       const data: ProfileApplyState = await resp.json();
@@ -107,7 +108,7 @@ export function useProfileApply(): UseProfileApplyReturn {
       setApplyState(null);
 
       try {
-        const resp = await fetch(`${CGI_BASE}/apply.sh`, {
+        const resp = await authFetch(`${CGI_BASE}/apply.sh`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ id }),
@@ -159,7 +160,7 @@ export function useProfileApply(): UseProfileApplyReturn {
   useEffect(() => {
     const checkExisting = async () => {
       try {
-        const resp = await fetch(`${CGI_BASE}/apply_status.sh`);
+        const resp = await authFetch(`${CGI_BASE}/apply_status.sh`);
         if (!resp.ok) return;
         const data: ProfileApplyState = await resp.json();
         if (!mountedRef.current) return;

@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useRef, useEffect } from "react";
 import { toast } from "sonner";
+import { authFetch } from "@/lib/auth-fetch";
 
 import {
   Card,
@@ -75,7 +76,7 @@ const EmailAlertsLogCard = ({ refreshKey }: EmailAlertsLogCardProps) => {
     setFetchError(null);
 
     try {
-      const resp = await fetch(CGI_ENDPOINT);
+      const resp = await authFetch(CGI_ENDPOINT);
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
 
       const data: EmailLogResponse = await resp.json();

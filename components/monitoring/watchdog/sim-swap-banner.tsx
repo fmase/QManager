@@ -2,6 +2,7 @@
 
 import { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
+import { authFetch } from "@/lib/auth-fetch";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { RefreshCcwIcon, XIcon } from "lucide-react";
@@ -18,7 +19,7 @@ export function SimSwapBanner() {
   const handleDismiss = useCallback(async () => {
     setIsDismissing(true);
     try {
-      const resp = await fetch(CGI_ENDPOINT, {
+      const resp = await authFetch(CGI_ENDPOINT, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "dismiss_sim_swap" }),

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { authFetch } from "@/lib/auth-fetch";
 import type {
   BandCategory,
   CurrentBands,
@@ -102,7 +103,7 @@ export function useBandLocking(): UseBandLockingReturn {
   // ---------------------------------------------------------------------------
   const fetchCurrent = useCallback(async () => {
     try {
-      const resp = await fetch(`${CGI_BASE}/current.sh?_t=${Date.now()}`);
+      const resp = await authFetch(`${CGI_BASE}/current.sh?_t=${Date.now()}`);
       if (!resp.ok) {
         throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
       }
@@ -165,7 +166,7 @@ export function useBandLocking(): UseBandLockingReturn {
       }
 
       try {
-        const resp = await fetch(`${CGI_BASE}/failover_status.sh`);
+        const resp = await authFetch(`${CGI_BASE}/failover_status.sh`);
         if (!resp.ok) return; // Silent fail — retry next interval
 
         const data: FailoverStatusResponse = await resp.json();
@@ -206,7 +207,7 @@ export function useBandLocking(): UseBandLockingReturn {
       setLockingCategory(category);
 
       try {
-        const resp = await fetch(`${CGI_BASE}/lock.sh`, {
+        const resp = await authFetch(`${CGI_BASE}/lock.sh`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -281,7 +282,7 @@ export function useBandLocking(): UseBandLockingReturn {
       setError(null);
 
       try {
-        const resp = await fetch(`${CGI_BASE}/failover_toggle.sh`, {
+        const resp = await authFetch(`${CGI_BASE}/failover_toggle.sh`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ enabled }),

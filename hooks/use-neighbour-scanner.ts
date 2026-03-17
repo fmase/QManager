@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { authFetch } from "@/lib/auth-fetch";
 import type { NeighbourCellResult } from "@/components/cellular/cell-scanner/neighbourcell/neighbour-scan-result";
 
 // Poll interval while a scan is running (ms)
@@ -30,7 +31,7 @@ export function useNeighbourScanner(): UseNeighbourScannerReturn {
   // --- Poll for scan status --------------------------------------------------
   const pollStatus = useCallback(async () => {
     try {
-      const res = await fetch(
+      const res = await authFetch(
         `/cgi-bin/quecmanager/at_cmd/neighbour_scan_status.sh?_t=${Date.now()}`,
       );
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -81,7 +82,7 @@ export function useNeighbourScanner(): UseNeighbourScannerReturn {
     setError(null);
 
     try {
-      const res = await fetch(
+      const res = await authFetch(
         "/cgi-bin/quecmanager/at_cmd/neighbour_scan_start.sh",
         { method: "POST" },
       );

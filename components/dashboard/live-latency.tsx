@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useEffect, useMemo, useCallback } from "react";
+import { authFetch } from "@/lib/auth-fetch";
 
 import { CartesianGrid, Line, LineChart, XAxis } from "recharts";
 import {
@@ -77,7 +78,7 @@ const LiveLatencyComponent = ({ connectivity }: LiveLatencyComponentProps) => {
   // Fetch any cached speedtest result
   const fetchCachedResult = useCallback(async () => {
     try {
-      const resp = await fetch(`${CGI_BASE}/speedtest_status.sh`);
+      const resp = await authFetch(`${CGI_BASE}/speedtest_status.sh`);
       if (!resp.ok) return;
       const data: SpeedtestStatusResponse = await resp.json();
       if (data.status === "complete" && data.result) {

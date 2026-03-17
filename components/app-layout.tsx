@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useEffect } from "react";
 
 import {
   SidebarInset,
@@ -21,9 +21,31 @@ import { Separator } from "@/components/ui/separator";
 import { AppSidebar } from "@/components/app-sidebar";
 import { useBreadcrumbs } from "@/hooks/use-breadcrumbs";
 import { SimSwapBanner } from "@/components/monitoring/watchdog/sim-swap-banner";
+import { Spinner } from "@/components/ui/spinner";
+import { useAuth } from "@/hooks/use-auth";
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const breadcrumbs = useBreadcrumbs();
+  const { status } = useAuth();
+
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (status === "unauthenticated" || status === "setup_required") {
+      window.location.href = "/login/";
+    }
+  }, [status]);
+
+  if (status === "loading") {
+    return (
+      <div className="flex min-h-svh items-center justify-center">
+        <Spinner className="size-6" />
+      </div>
+    );
+  }
+
+  if (status !== "authenticated") {
+    return null;
+  }
 
   return (
     <SidebarProvider>

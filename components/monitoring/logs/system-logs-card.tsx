@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useRef, useEffect } from "react";
 import { toast } from "sonner";
+import { authFetch } from "@/lib/auth-fetch";
 
 import {
   Card,
@@ -162,7 +163,7 @@ const SystemLogsCard = () => {
         if (search.trim()) params.set("search", search.trim());
         if (includeRotated) params.set("include_rotated", "1");
 
-        const resp = await fetch(`${CGI_ENDPOINT}?${params.toString()}`);
+        const resp = await authFetch(`${CGI_ENDPOINT}?${params.toString()}`);
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
 
         const data: LogsResponse = await resp.json();
@@ -219,7 +220,7 @@ const SystemLogsCard = () => {
     setIsClearing(true);
 
     try {
-      const resp = await fetch(CGI_ENDPOINT, {
+      const resp = await authFetch(CGI_ENDPOINT, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "clear" }),

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { authFetch } from "@/lib/auth-fetch";
 import type {
   FreqLockModemState,
   FreqLockStatusResponse,
@@ -85,7 +86,7 @@ export function useFrequencyLocking(): UseFrequencyLockingReturn {
 
   const fetchStatus = useCallback(async () => {
     try {
-      const resp = await fetch(`${CGI_BASE}/status.sh`);
+      const resp = await authFetch(`${CGI_BASE}/status.sh`);
       if (!resp.ok) {
         throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
       }
@@ -145,7 +146,7 @@ export function useFrequencyLocking(): UseFrequencyLockingReturn {
       setLocking(true);
 
       try {
-        const resp = await fetch(`${CGI_BASE}/lock.sh`, {
+        const resp = await authFetch(`${CGI_BASE}/lock.sh`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(body),
