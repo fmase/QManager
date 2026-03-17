@@ -8,6 +8,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import QManagerLogo from "@/public/qmanager-logo.svg";
 import packageJson from "@/package.json";
 
@@ -19,9 +20,10 @@ import type { AboutDeviceData } from "@/types/about-device";
 
 interface AboutQManagerCardProps {
   data: AboutDeviceData | null;
+  isLoading: boolean;
 }
 
-const AboutQManagerCard = ({ data }: AboutQManagerCardProps) => {
+const AboutQManagerCard = ({ data, isLoading }: AboutQManagerCardProps) => {
   const networkRows = [
     { label: "Device IP", value: data?.network.device_ip },
     { label: "LAN Gateway", value: data?.network.lan_gateway },
@@ -94,19 +96,32 @@ const AboutQManagerCard = ({ data }: AboutQManagerCardProps) => {
               Network
             </h3>
             <dl className="grid divide-y divide-border border-y border-border">
-              {networkRows.map((row) => (
-                <div
-                  key={row.label}
-                  className="flex items-center justify-between py-2"
-                >
-                  <dt className="text-sm font-semibold text-muted-foreground">
-                    {row.label}
-                  </dt>
-                  <dd className="text-sm font-semibold tabular-nums">
-                    {row.value || "-"}
-                  </dd>
-                </div>
-              ))}
+              {isLoading
+                ? Array.from({ length: 6 }).map((_, i) => (
+                    <div
+                      key={i}
+                      className="flex items-center justify-between py-2"
+                    >
+                      <Skeleton className="h-4 w-24" />
+                      <Skeleton className="h-4 w-32" />
+                    </div>
+                  ))
+                : networkRows.map((row) => (
+                    <div
+                      key={row.label}
+                      className="flex items-center justify-between py-2"
+                    >
+                      <dt className="text-sm font-semibold text-muted-foreground">
+                        {row.label}
+                      </dt>
+                      <dd
+                        className="text-sm font-semibold tabular-nums min-w-0 truncate ml-4"
+                        title={row.value || undefined}
+                      >
+                        {row.value || "-"}
+                      </dd>
+                    </div>
+                  ))}
             </dl>
           </div>
         </div>

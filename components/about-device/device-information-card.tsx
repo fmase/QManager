@@ -8,7 +8,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle, RefreshCcw } from "lucide-react";
@@ -86,21 +85,18 @@ function DeviceInformationSkeleton() {
           Device Information
         </CardTitle>
         <CardDescription>
-          Modem identity and network addresses.
+          Modem identity and system details.
         </CardDescription>
       </CardHeader>
       <CardContent>
         <div className="flex items-center justify-center mb-8">
           <Skeleton className="size-44 rounded-full" />
         </div>
-        <div className="grid gap-2">
+        <div className="grid divide-y divide-border border-y border-border">
           {Array.from({ length: 10 }).map((_, i) => (
-            <div key={i}>
-              <Separator />
-              <div className="flex items-center justify-between py-1">
-                <Skeleton className="h-4 w-28" />
-                <Skeleton className="h-4 w-36" />
-              </div>
+            <div key={i} className="flex items-center justify-between py-2">
+              <Skeleton className="h-4 w-28" />
+              <Skeleton className="h-4 w-36" />
             </div>
           ))}
         </div>
@@ -128,10 +124,10 @@ const DeviceInformationCard = ({
           Device Information
         </CardTitle>
         <CardDescription>
-          Modem identity and network addresses.
+          Modem identity and system details.
         </CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent aria-live="polite">
         {error ? (
           <Alert variant="destructive">
             <AlertCircle className="h-4 w-4" />
@@ -173,9 +169,10 @@ const DeviceInformationCard = ({
                         {row.label}
                       </dt>
                       <dd
-                        className={`text-sm font-semibold ${
+                        className={`text-sm font-semibold min-w-0 truncate ml-4 ${
                           row.mono ? "tabular-nums" : ""
                         }`}
+                        title={row.value || undefined}
                       >
                         {row.value || "-"}
                       </dd>

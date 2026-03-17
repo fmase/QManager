@@ -22,7 +22,7 @@ const AboutDeviceComponent = () => {
           error={error}
           onRetry={refresh}
         />
-        <AboutQManagerCard data={data} />
+        <AboutQManagerCard data={data} isLoading={isLoading} />
       </div>
     </div>
   );
