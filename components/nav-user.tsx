@@ -9,7 +9,7 @@ import {
   Sun,
 } from "lucide-react";
 import { useTheme } from "next-themes";
-import { useAuth } from "@/hooks/use-auth";
+import { logout } from "@/hooks/use-auth";
 
 import {
   Avatar,
@@ -43,7 +43,6 @@ export function NavUser({
 }) {
   const { isMobile } = useSidebar();
   const { theme, setTheme } = useTheme();
-  const { logout } = useAuth();
   const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
 
   const initials =

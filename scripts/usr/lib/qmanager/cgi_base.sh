@@ -26,17 +26,20 @@ _CGI_BASE_LOADED=1
 # Authentication — source cgi_auth.sh with no-op fallbacks if missing
 # ---------------------------------------------------------------------------
 . /usr/lib/qmanager/cgi_auth.sh 2>/dev/null || {
-    require_auth()       { :; }
-    is_setup_required()  { return 1; }
-    _extract_bearer_token() { return 1; }
-    qm_validate_token()  { return 1; }
-    qm_create_session()  { :; }
-    qm_destroy_session() { :; }
-    qm_verify_password() { return 1; }
-    qm_save_password()   { :; }
-    qm_check_rate_limit(){ return 0; }
+    require_auth()          { :; }
+    is_setup_required()     { return 1; }
+    qm_get_cookie()         { :; }
+    qm_set_session_cookies(){ :; }
+    qm_clear_session_cookies(){ :; }
+    qm_create_session()     { :; }
+    qm_validate_session()   { return 1; }
+    qm_destroy_session()    { :; }
+    qm_cleanup_sessions()   { :; }
+    qm_verify_password()    { return 1; }
+    qm_save_password()      { :; }
+    qm_check_rate_limit()   { return 0; }
     qm_record_failed_attempt() { :; }
-    qm_clear_attempts()  { :; }
+    qm_clear_attempts()     { :; }
 }
 
 # Auto-enforce auth unless the calling script set _SKIP_AUTH=1

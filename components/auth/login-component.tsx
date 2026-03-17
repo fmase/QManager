@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { useAuth } from "@/hooks/use-auth";
+import { useLogin } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import {
   Field,
@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 
 export default function LoginComponent() {
-  const { status, login, setup } = useAuth();
+  const { status, login, setup } = useLogin();
 
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -22,13 +22,6 @@ export default function LoginComponent() {
   const [retryAfter, setRetryAfter] = useState(0);
 
   const isSetup = status === "setup_required";
-
-  // Redirect if already authenticated
-  useEffect(() => {
-    if (status === "authenticated") {
-      window.location.href = "/dashboard/";
-    }
-  }, [status]);
 
   // Rate limit countdown timer
   useEffect(() => {
@@ -81,17 +74,13 @@ export default function LoginComponent() {
     [isSetup, password, confirm, login, setup]
   );
 
+  // Show loading only for the brief setup detection check
   if (status === "loading") {
     return (
       <div className="flex flex-col items-center gap-4 py-12">
         <Spinner className="size-6" />
-        <p className="text-sm text-muted-foreground">Checking session...</p>
       </div>
     );
-  }
-
-  if (status === "authenticated") {
-    return null;
   }
 
   return (

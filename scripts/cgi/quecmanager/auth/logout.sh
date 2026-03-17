@@ -1,22 +1,26 @@
 #!/bin/sh
-# logout.sh — Session invalidation endpoint.
-# POST — destroys the current session
+# logout.sh — Destroy session and clear cookies.
 _SKIP_AUTH=1
 . /usr/lib/qmanager/cgi_base.sh
 
 qlog_init "cgi_auth_logout"
-cgi_headers
-cgi_handle_options
+
+if [ "$REQUEST_METHOD" = "OPTIONS" ]; then
+    cgi_headers
+    exit 0
+fi
 
 if [ "$REQUEST_METHOD" != "POST" ]; then
+    cgi_headers
     cgi_method_not_allowed
 fi
 
-# Validate the token before destroying (prevent unauthenticated session wipe)
-_token=$(_extract_bearer_token)
-if [ -n "$_token" ] && qm_validate_token "$_token"; then
-    qm_destroy_session
+_token=$(qm_get_cookie "$COOKIE_SESSION")
+if [ -n "$_token" ]; then
+    qm_destroy_session "$_token"
     qlog_info "Session destroyed via logout"
 fi
 
+qm_clear_session_cookies
+cgi_headers
 cgi_success

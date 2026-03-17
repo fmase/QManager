@@ -1,102 +1,48 @@
 "use client";
 
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
-
-import {
-  getAuthToken,
-  setAuthToken,
-  clearAuthToken,
-} from "@/lib/auth-fetch";
-
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
-export type AuthStatus =
-  | "loading"
-  | "authenticated"
-  | "unauthenticated"
-  | "setup_required";
-
-export interface AuthContextValue {
-  status: AuthStatus;
-  login: (password: string) => Promise<{ success: boolean; error?: string; retry_after?: number }>;
-  setup: (password: string, confirm: string) => Promise<{ success: boolean; error?: string }>;
-  logout: () => Promise<void>;
-  changePassword: (current: string, newPassword: string) => Promise<{ success: boolean; error?: string }>;
-}
-
-// ---------------------------------------------------------------------------
-// Context
-// ---------------------------------------------------------------------------
-
-const AuthContext = createContext<AuthContextValue | null>(null);
-
-export function useAuth(): AuthContextValue {
-  const ctx = useContext(AuthContext);
-  if (!ctx) {
-    throw new Error("useAuth must be used within an AuthProvider");
-  }
-  return ctx;
-}
-
-// ---------------------------------------------------------------------------
-// Provider implementation (exported for auth-provider.tsx)
-// ---------------------------------------------------------------------------
+import { useCallback, useEffect, useState } from "react";
 
 const CHECK_ENDPOINT = "/cgi-bin/quecmanager/auth/check.sh";
 const LOGIN_ENDPOINT = "/cgi-bin/quecmanager/auth/login.sh";
 const LOGOUT_ENDPOINT = "/cgi-bin/quecmanager/auth/logout.sh";
 const PASSWORD_ENDPOINT = "/cgi-bin/quecmanager/auth/password.sh";
 
-export function useAuthProvider() {
-  const [status, setStatus] = useState<AuthStatus>("loading");
-  const mountedRef = useRef(true);
+// ---------------------------------------------------------------------------
+// Cookie helpers
+// ---------------------------------------------------------------------------
 
-  // Check session on mount
+export function isLoggedIn(): boolean {
+  if (typeof document === "undefined") return false;
+  return document.cookie.includes("qm_logged_in=1");
+}
+
+function clearIndicatorCookie() {
+  document.cookie = "qm_logged_in=; Path=/; Max-Age=0";
+}
+
+// ---------------------------------------------------------------------------
+// Hook for login page (setup detection + login/setup actions)
+// ---------------------------------------------------------------------------
+
+export type LoginStatus = "loading" | "ready" | "setup_required";
+
+export function useLogin() {
+  const [status, setStatus] = useState<LoginStatus>("loading");
+
   useEffect(() => {
-    mountedRef.current = true;
+    // If already logged in, redirect to dashboard
+    if (isLoggedIn()) {
+      window.location.href = "/dashboard/";
+      return;
+    }
 
-    const checkAuth = async () => {
-      try {
-        const token = getAuthToken();
-        const headers: HeadersInit = token
-          ? { Authorization: `Bearer ${token}` }
-          : {};
-
-        const resp = await fetch(CHECK_ENDPOINT, { headers });
-        const data = await resp.json();
-
-        if (!mountedRef.current) return;
-
-        if (data.setup_required) {
-          setStatus("setup_required");
-        } else if (data.authenticated) {
-          setStatus("authenticated");
-        } else {
-          clearAuthToken();
-          setStatus("unauthenticated");
-        }
-      } catch {
-        if (!mountedRef.current) return;
-        // Network error — assume unauthenticated
-        clearAuthToken();
-        setStatus("unauthenticated");
-      }
-    };
-
-    checkAuth();
-
-    return () => {
-      mountedRef.current = false;
-    };
+    // Check if first-time setup is needed
+    fetch(CHECK_ENDPOINT)
+      .then((r) => r.json())
+      .then((data) => {
+        setStatus(data.setup_required ? "setup_required" : "ready");
+      })
+      .catch(() => setStatus("ready"));
   }, []);
 
   const login = useCallback(
@@ -111,9 +57,9 @@ export function useAuthProvider() {
         });
         const data = await resp.json();
 
-        if (data.success && data.token) {
-          setAuthToken(data.token);
-          setStatus("authenticated");
+        if (data.success) {
+          // Cookie is set by the backend — just redirect
+          window.location.href = "/dashboard/";
           return { success: true };
         }
 
@@ -147,9 +93,8 @@ export function useAuthProvider() {
         });
         const data = await resp.json();
 
-        if (data.success && data.token) {
-          setAuthToken(data.token);
-          setStatus("authenticated");
+        if (data.success) {
+          window.location.href = "/dashboard/";
           return { success: true };
         }
 
@@ -164,62 +109,50 @@ export function useAuthProvider() {
     []
   );
 
-  const logout = useCallback(async () => {
-    try {
-      const token = getAuthToken();
-      if (token) {
-        await fetch(LOGOUT_ENDPOINT, {
-          method: "POST",
-          headers: { Authorization: `Bearer ${token}` },
-        });
-      }
-    } catch {
-      // Ignore network errors on logout
-    } finally {
-      clearAuthToken();
-      setStatus("unauthenticated");
-    }
-  }, []);
-
-  const changePassword = useCallback(
-    async (
-      current: string,
-      newPassword: string
-    ): Promise<{ success: boolean; error?: string }> => {
-      try {
-        const token = getAuthToken();
-        const resp = await fetch(PASSWORD_ENDPOINT, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          },
-          body: JSON.stringify({
-            current_password: current,
-            new_password: newPassword,
-          }),
-        });
-        const data = await resp.json();
-
-        if (data.success) {
-          // Session invalidated by backend — force re-login
-          clearAuthToken();
-          setStatus("unauthenticated");
-          return { success: true };
-        }
-
-        return {
-          success: false,
-          error: data.detail || data.error || "Password change failed",
-        };
-      } catch {
-        return { success: false, error: "Connection failed" };
-      }
-    },
-    []
-  );
-
-  return { status, login, setup, logout, changePassword, AuthContext };
+  return { status, login, setup };
 }
 
-export { AuthContext };
+// ---------------------------------------------------------------------------
+// Actions (used by sidebar menu / change password dialog)
+// ---------------------------------------------------------------------------
+
+export async function logout(): Promise<void> {
+  try {
+    await fetch(LOGOUT_ENDPOINT, { method: "POST" });
+  } catch {
+    // Ignore network errors on logout
+  } finally {
+    clearIndicatorCookie();
+    window.location.href = "/login/";
+  }
+}
+
+export async function changePassword(
+  current: string,
+  newPassword: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const resp = await fetch(PASSWORD_ENDPOINT, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        current_password: current,
+        new_password: newPassword,
+      }),
+    });
+    const data = await resp.json();
+
+    if (data.success) {
+      clearIndicatorCookie();
+      window.location.href = "/login/";
+      return { success: true };
+    }
+
+    return {
+      success: false,
+      error: data.detail || data.error || "Password change failed",
+    };
+  } catch {
+    return { success: false, error: "Connection failed" };
+  }
+}
