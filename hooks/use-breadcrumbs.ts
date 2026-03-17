@@ -39,6 +39,7 @@ const routeNameMap: Record<string, string> = {
   watchdog: 'Watchdog',
   tailscale: 'Tailscale',
   'about-device': 'About Device',
+  support: 'Support',
 };
 
 export function useBreadcrumbs(): BreadcrumbItem[] {

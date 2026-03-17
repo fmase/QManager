@@ -64,9 +64,8 @@ const data = {
     },
     {
       title: "Support",
-      url: "#",
+      url: "/support",
       icon: LifeBuoy,
-      disabled: true,
     },
     {
       title: "Donate to the Project",
