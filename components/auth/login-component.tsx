@@ -13,10 +13,9 @@ import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 
 export default function LoginComponent() {
-  const { status, login, setup } = useLogin();
+  const { status, login } = useLogin();
 
   const [password, setPassword] = useState("");
-  const [confirm, setConfirm] = useState("");
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [retryAfter, setRetryAfter] = useState(0);
@@ -27,8 +26,6 @@ export default function LoginComponent() {
       window.location.href = "/setup/";
     }
   }, [status]);
-
-  const isSetup = status === "setup_required";
 
   // Rate limit countdown timer
   useEffect(() => {
@@ -48,41 +45,26 @@ export default function LoginComponent() {
       setIsSubmitting(true);
 
       try {
-        if (isSetup) {
-          if (password.length < 6) {
-            setError("Password must be at least 6 characters.");
-            return;
-          }
-          if (password !== confirm) {
-            setError("Passwords do not match.");
-            return;
-          }
-          const result = await setup(password, confirm);
-          if (!result.success) {
-            setError(result.error || "Setup failed.");
-          }
-        } else {
-          const result = await login(password);
-          if (!result.success) {
-            if (result.retry_after) {
-              setRetryAfter(result.retry_after);
-              setError(
-                `Too many failed attempts. Try again in ${result.retry_after} seconds.`
-              );
-            } else {
-              setError(result.error || "Invalid password.");
-            }
+        const result = await login(password);
+        if (!result.success) {
+          if (result.retry_after) {
+            setRetryAfter(result.retry_after);
+            setError(
+              `Too many failed attempts. Try again in ${result.retry_after} seconds.`
+            );
+          } else {
+            setError(result.error || "Invalid password.");
           }
         }
       } finally {
         setIsSubmitting(false);
       }
     },
-    [isSetup, password, confirm, login, setup]
+    [password, login]
   );
 
-  // Show loading only for the brief setup detection check
-  if (status === "loading") {
+  // Show spinner while detecting setup status or during redirect to /setup/
+  if (status === "loading" || status === "setup_required") {
     return (
       <div className="flex flex-col items-center gap-4 py-12">
         <Spinner className="size-6" />
@@ -102,47 +84,25 @@ export default function LoginComponent() {
                 className="size-full"
               />
             </div>
-            <h1 className="text-xl font-bold">
-              {isSetup ? "Set Up QManager" : "Welcome to QManager"}
-            </h1>
+            <h1 className="text-xl font-bold">Welcome to QManager</h1>
             <FieldDescription>
-              {isSetup
-                ? "Create a password to secure your QManager interface."
-                : "Enter your QManager password to continue."}
+              Enter your QManager password to continue.
             </FieldDescription>
           </div>
 
           <Field>
-            <FieldLabel htmlFor="password">
-              {isSetup ? "New Password" : "Password"}
-            </FieldLabel>
+            <FieldLabel htmlFor="password">Password</FieldLabel>
             <Input
               id="password"
               type="password"
-              placeholder={isSetup ? "Create a password" : "Enter your password"}
-              autoComplete={isSetup ? "new-password" : "current-password"}
+              placeholder="Enter your password"
+              autoComplete="current-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
               disabled={isSubmitting}
             />
           </Field>
-
-          {isSetup && (
-            <Field>
-              <FieldLabel htmlFor="confirm">Confirm Password</FieldLabel>
-              <Input
-                id="confirm"
-                type="password"
-                placeholder="Confirm your password"
-                autoComplete="new-password"
-                value={confirm}
-                onChange={(e) => setConfirm(e.target.value)}
-                required
-                disabled={isSubmitting}
-              />
-            </Field>
-          )}
 
           {error && (
             <p role="alert" className="text-sm text-destructive">
@@ -159,12 +119,10 @@ export default function LoginComponent() {
               {isSubmitting ? (
                 <>
                   <Spinner className="mr-2" />
-                  {isSetup ? "Setting up..." : "Logging in..."}
+                  Logging in...
                 </>
               ) : retryAfter > 0 ? (
                 `Locked (${retryAfter}s)`
-              ) : isSetup ? (
-                "Create Password"
               ) : (
                 "Login"
               )}
