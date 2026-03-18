@@ -44,7 +44,7 @@ export function NavLocalNetwork({
   React.useEffect(() => {
     const states: Record<string, boolean> = {}
     localNetwork.forEach((item) => {
-      states[item.title] = pathname === item.url || (!!item.items?.length && pathname.startsWith(item.url + "/"))
+      states[item.title] = pathname === item.url || (!!item.items?.length && item.items.some(sub => pathname === sub.url || pathname.startsWith(sub.url + "/")))
     })
     setOpenItems(states)
   }, [pathname, localNetwork])
@@ -56,7 +56,7 @@ export function NavLocalNetwork({
       </SidebarGroupLabel>
       <SidebarMenu>
         {localNetwork.map((item) => {
-          const isParentOrChildActive = pathname === item.url || (!!item.items?.length && pathname.startsWith(item.url + "/"))
+          const isParentOrChildActive = pathname === item.url || (!!item.items?.length && item.items.some(sub => pathname === sub.url || pathname.startsWith(sub.url + "/")))
 
           return (
           <Collapsible

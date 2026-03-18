@@ -3,7 +3,6 @@
 import * as React from "react";
 import {
   LifeBuoy,
-  Map,
   PieChart,
   Settings2,
   HomeIcon,
@@ -14,10 +13,8 @@ import {
   MonitorCloudIcon,
   LogsIcon,
   MessageCircleIcon,
-  WorkflowIcon,
   DogIcon,
   RouterIcon,
-  TimerIcon,
   User2Icon,
   HeartIcon,
   ScanIcon,
@@ -166,19 +163,19 @@ const data = {
       icon: EthernetPortIcon,
     },
     {
-      title: "IP Passthrough",
+      title: "Settings",
       url: "/local-network/ip-passthrough",
-      icon: WorkflowIcon,
-    },
-    {
-      title: "Custom DNS",
-      url: "/local-network/custom-dns",
-      icon: Map,
-    },
-    {
-      title: "TTL & MTU Settings",
-      url: "/local-network/ttl-settings",
-      icon: TimerIcon,
+      icon: Settings2,
+      items: [
+        {
+          title: "Custom DNS",
+          url: "/local-network/custom-dns",
+        },
+        {
+          title: "TTL & MTU Settings",
+          url: "/local-network/ttl-settings",
+        },
+      ],
     },
   ],
   monitoring: [
