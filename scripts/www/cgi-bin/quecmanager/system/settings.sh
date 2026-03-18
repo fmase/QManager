@@ -23,19 +23,17 @@ cgi_handle_options
 # Ensure UCI section exists with defaults
 ensure_settings_config() {
     uci -q get quecmanager.settings >/dev/null 2>&1 && return
-    uci batch <<-'UCIEOF'
-set quecmanager.settings=settings
-set quecmanager.settings.temp_unit=celsius
-set quecmanager.settings.distance_unit=km
-set quecmanager.settings.sched_reboot_enabled=0
-set quecmanager.settings.sched_reboot_time=04:00
-set quecmanager.settings.sched_reboot_days=0,1,2,3,4,5,6
-set quecmanager.settings.low_power_enabled=0
-set quecmanager.settings.low_power_start=23:00
-set quecmanager.settings.low_power_end=06:00
-set quecmanager.settings.low_power_days=0,1,2,3,4,5,6
-commit quecmanager
-UCIEOF
+    uci set quecmanager.settings=settings
+    uci set quecmanager.settings.temp_unit=celsius
+    uci set quecmanager.settings.distance_unit=km
+    uci set quecmanager.settings.sched_reboot_enabled=0
+    uci set quecmanager.settings.sched_reboot_time=04:00
+    uci set quecmanager.settings.sched_reboot_days=0,1,2,3,4,5,6
+    uci set quecmanager.settings.low_power_enabled=0
+    uci set quecmanager.settings.low_power_start=23:00
+    uci set quecmanager.settings.low_power_end=06:00
+    uci set quecmanager.settings.low_power_days=0,1,2,3,4,5,6
+    uci commit quecmanager
 }
 
 # Read a UCI value with fallback

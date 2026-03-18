@@ -27,20 +27,18 @@ DISABLED_FLAG="/tmp/qmanager_watchcat_disabled"
 # Ensure UCI section exists with defaults
 ensure_watchcat_config() {
     uci -q get quecmanager.watchcat >/dev/null 2>&1 && return
-    uci batch <<-'UCIEOF'
-set quecmanager.watchcat=watchcat
-set quecmanager.watchcat.enabled=0
-set quecmanager.watchcat.max_failures=5
-set quecmanager.watchcat.check_interval=10
-set quecmanager.watchcat.cooldown=60
-set quecmanager.watchcat.tier1_enabled=1
-set quecmanager.watchcat.tier2_enabled=1
-set quecmanager.watchcat.tier3_enabled=0
-set quecmanager.watchcat.tier4_enabled=1
-set quecmanager.watchcat.backup_sim_slot=
-set quecmanager.watchcat.max_reboots_per_hour=3
-commit quecmanager
-UCIEOF
+    uci set quecmanager.watchcat=watchcat
+    uci set quecmanager.watchcat.enabled=0
+    uci set quecmanager.watchcat.max_failures=5
+    uci set quecmanager.watchcat.check_interval=10
+    uci set quecmanager.watchcat.cooldown=60
+    uci set quecmanager.watchcat.tier1_enabled=1
+    uci set quecmanager.watchcat.tier2_enabled=1
+    uci set quecmanager.watchcat.tier3_enabled=0
+    uci set quecmanager.watchcat.tier4_enabled=1
+    uci set quecmanager.watchcat.backup_sim_slot=
+    uci set quecmanager.watchcat.max_reboots_per_hour=3
+    uci commit quecmanager
 }
 
 # Read a UCI value with fallback
@@ -215,14 +213,16 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
         new_enabled=$(uci -q get quecmanager.watchcat.enabled 2>/dev/null)
         if [ "$new_enabled" = "1" ]; then
             rm -f "$DISABLED_FLAG"
+            # Enable and start the watchcat init script
+            /etc/init.d/qmanager_watchcat enable 2>/dev/null
+            ( /etc/init.d/qmanager_watchcat restart >/dev/null 2>&1 & )
+            qlog_info "Watchdog settings saved, watchcat enabled and started"
+        else
+            # Stop and disable the watchcat init script
+            /etc/init.d/qmanager_watchcat stop >/dev/null 2>&1
+            /etc/init.d/qmanager_watchcat disable 2>/dev/null
+            qlog_info "Watchdog settings saved, watchcat stopped and disabled"
         fi
-
-        # Restart the qmanager service so procd picks up the new watchcat
-        # instance state (start if newly enabled, stop if disabled).
-        # This is async — the response returns immediately.
-        /etc/init.d/qmanager restart >/dev/null 2>&1 &
-
-        qlog_info "Watchdog settings saved, service restart triggered"
         echo '{"success":true}'
         exit 0
     fi

@@ -243,16 +243,16 @@ install_packages() {
 stop_services() {
     step "Stopping QManager services"
 
-    # Stop main service (poller + ping + watchcat)
+    # Stop main service (poller + ping)
     if [ -x "$INITD_DIR/qmanager" ]; then
         "$INITD_DIR/qmanager" stop 2>/dev/null || true
-        info "Stopped qmanager (poller, ping, watchcat)"
+        info "Stopped qmanager (poller, ping)"
     fi
 
     # Stop auxiliary services
     for svc in qmanager_eth_link qmanager_mtu qmanager_imei_check \
-               qmanager_wan_guard qmanager_tower_failover qmanager_ttl \
-               qmanager_low_power_check; do
+               qmanager_wan_guard qmanager_watchcat qmanager_tower_failover \
+               qmanager_ttl qmanager_low_power_check; do
         if [ -x "$INITD_DIR/$svc" ]; then
             "$INITD_DIR/$svc" stop 2>/dev/null || true
         fi
@@ -410,6 +410,9 @@ install_backend() {
     mkdir -p "$SESSION_DIR"
     mkdir -p /var/lock
 
+    # --- Create UCI config file if missing ---
+    [ -f /etc/config/quecmanager ] || touch /etc/config/quecmanager
+
     info "Backend installed"
 }
 
@@ -526,8 +529,8 @@ uninstall() {
         "$INITD_DIR/qmanager" stop 2>/dev/null || true
     fi
     for svc in qmanager_eth_link qmanager_mtu qmanager_imei_check \
-               qmanager_wan_guard qmanager_tower_failover qmanager_ttl \
-               qmanager_low_power_check; do
+               qmanager_wan_guard qmanager_watchcat qmanager_tower_failover \
+               qmanager_ttl qmanager_low_power_check; do
         if [ -x "$INITD_DIR/$svc" ]; then
             "$INITD_DIR/$svc" stop 2>/dev/null || true
         fi
@@ -546,8 +549,8 @@ uninstall() {
 
     # Disable and remove init.d services
     for svc in qmanager qmanager_eth_link qmanager_ttl qmanager_mtu \
-               qmanager_wan_guard qmanager_imei_check qmanager_tower_failover \
-               qmanager_low_power_check; do
+               qmanager_wan_guard qmanager_watchcat qmanager_imei_check \
+               qmanager_tower_failover qmanager_low_power_check; do
         if [ -x "$INITD_DIR/$svc" ]; then
             "$INITD_DIR/$svc" disable 2>/dev/null || true
             rm -f "$INITD_DIR/$svc"
