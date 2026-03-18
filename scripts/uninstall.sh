@@ -385,9 +385,9 @@ print_summary() {
             "$(_draw_bar "$TOTAL_STEPS" "$TOTAL_STEPS")"
     fi
     printf "\n"
-    printf "  ╔══════════════════════════════════════╗\n"
-    printf "  ║  %-34s  ║\n" "QManager — Uninstall Complete"
-    printf "  ╚══════════════════════════════════════╝\n\n"
+    printf "  ══════════════════════════════════════════\n"
+    printf "  ${GREEN}${BOLD}  QManager - Uninstall Complete${NC}\n"
+    printf "  ══════════════════════════════════════════\n\n"
 
     printf "  ${GREEN}${ICO_OK}${NC}  Frontend files removed from %s\n" "$WWW_ROOT"
     printf "  ${GREEN}${ICO_OK}${NC}  CGI endpoints, libraries, and daemons removed\n"
@@ -450,11 +450,10 @@ main() {
 
     # Header banner
     printf "\n"
-    printf "  ╔══════════════════════════════════════╗\n"
-    printf "  ║  ${BOLD}%-34s${NC}  ║\n" "QManager · Uninstall Script"
-    printf "  ╠══════════════════════════════════════╣\n"
-    printf "  ║  ${DIM}%-34s${NC}  ║\n" "Version: v$VERSION"
-    printf "  ╚══════════════════════════════════════╝\n"
+    printf "  ══════════════════════════════════════════\n"
+    printf "  ${BOLD}  QManager - Uninstall Script${NC}\n"
+    printf "  ${DIM}  Version: v%s${NC}\n" "$VERSION"
+    printf "  ══════════════════════════════════════════\n"
 
     preflight
 

@@ -421,7 +421,7 @@ fix_line_endings() {
         while IFS= read -r f; do
             # grep for literal CR byte — portable, no 'file' command needed
             if grep -ql "$(printf '\r')" "$f" 2>/dev/null; then
-                sed -i 's/\r$//' "$f"
+                tr -d '\r' < "$f" > "$f.lf_tmp" && mv "$f.lf_tmp" "$f"
                 echo "$f" >> "$tmplist"
             fi
         done < "$scanlist"
@@ -627,9 +627,9 @@ print_summary() {
             "$(_draw_bar "$TOTAL_STEPS" "$TOTAL_STEPS")"
     fi
     printf "\n"
-    printf "  ╔══════════════════════════════════════╗\n"
-    printf "  ║  %-34s  ║\n" "QManager v$VERSION — Installed!"
-    printf "  ╚══════════════════════════════════════╝\n\n"
+    printf "  ══════════════════════════════════════════\n"
+    printf "  ${GREEN}${BOLD}  QManager - Installation Complete${NC}\n"
+    printf "  ══════════════════════════════════════════\n\n"
 
     if [ "$DO_FRONTEND" = "1" ]; then
         printf "  ${DIM}Frontend:  ${NC}%s\n" "$WWW_ROOT"
@@ -747,11 +747,10 @@ main() {
 
     # Header banner
     printf "\n"
-    printf "  ╔══════════════════════════════════════╗\n"
-    printf "  ║  ${BOLD}%-34s${NC}  ║\n" "QManager · Installation Script"
-    printf "  ╠══════════════════════════════════════╣\n"
-    printf "  ║  ${DIM}%-34s${NC}  ║\n" "Version: v$VERSION"
-    printf "  ╚══════════════════════════════════════╝\n"
+    printf "  ══════════════════════════════════════════\n"
+    printf "  ${BOLD}  QManager - Installation Script${NC}\n"
+    printf "  ${DIM}  Version: v%s${NC}\n" "$VERSION"
+    printf "  ══════════════════════════════════════════\n"
 
     # Handle uninstall path (2 steps: preflight + uninstall)
     if [ "$DO_UNINSTALL" = "1" ]; then
