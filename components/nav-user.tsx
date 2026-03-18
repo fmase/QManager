@@ -137,8 +137,13 @@ export function NavUser({
         setRebooting(false);
         return;
       }
+      // Reboot command accepted — clear session and go to the waiting screen
+      document.cookie = "qm_logged_in=; Path=/; Max-Age=0";
+      window.location.href = "/login/?rebooting=1";
     } catch {
-      // Connection drop is expected — device is going down
+      // Connection dropped — device is already going down
+      document.cookie = "qm_logged_in=; Path=/; Max-Age=0";
+      window.location.href = "/login/?rebooting=1";
     }
   };
 

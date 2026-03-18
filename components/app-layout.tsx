@@ -24,10 +24,12 @@ import { AppSidebar } from "@/components/app-sidebar";
 import { useBreadcrumbs } from "@/hooks/use-breadcrumbs";
 import { SimSwapBanner } from "@/components/monitoring/watchdog/sim-swap-banner";
 import { isLoggedIn } from "@/hooks/use-auth";
+import { useAutoLogout } from "@/hooks/use-auto-logout";
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const breadcrumbs = useBreadcrumbs();
   const pathname = usePathname();
+  useAutoLogout();
 
   // Sync cookie check — no API call, no loading state
   if (typeof document !== "undefined" && !isLoggedIn()) {
