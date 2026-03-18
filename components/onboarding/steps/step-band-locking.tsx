@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { ChevronDownIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { authFetch } from "@/lib/auth-fetch";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -85,14 +84,16 @@ function BandPresetSection({
   return (
     <div className="flex flex-col gap-3">
       <p className="text-sm font-medium">{title}</p>
-      <div className="flex flex-col gap-1.5">
+      <div role="radiogroup" aria-label={title} className="flex flex-col gap-1.5">
         {options.map((opt) => (
           <button
             key={opt.id}
             type="button"
+            role="radio"
+            aria-checked={selectedPreset === opt.id}
             onClick={() => onPresetChange(opt.id)}
             className={cn(
-              "flex items-start gap-3 rounded-lg border px-3 py-2.5 text-left transition-all duration-150",
+              "flex items-start gap-3 rounded-lg border px-3 py-2.5 text-left transition-colors duration-150",
               "hover:border-primary/50 hover:bg-primary/5",
               selectedPreset === opt.id
                 ? "border-primary bg-primary/5"
@@ -101,7 +102,7 @@ function BandPresetSection({
           >
             <span
               className={cn(
-                "mt-0.5 block size-3.5 flex-shrink-0 rounded-full border-2 transition-colors",
+                "mt-0.5 block size-3.5 shrink-0 rounded-full border-2 transition-colors",
                 selectedPreset === opt.id
                   ? "border-primary bg-primary"
                   : "border-muted-foreground/40"
@@ -131,7 +132,6 @@ function BandPresetSection({
                     id={id}
                     checked={customBands.has(band)}
                     onCheckedChange={() => onCustomBandToggle(band)}
-                    className="size-3.5"
                   />
                   <Label
                     htmlFor={id}
@@ -246,7 +246,7 @@ export function StepBandLocking({
       <div className="flex flex-col gap-1.5">
         <h2 className="text-2xl font-semibold tracking-tight">Band preferences</h2>
         <p className="text-sm text-muted-foreground">
-          Optional — lock specific frequency bands for better signal.
+          Lock specific frequency bands for better signal on your network.
         </p>
       </div>
 

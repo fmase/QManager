@@ -53,6 +53,11 @@ export function StepConnection({
   const [profileName, setProfileName] = useState("");
   const [formError, setFormError] = useState("");
 
+  const handleTypeSelect = (type: "profile" | "apn") => {
+    setSelectedType(type);
+    setFormError("");
+  };
+
   // When a carrier preset is picked, auto-fill APN
   const handleMnoChange = (id: string) => {
     setMno(id);
@@ -137,16 +142,14 @@ export function StepConnection({
       <div className="grid grid-cols-2 gap-3">
         <ChoiceCard
           selected={selectedType === "profile"}
-          onClick={() =>
-            setSelectedType((t) => (t === "profile" ? null : "profile"))
-          }
+          onClick={() => handleTypeSelect("profile")}
           icon={<FolderOpenIcon className="size-5" />}
           title="Custom Profile"
           description="Save complete configs per SIM"
         />
         <ChoiceCard
           selected={selectedType === "apn"}
-          onClick={() => setSelectedType((t) => (t === "apn" ? null : "apn"))}
+          onClick={() => handleTypeSelect("apn")}
           icon={<WrenchIcon className="size-5" />}
           title="APN Only"
           description="Quick setup for your carrier"
@@ -154,7 +157,13 @@ export function StepConnection({
       </div>
 
       {/* Inline form — animates in when a type is selected */}
-      {selectedType !== null && (
+      <div
+        className={cn(
+          "grid transition-[grid-template-rows] duration-200 ease-out motion-reduce:transition-none",
+          selectedType !== null ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
+        )}
+      >
+        <div className="overflow-hidden">
         <div className="flex flex-col gap-4 border-t border-border pt-4">
           <FieldGroup>
             {selectedType === "profile" && (
@@ -213,7 +222,8 @@ export function StepConnection({
             {formError && <FieldError>{formError}</FieldError>}
           </FieldGroup>
         </div>
-      )}
+        </div>
+      </div>
     </div>
   );
 }
@@ -240,9 +250,10 @@ function ChoiceCard({
   return (
     <button
       type="button"
+      aria-pressed={selected}
       onClick={onClick}
       className={cn(
-        "flex flex-col items-start gap-2 rounded-xl border p-4 text-left transition-all duration-150",
+        "flex flex-col items-start gap-2 rounded-xl border p-4 text-left transition-colors duration-150",
         "hover:border-primary/50 hover:bg-primary/5",
         selected
           ? "border-primary bg-primary/5 ring-1 ring-primary/30"

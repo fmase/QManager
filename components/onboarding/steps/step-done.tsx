@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { CheckIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -9,12 +9,22 @@ import { Button } from "@/components/ui/button";
 // =============================================================================
 
 export function StepDone() {
-  const [show, setShow] = useState(false);
+  const prefersReducedMotion =
+    typeof window !== "undefined" &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  const [show, setShow] = useState(prefersReducedMotion);
+  const dashboardBtnRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
+    if (prefersReducedMotion) return;
     // Brief delay so the animation plays after the step transition
     const timer = setTimeout(() => setShow(true), 80);
     return () => clearTimeout(timer);
+  }, [prefersReducedMotion]);
+
+  useEffect(() => {
+    dashboardBtnRef.current?.focus();
   }, []);
 
   const handleGoToDashboard = () => {
@@ -25,7 +35,7 @@ export function StepDone() {
     <div className="flex flex-col items-center gap-6 text-center py-2">
       {/* Animated checkmark */}
       <div
-        className="flex size-16 items-center justify-center rounded-full bg-primary/10 transition-all duration-500"
+        className="flex size-16 items-center justify-center rounded-full bg-primary/10 transition-[opacity,transform] duration-500"
         style={{
           opacity: show ? 1 : 0,
           transform: show ? "scale(1)" : "scale(0.6)",
@@ -53,7 +63,7 @@ export function StepDone() {
         </p>
       </div>
 
-      <Button onClick={handleGoToDashboard} className="w-full" size="lg">
+      <Button ref={dashboardBtnRef} onClick={handleGoToDashboard} className="w-full" size="lg">
         Go to Dashboard
       </Button>
     </div>

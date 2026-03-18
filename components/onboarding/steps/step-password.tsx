@@ -69,6 +69,8 @@ export function StepPassword({ onSuccess, onLoadingChange, onSubmitRef }: StepPa
         </p>
       </div>
 
+      {/* form wrapper enables Enter-key submission */}
+      <form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }}>
       <FieldGroup>
         <Field>
           <FieldLabel htmlFor="onboard-password">New Password</FieldLabel>
@@ -127,6 +129,7 @@ export function StepPassword({ onSuccess, onLoadingChange, onSubmitRef }: StepPa
 
         {error && <FieldError>{error}</FieldError>}
       </FieldGroup>
+      </form>
     </div>
   );
 }
