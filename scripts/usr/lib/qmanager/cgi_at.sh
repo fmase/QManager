@@ -55,48 +55,40 @@ run_at() {
 #   echo "Active CID: $active_cid"
 # ---------------------------------------------------------------------------
 detect_active_cid() {
-    local gap="${CMD_GAP:-0.2}"
-    local cgpaddr_resp cgpaddr_cids qmap_resp qmap_cid
+    local cgpaddr_cids qmap_cid raw
     active_cid=""
 
-    # Step 1: AT+CGPADDR — collect all CIDs that have a real IPv4 address
-    cgpaddr_resp=$(run_at "AT+CGPADDR")
-    sleep "$gap"
+    # Compound AT: fetch both CID sources in one call
+    raw=$(qcmd 'AT+CGPADDR;+QMAP="WWAN"' 2>/dev/null)
 
+    # Step 1: +CGPADDR lines — collect CIDs with real IPv4 addresses
     cgpaddr_cids=""
-    if [ -n "$cgpaddr_resp" ]; then
-        cgpaddr_cids=$(printf '%s' "$cgpaddr_resp" | awk -F'[,"]' '
-            /\+CGPADDR:/ {
-                cid = $1; gsub(/[^0-9]/, "", cid)
-                ip = $3
-                if (ip != "" && ip != "0.0.0.0" && ip !~ /^0+(\.0+)*$/) {
-                    split(ip, octets, ".")
-                    if (length(octets) == 4 && octets[1]+0 > 0) {
-                        print cid
-                    }
-                }
-            }
-        ')
-    fi
-
-    # Step 2: AT+QMAP="WWAN" — get the WAN-connected CID (authoritative)
-    qmap_cid=""
-    qmap_resp=$(run_at 'AT+QMAP="WWAN"')
-    if [ -n "$qmap_resp" ]; then
-        # +QMAP: "WWAN",<connected>,<cid>,"<type>","<ip>"
-        qmap_cid=$(printf '%s' "$qmap_resp" | awk -F',' '
-            /\+QMAP:/ {
-                gsub(/"/, "", $5)
-                ip = $5
-                cid = $3
-                gsub(/[^0-9]/, "", cid)
-                if (ip != "" && ip != "0.0.0.0" && ip != "0:0:0:0:0:0:0:0") {
+    cgpaddr_cids=$(printf '%s\n' "$raw" | awk -F'[,"]' '
+        /\+CGPADDR:/ {
+            cid = $1; gsub(/[^0-9]/, "", cid)
+            ip = $3
+            if (ip != "" && ip != "0.0.0.0" && ip !~ /^0+(\.0+)*$/) {
+                split(ip, octets, ".")
+                if (length(octets) == 4 && octets[1]+0 > 0) {
                     print cid
-                    exit
                 }
             }
-        ')
-    fi
+        }
+    ')
+
+    # Step 2: +QMAP line — WAN-connected CID (authoritative)
+    qmap_cid=$(printf '%s\n' "$raw" | awk -F',' '
+        /\+QMAP:/ {
+            gsub(/"/, "", $5)
+            ip = $5
+            cid = $3
+            gsub(/[^0-9]/, "", cid)
+            if (ip != "" && ip != "0.0.0.0" && ip != "0:0:0:0:0:0:0:0") {
+                print cid
+                exit
+            }
+        }
+    ')
 
     # Step 3: QMAP is authoritative; CGPADDR is fallback
     if [ -n "$qmap_cid" ]; then

@@ -592,21 +592,15 @@ poll_serving_cell() {
 # Writes latest values to state vars AND appends to NDJSON history file.
 
 poll_per_antenna_signal() {
+    # Compound AT: fetch all per-antenna signal data in one call
     local result
+    result=$(qcmd 'AT+QRSRP;+QRSRQ;+QSINR' 2>/dev/null)
 
-    # AT+QRSRP — per-antenna RSRP
-    result=$(qcmd_exec 'AT+QRSRP')
-    [ $? -eq 0 ] && parse_qrsrp "$result"
-    sleep "$SIP_DELAY"
-
-    # AT+QRSRQ — per-antenna RSRQ
-    result=$(qcmd_exec 'AT+QRSRQ')
-    [ $? -eq 0 ] && parse_qrsrq "$result"
-    sleep "$SIP_DELAY"
-
-    # AT+QSINR — per-antenna SINR
-    result=$(qcmd_exec 'AT+QSINR')
-    [ $? -eq 0 ] && parse_qsinr "$result"
+    if [ -n "$result" ]; then
+        parse_qrsrp "$result"
+        parse_qrsrq "$result"
+        parse_qsinr "$result"
+    fi
 
     # Append to signal history
     append_signal_history
@@ -673,37 +667,32 @@ append_ping_history() {
 poll_tier2() {
     local result
 
-    # Temperature — AT+QTEMP
-    result=$(qcmd_exec 'AT+QTEMP')
-    [ $? -eq 0 ] && parse_temperature "$result"
-    sleep "$SIP_DELAY"
+    # Compound AT: status queries in one call.
+    # CPIN? is last — it can ERROR when SIM is absent; placing it last
+    # ensures earlier responses (QTEMP, COPS, QUIMSLOT, CNUM) are preserved
+    # even if the modem aborts on CPIN ERROR.
+    result=$(qcmd 'AT+QTEMP;+COPS?;+QUIMSLOT?;+CNUM;+CPIN?' 2>/dev/null)
 
-    # Carrier — AT+COPS?
-    result=$(qcmd_exec 'AT+COPS?')
-    [ $? -eq 0 ] && parse_carrier "$result"
-    sleep "$SIP_DELAY"
+    if [ -n "$result" ]; then
+        parse_temperature "$result"
+        parse_carrier "$result"
+        parse_sim_slot "$result"
 
-    # SIM status — AT+CPIN?
-    result=$(qcmd_exec 'AT+CPIN?')
-    if [ $? -eq 0 ]; then
-        parse_sim_status "$result"
-    elif [ $? -eq 2 ]; then
-        t2_sim_status="error"
-        errors="sim_not_inserted"
-    fi
-    sleep "$SIP_DELAY"
-
-    # SIM slot — AT+QUIMSLOT?
-    result=$(qcmd_exec 'AT+QUIMSLOT?')
-    [ $? -eq 0 ] && parse_sim_slot "$result"
-    sleep "$SIP_DELAY"
-
-    # Phone number refresh (may change on SIM swap)
-    result=$(qcmd_exec 'AT+CNUM')
-    if [ $? -eq 0 ]; then
+        # Phone number refresh (may change on SIM swap)
         local num
         num=$(printf '%s\n' "$result" | grep '+CNUM:' | head -1 | cut -d',' -f2 | tr -d '"' | tr -d '\r')
         [ -n "$num" ] && boot_phone_number="$num"
+
+        # SIM status — extract CPIN line specifically (parse_sim_status uses
+        # case matching, not grep, so pass only the relevant line)
+        local cpin_line
+        cpin_line=$(printf '%s\n' "$result" | grep '+CPIN:' | head -1)
+        if [ -n "$cpin_line" ]; then
+            parse_sim_status "$cpin_line"
+        elif printf '%s\n' "$result" | grep -q 'CME ERROR'; then
+            t2_sim_status="error"
+            errors="sim_not_inserted"
+        fi
     fi
     sleep "$SIP_DELAY"
 
@@ -722,49 +711,40 @@ poll_tier2() {
     fi
     sleep "$SIP_DELAY"
 
-    # Timing Advance — LTE (query only, enabled at boot)
-    result=$(qcmd_exec 'AT+QNWCFG="lte_time_advance"')
-    if [ $? -eq 0 ]; then
+    # Compound AT: network info queries in one call.
+    # NR commands are last — they may ERROR when not on 5G; placing them
+    # last ensures LTE/general responses are preserved if the modem aborts.
+    result=$(qcmd 'AT+QNWCFG="lte_time_advance";+QNWCFG="lte_mimo_layers";+CGCONTRDP;+QMAP="WWAN";+QNWCFG="nr5g_time_advance";+QNWCFG="nr5g_mimo_layers"' 2>/dev/null)
+
+    if [ -n "$result" ]; then
+        # Timing advance (parser handles both LTE and NR from same blob)
         parse_time_advance "$result"
+
+        # MIMO layers (parser greps for each prefix independently)
+        parse_mimo "$result" "$result"
+
+        # APN + DNS
+        if printf '%s\n' "$result" | grep -q '+CGCONTRDP:'; then
+            parse_cgcontrdp "$result"
+        else
+            t2_apn=""
+            t2_primary_dns=""
+            t2_secondary_dns=""
+        fi
+
+        # WAN IP addresses
+        if printf '%s\n' "$result" | grep -q '+QMAP:'; then
+            parse_wan_ip "$result"
+        else
+            t2_wan_ipv4=""
+            t2_wan_ipv6=""
+        fi
     else
         lte_ta=""
-    fi
-    sleep "$SIP_DELAY"
-
-    # Timing Advance — NR (query only, will ERROR when no 5G active)
-    result=$(qcmd_exec 'AT+QNWCFG="nr5g_time_advance"')
-    if [ $? -eq 0 ]; then
-        parse_time_advance "$result"
-    else
         nr_ta=""
-    fi
-    sleep "$SIP_DELAY"
-
-    # MIMO layers — LTE + NR (dynamic, changes with signal conditions)
-    local lte_mimo_result
-    local nr_mimo_result
-    lte_mimo_result=$(qcmd_exec 'AT+QNWCFG="lte_mimo_layers"')
-    sleep "$SIP_DELAY"
-    nr_mimo_result=$(qcmd_exec 'AT+QNWCFG="nr5g_mimo_layers"' 2>/dev/null)
-    parse_mimo "$lte_mimo_result" "$nr_mimo_result"
-    sleep "$SIP_DELAY"
-
-    # APN + DNS — AT+CGCONTRDP (first non-IMS profile)
-    result=$(qcmd_exec 'AT+CGCONTRDP')
-    if [ $? -eq 0 ]; then
-        parse_cgcontrdp "$result"
-    else
         t2_apn=""
         t2_primary_dns=""
         t2_secondary_dns=""
-    fi
-    sleep "$SIP_DELAY"
-
-    # WAN IP addresses — AT+QMAP="WWAN"
-    result=$(qcmd_exec 'AT+QMAP="WWAN"')
-    if [ $? -eq 0 ]; then
-        parse_wan_ip "$result"
-    else
         t2_wan_ipv4=""
         t2_wan_ipv6=""
     fi

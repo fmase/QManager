@@ -40,29 +40,25 @@ CMD_GAP=0.2
 if [ "$REQUEST_METHOD" = "GET" ]; then
     qlog_info "Fetching MBN settings"
 
+    # --- Compound AT: fetch auto-select status and profile list in one call ---
+    raw=$(qcmd 'AT+QMBNCFG="AutoSel";+QMBNCFG="list"' 2>/dev/null)
+
     # --- 1. Auto-select status ---
     auto_sel="0"
-    autosel_resp=$(run_at 'AT+QMBNCFG="AutoSel"')
-    sleep "$CMD_GAP"
-
-    if [ -n "$autosel_resp" ]; then
-        # +QMBNCFG: "AutoSel",<0|1>
-        auto_sel=$(printf '%s' "$autosel_resp" | awk -F',' '
-            /\+QMBNCFG:.*"AutoSel"/ {
-                val = $2; gsub(/[^0-9]/, "", val)
-                if (val != "") print val
-            }
-        ')
+    autosel_line=$(printf '%s\n' "$raw" | grep '+QMBNCFG:.*"AutoSel"' | head -1)
+    if [ -n "$autosel_line" ]; then
+        auto_sel=$(printf '%s' "$autosel_line" | awk -F',' '{
+            val = $2; gsub(/[^0-9]/, "", val)
+            if (val != "") print val
+        }')
         [ -z "$auto_sel" ] && auto_sel="0"
     fi
 
     # --- 2. Profile list ---
-    list_resp=$(run_at 'AT+QMBNCFG="list"')
-    sleep "$CMD_GAP"
-
-    if [ -n "$list_resp" ]; then
+    list_lines=$(printf '%s\n' "$raw" | grep '+QMBNCFG:.*"List"')
+    if [ -n "$list_lines" ]; then
         # +QMBNCFG: "List",<idx>,<sel>,<act>,"<name>",<ver>,<date>
-        profiles_json=$(printf '%s' "$list_resp" | awk -F',' '
+        profiles_json=$(printf '%s' "$list_lines" | awk -F',' '
             /\+QMBNCFG:.*"List"/ {
                 idx = $2; gsub(/[^0-9]/, "", idx)
                 sel = $3; gsub(/[^0-9]/, "", sel)

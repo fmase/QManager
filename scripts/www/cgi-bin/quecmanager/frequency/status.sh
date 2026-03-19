@@ -25,90 +25,71 @@ cgi_handle_options
 . /usr/lib/qmanager/tower_lock_mgr.sh 2>/dev/null
 
 # =============================================================================
-# Query LTE frequency lock state
+# Compound AT: fetch both frequency lock states in one call
 # =============================================================================
-qlog_debug "Querying LTE frequency lock state"
-lte_result=$(qcmd 'AT+QNWCFG="lte_earfcn_lock"' 2>/dev/null)
-lte_rc=$?
+qlog_debug "Querying frequency lock states"
+raw=$(qcmd 'AT+QNWCFG="lte_earfcn_lock";+QNWCFG="nr5g_earfcn_lock"' 2>/dev/null)
+[ -z "$raw" ] && qlog_warn "Frequency lock compound query returned empty response"
 
+# --- LTE frequency lock ---
 lte_freq_locked="false"
 lte_freq_entries_json="[]"
 
-if [ $lte_rc -eq 0 ] && [ -n "$lte_result" ]; then
-    line=$(printf '%s' "$lte_result" | grep '+QNWCFG:' | head -1 | tr -d '\r')
-    if [ -n "$line" ]; then
-        # Extract everything after "lte_earfcn_lock",
-        params=$(printf '%s' "$line" | sed 's/.*"lte_earfcn_lock",//' | tr -d ' ')
-        count=$(printf '%s' "$params" | cut -d',' -f1)
+line=$(printf '%s\n' "$raw" | grep '+QNWCFG:.*"lte_earfcn_lock"' | head -1 | tr -d '\r')
+if [ -n "$line" ]; then
+    params=$(printf '%s' "$line" | sed 's/.*"lte_earfcn_lock",//' | tr -d ' ')
+    count=$(printf '%s' "$params" | cut -d',' -f1)
 
-        if [ "$count" -gt 0 ] 2>/dev/null; then
-            lte_freq_locked="true"
-            earfcn_str=$(printf '%s' "$params" | cut -d',' -f2)
-            # Split colon-separated EARFCNs into JSON array
-            lte_freq_entries_json="["
-            first="true"
-            OLD_IFS="$IFS"
-            IFS=":"
-            for earfcn in $earfcn_str; do
-                [ -z "$earfcn" ] && continue
-                if [ "$first" = "true" ]; then
-                    first="false"
-                else
-                    lte_freq_entries_json="${lte_freq_entries_json},"
-                fi
-                lte_freq_entries_json="${lte_freq_entries_json}{\"earfcn\":$earfcn}"
-            done
-            IFS="$OLD_IFS"
-            lte_freq_entries_json="${lte_freq_entries_json}]"
-        fi
+    if [ "$count" -gt 0 ] 2>/dev/null; then
+        lte_freq_locked="true"
+        earfcn_str=$(printf '%s' "$params" | cut -d',' -f2)
+        # Split colon-separated EARFCNs into JSON array
+        lte_freq_entries_json="["
+        first="true"
+        OLD_IFS="$IFS"
+        IFS=":"
+        for earfcn in $earfcn_str; do
+            [ -z "$earfcn" ] && continue
+            if [ "$first" = "true" ]; then
+                first="false"
+            else
+                lte_freq_entries_json="${lte_freq_entries_json},"
+            fi
+            lte_freq_entries_json="${lte_freq_entries_json}{\"earfcn\":$earfcn}"
+        done
+        IFS="$OLD_IFS"
+        lte_freq_entries_json="${lte_freq_entries_json}]"
     fi
-else
-    qlog_warn "Failed to query LTE frequency lock (rc=$lte_rc)"
 fi
 
-sleep 0.1
-
-# =============================================================================
-# Query NR5G frequency lock state
-# =============================================================================
-qlog_debug "Querying NR5G frequency lock state"
-nr_result=$(qcmd 'AT+QNWCFG="nr5g_earfcn_lock"' 2>/dev/null)
-nr_rc=$?
-
+# --- NR5G frequency lock ---
 nr_freq_locked="false"
 nr_freq_entries_json="[]"
 
-if [ $nr_rc -eq 0 ] && [ -n "$nr_result" ]; then
-    line=$(printf '%s' "$nr_result" | grep '+QNWCFG:' | head -1 | tr -d '\r')
-    if [ -n "$line" ]; then
-        # Extract everything after "nr5g_earfcn_lock",
-        params=$(printf '%s' "$line" | sed 's/.*"nr5g_earfcn_lock",//' | tr -d ' ')
-        count=$(printf '%s' "$params" | cut -d',' -f1)
+line=$(printf '%s\n' "$raw" | grep '+QNWCFG:.*"nr5g_earfcn_lock"' | head -1 | tr -d '\r')
+if [ -n "$line" ]; then
+    params=$(printf '%s' "$line" | sed 's/.*"nr5g_earfcn_lock",//' | tr -d ' ')
+    count=$(printf '%s' "$params" | cut -d',' -f1)
 
-        if [ "$count" -gt 0 ] 2>/dev/null; then
-            nr_freq_locked="true"
-            arfcn_str=$(printf '%s' "$params" | cut -d',' -f2)
-            # Parse alternating EARFCN:SCS pairs
-            nr_freq_entries_json="["
-            first="true"
-            set -- $(printf '%s' "$arfcn_str" | tr ':' ' ')
-            while [ $# -ge 2 ]; do
-                if [ "$first" = "true" ]; then
-                    first="false"
-                else
-                    nr_freq_entries_json="${nr_freq_entries_json},"
-                fi
-                nr_freq_entries_json="${nr_freq_entries_json}{\"arfcn\":$1,\"scs\":$2}"
-                shift 2
-            done
-            nr_freq_entries_json="${nr_freq_entries_json}]"
-        fi
+    if [ "$count" -gt 0 ] 2>/dev/null; then
+        nr_freq_locked="true"
+        arfcn_str=$(printf '%s' "$params" | cut -d',' -f2)
+        # Parse alternating EARFCN:SCS pairs
+        nr_freq_entries_json="["
+        first="true"
+        set -- $(printf '%s' "$arfcn_str" | tr ':' ' ')
+        while [ $# -ge 2 ]; do
+            if [ "$first" = "true" ]; then
+                first="false"
+            else
+                nr_freq_entries_json="${nr_freq_entries_json},"
+            fi
+            nr_freq_entries_json="${nr_freq_entries_json}{\"arfcn\":$1,\"scs\":$2}"
+            shift 2
+        done
+        nr_freq_entries_json="${nr_freq_entries_json}]"
     fi
-else
-    qlog_warn "Failed to query NR5G frequency lock (rc=$nr_rc)"
 fi
-
-sleep 0.1
 
 # =============================================================================
 # Query tower lock state (for mutual exclusion gating)

@@ -51,112 +51,89 @@ nr5g_unit_to_kbps() {
 if [ "$REQUEST_METHOD" = "GET" ]; then
     qlog_info "Fetching cellular settings"
 
+    # --- Compound AT: fetch all settings in one call ---
+    raw=$(qcmd 'AT+QUIMSLOT?;+CFUN?;+QNWPREFCFG="mode_pref";+QNWPREFCFG="nr5g_disable_mode";+QNWPREFCFG="roam_pref";+QNWCFG="lte_ambr";+QNWCFG="nr5g_ambr"' 2>/dev/null)
+    [ -z "$raw" ] && qlog_warn "Compound AT query returned empty response"
+
     # --- SIM Slot ---
     sim_slot="1"
-    sim_slot_resp=$(qcmd 'AT+QUIMSLOT?' 2>/dev/null)
-    if [ $? -eq 0 ] && [ -n "$sim_slot_resp" ]; then
-        val=$(printf '%s\n' "$sim_slot_resp" | grep '+QUIMSLOT:' | head -1 | sed 's/+QUIMSLOT: //' | tr -d ' \r')
-        [ -n "$val" ] && sim_slot="$val"
-    fi
-    sleep "$CMD_GAP"
+    val=$(printf '%s\n' "$raw" | grep '+QUIMSLOT:' | head -1 | sed 's/+QUIMSLOT: //' | tr -d ' \r')
+    [ -n "$val" ] && sim_slot="$val"
 
     # --- CFUN ---
     cfun="1"
-    cfun_resp=$(qcmd 'AT+CFUN?' 2>/dev/null)
-    if [ $? -eq 0 ] && [ -n "$cfun_resp" ]; then
-        val=$(printf '%s\n' "$cfun_resp" | grep '+CFUN:' | head -1 | sed 's/+CFUN: //' | tr -d ' \r')
-        [ -n "$val" ] && cfun="$val"
-    fi
-    sleep "$CMD_GAP"
+    val=$(printf '%s\n' "$raw" | grep '+CFUN:' | head -1 | sed 's/+CFUN: //' | tr -d ' \r')
+    [ -n "$val" ] && cfun="$val"
 
     # --- Network Mode ---
     mode_pref="AUTO"
-    mode_resp=$(qcmd 'AT+QNWPREFCFG="mode_pref"' 2>/dev/null)
-    if [ $? -eq 0 ] && [ -n "$mode_resp" ]; then
-        val=$(printf '%s\n' "$mode_resp" | grep '+QNWPREFCFG:' | head -1 | sed 's/.*"mode_pref",//' | tr -d ' \r')
-        [ -n "$val" ] && mode_pref="$val"
-    fi
-    sleep "$CMD_GAP"
+    val=$(printf '%s\n' "$raw" | grep '+QNWPREFCFG:.*"mode_pref"' | head -1 | sed 's/.*"mode_pref",//' | tr -d ' \r')
+    [ -n "$val" ] && mode_pref="$val"
 
     # --- NR5G Mode ---
     nr5g_mode="0"
-    nr5g_resp=$(qcmd 'AT+QNWPREFCFG="nr5g_disable_mode"' 2>/dev/null)
-    if [ $? -eq 0 ] && [ -n "$nr5g_resp" ]; then
-        val=$(printf '%s\n' "$nr5g_resp" | grep '+QNWPREFCFG:' | head -1 | sed 's/.*"nr5g_disable_mode",//' | tr -d ' \r')
-        [ -n "$val" ] && nr5g_mode="$val"
-    fi
-    sleep "$CMD_GAP"
+    val=$(printf '%s\n' "$raw" | grep '+QNWPREFCFG:.*"nr5g_disable_mode"' | head -1 | sed 's/.*"nr5g_disable_mode",//' | tr -d ' \r')
+    [ -n "$val" ] && nr5g_mode="$val"
 
     # --- Roaming Preference ---
     roam_pref="255"
-    roam_resp=$(qcmd 'AT+QNWPREFCFG="roam_pref"' 2>/dev/null)
-    if [ $? -eq 0 ] && [ -n "$roam_resp" ]; then
-        val=$(printf '%s\n' "$roam_resp" | grep '+QNWPREFCFG:' | head -1 | sed 's/.*"roam_pref",//' | tr -d ' \r')
-        [ -n "$val" ] && roam_pref="$val"
-    fi
-    sleep "$CMD_GAP"
+    val=$(printf '%s\n' "$raw" | grep '+QNWPREFCFG:.*"roam_pref"' | head -1 | sed 's/.*"roam_pref",//' | tr -d ' \r')
+    [ -n "$val" ] && roam_pref="$val"
 
     # --- LTE AMBR ---
     lte_ambr_json="[]"
-    lte_ambr_resp=$(qcmd 'AT+QNWCFG="lte_ambr"' 2>/dev/null)
-    if [ $? -eq 0 ] && [ -n "$lte_ambr_resp" ]; then
-        lte_ambr_lines=$(printf '%s\n' "$lte_ambr_resp" | grep '+QNWCFG: "lte_ambr"')
-        if [ -n "$lte_ambr_lines" ]; then
-            lte_tmpfile="/tmp/qmanager_lte_ambr.tmp"
-            : > "$lte_tmpfile"
-            printf '%s\n' "$lte_ambr_lines" | while IFS= read -r line; do
-                csv=$(printf '%s' "$line" | sed 's/+QNWCFG: "lte_ambr",//g' | tr -d ' \r')
-                apn=$(printf '%s' "$csv" | cut -d',' -f1 | tr -d '"')
-                dl=$(printf '%s' "$csv" | cut -d',' -f2)
-                ul=$(printf '%s' "$csv" | cut -d',' -f3)
-                [ -n "$apn" ] && [ -n "$dl" ] && [ -n "$ul" ] && \
-                    printf '%s\t%s\t%s\n' "$apn" "$dl" "$ul" >> "$lte_tmpfile"
-            done
-            if [ -s "$lte_tmpfile" ]; then
-                lte_ambr_json=$(jq -Rsc '
-                    split("\n") | map(select(length > 0) | split("\t") |
-                        {apn: .[0], dl_kbps: (.[1] | tonumber), ul_kbps: (.[2] | tonumber)}
-                    )
-                ' "$lte_tmpfile")
-            fi
-            rm -f "$lte_tmpfile"
+    lte_ambr_lines=$(printf '%s\n' "$raw" | grep '+QNWCFG: "lte_ambr"')
+    if [ -n "$lte_ambr_lines" ]; then
+        lte_tmpfile="/tmp/qmanager_lte_ambr.tmp"
+        : > "$lte_tmpfile"
+        printf '%s\n' "$lte_ambr_lines" | while IFS= read -r line; do
+            csv=$(printf '%s' "$line" | sed 's/+QNWCFG: "lte_ambr",//g' | tr -d ' \r')
+            apn=$(printf '%s' "$csv" | cut -d',' -f1 | tr -d '"')
+            dl=$(printf '%s' "$csv" | cut -d',' -f2)
+            ul=$(printf '%s' "$csv" | cut -d',' -f3)
+            [ -n "$apn" ] && [ -n "$dl" ] && [ -n "$ul" ] && \
+                printf '%s\t%s\t%s\n' "$apn" "$dl" "$ul" >> "$lte_tmpfile"
+        done
+        if [ -s "$lte_tmpfile" ]; then
+            lte_ambr_json=$(jq -Rsc '
+                split("\n") | map(select(length > 0) | split("\t") |
+                    {apn: .[0], dl_kbps: (.[1] | tonumber), ul_kbps: (.[2] | tonumber)}
+                )
+            ' "$lte_tmpfile")
         fi
+        rm -f "$lte_tmpfile"
     fi
-    sleep "$CMD_GAP"
 
     # --- NR5G AMBR ---
     nr5g_ambr_json="[]"
-    nr5g_ambr_resp=$(qcmd 'AT+QNWCFG="nr5g_ambr"' 2>/dev/null)
-    if [ $? -eq 0 ] && [ -n "$nr5g_ambr_resp" ]; then
-        nr5g_ambr_lines=$(printf '%s\n' "$nr5g_ambr_resp" | grep '+QNWCFG: "nr5g_ambr"')
-        if [ -n "$nr5g_ambr_lines" ]; then
-            nr5g_tmpfile="/tmp/qmanager_nr5g_ambr.tmp"
-            : > "$nr5g_tmpfile"
-            printf '%s\n' "$nr5g_ambr_lines" | while IFS= read -r line; do
-                csv=$(printf '%s' "$line" | sed 's/+QNWCFG: "nr5g_ambr",//g' | tr -d ' \r')
-                dnn=$(printf '%s' "$csv" | cut -d',' -f1 | tr -d '"')
-                unit_dl=$(printf '%s' "$csv" | cut -d',' -f2)
-                session_dl=$(printf '%s' "$csv" | cut -d',' -f3)
-                unit_ul=$(printf '%s' "$csv" | cut -d',' -f4)
-                session_ul=$(printf '%s' "$csv" | cut -d',' -f5)
+    nr5g_ambr_lines=$(printf '%s\n' "$raw" | grep '+QNWCFG: "nr5g_ambr"')
+    if [ -n "$nr5g_ambr_lines" ]; then
+        nr5g_tmpfile="/tmp/qmanager_nr5g_ambr.tmp"
+        : > "$nr5g_tmpfile"
+        printf '%s\n' "$nr5g_ambr_lines" | while IFS= read -r line; do
+            csv=$(printf '%s' "$line" | sed 's/+QNWCFG: "nr5g_ambr",//g' | tr -d ' \r')
+            dnn=$(printf '%s' "$csv" | cut -d',' -f1 | tr -d '"')
+            unit_dl=$(printf '%s' "$csv" | cut -d',' -f2)
+            session_dl=$(printf '%s' "$csv" | cut -d',' -f3)
+            unit_ul=$(printf '%s' "$csv" | cut -d',' -f4)
+            session_ul=$(printf '%s' "$csv" | cut -d',' -f5)
 
-                mult_dl=$(nr5g_unit_to_kbps "$unit_dl")
-                mult_ul=$(nr5g_unit_to_kbps "$unit_ul")
-                dl_kbps=$((mult_dl * session_dl))
-                ul_kbps=$((mult_ul * session_ul))
+            mult_dl=$(nr5g_unit_to_kbps "$unit_dl")
+            mult_ul=$(nr5g_unit_to_kbps "$unit_ul")
+            dl_kbps=$((mult_dl * session_dl))
+            ul_kbps=$((mult_ul * session_ul))
 
-                [ -n "$dnn" ] && \
-                    printf '%s\t%s\t%s\n' "$dnn" "$dl_kbps" "$ul_kbps" >> "$nr5g_tmpfile"
-            done
-            if [ -s "$nr5g_tmpfile" ]; then
-                nr5g_ambr_json=$(jq -Rsc '
-                    split("\n") | map(select(length > 0) | split("\t") |
-                        {dnn: .[0], dl_kbps: (.[1] | tonumber), ul_kbps: (.[2] | tonumber)}
-                    )
-                ' "$nr5g_tmpfile")
-            fi
-            rm -f "$nr5g_tmpfile"
+            [ -n "$dnn" ] && \
+                printf '%s\t%s\t%s\n' "$dnn" "$dl_kbps" "$ul_kbps" >> "$nr5g_tmpfile"
+        done
+        if [ -s "$nr5g_tmpfile" ]; then
+            nr5g_ambr_json=$(jq -Rsc '
+                split("\n") | map(select(length > 0) | split("\t") |
+                    {dnn: .[0], dl_kbps: (.[1] | tonumber), ul_kbps: (.[2] | tonumber)}
+                )
+            ' "$nr5g_tmpfile")
         fi
+        rm -f "$nr5g_tmpfile"
     fi
 
     # --- Build response ---

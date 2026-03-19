@@ -7,8 +7,8 @@
 # Queries the modem for current APN, IMEI, and ICCID.
 # Used to pre-fill the profile creation form with live modem values.
 #
-# Sip-don't-gulp: each AT command goes through qcmd individually with
-# sleep gaps between, so the poller can slip in.
+# Uses compound AT syntax (semicolon-separated) to fetch all data in
+# a single modem round-trip for fast page load.
 #
 # Called ONCE when the user opens the profile form, not on a timer.
 #
@@ -27,29 +27,60 @@ cgi_headers
 cgi_handle_options
 
 # --- Configuration -----------------------------------------------------------
-CMD_GAP=0.2   # Gap between AT commands (seconds)
+CMD_GAP=0.2   # Gap between AT commands (seconds) — kept for POST if needed
 
 qlog_info "Querying current modem settings for profile form"
 
-# --- 1. APN profiles from AT+CGDCONT? ----------------------------------------
-cgdcont_resp=$(run_at "AT+CGDCONT?")
-sleep "$CMD_GAP"
+# --- Compound AT: fetch all settings in one call ---
+raw=$(qcmd 'AT+CGDCONT?;+CGSN;+QCCID;+CGPADDR;+QMAP="WWAN"' 2>/dev/null)
 
-# Parse: +CGDCONT: <cid>,"<pdp_type>","<apn>",...
-apn_array=$(parse_cgdcont "$cgdcont_resp")
+# --- 1. APN profiles from +CGDCONT: lines ---
+cgdcont_lines=$(printf '%s\n' "$raw" | grep '+CGDCONT:')
+apn_array=$(parse_cgdcont "$cgdcont_lines")
 
-# --- 2. Current IMEI from AT+CGSN --------------------------------------------
-imei_resp=$(run_at "AT+CGSN")
-current_imei=$(printf '%s' "$imei_resp" | grep -o '[0-9]\{15\}' | head -1)
-sleep "$CMD_GAP"
+# --- 2. Current IMEI — bare 15-digit line from AT+CGSN ---
+current_imei=$(printf '%s\n' "$raw" | tr -d '\r' | grep -x '[0-9]\{15\}' | head -1)
 
-# --- 3. Current ICCID from AT+QCCID ------------------------------------------
-iccid_resp=$(run_at "AT+QCCID")
-current_iccid=$(printf '%s' "$iccid_resp" | grep -o '[0-9]\{19,20\}' | head -1)
-sleep "$CMD_GAP"
+# --- 3. Current ICCID from +QCCID: line ---
+current_iccid=$(printf '%s\n' "$raw" | grep '+QCCID:' | grep -o '[0-9]\{19,20\}' | head -1)
 
-# --- Determine active CID (cross-reference CGPADDR + QMAP) ---------------
-detect_active_cid
+# --- 4. Active CID (cross-reference +CGPADDR + +QMAP lines from blob) ---
+active_cid=""
+
+# CGPADDR: collect CIDs with valid IPv4
+cgpaddr_cids=$(printf '%s\n' "$raw" | awk -F'[,"]' '
+    /\+CGPADDR:/ {
+        cid = $1; gsub(/[^0-9]/, "", cid)
+        ip = $3
+        if (ip != "" && ip != "0.0.0.0" && ip !~ /^0+(\.0+)*$/) {
+            split(ip, octets, ".")
+            if (length(octets) == 4 && octets[1]+0 > 0) {
+                print cid
+            }
+        }
+    }
+')
+
+# QMAP: authoritative WAN CID
+qmap_cid=$(printf '%s\n' "$raw" | awk -F',' '
+    /\+QMAP:/ {
+        gsub(/"/, "", $5)
+        ip = $5
+        cid = $3
+        gsub(/[^0-9]/, "", cid)
+        if (ip != "" && ip != "0.0.0.0" && ip != "0:0:0:0:0:0:0:0") {
+            print cid
+            exit
+        }
+    }
+')
+
+if [ -n "$qmap_cid" ]; then
+    active_cid="$qmap_cid"
+elif [ -n "$cgpaddr_cids" ]; then
+    active_cid=$(printf '%s\n' "$cgpaddr_cids" | head -1)
+fi
+[ -z "$active_cid" ] && active_cid="1"
 
 # =============================================================================
 # Build and output response JSON

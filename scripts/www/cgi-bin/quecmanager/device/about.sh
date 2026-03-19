@@ -92,21 +92,19 @@ rel_nr5g=""
 lan_ip=""
 lan_gateway=""
 
-# 3GPP release versions -- AT+QNWCFG="3gpp_rel"
-# Response: +QNWCFG: "3gpp_rel",R17,R17
-result=$(run_at 'AT+QNWCFG="3gpp_rel"')
-if [ -n "$result" ]; then
-    line=$(printf '%s' "$result" | grep '+QNWCFG:' | head -1 | tr -d '\r ')
+# Compound AT: 3GPP release + LAN IP in one call
+raw=$(qcmd 'AT+QNWCFG="3gpp_rel";+QMAP="LANIP"' 2>/dev/null)
+
+# 3GPP release versions -- +QNWCFG: "3gpp_rel",R17,R17
+line=$(printf '%s\n' "$raw" | grep '+QNWCFG:.*"3gpp_rel"' | head -1 | tr -d '\r ')
+if [ -n "$line" ]; then
     rel_lte=$(printf '%s' "$line" | cut -d',' -f2)
     rel_nr5g=$(printf '%s' "$line" | cut -d',' -f3)
 fi
-sleep "$CMD_GAP"
 
-# LAN IP and gateway -- AT+QMAP="LANIP"
-# Response: +QMAP: "LANIP",192.168.224.100,192.168.227.99,192.168.224.1
-result=$(run_at 'AT+QMAP="LANIP"')
-if [ -n "$result" ]; then
-    line=$(printf '%s' "$result" | grep '+QMAP:' | head -1 | tr -d '\r ')
+# LAN IP and gateway -- +QMAP: "LANIP",192.168.224.100,192.168.227.99,192.168.224.1
+line=$(printf '%s\n' "$raw" | grep '+QMAP:.*"LANIP"' | head -1 | tr -d '\r ')
+if [ -n "$line" ]; then
     lan_ip=$(printf '%s' "$line" | cut -d',' -f2 | tr -d '"')
     lan_gateway=$(printf '%s' "$line" | cut -d',' -f4 | tr -d '"')
 fi
