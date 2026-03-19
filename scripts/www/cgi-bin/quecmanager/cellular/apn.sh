@@ -36,15 +36,49 @@ TTL_FILE="/etc/firewall.user.ttl"
 if [ "$REQUEST_METHOD" = "GET" ]; then
     qlog_info "Fetching APN settings"
 
-    # --- 1. All carrier profiles from AT+CGDCONT? ---
-    cgdcont_resp=$(run_at "AT+CGDCONT?")
-    sleep "$CMD_GAP"
+    # --- Compound AT: fetch profiles + active CID in one call ---
+    raw=$(qcmd 'AT+CGDCONT?;+CGPADDR;+QMAP="WWAN"' 2>/dev/null)
+    [ -z "$raw" ] && qlog_warn "APN compound AT query returned empty response"
 
     # Parse: +CGDCONT: <cid>,"<pdp_type>","<apn>",...
-    profiles_json=$(parse_cgdcont "$cgdcont_resp")
+    cgdcont_lines=$(printf '%s\n' "$raw" | grep '+CGDCONT:')
+    profiles_json=$(parse_cgdcont "$cgdcont_lines")
 
-    # --- Determine active CID (cross-reference CGPADDR + QMAP) ---------------
-    detect_active_cid
+    # --- Determine active CID (cross-reference +CGPADDR + +QMAP from blob) ---
+    active_cid=""
+
+    cgpaddr_cids=$(printf '%s\n' "$raw" | awk -F'[,"]' '
+        /\+CGPADDR:/ {
+            cid = $1; gsub(/[^0-9]/, "", cid)
+            ip = $3
+            if (ip != "" && ip != "0.0.0.0" && ip !~ /^0+(\.0+)*$/) {
+                split(ip, octets, ".")
+                if (length(octets) == 4 && octets[1]+0 > 0) {
+                    print cid
+                }
+            }
+        }
+    ')
+
+    qmap_cid=$(printf '%s\n' "$raw" | awk -F',' '
+        /\+QMAP:/ {
+            gsub(/"/, "", $5)
+            ip = $5
+            cid = $3
+            gsub(/[^0-9]/, "", cid)
+            if (ip != "" && ip != "0.0.0.0" && ip != "0:0:0:0:0:0:0:0") {
+                print cid
+                exit
+            }
+        }
+    ')
+
+    if [ -n "$qmap_cid" ]; then
+        active_cid="$qmap_cid"
+    elif [ -n "$cgpaddr_cids" ]; then
+        active_cid=$(printf '%s\n' "$cgpaddr_cids" | head -1)
+    fi
+    [ -z "$active_cid" ] && active_cid="1"
 
     qlog_info "Profiles: $(printf '%s' "$profiles_json" | jq -c length) entries, active_cid=$active_cid"
 
