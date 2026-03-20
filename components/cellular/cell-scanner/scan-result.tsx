@@ -122,8 +122,8 @@ const createColumns = (
           <span className="font-semibold">{cell.provider}</span>
           <Tooltip>
             <TooltipTrigger asChild>
-              <button type="button" className="inline-flex" aria-label="MCC/MNC details">
-                <Info className="h-3 w-3" />
+              <button type="button" className="inline-flex p-2 -m-2" aria-label="MCC/MNC details">
+                <Info className="size-3" />
               </button>
             </TooltipTrigger>
             <TooltipContent>
@@ -235,7 +235,17 @@ const createColumns = (
   },
 ];
 
+// Columns hidden on narrow containers (<640px) — users can toggle them back
+const NARROW_HIDDEN: VisibilityState = {
+  cellID: false,
+  tac: false,
+  bandwidth: false,
+  earfcn: false,
+};
+const NARROW_BREAKPOINT = 640;
+
 const ScanResultView = ({ data, onLockCell }: ScanResultViewProps) => {
+  const containerRef = React.useRef<HTMLDivElement>(null);
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
     [],
@@ -243,6 +253,25 @@ const ScanResultView = ({ data, onLockCell }: ScanResultViewProps) => {
   const [columnVisibility, setColumnVisibility] =
     React.useState<VisibilityState>({});
   const columns = React.useMemo(() => createColumns(onLockCell), [onLockCell]);
+
+  // Auto-hide secondary columns on narrow containers
+  React.useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    const ro = new ResizeObserver(([entry]) => {
+      const wide = entry.contentRect.width >= NARROW_BREAKPOINT;
+      setColumnVisibility((prev) => {
+        // Only auto-set if user hasn't manually toggled (all keys default)
+        const isDefault = Object.keys(prev).length === 0 ||
+          Object.keys(prev).every((k) => k in NARROW_HIDDEN);
+        if (!isDefault) return prev;
+        return wide ? {} : NARROW_HIDDEN;
+      });
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   const table = useReactTable({
     data,
@@ -262,7 +291,7 @@ const ScanResultView = ({ data, onLockCell }: ScanResultViewProps) => {
   });
 
   return (
-    <div className="relative flex flex-col gap-4 overflow-hidden">
+    <div ref={containerRef} className="relative flex flex-col gap-4 overflow-hidden">
       <div className="flex flex-col @sm/card:flex-row items-start @sm/card:items-center gap-2">
         <Input
           placeholder="Filter by provider..."
@@ -303,7 +332,7 @@ const ScanResultView = ({ data, onLockCell }: ScanResultViewProps) => {
         </DropdownMenu>
       </div>
       <div className="overflow-x-auto rounded-lg border">
-        <Table className="min-w-[800px]">
+        <Table className="min-w-[480px]">
           <TableHeader className="bg-muted sticky top-0 z-10">
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
