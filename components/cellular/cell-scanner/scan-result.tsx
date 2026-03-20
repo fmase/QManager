@@ -42,7 +42,6 @@ import {
 } from "@/components/ui/table";
 
 const MotionTableRow = motion.create(TableRow);
-import { Badge } from "@/components/ui/badge";
 import { SignalBadge, NetworkTypeBadge } from "./signal-badges";
 import {
   Tooltip,
