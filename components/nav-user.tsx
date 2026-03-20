@@ -151,27 +151,24 @@ export function NavUser({
     }
   };
 
-  // --- Reboot ---
+  // --- Reboot (optimistic) ---
+  // Fire the reboot request and redirect to the countdown page.
+  // The backend flushes its response then reboots after 1s — the countdown
+  // page handles polling for device readiness and redirects to login.
   const handleReboot = async (e: React.MouseEvent) => {
     e.preventDefault();
     setRebooting(true);
-    try {
-      const res = await authFetch("/cgi-bin/quecmanager/system/reboot.sh", {
-        method: "POST",
-      });
-      if (!res.ok) {
-        toast.error("Reboot failed — restart the device manually");
-        setRebooting(false);
-        return;
-      }
-      // Reboot command accepted — clear session and go to the waiting screen
+
+    // Fire-and-forget: send the reboot POST, don't await the response.
+    fetch("/cgi-bin/quecmanager/system/reboot.sh", { method: "POST" }).catch(
+      () => {}
+    );
+
+    // Clear session and redirect to countdown page.
+    setTimeout(() => {
       document.cookie = "qm_logged_in=; Path=/; Max-Age=0";
-      window.location.href = "/login/?rebooting=1";
-    } catch {
-      // Connection dropped — device is already going down
-      document.cookie = "qm_logged_in=; Path=/; Max-Age=0";
-      window.location.href = "/login/?rebooting=1";
-    }
+      window.location.href = "/reboot/";
+    }, 2000);
   };
 
   const initials =
@@ -346,7 +343,7 @@ export function NavUser({
             <AlertDialogTitle>Reboot Device</AlertDialogTitle>
             <AlertDialogDescription aria-live="polite">
               {rebooting
-                ? "The device is restarting and will be unreachable for about 30–60 seconds. Refresh this page once it comes back online."
+                ? "Reboot command sent. You will be logged out shortly..."
                 : "The device will restart and all network connections will drop until it comes back online."}
             </AlertDialogDescription>
           </AlertDialogHeader>

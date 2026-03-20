@@ -43,3 +43,7 @@ next-env.d.ts
 # install
 qmanager_install
 /*.tar.gz
+
+# claude superpowers
+/.superpowers
+/docs/superpowers
