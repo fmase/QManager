@@ -166,6 +166,9 @@ const NeighbourScanResultView = ({
   data,
   onLockCell,
 }: NeighbourScanResultViewProps) => {
+  // Only animate rows on initial mount — skip on sort/filter/page changes
+  const hasAnimated = React.useRef(false);
+  React.useEffect(() => { hasAnimated.current = true; }, []);
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
     [],
@@ -257,9 +260,9 @@ const NeighbourScanResultView = ({
               table.getRowModel().rows.map((row, index) => (
                 <MotionTableRow
                   key={row.id}
-                  initial={{ opacity: 0, x: -8 }}
+                  initial={hasAnimated.current ? false : { opacity: 0, x: -8 }}
                   animate={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 0.2, delay: Math.min(index * 0.05, 0.4), ease: "easeOut" }}
+                  transition={hasAnimated.current ? undefined : { duration: 0.2, delay: Math.min(index * 0.05, 0.4), ease: "easeOut" }}
                 >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id}>
