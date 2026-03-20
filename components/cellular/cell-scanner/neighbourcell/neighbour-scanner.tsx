@@ -3,17 +3,15 @@
 import { useState, useCallback } from "react";
 import { authFetch } from "@/lib/auth-fetch";
 
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { DownloadIcon, LoaderCircleIcon, RefreshCcwIcon } from "lucide-react";
+import {
+  AlertCircle,
+  DownloadIcon,
+  LoaderCircleIcon,
+  RefreshCcwIcon,
+} from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -109,26 +107,7 @@ const NeighbourCellScanner = () => {
   return (
     <>
       <Card className="@container/card">
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>Neighbor Cell Scanner</CardTitle>
-              <CardDescription>
-                Scan and display neighboring cellular towers and networks.
-              </CardDescription>
-            </div>
-            {isScanning && (
-              <Badge
-                variant="outline"
-                className="text-primary border-primary/50"
-              >
-                <LoaderCircleIcon className="h-3 w-3 animate-spin" />
-                Scanning...
-              </Badge>
-            )}
-          </div>
-        </CardHeader>
-        <CardContent>
+        <CardContent className="pt-6">
           <div className="grid gap-4">
             {hasScanResults ? (
               <NeighbourScanResultView
@@ -138,13 +117,22 @@ const NeighbourCellScanner = () => {
             ) : isScanning ? (
               <ScannerSkeleton headerCols={5} rowCols={4} />
             ) : status === "error" ? (
-              <div className="flex flex-col items-center justify-center py-16 text-center gap-3">
-                <p className="text-destructive text-sm">
-                  {error || "Scan failed"}
-                </p>
+              <div className="flex flex-col items-center justify-center py-16 text-center gap-4">
+                <div className="flex size-12 items-center justify-center rounded-full bg-destructive/10">
+                  <AlertCircle className="size-5 text-destructive" />
+                </div>
+                <div className="max-w-xs space-y-1">
+                  <p className="text-sm font-medium text-foreground">
+                    {error || "Scan failed"}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    The modem may be busy or unreachable. Check your connection
+                    and try again.
+                  </p>
+                </div>
                 <Button onClick={startScan} variant="outline" size="sm">
                   <RefreshCcwIcon className="size-4" />
-                  Retry
+                  Retry Scan
                 </Button>
               </div>
             ) : (
@@ -154,14 +142,7 @@ const NeighbourCellScanner = () => {
           {(hasScanResults || isScanning) && (
             <div className="mt-4 flex items-center gap-x-2">
               <Button onClick={startScan} disabled={isScanning}>
-                {isScanning ? (
-                  <>
-                    <LoaderCircleIcon className="size-4 animate-spin" />
-                    Scanning...
-                  </>
-                ) : (
-                  "Start New Scan"
-                )}
+                {isScanning ? "Scanning..." : "Start New Scan"}
               </Button>
               {hasScanResults && (
                 <Button
@@ -192,15 +173,15 @@ const NeighbourCellScanner = () => {
           <AlertDialogHeader>
             <AlertDialogTitle>Lock to Cell?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will lock the modem to the following cell. The modem will
-              only connect to this specific cell until the lock is removed.
-              {lockTarget && (
-                <span className="mt-2 block font-mono text-xs">
-                  {lockTarget.networkType} — PCI {lockTarget.pci}, EARFCN{" "}
-                  {lockTarget.frequency}
-                </span>
-              )}
+              This will lock the modem to the following cell. It will only
+              connect to this specific cell until the lock is removed.
             </AlertDialogDescription>
+            {lockTarget && (
+              <p className="font-mono text-xs text-muted-foreground">
+                {lockTarget.networkType} — PCI {lockTarget.pci}, EARFCN{" "}
+                {lockTarget.frequency}
+              </p>
+            )}
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isLocking}>Cancel</AlertDialogCancel>
