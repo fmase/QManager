@@ -354,7 +354,7 @@ parse_version() {
     local raw="$1"
 
     boot_firmware=$(printf '%s\n' "$raw" | grep '^VERSION:' | sed 's/VERSION: //g' | tr -d '\r')
-    boot_build_date=$(printf '%s\n' "$raw" | grep -E '^[A-Z][a-z]{2} [0-9]' | head -1 | awk '{print $1, $2, $3}' | tr -d '\r')
+    boot_build_date=$(printf '%s\n' "$raw" | grep -E '^[A-Z][a-z]{2} +[0-9]' | head -1 | awk '{print $1, $2, $3}' | tr -d '\r')
     boot_manufacturer=$(printf '%s\n' "$raw" | grep '^Authors:' | sed 's/Authors: //g' | tr -d '\r')
 }
 

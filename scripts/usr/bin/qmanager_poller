@@ -449,7 +449,7 @@ collect_boot_data() {
             local stored_iccid
             stored_iccid=$(cat "$LAST_ICCID_FILE" 2>/dev/null | tr -d ' \r\n')
             if [ -n "$stored_iccid" ] && [ "$stored_iccid" != "$boot_iccid" ]; then
-                qlog_warn "SIM SWAP DETECTED: old=...${stored_iccid: -4} new=...${boot_iccid: -4}"
+                qlog_warn "SIM SWAP DETECTED: old=...$(printf '%s' "$stored_iccid" | tail -c 4) new=...$(printf '%s' "$boot_iccid" | tail -c 4)"
                 local match_name="" match_id=""
                 local pf
                 for pf in /etc/qmanager/profiles/*.json; do
@@ -470,7 +470,7 @@ collect_boot_data() {
                     --arg pname "$match_name" \
                     '{detected_at:$ts,previous_iccid:$prev,current_iccid:$curr,matching_profile_id:$pid,matching_profile_name:$pname,dismissed:false}' \
                     > "$SIM_SWAP_FLAG"
-                append_event "sim_swap_detected" "New SIM detected (ICCID: ...${boot_iccid: -4})" "info"
+                append_event "sim_swap_detected" "New SIM detected (ICCID: ...$(printf '%s' "$boot_iccid" | tail -c 4))" "info"
             fi
         fi
         printf '%s' "$boot_iccid" > "$LAST_ICCID_FILE"
