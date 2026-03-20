@@ -403,40 +403,43 @@ collect_boot_data() {
 
     local result
 
-    # Firmware version + build date + manufacturer — AT+CVERSION
-    result=$(qcmd_exec 'AT+CVERSION')
-    if [ $? -eq 0 ]; then
+    # =========================================================================
+    # Group A: Identity reads — compound AT (7 → 1 call)
+    # CVERSION, CGMM, CGSN, CIMI return bare responses (no +PREFIX:).
+    # CGMM: bare model name; CGSN/CIMI: bare 15-digit numbers.
+    # Order is deterministic: first 15-digit line = IMEI, second = IMSI.
+    # =========================================================================
+    result=$(qcmd 'AT+CVERSION;+CGMM;+CGSN;+CIMI;+QCCID;+CNUM;+QGETCAPABILITY' 2>/dev/null)
+
+    if [ -n "$result" ]; then
+        # CVERSION: prefixed lines — parsers already grep by prefix
         parse_version "$result"
-    fi
-    sleep "$SIP_DELAY"
 
-    # Modem model — AT+CGMM (e.g. "RM551E-GL")
-    result=$(qcmd_exec 'AT+CGMM')
-    if [ $? -eq 0 ]; then
-        boot_model=$(printf '%s\n' "$result" | grep -v '^$' | grep -v '^AT' | grep -v '^OK' | head -1 | tr -d '\r')
-    fi
-    sleep "$SIP_DELAY"
+        # CGMM: bare model name — the only non-numeric, non-prefixed single
+        # line between the CVERSION block and the bare 15-digit numbers.
+        # Extract as: first line after Authors: block that isn't blank/prefix/digits.
+        boot_model=$(printf '%s\n' "$result" | tr -d '\r' | \
+            grep -v '^AT' | grep -v '^OK$' | grep -v '^$' | \
+            grep -v '^VERSION:' | grep -v '^Authors:' | \
+            grep -v '^[0-9]' | grep -v '^+' | \
+            grep -v '^[A-Z][a-z][a-z] ' | \
+            head -1)
 
-    # IMEI — AT+CGSN
-    result=$(qcmd_exec 'AT+CGSN')
-    if [ $? -eq 0 ]; then
-        boot_imei=$(printf '%s\n' "$result" | grep -v '^$' | head -1 | tr -d '\r')
-    fi
-    sleep "$SIP_DELAY"
+        # CGSN / CIMI: bare 15-digit numbers, order-based extraction
+        boot_imei=$(printf '%s\n' "$result" | tr -d '\r' | grep -x '[0-9]\{15\}' | sed -n '1p')
+        boot_imsi=$(printf '%s\n' "$result" | tr -d '\r' | grep -x '[0-9]\{15\}' | sed -n '2p')
 
-    # IMSI — AT+CIMI
-    result=$(qcmd_exec 'AT+CIMI')
-    if [ $? -eq 0 ]; then
-        boot_imsi=$(printf '%s\n' "$result" | grep -v '^$' | head -1 | tr -d '\r')
-    fi
-    sleep "$SIP_DELAY"
-
-    # ICCID — AT+QCCID
-    result=$(qcmd_exec 'AT+QCCID')
-    if [ $? -eq 0 ]; then
+        # QCCID: prefixed
         boot_iccid=$(printf '%s\n' "$result" | grep '+QCCID:' | sed 's/+QCCID: //g' | tr -d '\r ')
+
+        # CNUM: prefixed
+        local num
+        num=$(printf '%s\n' "$result" | grep '+CNUM:' | head -1 | cut -d',' -f2 | tr -d '"' | tr -d '\r')
+        [ -n "$num" ] && boot_phone_number="$num"
+
+        # QGETCAPABILITY: prefixed (multi-line)
+        parse_capability "$result"
     fi
-    sleep "$SIP_DELAY"
 
     # --- SIM Swap Detection (boot-time, one-shot) ---
     LAST_ICCID_FILE="/etc/qmanager/last_iccid"
@@ -473,37 +476,28 @@ collect_boot_data() {
         printf '%s' "$boot_iccid" > "$LAST_ICCID_FILE"
     fi
 
-    # Phone number — AT+CNUM
-    result=$(qcmd_exec 'AT+CNUM')
-    if [ $? -eq 0 ]; then
-        boot_phone_number=$(printf '%s\n' "$result" | grep '+CNUM:' | head -1 | cut -d',' -f2 | tr -d '"' | tr -d '\r')
+    # =========================================================================
+    # Group B: Enables + post-enable reads — compound AT (11 → 1 call)
+    # First 4 sub-commands are idempotent writes (enable MIMO/TA reporting).
+    # Modem processes sequentially, so enables are active before reads.
+    # =========================================================================
+    result=$(qcmd 'AT+QNWCFG="lte_mimo_layers",1;+QNWCFG="nr5g_mimo_layers",1;+QNWCFG="lte_time_advance",1;+QNWCFG="nr5g_time_advance",1;+QNWCFG="lte_mimo_layers";+QNWCFG="nr5g_mimo_layers";+QMAP="MPDN_RULE";+QMAP="IPPT_NAT";+QCFG="usbnet";+QMAP="DHCPV4DNS"' 2>/dev/null)
+
+    if [ -n "$result" ]; then
+        # MIMO layers (parser greps for each prefix independently)
+        parse_mimo "$result" "$result"
+
+        # IP Passthrough settings (all parsers grep for their specific keywords)
+        parse_ippt_mpdn_rule "$result"
+        parse_ippt_nat "$result"
+        parse_ippt_usbnet "$result"
+        parse_ippt_dhcpv4dns "$result"
     fi
-    sleep "$SIP_DELAY"
 
-    # LTE Category — AT+QGETCAPABILITY
-    result=$(qcmd_exec 'AT+QGETCAPABILITY')
-    if [ $? -eq 0 ]; then
-        parse_capability "$result"
-    fi
-    sleep "$SIP_DELAY"
-
-    # Enable MIMO layer reporting (one-time, persists until modem reboot)
-    qcmd_exec 'AT+QNWCFG="lte_mimo_layers",1' >/dev/null 2>&1
-    sleep "$SIP_DELAY"
-    qcmd_exec 'AT+QNWCFG="nr5g_mimo_layers",1' >/dev/null 2>&1
-    sleep "$SIP_DELAY"
-
-    # MIMO layers — LTE + NR (initial reading, will be re-polled in Tier 2)
-    local lte_mimo_result
-    local nr_mimo_result
-    lte_mimo_result=$(qcmd_exec 'AT+QNWCFG="lte_mimo_layers"')
-    sleep "$SIP_DELAY"
-    nr_mimo_result=$(qcmd_exec 'AT+QNWCFG="nr5g_mimo_layers"' 2>/dev/null)
-    parse_mimo "$lte_mimo_result" "$nr_mimo_result"
-
-    # Supported bands — AT+QNWPREFCFG="policy_band" (hardware ceiling, never changes)
-    # Cache to /tmp so hotplug-triggered restarts skip the modem query.
-    # On a full device reboot /tmp is cleared, so the modem is queried once.
+    # =========================================================================
+    # Supported bands — conditional (cached to /tmp across hotplug restarts)
+    # On full device reboot /tmp is cleared, so queried once then cached.
+    # =========================================================================
     SUPPORTED_BANDS_FILE="/tmp/qmanager_supported_bands.env"
     if [ -f "$SUPPORTED_BANDS_FILE" ]; then
         . "$SUPPORTED_BANDS_FILE"
@@ -518,30 +512,6 @@ collect_boot_data() {
             qlog_info "Supported bands cached to $SUPPORTED_BANDS_FILE"
         fi
     fi
-    sleep "$SIP_DELAY"
-
-    # Enable Timing Advance reporting (one-time, persists until modem reboot)
-    qcmd_exec 'AT+QNWCFG="lte_time_advance",1' >/dev/null 2>&1
-    sleep "$SIP_DELAY"
-    qcmd_exec 'AT+QNWCFG="nr5g_time_advance",1' >/dev/null 2>&1
-    sleep "$SIP_DELAY"
-
-    # IP Passthrough settings (stable — require reboot to change)
-    result=$(qcmd_exec 'AT+QMAP="MPDN_RULE"')
-    [ $? -eq 0 ] && parse_ippt_mpdn_rule "$result"
-    sleep "$SIP_DELAY"
-
-    result=$(qcmd_exec 'AT+QMAP="IPPT_NAT"')
-    [ $? -eq 0 ] && parse_ippt_nat "$result"
-    sleep "$SIP_DELAY"
-
-    result=$(qcmd_exec 'AT+QCFG="usbnet"')
-    [ $? -eq 0 ] && parse_ippt_usbnet "$result"
-    sleep "$SIP_DELAY"
-
-    result=$(qcmd_exec 'AT+QMAP="DHCPV4DNS"')
-    [ $? -eq 0 ] && parse_ippt_dhcpv4dns "$result"
-    sleep "$SIP_DELAY"
 
     log_info "Boot data: FW=$boot_firmware BUILD=$boot_build_date MFG=$boot_manufacturer MODEL=$boot_model"
     log_info "Boot data: IMEI=$boot_imei IMSI=$boot_imsi ICCID=$boot_iccid"
