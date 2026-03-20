@@ -154,14 +154,7 @@ const FullScannerComponent = () => {
           {(hasScanResults || isScanning) && (
             <div className="mt-4 flex items-center gap-x-2">
               <Button onClick={startScan} disabled={isScanning}>
-                {isScanning ? (
-                  <>
-                    <LoaderCircleIcon className="size-4 animate-spin" />
-                    Scanning...
-                  </>
-                ) : (
-                  "Start New Scan"
-                )}
+                {isScanning ? "Scanning..." : "Start New Scan"}
               </Button>
               {hasScanResults && (
                 <Button

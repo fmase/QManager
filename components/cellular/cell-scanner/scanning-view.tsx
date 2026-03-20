@@ -1,5 +1,4 @@
 import { ScanSearchIcon } from "lucide-react";
-import { Spinner } from "@/components/ui/spinner";
 
 interface ScanningViewProps {
   elapsedSeconds: number;
@@ -47,9 +46,6 @@ export function ScanningView({ elapsedSeconds }: ScanningViewProps) {
       <p className="text-xs text-muted-foreground/60">
         Please don&apos;t close the tab or refresh the page.
       </p>
-
-      {/* Spinner for extra "alive" feedback — hidden for reduced-motion */}
-      <Spinner className="size-4 text-muted-foreground/40 motion-reduce:hidden" />
     </div>
   );
 }
