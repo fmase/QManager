@@ -8,26 +8,80 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { DataTable, schema } from "@/components/cellular/custom-profiles/custom-profile-table";
-import { z } from "zod";
+import { ProfileTable } from "@/components/cellular/custom-profiles/custom-profile-table";
+import EmptyProfileViewComponent from "@/components/cellular/custom-profiles/empty-profile";
+import { Skeleton } from "@/components/ui/skeleton";
+import type { ProfileSummary } from "@/types/sim-profile";
 
-// Sample data - replace with your actual data source
-const profileData: z.infer<typeof schema>[] = [
-  { id: 1, profile: "Default LTE Profile", status: "Active" },
+// =============================================================================
+// CustomProfileViewComponent — Profile List Card
+// =============================================================================
 
-];
+interface CustomProfileViewProps {
+  profiles: ProfileSummary[];
+  activeProfileId: string | null;
+  isLoading: boolean;
+  error: string | null;
+  onEdit: (id: string) => void;
+  onDelete: (id: string) => Promise<boolean>;
+  onActivate: (id: string) => void;
+  onDeactivate: () => void;
+  onRefresh: () => void;
+}
 
-const CustomProfileViewComponent = () => {
+const CustomProfileViewComponent = ({
+  profiles,
+  activeProfileId,
+  isLoading,
+  error,
+  onEdit,
+  onDelete,
+  onActivate,
+  onDeactivate,
+  onRefresh,
+}: CustomProfileViewProps) => {
+  if (isLoading) {
+    return (
+      <Card className="@container/card h-full">
+        <CardHeader>
+          <CardTitle>Saved Profiles</CardTitle>
+          <CardDescription>Manage your custom SIM profiles.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (profiles.length === 0) {
+    return <EmptyProfileViewComponent onRefresh={onRefresh} />;
+  }
+
   return (
-    <Card className="@container/card">
+    <Card className="@container/card h-full">
       <CardHeader>
-        <CardTitle>View Custom Profiles</CardTitle>
+        <CardTitle>Saved Profiles</CardTitle>
         <CardDescription>
-          Manage your custom SIM profiles here.
+          {profiles.length} profile{profiles.length !== 1 ? "s" : ""} saved.
+          {error && (
+            <span className="text-destructive ml-2">{error}</span>
+          )}
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <DataTable data={profileData} />
+        <ProfileTable
+          data={profiles}
+          activeProfileId={activeProfileId}
+          onEdit={onEdit}
+          onDelete={onDelete}
+          onActivate={onActivate}
+          onDeactivate={onDeactivate}
+        />
       </CardContent>
     </Card>
   );

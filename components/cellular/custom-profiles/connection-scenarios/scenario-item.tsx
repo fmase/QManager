@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { motion } from "motion/react";
 import { Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AbstractPattern } from "./abstract-pattern";
@@ -12,12 +13,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-
-interface ScenarioConfig {
-  bands: string[];
-  mode: string;
-  optimization: string;
-}
+import type { ScenarioConfig } from "@/types/connection-scenario";
 
 export interface Scenario {
   id: string;
@@ -27,12 +23,14 @@ export interface Scenario {
   gradient: string;
   pattern: "gaming" | "streaming" | "balanced" | "custom";
   config: ScenarioConfig;
+  isDefault?: boolean;
 }
 
 interface ScenarioItemProps {
   scenario: Scenario;
   isActive: boolean;
-  onActivate: (id: string) => void;
+  isSelected: boolean;
+  onSelect: (id: string) => void;
   onDelete?: (id: string) => void;
 }
 
@@ -44,13 +42,20 @@ const getRingColor = (gradient: string) => {
   if (gradient.includes("blue")) return "ring-blue-500";
   if (gradient.includes("amber")) return "ring-amber-500";
   if (gradient.includes("slate")) return "ring-slate-500";
+  if (gradient.includes("sky")) return "ring-sky-500";
+  if (gradient.includes("lime")) return "ring-lime-500";
+  if (gradient.includes("fuchsia")) return "ring-fuchsia-500";
+  if (gradient.includes("yellow")) return "ring-yellow-500";
+  if (gradient.includes("cyan")) return "ring-cyan-500";
+  if (gradient.includes("orange")) return "ring-orange-500";
   return "ring-primary";
 };
 
 export const ScenarioItem = ({
   scenario,
   isActive,
-  onActivate,
+  isSelected,
+  onSelect,
   onDelete,
 }: ScenarioItemProps) => {
   const Icon = scenario.icon;
@@ -69,14 +74,20 @@ export const ScenarioItem = ({
 
   return (
     <>
-      <div
+      <motion.div
         className={cn(
-          "relative overflow-hidden rounded-xl cursor-pointer transition-all duration-300",
+          "relative overflow-hidden rounded-xl cursor-pointer",
           isActive
-            ? `ring-2 ${getRingColor(scenario.gradient)} ring-offset-3 ring-offset-background scale-[1.01]`
-            : "hover:scale-[1.01] hover:shadow-lg",
+            ? `ring-2 ${getRingColor(scenario.gradient)} ring-offset-3 ring-offset-background`
+            : isSelected
+              ? "ring-2 ring-muted-foreground/40 ring-offset-2 ring-offset-background"
+              : "",
         )}
-        onClick={() => onActivate(scenario.id)}
+        animate={{ scale: isActive || isSelected ? 1.01 : 1 }}
+        whileHover={!isActive && !isSelected ? { scale: 1.02, y: -2 } : {}}
+        whileTap={{ scale: 0.97 }}
+        transition={{ type: "spring", stiffness: 500, damping: 30 }}
+        onClick={() => onSelect(scenario.id)}
       >
         {/* Background gradient */}
         <div
@@ -91,15 +102,22 @@ export const ScenarioItem = ({
 
         {/* Content */}
         <div className="relative p-5 h-36 flex flex-col justify-between text-white group">
-          {/* Top row - Icon and delete button */}
+          {/* Top row - Icon and badges/delete */}
           <div className="flex justify-between items-start">
-            <div className="p-2.5 bg-white/20 backdrop-blur-sm rounded-lg">
-              <Icon size={20} />
+            <div className="flex items-center gap-2">
+              <div className="p-2.5 bg-white/20 backdrop-blur-sm rounded-lg">
+                <Icon size={20} />
+              </div>
+              {isActive && (
+                <span className="px-2 py-0.5 bg-white/25 backdrop-blur-sm rounded-full text-xs font-medium">
+                  Active
+                </span>
+              )}
             </div>
-            {isCustom && !isActive && (
+            {isCustom && (
               <button
                 onClick={handleDeleteClick}
-                className="p-2 bg-white/20 backdrop-blur-sm rounded-lg hover:bg-red-500/80 transition-all opacity-0 group-hover:opacity-100"
+                className="p-2 bg-white/20 backdrop-blur-sm rounded-lg hover:bg-destructive/80 transition-all opacity-0 group-hover:opacity-100"
               >
                 <Trash2 size={16} />
               </button>
@@ -112,16 +130,7 @@ export const ScenarioItem = ({
             <p className="text-white/80 text-xs">{scenario.description}</p>
           </div>
         </div>
-
-        {/* Hover overlay for non-active cards - only for non-custom */}
-        {!isActive && !isCustom && (
-          <div className="absolute inset-0 bg-black/0 hover:bg-black/10 transition-colors flex items-center justify-center opacity-0 hover:opacity-100">
-            <span className="px-3 py-1.5 bg-white/20 backdrop-blur-sm rounded-full text-white text-sm font-medium">
-              Click to Activate
-            </span>
-          </div>
-        )}
-      </div>
+      </motion.div>
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
@@ -129,8 +138,8 @@ export const ScenarioItem = ({
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Scenario</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete &quot;{scenario.name}&quot;? This action
-              cannot be undone.
+              Are you sure you want to delete &quot;{scenario.name}&quot;? This
+              action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

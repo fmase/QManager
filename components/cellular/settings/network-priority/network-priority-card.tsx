@@ -1,5 +1,8 @@
 "use client";
-import React, { useState, useEffect, useMemo } from "react";
+
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import { toast } from "sonner";
+import { authFetch } from "@/lib/auth-fetch";
 import {
   closestCenter,
   DndContext,
@@ -28,38 +31,47 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
-
-import { RotateCcwIcon, SaveIcon } from "lucide-react";
+import { RotateCcwIcon } from "lucide-react";
 import { IconGripVertical } from "@tabler/icons-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AiFillSignal } from "react-icons/ai";
-import { Spinner } from "@/components/ui/spinner";
+import { motion } from "motion/react";
+import { SaveButton, useSaveFlash } from "@/components/ui/save-button";
+
+// =============================================================================
+// RAT name mapping: AT command value → display name
+// =============================================================================
+const RAT_DISPLAY: Record<string, string> = {
+  NR5G: "NR5G",
+  LTE: "LTE",
+  WCDMA: "WCDMA",
+};
+
+const RAT_COLORS: Record<string, { bg: string; fg: string }> = {
+  NR5G: { bg: "bg-info", fg: "text-info-foreground" },
+  LTE: { bg: "bg-success", fg: "text-success-foreground" },
+  WCDMA: { bg: "bg-destructive", fg: "text-destructive-foreground" },
+};
 
 interface NetworkItem {
   id: string;
   name: string;
 }
 
+const CGI_ENDPOINT = "/cgi-bin/quecmanager/cellular/network_priority.sh";
+
+// =============================================================================
+// Draggable item
+// =============================================================================
 function DraggableNetworkItem({
   network,
   index,
-  getNetworkColor,
+  disabled,
 }: {
   network: NetworkItem;
   index: number;
-  getNetworkColor: (networkId: string) => string;
+  disabled: boolean;
 }) {
   const {
     attributes,
@@ -70,17 +82,20 @@ function DraggableNetworkItem({
     isDragging,
   } = useSortable({
     id: network.id,
+    disabled,
   });
 
   return (
-    <div
+    <motion.div
       ref={setNodeRef}
-      className={`flex items-center gap-3 px-4 py-2 border bg-background rounded-lg transition-all duration-200 ${
-        isDragging ? "opacity-50 scale-95 z-10" : ""
-      }`}
+      className="flex items-center gap-3 px-4 py-2 border bg-background rounded-lg"
       style={{
         transform: CSS.Transform.toString(transform),
         transition: transition,
+        boxShadow: isDragging ? "0 8px 24px -4px hsl(var(--foreground) / 0.12)" : undefined,
+        opacity: isDragging ? 0.6 : 1,
+        scale: isDragging ? 0.98 : 1,
+        zIndex: isDragging ? 10 : undefined,
       }}
     >
       <Button
@@ -89,71 +104,194 @@ function DraggableNetworkItem({
         variant="ghost"
         size="icon"
         className="text-muted-foreground size-7 hover:bg-accent cursor-grab active:cursor-grabbing"
+        disabled={disabled}
       >
         <IconGripVertical className="text-muted-foreground size-4" />
         <span className="sr-only">Drag to reorder</span>
       </Button>
       <div className="flex items-center gap-x-3">
         <div
-          className={`rounded-lg size-7 p-1 ${getNetworkColor(
-            network.id,
-          )} flex justify-center items-center`}
+          className={`rounded-lg size-7 p-1 ${
+            RAT_COLORS[network.id]?.bg ?? "bg-muted-foreground"
+          } flex justify-center items-center`}
         >
-          <AiFillSignal className="h-4 w-4 text-white" />
+          <AiFillSignal className={`size-4 ${RAT_COLORS[network.id]?.fg ?? "text-background"}`} />
         </div>
         <span className="font-medium text-sm">{network.name}</span>
       </div>
       <span className="text-xs text-muted-foreground ml-auto">
         Priority {index + 1}
       </span>
-    </div>
+    </motion.div>
   );
 }
 
+// =============================================================================
+// Network Priority Card
+// =============================================================================
 const NetworkPriorityCard = () => {
-  const [fetching, setFetching] = useState(false);
+  const { saved, markSaved } = useSaveFlash();
+  const [networks, setNetworks] = useState<NetworkItem[]>([]);
+  const [fetchedOrder, setFetchedOrder] = useState<string>("");
+  const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  // const [ratPriorityArray, setRatPriorityArray] = useState<string[]>([]);
-  const [networks, setNetworks] = useState<NetworkItem[]>([
-    { id: "nr5g", name: "NR5G" },
-    { id: "lte", name: "LTE" },
-    { id: "wcdma", name: "WCDMA" },
-  ]);
 
+  const mountedRef = useRef(true);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
+  // ---------------------------------------------------------------------------
+  // Parse order string into NetworkItem array
+  // ---------------------------------------------------------------------------
+  const orderToNetworks = (order: string): NetworkItem[] =>
+    order
+      .split(":")
+      .filter((r) => r.length > 0)
+      .map((rat) => ({
+        id: rat,
+        name: RAT_DISPLAY[rat] || rat,
+      }));
+
+  // ---------------------------------------------------------------------------
+  // Fetch current order
+  // ---------------------------------------------------------------------------
+  const fetchOrder = useCallback(async (silent = false) => {
+    if (!silent) setIsLoading(true);
+
+    try {
+      const resp = await authFetch(CGI_ENDPOINT);
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+
+      const data = await resp.json();
+      if (!mountedRef.current) return;
+
+      if (!data.success) return;
+
+      setFetchedOrder(data.order);
+      setNetworks(orderToNetworks(data.order));
+    } catch {
+      // silently fail — keep current state
+    } finally {
+      if (mountedRef.current && !silent) {
+        setIsLoading(false);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchOrder();
+  }, [fetchOrder]);
+
+  // ---------------------------------------------------------------------------
+  // Drag handler
+  // ---------------------------------------------------------------------------
   const sensors = useSensors(
     useSensor(MouseSensor, {}),
     useSensor(TouchSensor, {}),
-    useSensor(KeyboardSensor, {}),
+    useSensor(KeyboardSensor, {})
   );
 
   const networkIds = useMemo<UniqueIdentifier[]>(
-    () => networks?.map(({ id }) => id) || [],
-    [networks],
+    () => networks.map(({ id }) => id),
+    [networks]
   );
 
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;
     if (active && over && active.id !== over.id) {
-      setNetworks((networks) => {
-        const oldIndex = networkIds.indexOf(active.id);
-        const newIndex = networkIds.indexOf(over.id);
-        return arrayMove(networks, oldIndex, newIndex);
+      setNetworks((prev) => {
+        const oldIndex = prev.findIndex((n) => n.id === active.id);
+        const newIndex = prev.findIndex((n) => n.id === over.id);
+        return arrayMove(prev, oldIndex, newIndex);
       });
     }
   }
 
-  const getNetworkColor = (networkId: string) => {
-    switch (networkId) {
-      case "nr5g":
-        return "bg-[#1E86FF]";
-      case "lte":
-        return "bg-[#00C9A7]";
-      case "wcdma":
-        return "bg-[#FF3D71]";
-      default:
-        return "bg-gray-600";
+  // ---------------------------------------------------------------------------
+  // Save
+  // ---------------------------------------------------------------------------
+  const handleSave = async () => {
+    const newOrder = networks.map((n) => n.id).join(":");
+
+    if (newOrder === fetchedOrder) {
+      toast.info("No changes to save");
+      return;
+    }
+
+    setIsSaving(true);
+
+    try {
+      const resp = await authFetch(CGI_ENDPOINT, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ order: newOrder }),
+      });
+
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+
+      const data = await resp.json();
+      if (!mountedRef.current) return;
+
+      if (!data.success) {
+        toast.error(data.detail || "Failed to set network priority");
+        return;
+      }
+
+      markSaved();
+      toast.success("Network priority updated");
+
+      // Brief recovery delay for network re-registration
+      await new Promise((resolve) => setTimeout(resolve, 3000));
+
+      // Silent re-fetch
+      await fetchOrder(true);
+    } catch {
+      if (mountedRef.current) {
+        toast.error("Failed to set network priority");
+      }
+    } finally {
+      if (mountedRef.current) {
+        setIsSaving(false);
+      }
     }
   };
+
+  // ---------------------------------------------------------------------------
+  // Reset
+  // ---------------------------------------------------------------------------
+  const handleReset = () => {
+    if (fetchedOrder) {
+      setNetworks(orderToNetworks(fetchedOrder));
+    }
+  };
+
+  // ---------------------------------------------------------------------------
+  // Render
+  // ---------------------------------------------------------------------------
+  if (isLoading) {
+    return (
+      <Card className="@container/card">
+        <CardHeader>
+          <CardTitle>Network Priority</CardTitle>
+          <CardDescription>
+            Set the priority order of your network connections.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid space-y-2 w-full">
+            <Skeleton className="h-12 w-full" />
+            <Skeleton className="h-12 w-full" />
+            <Skeleton className="h-12 w-full" />
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card className="@container/card">
@@ -164,64 +302,51 @@ const NetworkPriorityCard = () => {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        {fetching ? (
-          <div className="grid space-y-2 w-full">
-            <Skeleton className="h-12 w-full" />
-            <Skeleton className="h-12 w-full" />
-            <Skeleton className="h-12 w-full" />
-          </div>
-        ) : (
-          <DndContext
-            collisionDetection={closestCenter}
-            modifiers={[restrictToVerticalAxis]}
-            onDragEnd={handleDragEnd}
-            sensors={sensors}
+        <DndContext
+          collisionDetection={closestCenter}
+          modifiers={[restrictToVerticalAxis]}
+          onDragEnd={handleDragEnd}
+          sensors={sensors}
+        >
+          <motion.div
+            className="space-y-2"
+            initial="hidden"
+            animate="visible"
+            variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.07 } } }}
           >
-            <div className="space-y-2">
-              <SortableContext
-                items={networkIds}
-                strategy={verticalListSortingStrategy}
-              >
-                {networks.map((network, index) => (
+            <SortableContext
+              items={networkIds}
+              strategy={verticalListSortingStrategy}
+            >
+              {networks.map((network, index) => (
+                <motion.div
+                  key={network.id}
+                  variants={{ hidden: { opacity: 0, y: 8 }, visible: { opacity: 1, y: 0 } }}
+                  transition={{ duration: 0.22, ease: "easeOut" }}
+                >
                   <DraggableNetworkItem
-                    key={network.id}
                     network={network}
                     index={index}
-                    getNetworkColor={getNetworkColor}
+                    disabled={isSaving}
                   />
-                ))}
-              </SortableContext>
-            </div>
-          </DndContext>
-        )}
+                </motion.div>
+              ))}
+            </SortableContext>
+          </motion.div>
+        </DndContext>
         <div className="mt-4 flex items-center gap-x-2">
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button disabled={fetching || isSaving || networks.length === 0}>
-                {isSaving ? "Saving..." : "Save Settings"}
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Do you want to continue?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Changes to network priority will take effect after the device
-                  reboots. Do you want to reboot now?
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel disabled={fetching || isSaving}>
-                  Cancel
-                </AlertDialogCancel>
-                <AlertDialogAction disabled={fetching || isSaving}>
-                  <RotateCcwIcon className="h-4 w-4" />
-                  Reboot Now
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-
-          <Button>
+          <SaveButton
+            onClick={handleSave}
+            isSaving={isSaving}
+            saved={saved}
+            disabled={networks.length === 0}
+          />
+          <Button
+            variant="outline"
+            onClick={handleReset}
+            disabled={isSaving}
+            aria-label="Reset to saved values"
+          >
             <RotateCcwIcon />
           </Button>
         </div>

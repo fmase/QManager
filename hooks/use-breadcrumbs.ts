@@ -13,8 +13,34 @@ export interface BreadcrumbItem {
 const routeNameMap: Record<string, string> = {
   dashboard: 'Dashboard',
   home: 'Home',
-  // Add more mappings as needed
-  // e.g., 'settings': 'Settings', 'profile': 'Profile'
+  cellular: 'Cellular',
+  sms: 'SMS Center',
+  'custom-profiles': 'Custom Profiles',
+  'connection-scenarios': 'Connection Scenarios',
+  'cell-locking': 'Band Locking',
+  'tower-locking': 'Tower Locking',
+  'frequency-locking': 'Frequency Locking',
+  'cell-scanner': 'Cell Scanner',
+  'neighbourcell-scanner': 'Neighboring Cells',
+  'frequency-calculator': 'Frequency Calculator',
+  settings: 'Settings',
+  'apn-management': 'APN Management',
+  'network-priority': 'Network Priority',
+  'imei-settings': 'IMEI Settings',
+  'fplmn-settings': 'FPLMN Settings',
+  'local-network': 'Local Network',
+  'ip-passthrough': 'IP Passthrough',
+  'custom-dns': 'Custom DNS',
+  'ttl-settings': 'TTL & MTU Settings',
+  monitoring: 'Monitoring',
+  latency: 'Latency Monitor',
+  logs: 'Logs',
+  'email-alerts': 'Email Alerts',
+  watchdog: 'Watchdog',
+  tailscale: 'Tailscale',
+  'system-settings': 'System Settings',
+  'about-device': 'About Device',
+  support: 'Support',
 };
 
 export function useBreadcrumbs(): BreadcrumbItem[] {

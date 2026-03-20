@@ -3,25 +3,25 @@
 import * as React from "react";
 import {
   LifeBuoy,
-  Map,
   PieChart,
   Settings2,
   HomeIcon,
   RadioTowerIcon,
   LucideSignal,
-  RadarIcon,
   MailIcon,
   EthernetPortIcon,
   MonitorCloudIcon,
   LogsIcon,
   MessageCircleIcon,
-  WorkflowIcon,
   DogIcon,
   RouterIcon,
-  RulerIcon,
-  TimerIcon,
-  User2Icon
+  User2Icon,
+  HeartIcon,
+  ScanIcon,
+  SettingsIcon,
 } from "lucide-react";
+
+import QManagerLogo from "@/public/qmanager-logo.svg";
 
 import { NavMain } from "@/components/nav-main";
 import { NavLocalNetwork } from "@/components/nav-localNetwork";
@@ -29,6 +29,8 @@ import { NavSecondary } from "@/components/nav-secondary";
 import { NavUser } from "@/components/nav-user";
 import { NavMonitoring } from "@/components/nav-monitoring";
 import { NavCellular } from "@/components/nav-cellular";
+import { NavSystem } from "@/components/nav-system";
+import DonateDialog from "@/components/donate-dialog";
 import {
   Sidebar,
   SidebarContent,
@@ -38,11 +40,13 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
+import Image from "next/image";
+import Link from "next/link";
 
 const data = {
   user: {
-    name: "user-test",
-    avatar: "/qmanager-logo.svg",
+    name: "Admin",
+    avatar: QManagerLogo.src,
   },
   navMain: [
     {
@@ -52,21 +56,28 @@ const data = {
       isActive: true,
     },
   ],
+  system: [
+    {
+      title: "System Settings",
+      url: "/system-settings",
+      icon: SettingsIcon,
+    },
+  ],
   navSecondary: [
     {
-      title: "SMS Center",
-      url: "#",
-      icon: MessageCircleIcon,
-    },
-    {
       title: "About Device",
-      url: "#",
+      url: "/about-device",
       icon: RouterIcon,
     },
     {
       title: "Support",
-      url: "#",
+      url: "/support",
       icon: LifeBuoy,
+    },
+    {
+      title: "Donate to the Project",
+      url: "#",
+      icon: HeartIcon,
     },
   ],
   cellular: [
@@ -74,6 +85,11 @@ const data = {
       title: "Cellular Information",
       url: "/cellular",
       icon: RadioTowerIcon,
+    },
+    {
+      title: "SMS Center",
+      url: "/cellular/sms",
+      icon: MessageCircleIcon,
     },
     {
       title: "Custom Profiles",
@@ -87,7 +103,7 @@ const data = {
       ],
     },
     {
-      title: "Cell Locking",
+      title: "Band Locking",
       url: "/cellular/cell-locking",
       icon: LucideSignal,
       items: [
@@ -95,12 +111,16 @@ const data = {
           title: "Tower Locking",
           url: "/cellular/cell-locking/tower-locking",
         },
+        {
+          title: "Frequency Locking",
+          url: "/cellular/cell-locking/frequency-locking",
+        },
       ],
     },
     {
       title: "Cell Scanner",
       url: "/cellular/cell-scanner",
-      icon: RadarIcon,
+      icon: ScanIcon,
       items: [
         {
           title: "Neighboring Cells",
@@ -143,19 +163,19 @@ const data = {
       icon: EthernetPortIcon,
     },
     {
-      title: "IP Passthrough",
+      title: "Settings",
       url: "/local-network/ip-passthrough",
-      icon: WorkflowIcon,
-    },
-    {
-      title: "Custom DNS",
-      url: "/local-network/custom-dns",
-      icon: Map,
-    },
-    {
-      title: "TTL & MTU Settings",
-      url: "/local-network/ttl-settings",
-      icon: TimerIcon,
+      icon: Settings2,
+      items: [
+        {
+          title: "Custom DNS",
+          url: "/local-network/custom-dns",
+        },
+        {
+          title: "TTL & MTU Settings",
+          url: "/local-network/ttl-settings",
+        },
+      ],
     },
   ],
   monitoring: [
@@ -172,43 +192,56 @@ const data = {
     },
     {
       title: "Email Alerts",
-      url: "#",
+      url: "/monitoring/email-alerts",
       icon: MailIcon,
     },
     {
       title: "Tailscale",
-      url: "#",
+      url: "/monitoring/tailscale",
       icon: MonitorCloudIcon,
     },
     {
       title: "Watchdog",
-      url: "#",
+      url: "/monitoring/watchdog",
       icon: DogIcon,
     },
     {
       title: "Logs",
-      url: "#",
+      url: "/monitoring/logs",
       icon: LogsIcon,
     },
   ],
 };
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+  const [donateOpen, setDonateOpen] = React.useState(false);
+
+  const navSecondaryItems = data.navSecondary.map((item) =>
+    item.title === "Donate to the Project"
+      ? { ...item, onClick: () => setDonateOpen(true) }
+      : item,
+  );
+
   return (
     <Sidebar variant="inset" {...props}>
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild>
-              <a href="#">
+              <Link href="/dashboard">
                 <div className="flex aspect-square size-8 items-center justify-center rounded-lg">
-                  <img src="/qmanager-logo.svg" alt="QManager Logo" />
+                  <Image
+                    src={QManagerLogo}
+                    alt="QManager Logo"
+                    className="size-full"
+                    priority
+                  />
                 </div>
                 <div className="grid flex-1 text-left text-sm leading-tight">
                   <span className="truncate font-medium">QManager</span>
                   <span className="truncate text-xs">Admin</span>
                 </div>
-              </a>
+              </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
@@ -218,11 +251,13 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <NavCellular cellular={data.cellular} />
         <NavLocalNetwork localNetwork={data.localNetwork} />
         <NavMonitoring monitoring={data.monitoring} />
-        <NavSecondary items={data.navSecondary} className="mt-auto" />
+        <NavSystem system={data.system} />
+        <NavSecondary items={navSecondaryItems} className="mt-auto" />
       </SidebarContent>
       <SidebarFooter>
         <NavUser user={data.user} />
       </SidebarFooter>
+      <DonateDialog open={donateOpen} onOpenChange={setDonateOpen} />
     </Sidebar>
   );
 }

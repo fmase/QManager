@@ -1,5 +1,3 @@
-import React from "react";
-
 import { RefreshCcwIcon, ScanSearchIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -12,21 +10,24 @@ import {
   EmptyTitle,
 } from "@/components/ui/empty";
 
-const ScannerEmptyView = () => {
+interface ScannerEmptyViewProps {
+  onStartScan?: () => void;
+}
+
+const ScannerEmptyView = ({ onStartScan }: ScannerEmptyViewProps) => {
   return (
     <Empty className="from-muted/50 to-background h-full bg-linear-to-b from-30%">
       <EmptyHeader>
         <EmptyMedia variant="icon">
           <ScanSearchIcon />
         </EmptyMedia>
-        <EmptyTitle>No Scans Available</EmptyTitle>
+        <EmptyTitle>No Scan Results</EmptyTitle>
         <EmptyDescription>
-          There are currently no cellular scans available. Please initiate a new
-          scan to discover nearby networks and towers.
+          Discover nearby towers across all carriers and bands.
         </EmptyDescription>
       </EmptyHeader>
       <EmptyContent>
-        <Button>
+        <Button onClick={onStartScan}>
           <RefreshCcwIcon />
           Start New Scan
         </Button>

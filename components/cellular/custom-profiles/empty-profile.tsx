@@ -8,7 +8,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 
-import { CardSimIcon, RefreshCcwIcon } from "lucide-react";
+import { SmartphoneIcon, RefreshCcwIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Empty,
@@ -18,37 +18,51 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty";
+import { motion } from "motion/react";
 
-const EmptyProfileViewComponent = () => {
+interface EmptyProfileViewProps {
+  onRefresh?: () => void;
+}
+
+const EmptyProfileViewComponent = ({ onRefresh }: EmptyProfileViewProps) => {
   return (
-    <Card className="@container/card">
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3, ease: "easeOut" }}
+      className="h-full"
+    >
+    <Card className="@container/card h-full">
       <CardHeader>
-        <CardTitle>View Custom Profiles</CardTitle>
+        <CardTitle>Saved Profiles</CardTitle>
         <CardDescription>
-          Manage your custom cellular profiles here.
+          Manage your custom SIM profiles here.
         </CardDescription>
       </CardHeader>
       <CardContent className="h-full flex items-center justify-center">
         <Empty>
           <EmptyHeader>
             <EmptyMedia variant="icon">
-              <CardSimIcon />
+              <SmartphoneIcon />
             </EmptyMedia>
             <EmptyTitle>No Custom Profiles</EmptyTitle>
             <EmptyDescription>
-              You have not created any custom SIM profiles yet. Click the button
-              below to refresh or create a new profile.
+              You have not created any custom SIM profiles yet. Use the form to
+              create your first profile.
             </EmptyDescription>
           </EmptyHeader>
           <EmptyContent>
-            <Button variant="outline" size="sm">
-              <RefreshCcwIcon />
-              Refresh
-            </Button>
+            {onRefresh && (
+              <Button variant="outline" size="sm" onClick={onRefresh}>
+                <RefreshCcwIcon className="size-4" />
+                Refresh
+              </Button>
+            )}
           </EmptyContent>
         </Empty>
       </CardContent>
     </Card>
+    </motion.div>
   );
 };
 

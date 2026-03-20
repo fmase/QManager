@@ -1,6 +1,8 @@
 "use client";
 
+import * as React from "react";
 import { ChevronRight, type LucideIcon } from "lucide-react";
+import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 import {
@@ -34,26 +36,43 @@ export function NavMain({
     }[];
   }[];
 }) {
-  const pathname = usePathname();
+  const rawPathname = usePathname();
+  const pathname = rawPathname.endsWith('/') && rawPathname !== '/' ? rawPathname.slice(0, -1) : rawPathname;
+  const [openItems, setOpenItems] = React.useState<Record<string, boolean>>({});
+
+  React.useEffect(() => {
+    const states: Record<string, boolean> = {};
+    items.forEach((item) => {
+      states[item.title] = pathname === item.url || pathname.startsWith(item.url + "/");
+    });
+    setOpenItems(states);
+  }, [pathname, items]);
 
   return (
     <SidebarGroup>
       <SidebarGroupLabel>Dashboard</SidebarGroupLabel>
       <SidebarMenu>
         {items.map((item) => {
-          const isActive = pathname === item.url;
+          const isActive = pathname === item.url || pathname.startsWith(item.url + "/");
           return (
-            <Collapsible key={item.title} asChild defaultOpen={isActive}>
+            <Collapsible
+              key={item.title}
+              asChild
+              open={openItems[item.title] ?? false}
+              onOpenChange={(isOpen) =>
+                setOpenItems((prev) => ({ ...prev, [item.title]: isOpen }))
+              }
+            >
               <SidebarMenuItem>
                 <SidebarMenuButton
                   asChild
                   tooltip={item.title}
                   isActive={isActive}
                 >
-                  <a href={item.url}>
+                  <Link href={item.url}>
                     <item.icon />
                     <span>{item.title}</span>
-                  </a>
+                  </Link>
                 </SidebarMenuButton>
                 {item.items?.length ? (
                   <>
@@ -68,9 +87,9 @@ export function NavMain({
                         {item.items?.map((subItem) => (
                           <SidebarMenuSubItem key={subItem.title}>
                             <SidebarMenuSubButton asChild>
-                              <a href={subItem.url}>
+                              <Link href={subItem.url}>
                                 <span>{subItem.title}</span>
-                              </a>
+                              </Link>
                             </SidebarMenuSubButton>
                           </SidebarMenuSubItem>
                         ))}

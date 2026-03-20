@@ -1,8 +1,13 @@
+"use client";
+
 import React from "react";
+import { useModemStatus } from "@/hooks/use-modem-status";
 import CellDataComponent from "@/components/cellular/cell-data";
 import ActiveBandsComponent from "@/components/cellular/active-bands";
 
 const CellularInformationComponent = () => {
+  const { data, isLoading } = useModemStatus();
+
   return (
     <div className="@container/main mx-auto p-2">
       <div className="mb-6">
@@ -15,9 +20,18 @@ const CellularInformationComponent = () => {
           status.
         </p>
       </div>
-      <div className="grid grid-cols-1 @xl/main:grid-cols-2 @5xl/main:grid-cols-2 grid-flow-row gap-4 *:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card *:data-[slot=card]:bg-linear-to-t *:data-[slot=card]:shadow-xs">
-        <CellDataComponent />
-        <ActiveBandsComponent />
+      <div className="grid grid-cols-1 @3xl/main:grid-cols-2 grid-flow-row gap-4">
+        <CellDataComponent
+          network={data?.network ?? null}
+          lte={data?.lte ?? null}
+          nr={data?.nr ?? null}
+          device={data?.device ?? null}
+          isLoading={isLoading}
+        />
+        <ActiveBandsComponent
+          carrierComponents={data?.network?.carrier_components ?? null}
+          isLoading={isLoading}
+        />
       </div>
     </div>
   );

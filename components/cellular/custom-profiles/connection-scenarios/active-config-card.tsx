@@ -1,35 +1,32 @@
 import React from "react";
-import { Settings, Clock, Signal, Zap, ChevronRight } from "lucide-react";
+import { Settings } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-
-interface ScenarioConfig {
-  bands: string[];
-  mode: string;
-  optimization: string;
-}
-
-interface Scenario {
-  id: string;
-  name: string;
-  description: string;
-  icon: React.ElementType;
-  gradient: string;
-  pattern: "gaming" | "streaming" | "balanced" | "custom";
-  config: ScenarioConfig;
-}
+import { Spinner } from "@/components/ui/spinner";
+import { bandsToDisplay } from "@/types/connection-scenario";
+import type { Scenario } from "./scenario-item";
 
 interface ActiveConfigCardProps {
   scenario: Scenario | undefined;
+  isActive: boolean;
+  isActivating?: boolean;
   onEdit?: () => void;
+  onActivate?: () => void;
 }
 
-export const ActiveConfigCard = ({ scenario, onEdit }: ActiveConfigCardProps) => {
+export const ActiveConfigCard = ({
+  scenario,
+  isActive,
+  isActivating,
+  onEdit,
+  onActivate,
+}: ActiveConfigCardProps) => {
   if (!scenario) return null;
   const Icon = scenario.icon;
+  const isCustom = !scenario.isDefault;
 
   return (
     <Card className="@container/card">
@@ -43,62 +40,88 @@ export const ActiveConfigCard = ({ scenario, onEdit }: ActiveConfigCardProps) =>
                 scenario.gradient,
               )}
             >
-              <Icon className="w-6 h-6" />
+              <Icon className="size-6" />
             </div>
             <div className="grid">
               <h4 className="font-semibold">{scenario.name} Configuration</h4>
-              <Badge
-                variant="outline"
-                className="bg-green-500/20 text-green-500 hover:bg-green-500/30 border border-green-300/50 backdrop-blur-sm"
-              >
-                <div className="w-2 h-2 rounded-full bg-green-500" />
-                Active
-              </Badge>
+              {isActivating ? (
+                <Badge
+                  variant="outline"
+                  className="bg-info/15 text-info hover:bg-info/20 border-info/30"
+                >
+                  <Spinner className="h-2 w-2" />
+                  Applying…
+                </Badge>
+              ) : isActive ? (
+                <Badge
+                  variant="outline"
+                  className="bg-success/15 text-success hover:bg-success/20 border-success/30"
+                >
+                  <div className="w-2 h-2 rounded-full bg-success" />
+                  Active
+                </Badge>
+              ) : (
+                <Badge
+                  variant="outline"
+                  className="bg-muted text-muted-foreground hover:bg-muted border-border"
+                >
+                  <div className="w-2 h-2 rounded-full bg-muted-foreground/50" />
+                  Not Active
+                </Badge>
+              )}
             </div>
           </div>
-          <Button variant="ghost" size="icon" onClick={onEdit}>
-            <Settings />
-          </Button>
+          <div className="flex items-center gap-1">
+            {isCustom && (
+              <Button variant="ghost" size="icon" aria-label="Edit scenario settings" onClick={onEdit}>
+                <Settings className="size-4" />
+              </Button>
+            )}
+            {!isActive && !isActivating && (
+              <Button
+                size="sm"
+                onClick={onActivate}
+                className="gap-1.5"
+              >
+                Activate
+              </Button>
+            )}
+          </div>
         </div>
 
         {/* Config Details */}
         <div className="grid gap-2">
           <Separator />
-          <div className="flex items-center justify-between">
-            <p className="text-sm font-semibold text-muted-foreground ">
-              Band Lock
-            </p>
-            <div className="flex items-center gap-1.5">
-              <p className="text-sm font-semibold ">
-                {scenario.config.bands.join(", ")}
-              </p>
-            </div>
-          </div>
-
+          <ConfigRow label="Network Mode" value={scenario.config.mode} />
           <Separator />
-          <div className="flex items-center justify-between">
-            <p className="text-sm font-semibold text-muted-foreground ">
-              Network Mode
-            </p>
-            <div className="flex items-center gap-1.5">
-              <p className="text-sm font-semibold ">{scenario.config.mode}</p>
-            </div>
-          </div>
-
+          <ConfigRow label="Optimization" value={scenario.config.optimization} />
           <Separator />
-          <div className="flex items-center justify-between">
-            <p className="text-sm font-semibold text-muted-foreground ">
-              Optimization
-            </p>
-            <div className="flex items-center gap-1.5">
-              <p className="text-sm font-semibold ">
-                {scenario.config.optimization}
-              </p>
-            </div>
-          </div>
+          <ConfigRow
+            label="LTE Bands"
+            value={bandsToDisplay(scenario.config.lte_bands)}
+          />
+          <Separator />
+          <ConfigRow
+            label="NR5G-SA Bands"
+            value={bandsToDisplay(scenario.config.sa_nr_bands)}
+          />
+          <Separator />
+          <ConfigRow
+            label="NR5G-NSA Bands"
+            value={bandsToDisplay(scenario.config.nsa_nr_bands)}
+          />
           <Separator />
         </div>
       </CardContent>
     </Card>
   );
 };
+
+function ConfigRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-center justify-between">
+      <p className="text-sm font-semibold text-muted-foreground">{label}</p>
+      <p className="text-sm font-semibold">{value}</p>
+    </div>
+  );
+}

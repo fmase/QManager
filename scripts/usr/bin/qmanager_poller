@@ -1,0 +1,1316 @@
+#!/bin/sh
+# =============================================================================
+# qmanager_poller — QManager Background Poller Daemon
+# =============================================================================
+# Continuously gathers modem data and system metrics, writes to the
+# JSON state cache at /tmp/qmanager_status.json.
+#
+# Strategy: "Sip, Don't Gulp"
+#   - Acquire lock → run ONE AT command → release → sleep → repeat
+#   - Leaves gaps for terminal/watchdog to access the modem
+#
+# Tiers:
+#   Tier 1 (Hot):    Every cycle (~2s)  — AT+QENG="servingcell", /proc reads
+#   Tier 1.5 (Signal): Every 5 cycles (10s) — AT+QRSRP, AT+QRSRQ, AT+QSINR
+#   Tier 2 (Warm):   Every 15 cycles    — AT+QTEMP, AT+COPS?, AT+CPIN?, AT+QUIMSLOT?,
+#                                         AT+QCAINFO, AT+QNWCFG="*_time_advance",
+#                                         AT+QNWCFG="*_mimo_layers",
+#                                         AT+CGCONTRDP, AT+QMAP="WWAN"
+#   Boot-only:     Once at startup    — AT+CVERSION, AT+CGSN, AT+CIMI, AT+QCCID,
+#                                       AT+CNUM, AT+QGETCAPABILITY,
+#                                       AT+QNWPREFCFG="policy_band"
+#
+# Libraries (sourced at startup):
+#   /usr/lib/qmanager/qlog.sh      — Centralized logging
+#   /usr/lib/qmanager/parse_at.sh  — AT command response parsers
+#   /usr/lib/qmanager/events.sh    — Network event detection
+#
+# Install location: /usr/bin/qmanager_poller
+# =============================================================================
+
+# --- Configuration -----------------------------------------------------------
+CACHE_FILE="/tmp/qmanager_status.json"
+CACHE_TMP="/tmp/qmanager_status.json.tmp"
+LONG_FLAG="/tmp/qmanager_long_running"
+POLL_INTERVAL=2        # seconds between Tier 1 cycles
+TIER1_5_EVERY=5        # Tier 1.5 (per-antenna signal) runs every N cycles (10s)
+TIER2_EVERY=15         # Tier 2 runs every N cycles
+NETWORK_IFACE="wwan0"  # Network interface for traffic stats
+SIP_DELAY=0.1          # Delay between AT commands (seconds)
+
+# Signal history (NDJSON file for chart data)
+SIGNAL_HISTORY_FILE="/tmp/qmanager_signal_history.json"
+SIGNAL_HISTORY_MAX=180 # 30 min at 10s intervals
+
+# Ping history (NDJSON file for latency chart data)
+PING_HISTORY_FILE="/tmp/qmanager_ping_history.json"
+PING_HISTORY_MAX=8640  # 24h at 10s intervals
+
+# --- State Variables ---------------------------------------------------------
+cycle_count=0
+
+# --- Event Detection State ---------------------------------------------------
+EVENTS_FILE="/tmp/qmanager_events.json"
+PCI_STATE_FILE="/tmp/qmanager_pci_state.json"
+MAX_EVENTS=50
+events_initialized=false
+
+# Previous state for change detection (prefixed prev_ev_ to avoid collision)
+prev_ev_network_type=""
+prev_ev_lte_band=""
+prev_ev_lte_pci=""
+prev_ev_nr_band=""
+prev_ev_nr_pci=""
+prev_ev_nr_state=""
+prev_ev_modem_reachable=""
+prev_ev_internet=""
+prev_ev_ca_active=""
+prev_ev_ca_count=""
+prev_ev_nr_ca_active=""
+prev_ev_nr_ca_count=""
+prev_ev_service_status=""
+prev_ev_carrier_components=""
+
+# Data connection quality event debounce state
+ev_high_lat_streak=0
+ev_high_loss_streak=0
+ev_lat_alerted=false
+ev_loss_alerted=false
+
+# Boot-only data (populated once)
+boot_firmware=""
+boot_build_date=""
+boot_manufacturer=""
+boot_model=""
+boot_imei=""
+boot_imsi=""
+boot_iccid=""
+boot_phone_number=""
+boot_lte_category=""
+boot_supported_lte_bands=""
+boot_supported_nsa_nr5g_bands=""
+boot_supported_sa_nr5g_bands=""
+boot_ippt_mode="disabled"
+boot_ippt_mac=""
+boot_ippt_nat="1"
+boot_ippt_usbnet="1"
+boot_ippt_dhcpv4dns="disabled"
+
+# Tier 2 data (updated periodically)
+t2_temperature=""
+t2_carrier=""
+t2_sim_status=""
+t2_sim_slot="1"
+t2_ca_active=false
+t2_ca_count=0
+t2_nr_ca_active=false
+t2_nr_ca_count=0
+t2_total_bandwidth_mhz=0
+t2_bandwidth_details=""
+t2_carrier_components="[]"
+t2_apn=""
+t2_primary_dns=""
+t2_secondary_dns=""
+t2_wan_ipv4=""
+t2_wan_ipv6=""
+t2_mimo=""
+t1_cfun=1
+
+# Tier 1 data (updated every cycle)
+lte_state="unknown"
+lte_band=""
+lte_earfcn=""
+lte_bandwidth=""
+lte_pci=""
+lte_rsrp=""
+lte_rsrq=""
+lte_sinr=""
+lte_rssi=""
+lte_cell_id=""
+lte_enodeb_id=""
+lte_sector_id=""
+lte_tac=""
+
+nr_state="unknown"
+nr_band=""
+nr_arfcn=""
+nr_cell_id=""
+nr_enodeb_id=""
+nr_sector_id=""
+nr_tac=""
+nr_pci=""
+nr_rsrp=""
+nr_rsrq=""
+nr_sinr=""
+nr_scs=""
+
+lte_ta=""
+nr_ta=""
+
+# Network state
+network_type=""
+service_status="unknown"
+system_state="normal"
+modem_reachable=true
+
+# Error tracking
+errors=""
+
+# Traffic tracking
+prev_rx_bytes=0
+prev_tx_bytes=0
+rx_bytes_per_sec=0
+tx_bytes_per_sec=0
+
+# CPU tracking (from /proc/stat)
+prev_cpu_idle=0
+prev_cpu_total=0
+
+# Data usage tracking
+total_rx_bytes=0
+total_tx_bytes=0
+
+# Connectivity (from ping daemon)
+conn_internet_available="null"
+conn_status="unknown"
+conn_latency="null"
+conn_avg_latency="null"
+conn_min_latency="null"
+conn_max_latency="null"
+conn_jitter="null"
+conn_packet_loss=0
+conn_ping_target=""
+conn_history="[]"
+conn_history_interval=5
+conn_history_size=60
+conn_during_recovery="false"
+_last_ping_ts=0          # tracks last processed ping.json timestamp (awk gate)
+
+# History size constant (must match ping daemon)
+CONN_HISTORY_SIZE=60
+
+# Connection uptime tracking
+conn_uptime_seconds=0
+conn_start_time=0
+
+# System metrics
+cpu_usage=0
+memory_used_mb=0
+memory_total_mb=0
+uptime_seconds=0
+
+# Per-antenna signal data (Tier 1.5 — JSON array strings)
+sig_lte_rsrp="[null,null,null,null]"
+sig_lte_rsrq="[null,null,null,null]"
+sig_lte_sinr="[null,null,null,null]"
+sig_nr_rsrp="[null,null,null,null]"
+sig_nr_rsrq="[null,null,null,null]"
+sig_nr_sinr="[null,null,null,null]"
+
+# =============================================================================
+# LIBRARY LOADING
+# =============================================================================
+
+# Logging library
+. /usr/lib/qmanager/qlog.sh 2>/dev/null || {
+    # Fallback if logging library not found
+    qlog_init() { :; }
+    qlog_debug() { :; }
+    qlog_info() { :; }
+    qlog_warn() { :; }
+    qlog_error() { :; }
+    qlog_at_cmd() { :; }
+    qlog_lock() { :; }
+    qlog_state_change() { :; }
+}
+qlog_init "poller"
+
+# Backward-compatible aliases (used throughout this script)
+log_info()  { qlog_info  "$1"; }
+log_warn()  { qlog_warn  "$1"; }
+log_error() { qlog_error "$1"; }
+
+# AT command parsers
+. /usr/lib/qmanager/parse_at.sh 2>/dev/null || {
+    log_error "FATAL: Failed to load parse_at.sh"
+    exit 1
+}
+
+# Event detection
+. /usr/lib/qmanager/events.sh 2>/dev/null || {
+    log_error "FATAL: Failed to load events.sh"
+    exit 1
+}
+
+# Email alerts (optional — non-fatal if missing)
+. /usr/lib/qmanager/email_alerts.sh 2>/dev/null || {
+    qlog_warn "email_alerts.sh not found, email alerts disabled"
+    check_email_alert() { :; }
+    email_alerts_init() { :; }
+}
+
+# =============================================================================
+# HELPER: SAFE QCMD CALL
+# =============================================================================
+# Calls qcmd and strips the echoed AT command + trailing OK from sms_tool output.
+# Returns exit codes:
+#   0 = success
+#   1 = modem unreachable / timeout
+#   2 = command returned ERROR (but modem is reachable)
+
+qcmd_exec() {
+    local cmd="$1"
+    local result
+
+    result=$(qcmd "$cmd" 2>/dev/null)
+    local exit_code=$?
+
+    if [ $exit_code -ne 0 ] || [ -z "$result" ]; then
+        qlog_warn "qcmd_exec failed: cmd=${cmd} exit=${exit_code}"
+        return 1
+    fi
+
+    # Strip echoed AT command and trailing OK from sms_tool output.
+    result=$(printf '%s\n' "$result" | grep -v '^AT' | grep -v '^OK$' | grep -v '^$')
+
+    case "$result" in
+        *ERROR*)
+            qlog_debug "qcmd_exec AT ERROR: cmd=${cmd}"
+            echo "$result"
+            return 2
+            ;;
+    esac
+
+    echo "$result"
+    return 0
+}
+
+# =============================================================================
+# SYSTEM METRICS (No modem lock needed)
+# =============================================================================
+
+update_proc_metrics() {
+    # --- CPU Usage % (from /proc/stat delta) ---
+    local cpu_line
+    cpu_line=$(head -1 /proc/stat 2>/dev/null)
+    if [ -n "$cpu_line" ]; then
+        # /proc/stat format: cpu user nice system idle iowait irq softirq steal
+        local cur_idle
+        local cur_total
+        cur_idle=$(echo "$cpu_line" | awk '{print $5}')
+        cur_total=$(echo "$cpu_line" | awk '{print $2+$3+$4+$5+$6+$7+$8+$9}')
+
+        if [ "$prev_cpu_total" -gt 0 ] 2>/dev/null; then
+            local diff_idle
+            local diff_total
+            diff_idle=$((cur_idle - prev_cpu_idle))
+            diff_total=$((cur_total - prev_cpu_total))
+
+            if [ "$diff_total" -gt 0 ] 2>/dev/null; then
+                # Integer math: (diff_total - diff_idle) * 100 / diff_total
+                cpu_usage=$(( (diff_total - diff_idle) * 100 / diff_total ))
+            fi
+        fi
+
+        prev_cpu_idle=$cur_idle
+        prev_cpu_total=$cur_total
+    fi
+
+    # --- Memory ---
+    local mem_total
+    local mem_available
+    mem_total=$(grep '^MemTotal:' /proc/meminfo 2>/dev/null | awk '{print $2}')
+    mem_available=$(grep '^MemAvailable:' /proc/meminfo 2>/dev/null | awk '{print $2}')
+
+    if [ -n "$mem_total" ]; then
+        memory_total_mb=$((mem_total / 1024))
+    else
+        memory_total_mb=0
+    fi
+
+    if [ -n "$mem_available" ] && [ -n "$mem_total" ]; then
+        memory_used_mb=$(( (mem_total - mem_available) / 1024 ))
+    else
+        memory_used_mb=0
+    fi
+
+    # --- Uptime ---
+    uptime_seconds=$(cat /proc/uptime 2>/dev/null | cut -d' ' -f1 | cut -d'.' -f1)
+    uptime_seconds="${uptime_seconds:-0}"
+
+    # --- Traffic ---
+    local rx_bytes=0
+    local tx_bytes=0
+
+    if [ -f /proc/net/dev ]; then
+        local dev_line
+        dev_line=$(grep "${NETWORK_IFACE}:" /proc/net/dev 2>/dev/null)
+        if [ -n "$dev_line" ]; then
+            rx_bytes=$(echo "$dev_line" | awk '{print $2}')
+            tx_bytes=$(echo "$dev_line" | awk '{print $10}')
+        fi
+    fi
+
+    # Calculate bytes per second
+    if [ "$prev_rx_bytes" -gt 0 ] 2>/dev/null; then
+        rx_bytes_per_sec=$(( (rx_bytes - prev_rx_bytes) / POLL_INTERVAL ))
+        tx_bytes_per_sec=$(( (tx_bytes - prev_tx_bytes) / POLL_INTERVAL ))
+
+        [ "$rx_bytes_per_sec" -lt 0 ] 2>/dev/null && rx_bytes_per_sec=0
+        [ "$tx_bytes_per_sec" -lt 0 ] 2>/dev/null && tx_bytes_per_sec=0
+    fi
+
+    prev_rx_bytes=$rx_bytes
+    prev_tx_bytes=$tx_bytes
+    total_rx_bytes=$rx_bytes
+    total_tx_bytes=$tx_bytes
+
+    cpu_usage="${cpu_usage:-0}"
+}
+
+# --- Connection Uptime -------------------------------------------------------
+# Tracks how long the modem has had internet connectivity (based on ping daemon).
+# Starts counting when conn_internet_available becomes "true", resets on "false".
+# Holds steady (no reset) when ping data is unavailable ("null") — avoids
+# resetting the timer just because the ping daemon hasn't started yet.
+update_conn_uptime() {
+    if [ "$conn_internet_available" = "true" ]; then
+        # Internet is reachable — start or continue counting
+        if [ "$conn_start_time" -eq 0 ] 2>/dev/null; then
+            conn_start_time=$(date +%s)
+            qlog_debug "Connection uptime timer started"
+        fi
+        local now
+        now=$(date +%s)
+        conn_uptime_seconds=$((now - conn_start_time))
+    elif [ "$conn_internet_available" = "false" ]; then
+        # Internet confirmed down — reset timer
+        if [ "$conn_start_time" -gt 0 ] 2>/dev/null; then
+            qlog_info "Connection uptime timer reset (internet lost after ${conn_uptime_seconds}s)"
+        fi
+        conn_start_time=0
+        conn_uptime_seconds=0
+    fi
+    # If conn_internet_available is "null" (ping daemon not running / stale),
+    # leave timer as-is — don't reset, don't count up.
+}
+
+# =============================================================================
+# BOOT DATA COLLECTION (runs once at startup)
+# =============================================================================
+
+collect_boot_data() {
+    log_info "Collecting boot-only data..."
+
+    local result
+
+    # =========================================================================
+    # Group A: Identity reads — compound AT (7 → 1 call)
+    # CVERSION, CGMM, CGSN, CIMI return bare responses (no +PREFIX:).
+    # CGMM: bare model name; CGSN/CIMI: bare 15-digit numbers.
+    # Order is deterministic: first 15-digit line = IMEI, second = IMSI.
+    # =========================================================================
+    result=$(qcmd 'AT+CVERSION;+CGMM;+CGSN;+CIMI;+QCCID;+CNUM;+QGETCAPABILITY' 2>/dev/null)
+
+    if [ -n "$result" ]; then
+        # CVERSION: prefixed lines — parsers already grep by prefix
+        parse_version "$result"
+
+        # CGMM: bare model name — the only non-numeric, non-prefixed single
+        # line between the CVERSION block and the bare 15-digit numbers.
+        # Extract as: first line after Authors: block that isn't blank/prefix/digits.
+        boot_model=$(printf '%s\n' "$result" | tr -d '\r' | \
+            grep -v '^AT' | grep -v '^OK$' | grep -v '^$' | \
+            grep -v '^VERSION:' | grep -v '^Authors:' | \
+            grep -v '^[0-9]' | grep -v '^+' | \
+            grep -v '^[A-Z][a-z][a-z] ' | \
+            head -1)
+
+        # CGSN / CIMI: bare 15-digit numbers, order-based extraction
+        boot_imei=$(printf '%s\n' "$result" | tr -d '\r' | grep -x '[0-9]\{15\}' | sed -n '1p')
+        boot_imsi=$(printf '%s\n' "$result" | tr -d '\r' | grep -x '[0-9]\{15\}' | sed -n '2p')
+
+        # QCCID: prefixed
+        boot_iccid=$(printf '%s\n' "$result" | grep '+QCCID:' | sed 's/+QCCID: //g' | tr -d '\r ')
+
+        # CNUM: prefixed
+        local num
+        num=$(printf '%s\n' "$result" | grep '+CNUM:' | head -1 | cut -d',' -f2 | tr -d '"' | tr -d '\r')
+        [ -n "$num" ] && boot_phone_number="$num"
+
+        # QGETCAPABILITY: prefixed (multi-line)
+        parse_capability "$result"
+    fi
+
+    # --- SIM Swap Detection (boot-time, one-shot) ---
+    LAST_ICCID_FILE="/etc/qmanager/last_iccid"
+    SIM_SWAP_FLAG="/tmp/qmanager_sim_swap_detected"
+    if [ -n "$boot_iccid" ]; then
+        if [ -f "$LAST_ICCID_FILE" ]; then
+            local stored_iccid
+            stored_iccid=$(cat "$LAST_ICCID_FILE" 2>/dev/null | tr -d ' \r\n')
+            if [ -n "$stored_iccid" ] && [ "$stored_iccid" != "$boot_iccid" ]; then
+                qlog_warn "SIM SWAP DETECTED: old=...$(printf '%s' "$stored_iccid" | tail -c 4) new=...$(printf '%s' "$boot_iccid" | tail -c 4)"
+                local match_name="" match_id=""
+                local pf
+                for pf in /etc/qmanager/profiles/*.json; do
+                    [ -f "$pf" ] || continue
+                    local pf_iccid
+                    pf_iccid=$(jq -r '(.sim_iccid) | if . == null then empty else . end' "$pf" 2>/dev/null)
+                    if [ "$pf_iccid" = "$boot_iccid" ]; then
+                        match_name=$(jq -r '(.name) | if . == null then empty else . end' "$pf" 2>/dev/null)
+                        match_id=$(jq -r '(.id) | if . == null then empty else . end' "$pf" 2>/dev/null)
+                        break
+                    fi
+                done
+                jq -n -c \
+                    --argjson ts "$(date +%s)" \
+                    --arg prev "$stored_iccid" \
+                    --arg curr "$boot_iccid" \
+                    --arg pid "$match_id" \
+                    --arg pname "$match_name" \
+                    '{detected_at:$ts,previous_iccid:$prev,current_iccid:$curr,matching_profile_id:$pid,matching_profile_name:$pname,dismissed:false}' \
+                    > "$SIM_SWAP_FLAG"
+                append_event "sim_swap_detected" "New SIM detected (ICCID: ...$(printf '%s' "$boot_iccid" | tail -c 4))" "info"
+            fi
+        fi
+        printf '%s' "$boot_iccid" > "$LAST_ICCID_FILE"
+    fi
+
+    # =========================================================================
+    # Group B: Enables + post-enable reads — compound AT (11 → 1 call)
+    # First 4 sub-commands are idempotent writes (enable MIMO/TA reporting).
+    # Modem processes sequentially, so enables are active before reads.
+    # =========================================================================
+    result=$(qcmd 'AT+QNWCFG="lte_mimo_layers",1;+QNWCFG="nr5g_mimo_layers",1;+QNWCFG="lte_time_advance",1;+QNWCFG="nr5g_time_advance",1;+QNWCFG="lte_mimo_layers";+QNWCFG="nr5g_mimo_layers";+QMAP="MPDN_RULE";+QMAP="IPPT_NAT";+QCFG="usbnet";+QMAP="DHCPV4DNS"' 2>/dev/null)
+
+    if [ -n "$result" ]; then
+        # MIMO layers (parser greps for each prefix independently)
+        parse_mimo "$result" "$result"
+
+        # IP Passthrough settings (all parsers grep for their specific keywords)
+        parse_ippt_mpdn_rule "$result"
+        parse_ippt_nat "$result"
+        parse_ippt_usbnet "$result"
+        parse_ippt_dhcpv4dns "$result"
+    fi
+
+    # =========================================================================
+    # Supported bands — conditional (cached to /tmp across hotplug restarts)
+    # On full device reboot /tmp is cleared, so queried once then cached.
+    # =========================================================================
+    SUPPORTED_BANDS_FILE="/tmp/qmanager_supported_bands.env"
+    if [ -f "$SUPPORTED_BANDS_FILE" ]; then
+        . "$SUPPORTED_BANDS_FILE"
+        qlog_info "Loaded supported bands from RAM cache"
+    else
+        result=$(qcmd_exec 'AT+QNWPREFCFG="policy_band"')
+        if [ $? -eq 0 ]; then
+            parse_policy_band "$result"
+            printf 'boot_supported_lte_bands="%s"\nboot_supported_nsa_nr5g_bands="%s"\nboot_supported_sa_nr5g_bands="%s"\n' \
+                "$boot_supported_lte_bands" "$boot_supported_nsa_nr5g_bands" "$boot_supported_sa_nr5g_bands" \
+                > "$SUPPORTED_BANDS_FILE"
+            qlog_info "Supported bands cached to $SUPPORTED_BANDS_FILE"
+        fi
+    fi
+
+    log_info "Boot data: FW=$boot_firmware BUILD=$boot_build_date MFG=$boot_manufacturer MODEL=$boot_model"
+    log_info "Boot data: IMEI=$boot_imei IMSI=$boot_imsi ICCID=$boot_iccid"
+    log_info "Boot data: PHONE=$boot_phone_number CAT=$boot_lte_category MIMO=$t2_mimo"
+    log_info "Boot data: LTE_BANDS=$boot_supported_lte_bands NSA_BANDS=$boot_supported_nsa_nr5g_bands SA_BANDS=$boot_supported_sa_nr5g_bands"
+    log_info "Boot data: IPPT mode=$boot_ippt_mode nat=$boot_ippt_nat usb=$boot_ippt_usbnet dns=$boot_ippt_dhcpv4dns"
+}
+
+# =============================================================================
+# TIER 1: HOT DATA (every cycle)
+# =============================================================================
+
+poll_serving_cell() {
+    local result
+    result=$(qcmd_exec 'AT+QENG="servingcell"')
+    local rc=$?
+
+    if [ $rc -eq 0 ] || [ $rc -eq 2 ]; then
+        if [ "$modem_reachable" != "true" ]; then
+            qlog_state_change "modem_reachable" "false" "true"
+        fi
+        modem_reachable=true
+        local prev_network_type="$network_type"
+        local prev_lte_state="$lte_state"
+        local prev_nr_state="$nr_state"
+        parse_serving_cell "$result"
+        # Log state transitions
+        qlog_state_change "network_type" "$prev_network_type" "$network_type"
+        qlog_state_change "lte_state" "$prev_lte_state" "$lte_state"
+        qlog_state_change "nr_state" "$prev_nr_state" "$nr_state"
+    else
+        if [ "$modem_reachable" = "true" ]; then
+            qlog_state_change "modem_reachable" "true" "false"
+        fi
+        modem_reachable=false
+        system_state="degraded"
+        lte_state="unknown"
+        nr_state="unknown"
+        errors="modem_timeout"
+        log_warn "Modem unreachable during serving cell poll"
+    fi
+}
+
+# =============================================================================
+# TIER 1.5: PER-ANTENNA SIGNAL (every 5 cycles / 10s)
+# =============================================================================
+# Three AT commands (~200ms each = ~600ms total modem lock per cycle).
+# Writes latest values to state vars AND appends to NDJSON history file.
+
+poll_per_antenna_signal() {
+    # Compound AT: fetch all per-antenna signal data in one call
+    local result
+    result=$(qcmd 'AT+QRSRP;+QRSRQ;+QSINR' 2>/dev/null)
+
+    if [ -n "$result" ]; then
+        parse_qrsrp "$result"
+        parse_qrsrq "$result"
+        parse_qsinr "$result"
+    fi
+
+    # Append to signal history
+    append_signal_history
+}
+
+# Append current per-antenna values as one NDJSON line to the history file.
+# Capped at SIGNAL_HISTORY_MAX lines (~30 min at 10s intervals).
+append_signal_history() {
+    local ts
+    ts=$(date +%s)
+
+    jq -n -c \
+        --argjson ts "$ts" \
+        --argjson lte_rsrp "$sig_lte_rsrp" \
+        --argjson lte_rsrq "$sig_lte_rsrq" \
+        --argjson lte_sinr "$sig_lte_sinr" \
+        --argjson nr_rsrp "$sig_nr_rsrp" \
+        --argjson nr_rsrq "$sig_nr_rsrq" \
+        --argjson nr_sinr "$sig_nr_sinr" \
+        '{ts:$ts, lte_rsrp:$lte_rsrp, lte_rsrq:$lte_rsrq, lte_sinr:$lte_sinr,
+         nr_rsrp:$nr_rsrp, nr_rsrq:$nr_rsrq, nr_sinr:$nr_sinr}' >> "$SIGNAL_HISTORY_FILE"
+
+    # Trim to max entries
+    local count
+    count=$(wc -l < "$SIGNAL_HISTORY_FILE" 2>/dev/null || echo 0)
+    if [ "$count" -gt "$SIGNAL_HISTORY_MAX" ]; then
+        local tmp="${SIGNAL_HISTORY_FILE}.tmp"
+        tail -n "$SIGNAL_HISTORY_MAX" "$SIGNAL_HISTORY_FILE" > "$tmp"
+        mv "$tmp" "$SIGNAL_HISTORY_FILE"
+    fi
+}
+
+# Append current ping/connectivity stats as one NDJSON line to the ping history file.
+# Capped at PING_HISTORY_MAX lines (~24h at 10s intervals).
+# Uses conn_ variables already populated by read_ping_data().
+append_ping_history() {
+    local ts
+    ts=$(date +%s)
+
+    jq -n -c \
+        --argjson ts "$ts" \
+        --argjson lat "${conn_latency:-null}" \
+        --argjson avg "${conn_avg_latency:-null}" \
+        --argjson min "${conn_min_latency:-null}" \
+        --argjson max "${conn_max_latency:-null}" \
+        --argjson loss "${conn_packet_loss:-0}" \
+        --argjson jit "${conn_jitter:-null}" \
+        '{ts:$ts,lat:$lat,avg:$avg,min:$min,max:$max,loss:$loss,jit:$jit}' >> "$PING_HISTORY_FILE"
+
+    # Trim to max entries
+    local count
+    count=$(wc -l < "$PING_HISTORY_FILE" 2>/dev/null || echo 0)
+    if [ "$count" -gt "$PING_HISTORY_MAX" ]; then
+        local tmp="${PING_HISTORY_FILE}.tmp"
+        tail -n "$PING_HISTORY_MAX" "$PING_HISTORY_FILE" > "$tmp"
+        mv "$tmp" "$PING_HISTORY_FILE"
+    fi
+}
+
+# =============================================================================
+# TIER 2: WARM DATA (every N cycles)
+# =============================================================================
+
+poll_tier2() {
+    local result
+
+    # Compound AT: status queries in one call.
+    # CPIN? is last — it can ERROR when SIM is absent; placing it last
+    # ensures earlier responses (QTEMP, COPS, QUIMSLOT, CNUM) are preserved
+    # even if the modem aborts on CPIN ERROR.
+    result=$(qcmd 'AT+QTEMP;+COPS?;+QUIMSLOT?;+CNUM;+CPIN?' 2>/dev/null)
+
+    if [ -n "$result" ]; then
+        parse_temperature "$result"
+        parse_carrier "$result"
+        parse_sim_slot "$result"
+
+        # Phone number refresh (may change on SIM swap)
+        local num
+        num=$(printf '%s\n' "$result" | grep '+CNUM:' | head -1 | cut -d',' -f2 | tr -d '"' | tr -d '\r')
+        [ -n "$num" ] && boot_phone_number="$num"
+
+        # SIM status — extract CPIN line specifically (parse_sim_status uses
+        # case matching, not grep, so pass only the relevant line)
+        local cpin_line
+        cpin_line=$(printf '%s\n' "$result" | grep '+CPIN:' | head -1)
+        if [ -n "$cpin_line" ]; then
+            parse_sim_status "$cpin_line"
+        elif printf '%s\n' "$result" | grep -q 'CME ERROR'; then
+            t2_sim_status="error"
+            errors="sim_not_inserted"
+        fi
+    fi
+    sleep "$SIP_DELAY"
+
+    # Carrier Aggregation — AT+QCAINFO=1;+QCAINFO;+QCAINFO=0
+    result=$(qcmd_exec 'AT+QCAINFO=1;+QCAINFO;+QCAINFO=0')
+    if [ $? -eq 0 ]; then
+        parse_ca_info "$result"
+    else
+        t2_ca_active=false
+        t2_ca_count=0
+        t2_nr_ca_active=false
+        t2_nr_ca_count=0
+        t2_total_bandwidth_mhz=0
+        t2_bandwidth_details=""
+        t2_carrier_components="[]"
+    fi
+    sleep "$SIP_DELAY"
+
+    # Compound AT: network info queries in one call.
+    # NR commands are last — they may ERROR when not on 5G; placing them
+    # last ensures LTE/general responses are preserved if the modem aborts.
+    result=$(qcmd 'AT+QNWCFG="lte_time_advance";+QNWCFG="lte_mimo_layers";+CGCONTRDP;+QMAP="WWAN";+QNWCFG="nr5g_time_advance";+QNWCFG="nr5g_mimo_layers"' 2>/dev/null)
+
+    if [ -n "$result" ]; then
+        # Timing advance (parser handles both LTE and NR from same blob)
+        parse_time_advance "$result"
+
+        # MIMO layers (parser greps for each prefix independently)
+        parse_mimo "$result" "$result"
+
+        # APN + DNS
+        if printf '%s\n' "$result" | grep -q '+CGCONTRDP:'; then
+            parse_cgcontrdp "$result"
+        else
+            t2_apn=""
+            t2_primary_dns=""
+            t2_secondary_dns=""
+        fi
+
+        # WAN IP addresses
+        if printf '%s\n' "$result" | grep -q '+QMAP:'; then
+            parse_wan_ip "$result"
+        else
+            t2_wan_ipv4=""
+            t2_wan_ipv6=""
+        fi
+    else
+        lte_ta=""
+        nr_ta=""
+        t2_apn=""
+        t2_primary_dns=""
+        t2_secondary_dns=""
+        t2_wan_ipv4=""
+        t2_wan_ipv6=""
+    fi
+}
+
+# =============================================================================
+# SERVICE QUALITY ASSESSMENT
+# =============================================================================
+
+determine_service_status() {
+    if [ "$modem_reachable" != "true" ]; then
+        service_status="unknown"
+        return
+    fi
+
+    if [ "$t2_sim_status" = "not_inserted" ] || [ "$t2_sim_status" = "error" ]; then
+        service_status="sim_error"
+        return
+    fi
+
+    if { [ "$lte_state" = "disconnected" ] || [ "$lte_state" = "unknown" ]; } && [ "$nr_state" != "connected" ]; then
+        service_status="no_service"
+        return
+    fi
+
+    if [ "$lte_state" = "searching" ]; then
+        service_status="searching"
+        return
+    fi
+
+    # If we have signal values, assess quality
+    local primary_rsrp=""
+    if [ "$nr_state" = "connected" ] && [ -n "$nr_rsrp" ]; then
+        primary_rsrp=$nr_rsrp
+    elif [ -n "$lte_rsrp" ]; then
+        primary_rsrp=$lte_rsrp
+    fi
+
+    if [ -n "$primary_rsrp" ] && [ "$primary_rsrp" -gt -100 ] 2>/dev/null; then
+        service_status="optimal"
+    elif [ -n "$primary_rsrp" ]; then
+        service_status="connected"
+    fi
+
+    # If still idle but registered on a network, show connected
+    if [ "$service_status" = "idle" ]; then
+        service_status="connected"
+    fi
+}
+
+# =============================================================================
+# CONNECTIVITY DATA (from ping daemon — no modem lock needed)
+# =============================================================================
+
+PING_CACHE="/tmp/qmanager_ping.json"
+PING_HISTORY_RAW="/tmp/qmanager_ping_history"   # flat-file ring buffer from ping daemon
+PING_STALE_THRESHOLD=10  # seconds before ping data is considered stale
+
+read_ping_data() {
+    # Reset to defaults if ping file missing or stale
+    if [ ! -f "$PING_CACHE" ]; then
+        conn_internet_available="null"
+        conn_status="unknown"
+        conn_latency="null"
+        conn_avg_latency="null"
+        conn_min_latency="null"
+        conn_max_latency="null"
+        conn_jitter="null"
+        conn_packet_loss=0
+        conn_ping_target=""
+        conn_history="[]"
+        conn_during_recovery="false"
+        return
+    fi
+
+    # Check staleness (ping daemon may have crashed)
+    local ping_ts
+    local now
+    local age
+    ping_ts=$(jq -r '.timestamp | if . == null then empty else tostring end' "$PING_CACHE" 2>/dev/null)
+    now=$(date +%s)
+
+    if [ -n "$ping_ts" ]; then
+        age=$((now - ping_ts))
+        if [ "$age" -gt "$PING_STALE_THRESHOLD" ]; then
+            qlog_warn "Ping data stale (age=${age}s), marking unknown"
+            conn_internet_available="null"
+            conn_status="unknown"
+            conn_latency="null"
+            conn_avg_latency="null"
+            conn_min_latency="null"
+            conn_max_latency="null"
+            conn_jitter="null"
+            conn_packet_loss=0
+            conn_history="[]"
+            conn_during_recovery="false"
+            return
+        fi
+    fi
+
+    # Step A: Extract slim scalar fields from ping JSON (single jq call)
+    # ping.json no longer carries stats/history — those are computed here from raw file.
+    local _pdata
+    _pdata=$(jq -r '[
+        ((.reachable) | if . == null then "null" else tostring end),
+        ((.last_rtt_ms) | if . == null then "null" else tostring end),
+        ((.during_recovery) | if . == null then "false" else tostring end),
+        ((.interval_sec) | if . == null then "5" else tostring end),
+        (.targets[0] // "")
+    ] | @tsv' "$PING_CACHE" 2>/dev/null)
+
+    conn_internet_available=$(printf '%s' "$_pdata" | cut -f1)
+    conn_latency=$(printf '%s' "$_pdata" | cut -f2)
+    conn_during_recovery=$(printf '%s' "$_pdata" | cut -f3)
+    conn_history_interval=$(printf '%s' "$_pdata" | cut -f4)
+    conn_ping_target=$(printf '%s' "$_pdata" | cut -f5)
+
+    # Step B: Single awk pass — only when ping timestamp changed (saves awk fork every 2s)
+    # With ping daemon at 5s, awk runs ~every 5s instead of every cycle.
+    if [ "$ping_ts" != "$_last_ping_ts" ]; then
+        _last_ping_ts="$ping_ts"
+
+        local _ha=""
+        if [ -s "$PING_HISTORY_RAW" ]; then
+            _ha=$(awk '
+            BEGIN { n=0; lost=0; nv=0; have=0; sum=0; jsum=0 }
+            {
+                n++; arr[n]=$0
+                if ($0=="null") { lost++ }
+                else {
+                    val=$0+0; sum+=val; nv++
+                    if (!have||val<min) min=val
+                    if (!have||val>max) max=val
+                    have=1
+                    if (nv>1) { d=val-prev; if(d<0)d=-d; jsum+=d }
+                    prev=val
+                }
+            }
+            END {
+                if (nv>0)
+                    printf "%.1f|%.1f|%.1f|%.1f|%d|", min,sum/nv,max,(nv>1?jsum/(nv-1):0),int(lost*100/n)
+                else
+                    printf "null|null|null|null|%d|", (n>0?100:0)
+                printf "["
+                for(i=1;i<=n;i++) { if(i>1) printf ","; printf "%s",arr[i] }
+                printf "]\n"
+            }' "$PING_HISTORY_RAW")
+        fi
+
+        if [ -n "$_ha" ]; then
+            local _rest="$_ha"
+            conn_min_latency="${_rest%%|*}";  _rest="${_rest#*|}"
+            conn_avg_latency="${_rest%%|*}";  _rest="${_rest#*|}"
+            conn_max_latency="${_rest%%|*}";  _rest="${_rest#*|}"
+            conn_jitter="${_rest%%|*}";       _rest="${_rest#*|}"
+            conn_packet_loss="${_rest%%|*}";  _rest="${_rest#*|}"
+            conn_history="${_rest}"           # remaining is "[json_array]"
+        else
+            conn_min_latency="null"
+            conn_avg_latency="null"
+            conn_max_latency="null"
+            conn_jitter="null"
+            conn_packet_loss=0
+            conn_history="[]"
+        fi
+    fi
+    # (if ts unchanged: cached conn_* stats remain valid)
+
+    # Derive connectivity status from ping data + modem state
+    if [ "$conn_during_recovery" = "true" ]; then
+        conn_status="recovery"
+    elif [ "$conn_internet_available" = "true" ]; then
+        local loss="${conn_packet_loss:-0}"
+        if [ "$loss" -ge 10 ] 2>/dev/null; then
+            conn_status="degraded"
+        else
+            conn_status="connected"
+        fi
+    elif [ "$conn_internet_available" = "false" ]; then
+        conn_status="disconnected"
+    else
+        conn_status="unknown"
+    fi
+
+    # Sanitize: ensure numeric fields are valid
+    case "$conn_packet_loss" in
+        *[!0-9]*|'') conn_packet_loss=0 ;;
+    esac
+    case "$conn_history_interval" in
+        *[!0-9]*|'') conn_history_interval=5 ;;
+    esac
+}
+
+# =============================================================================
+# WATCHCAT & SIM STATE READERS
+# =============================================================================
+
+# Watchcat state variables (populated by read_watchcat_state)
+wc_enabled="false"
+wc_state="disabled"
+wc_current_tier=0
+wc_failure_count=0
+wc_last_recovery_time="null"
+wc_last_recovery_tier="null"
+wc_total_recoveries=0
+wc_cooldown_remaining=0
+wc_reboots_this_hour=0
+WATCHCAT_CACHE="/tmp/qmanager_watchcat.json"
+
+# SIM failover state variables
+sim_fo_active="false"
+sim_fo_original_slot="null"
+sim_fo_current_slot="null"
+sim_fo_switched_at="null"
+SIM_FAILOVER_FILE="/tmp/qmanager_sim_failover"
+
+# SIM swap detection state variables
+sim_swap_detected="false"
+sim_swap_profile_id=""
+sim_swap_profile_name=""
+
+read_watchcat_state() {
+    if [ ! -f "$WATCHCAT_CACHE" ]; then
+        wc_enabled="false"; wc_state="disabled"
+        return
+    fi
+    local _wdata
+    _wdata=$(jq -r '[
+        ((.enabled) | if . == null then "false" else tostring end),
+        (.state // "unknown"),
+        ((.current_tier) | if . == null then "0" else tostring end),
+        ((.failure_count) | if . == null then "0" else tostring end),
+        ((.last_recovery_time) | if . == null then "null" else tostring end),
+        ((.last_recovery_tier) | if . == null then "null" else tostring end),
+        ((.total_recoveries) | if . == null then "0" else tostring end),
+        ((.cooldown_remaining) | if . == null then "0" else tostring end),
+        ((.reboots_this_hour) | if . == null then "0" else tostring end)
+    ] | @tsv' "$WATCHCAT_CACHE" 2>/dev/null)
+
+    [ -z "$_wdata" ] && return
+
+    wc_enabled=$(printf '%s' "$_wdata" | cut -f1)
+    wc_state=$(printf '%s' "$_wdata" | cut -f2)
+    wc_current_tier=$(printf '%s' "$_wdata" | cut -f3)
+    wc_failure_count=$(printf '%s' "$_wdata" | cut -f4)
+    wc_last_recovery_time=$(printf '%s' "$_wdata" | cut -f5)
+    wc_last_recovery_tier=$(printf '%s' "$_wdata" | cut -f6)
+    wc_total_recoveries=$(printf '%s' "$_wdata" | cut -f7)
+    wc_cooldown_remaining=$(printf '%s' "$_wdata" | cut -f8)
+    wc_reboots_this_hour=$(printf '%s' "$_wdata" | cut -f9)
+}
+
+read_sim_state() {
+    # SIM swap flag (boot-time, changes rarely)
+    sim_swap_detected="false"
+    sim_swap_profile_id=""
+    sim_swap_profile_name=""
+    if [ -f "$SIM_SWAP_FLAG" ]; then
+        local _dismissed
+        _dismissed=$(jq -r '(.dismissed) | if . == null then "false" else tostring end' "$SIM_SWAP_FLAG" 2>/dev/null)
+        if [ "$_dismissed" != "true" ]; then
+            sim_swap_detected="true"
+            sim_swap_profile_id=$(jq -r '.matching_profile_id // empty' "$SIM_SWAP_FLAG" 2>/dev/null)
+            sim_swap_profile_name=$(jq -r '.matching_profile_name // empty' "$SIM_SWAP_FLAG" 2>/dev/null)
+        fi
+    fi
+    # SIM failover state (written by watchcat Tier 3)
+    sim_fo_active="false"
+    sim_fo_original_slot="null"
+    sim_fo_current_slot="null"
+    sim_fo_switched_at="null"
+    if [ -f "$SIM_FAILOVER_FILE" ]; then
+        sim_fo_active=$(jq -r '(.active) | if . == null then "false" else tostring end' "$SIM_FAILOVER_FILE" 2>/dev/null)
+        sim_fo_original_slot=$(jq -r '(.original_slot) | if . == null then "null" else tostring end' "$SIM_FAILOVER_FILE" 2>/dev/null)
+        sim_fo_current_slot=$(jq -r '(.current_slot) | if . == null then "null" else tostring end' "$SIM_FAILOVER_FILE" 2>/dev/null)
+        sim_fo_switched_at=$(jq -r '(.switched_at) | if . == null then "null" else tostring end' "$SIM_FAILOVER_FILE" 2>/dev/null)
+    fi
+}
+
+# =============================================================================
+# JSON CACHE WRITER
+# =============================================================================
+
+write_cache() {
+    local timestamp
+    timestamp=$(date +%s)
+
+    # Build errors array
+    local errors_json="[]"
+    if [ -n "$errors" ]; then
+        errors_json=$(jq -n --arg e "$errors" '[$e]')
+    fi
+
+    jq -n \
+        --argjson timestamp "$timestamp" \
+        --arg system_state "$system_state" \
+        --argjson modem_reachable "$modem_reachable" \
+        --argjson errors "$errors_json" \
+        --argjson cfun "${t1_cfun:-1}" \
+        --arg net_type "${network_type:-LTE}" \
+        --argjson sim_slot "${t2_sim_slot:-1}" \
+        --arg carrier "$t2_carrier" \
+        --arg service_status "$service_status" \
+        --argjson ca_active "$t2_ca_active" \
+        --argjson ca_count "$t2_ca_count" \
+        --argjson nr_ca_active "$t2_nr_ca_active" \
+        --argjson nr_ca_count "$t2_nr_ca_count" \
+        --argjson total_bw "${t2_total_bandwidth_mhz:-0}" \
+        --arg bw_details "$t2_bandwidth_details" \
+        --argjson cc "$t2_carrier_components" \
+        --arg apn "$t2_apn" \
+        --arg wan4 "$t2_wan_ipv4" \
+        --arg wan6 "$t2_wan_ipv6" \
+        --arg dns1 "$t2_primary_dns" \
+        --arg dns2 "$t2_secondary_dns" \
+        --arg lte_st "$lte_state" \
+        --arg lte_b "$lte_band" \
+        --argjson lte_earfcn "${lte_earfcn:-null}" \
+        --argjson lte_bw "${lte_bandwidth:-null}" \
+        --argjson lte_pci "${lte_pci:-null}" \
+        --argjson lte_cid "${lte_cell_id:-null}" \
+        --argjson lte_enb "${lte_enodeb_id:-null}" \
+        --argjson lte_sec "${lte_sector_id:-null}" \
+        --argjson lte_tac "${lte_tac:-null}" \
+        --argjson lte_rsrp "${lte_rsrp:-null}" \
+        --argjson lte_rsrq "${lte_rsrq:-null}" \
+        --argjson lte_sinr "${lte_sinr:-null}" \
+        --argjson lte_rssi "${lte_rssi:-null}" \
+        --argjson lte_ta "${lte_ta:-null}" \
+        --arg nr_st "$nr_state" \
+        --arg nr_b "$nr_band" \
+        --argjson nr_arfcn "${nr_arfcn:-null}" \
+        --argjson nr_pci "${nr_pci:-null}" \
+        --argjson nr_cid "${nr_cell_id:-null}" \
+        --argjson nr_enb "${nr_enodeb_id:-null}" \
+        --argjson nr_sec "${nr_sector_id:-null}" \
+        --argjson nr_tac "${nr_tac:-null}" \
+        --argjson nr_rsrp "${nr_rsrp:-null}" \
+        --argjson nr_rsrq "${nr_rsrq:-null}" \
+        --argjson nr_sinr "${nr_sinr:-null}" \
+        --argjson nr_scs "${nr_scs:-null}" \
+        --argjson nr_ta "${nr_ta:-null}" \
+        --argjson slr "$sig_lte_rsrp" \
+        --argjson slq "$sig_lte_rsrq" \
+        --argjson sls "$sig_lte_sinr" \
+        --argjson snr "$sig_nr_rsrp" \
+        --argjson snq "$sig_nr_rsrq" \
+        --argjson sns "$sig_nr_sinr" \
+        --argjson temp "${t2_temperature:-null}" \
+        --argjson cpu "${cpu_usage:-0}" \
+        --argjson mem_used "${memory_used_mb:-0}" \
+        --argjson mem_total "${memory_total_mb:-0}" \
+        --argjson uptime "${uptime_seconds:-0}" \
+        --argjson conn_up "${conn_uptime_seconds:-0}" \
+        --arg firmware "$boot_firmware" \
+        --arg build_date "$boot_build_date" \
+        --arg mfr "$boot_manufacturer" \
+        --arg model "$boot_model" \
+        --arg imei "$boot_imei" \
+        --arg imsi "$boot_imsi" \
+        --arg iccid "$boot_iccid" \
+        --arg phone "$boot_phone_number" \
+        --arg lte_cat "$boot_lte_category" \
+        --arg mimo "$t2_mimo" \
+        --arg sup_lte "$boot_supported_lte_bands" \
+        --arg sup_nsa "$boot_supported_nsa_nr5g_bands" \
+        --arg sup_sa "$boot_supported_sa_nr5g_bands" \
+        --arg ippt_mode "$boot_ippt_mode" \
+        --arg ippt_mac  "$boot_ippt_mac" \
+        --arg ippt_nat  "$boot_ippt_nat" \
+        --arg ippt_usb  "$boot_ippt_usbnet" \
+        --arg ippt_dns  "$boot_ippt_dhcpv4dns" \
+        --argjson rx_rate "${rx_bytes_per_sec:-0}" \
+        --argjson tx_rate "${tx_bytes_per_sec:-0}" \
+        --argjson rx_total "${total_rx_bytes:-0}" \
+        --argjson tx_total "${total_tx_bytes:-0}" \
+        --argjson inet "${conn_internet_available:-null}" \
+        --arg conn_st "$conn_status" \
+        --argjson lat "${conn_latency:-null}" \
+        --argjson avg_lat "${conn_avg_latency:-null}" \
+        --argjson min_lat "${conn_min_latency:-null}" \
+        --argjson max_lat "${conn_max_latency:-null}" \
+        --argjson jit "${conn_jitter:-null}" \
+        --argjson pkt_loss "${conn_packet_loss:-0}" \
+        --arg ping_tgt "$conn_ping_target" \
+        --argjson lat_hist "${conn_history:-[]}" \
+        --argjson hist_int "${conn_history_interval:-2}" \
+        --argjson hist_size "${CONN_HISTORY_SIZE:-60}" \
+        --argjson during_rec "${conn_during_recovery:-false}" \
+        --argjson wc_enabled "${wc_enabled:-false}" \
+        --arg wc_state "${wc_state:-disabled}" \
+        --argjson wc_tier "${wc_current_tier:-0}" \
+        --argjson wc_failures "${wc_failure_count:-0}" \
+        --argjson wc_last_time "${wc_last_recovery_time:-null}" \
+        --argjson wc_last_tier "${wc_last_recovery_tier:-null}" \
+        --argjson wc_total "${wc_total_recoveries:-0}" \
+        --argjson wc_cooldown "${wc_cooldown_remaining:-0}" \
+        --argjson wc_reboots "${wc_reboots_this_hour:-0}" \
+        --argjson sf_active "${sim_fo_active:-false}" \
+        --argjson sf_orig "${sim_fo_original_slot:-null}" \
+        --argjson sf_curr "${sim_fo_current_slot:-null}" \
+        --argjson sf_time "${sim_fo_switched_at:-null}" \
+        --argjson ss_detected "${sim_swap_detected:-false}" \
+        --arg ss_profile_id "$sim_swap_profile_id" \
+        --arg ss_profile_name "$sim_swap_profile_name" \
+        '{
+            timestamp: $timestamp,
+            system_state: $system_state,
+            modem_reachable: $modem_reachable,
+            last_successful_poll: $timestamp,
+            errors: $errors,
+            network: {
+                cfun: $cfun,
+                type: $net_type,
+                sim_slot: $sim_slot,
+                carrier: $carrier,
+                service_status: $service_status,
+                ca_active: $ca_active,
+                ca_count: $ca_count,
+                nr_ca_active: $nr_ca_active,
+                nr_ca_count: $nr_ca_count,
+                total_bandwidth_mhz: $total_bw,
+                bandwidth_details: $bw_details,
+                carrier_components: $cc,
+                apn: $apn,
+                wan_ipv4: $wan4,
+                wan_ipv6: $wan6,
+                primary_dns: $dns1,
+                secondary_dns: $dns2
+            },
+            lte: {
+                state: $lte_st, band: $lte_b,
+                earfcn: $lte_earfcn, bandwidth: $lte_bw,
+                pci: $lte_pci, cell_id: $lte_cid,
+                enodeb_id: $lte_enb, sector_id: $lte_sec, tac: $lte_tac,
+                rsrp: $lte_rsrp, rsrq: $lte_rsrq,
+                sinr: $lte_sinr, rssi: $lte_rssi, ta: $lte_ta
+            },
+            nr: {
+                state: $nr_st, band: $nr_b,
+                arfcn: $nr_arfcn, pci: $nr_pci,
+                cell_id: $nr_cid, enodeb_id: $nr_enb,
+                sector_id: $nr_sec, tac: $nr_tac,
+                rsrp: $nr_rsrp, rsrq: $nr_rsrq,
+                sinr: $nr_sinr, scs: $nr_scs, ta: $nr_ta
+            },
+            signal_per_antenna: {
+                lte_rsrp: $slr, lte_rsrq: $slq, lte_sinr: $sls,
+                nr_rsrp: $snr, nr_rsrq: $snq, nr_sinr: $sns
+            },
+            device: {
+                temperature: $temp, cpu_usage: $cpu,
+                memory_used_mb: $mem_used, memory_total_mb: $mem_total,
+                uptime_seconds: $uptime, conn_uptime_seconds: $conn_up,
+                firmware: $firmware, build_date: $build_date,
+                manufacturer: $mfr, model: $model,
+                imei: $imei, imsi: $imsi,
+                iccid: $iccid, phone_number: $phone,
+                lte_category: $lte_cat, mimo: $mimo,
+                supported_lte_bands: $sup_lte,
+                supported_nsa_nr5g_bands: $sup_nsa,
+                supported_sa_nr5g_bands: $sup_sa,
+                ippt_mode: $ippt_mode,
+                ippt_mac: $ippt_mac,
+                ippt_nat: $ippt_nat,
+                ippt_usbnet: $ippt_usb,
+                ippt_dhcpv4dns: $ippt_dns
+            },
+            traffic: {
+                rx_bytes_per_sec: $rx_rate, tx_bytes_per_sec: $tx_rate,
+                total_rx_bytes: $rx_total, total_tx_bytes: $tx_total
+            },
+            connectivity: {
+                internet_available: $inet, status: $conn_st,
+                latency_ms: $lat, avg_latency_ms: $avg_lat,
+                min_latency_ms: $min_lat, max_latency_ms: $max_lat,
+                jitter_ms: $jit, packet_loss_pct: $pkt_loss,
+                ping_target: $ping_tgt, latency_history: $lat_hist,
+                history_interval_sec: $hist_int, history_size: $hist_size,
+                during_recovery: $during_rec
+            },
+            watchcat: {
+                enabled: $wc_enabled, state: $wc_state,
+                current_tier: $wc_tier, failure_count: $wc_failures,
+                last_recovery_time: $wc_last_time,
+                last_recovery_tier: $wc_last_tier,
+                total_recoveries: $wc_total,
+                cooldown_remaining: $wc_cooldown,
+                reboots_this_hour: $wc_reboots
+            },
+            sim_failover: {
+                active: $sf_active,
+                original_slot: $sf_orig,
+                current_slot: $sf_curr,
+                switched_at: $sf_time
+            },
+            sim_swap: {
+                detected: $ss_detected,
+                matching_profile_id: $ss_profile_id,
+                matching_profile_name: $ss_profile_name
+            }
+        }' > "$CACHE_TMP"
+
+    mv "$CACHE_TMP" "$CACHE_FILE"
+}
+
+# =============================================================================
+# POLL CYCLE
+# =============================================================================
+
+poll_cycle() {
+    # --- Ping-based checks FIRST (no modem dependency) ---
+    # These must run before AT commands in case qcmd blocks on serial I/O.
+    update_proc_metrics
+    read_ping_data
+    check_email_alert
+
+    if [ -f "$LONG_FLAG" ]; then
+        if [ "$system_state" != "scan_in_progress" ]; then
+            qlog_state_change "system_state" "$system_state" "scan_in_progress"
+        fi
+        system_state="scan_in_progress"
+        # Ping history (every Tier 1.5 interval — 10s)
+        if [ $((cycle_count % TIER1_5_EVERY)) -eq 0 ]; then
+            append_ping_history
+        fi
+        update_conn_uptime
+        write_cache
+        return
+    fi
+
+    errors=""
+    system_state="normal"
+
+    # Tier 1 (AT commands — may block if modem is unresponsive)
+    poll_serving_cell
+    sleep "$SIP_DELAY"
+
+    # CFUN — standalone query every cycle (compound commands timeout in CFUN=0)
+    local cfun_result
+    cfun_result=$(qcmd 'AT+CFUN?' 2>/dev/null)
+    if [ -n "$cfun_result" ]; then
+        local cfun_val
+        cfun_val=$(printf '%s\n' "$cfun_result" | grep '+CFUN:' | head -1 | tr -d '\r' | awk -F': ' '{print $2}' | tr -d ' ')
+        [ -n "$cfun_val" ] && t1_cfun="$cfun_val"
+    fi
+    sleep "$SIP_DELAY"
+
+    # Tier 1.5 (per-antenna signal history + watchcat state)
+    if [ $((cycle_count % TIER1_5_EVERY)) -eq 0 ]; then
+        poll_per_antenna_signal
+        sleep "$SIP_DELAY"
+        read_watchcat_state
+    fi
+
+    # Tier 2 (warm data + SIM state)
+    if [ $((cycle_count % TIER2_EVERY)) -eq 0 ]; then
+        poll_tier2
+        read_sim_state
+    fi
+
+    # Ping history (every Tier 1.5 interval — 10s)
+    if [ $((cycle_count % TIER1_5_EVERY)) -eq 0 ]; then
+        append_ping_history
+    fi
+    update_conn_uptime
+    determine_service_status
+    detect_events
+    write_cache
+
+    cycle_count=$((cycle_count + 1))
+}
+
+# =============================================================================
+# MAIN
+# =============================================================================
+
+main() {
+    qlog_info "========================================"
+    qlog_info "QManager Poller starting"
+    qlog_info "Config: interval=${POLL_INTERVAL}s tier2_every=${TIER2_EVERY} iface=${NETWORK_IFACE}"
+    qlog_info "Log level: ${QLOG_LEVEL:-INFO}"
+    qlog_info "========================================"
+
+    collect_boot_data
+    update_proc_metrics
+    email_alerts_init
+    write_cache
+
+    qlog_info "Boot data collected, entering poll loop"
+
+    while true; do
+        poll_cycle
+        sleep "$POLL_INTERVAL"
+    done
+}
+
+main "$@"
