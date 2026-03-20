@@ -42,7 +42,7 @@ const CustomProfileViewComponent = ({
 }: CustomProfileViewProps) => {
   if (isLoading) {
     return (
-      <Card className="@container/card">
+      <Card className="@container/card h-full">
         <CardHeader>
           <CardTitle>Saved Profiles</CardTitle>
           <CardDescription>Manage your custom SIM profiles.</CardDescription>
@@ -63,7 +63,7 @@ const CustomProfileViewComponent = ({
   }
 
   return (
-    <Card className="@container/card">
+    <Card className="@container/card h-full">
       <CardHeader>
         <CardTitle>Saved Profiles</CardTitle>
         <CardDescription>
