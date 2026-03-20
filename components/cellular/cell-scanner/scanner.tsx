@@ -192,16 +192,16 @@ const FullScannerComponent = () => {
           <AlertDialogHeader>
             <AlertDialogTitle>Lock to Cell?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will lock the modem to the following cell. The modem will
-              only connect to this specific cell until the lock is removed.
-              {lockTarget && (
-                <span className="mt-2 block font-mono text-xs">
-                  {lockTarget.networkType} — PCI {lockTarget.pci}, EARFCN{" "}
-                  {lockTarget.earfcn}, Band {lockTarget.band}
-                  {lockTarget.provider && ` (${lockTarget.provider})`}
-                </span>
-              )}
+              This will lock the modem to the following cell. It will only
+              connect to this specific cell until the lock is removed.
             </AlertDialogDescription>
+            {lockTarget && (
+              <p className="font-mono text-xs text-muted-foreground">
+                {lockTarget.networkType} — PCI {lockTarget.pci}, EARFCN{" "}
+                {lockTarget.earfcn}, Band {lockTarget.band}
+                {lockTarget.provider && ` (${lockTarget.provider})`}
+              </p>
+            )}
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isLocking}>Cancel</AlertDialogCancel>
