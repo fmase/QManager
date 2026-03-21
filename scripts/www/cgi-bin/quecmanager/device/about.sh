@@ -11,8 +11,8 @@
 #   /tmp/qmanager_status.json       -> Poller cache (firmware, IMEI, WAN IPs)
 #   AT+QNWCFG="3gpp_rel"           -> 3GPP release versions (LTE, NR5G)
 #   AT+QMAP="LANIP"                -> Device LAN IP and gateway
-#   http://ipv4.icanhazip.com      -> Public IPv4 (3s timeout, non-blocking)
-#   http://ipv6.icanhazip.com      -> Public IPv6 (3s timeout, non-blocking)
+#   https://api.ipify.org           -> Public IPv4 (3s timeout, non-blocking)
+#   https://api6.ipify.org          -> Public IPv6 (3s timeout, non-blocking)
 #   /etc/openwrt_release            -> OpenWRT version
 #   uname -r                       -> Linux kernel version
 #
@@ -47,14 +47,15 @@ fi
 #    These run in parallel while we do everything else.
 # =============================================================================
 if command -v curl >/dev/null 2>&1; then
-    ( curl -s --max-time "$PUB_IP_TIMEOUT" http://ipv4.icanhazip.com > "$pub4_file" 2>/dev/null ) &
+    # -L: follow redirects; -k: tolerate missing CA certs (common on OpenWRT)
+    ( curl -sLk --max-time "$PUB_IP_TIMEOUT" https://api.ipify.org > "$pub4_file" 2>/dev/null ) &
     pid4=$!
-    ( curl -s --max-time "$PUB_IP_TIMEOUT" http://ipv6.icanhazip.com > "$pub6_file" 2>/dev/null ) &
+    ( curl -sLk --max-time "$PUB_IP_TIMEOUT" https://api6.ipify.org > "$pub6_file" 2>/dev/null ) &
     pid6=$!
 elif command -v wget >/dev/null 2>&1; then
-    ( wget -qO- -T "$PUB_IP_TIMEOUT" http://ipv4.icanhazip.com > "$pub4_file" 2>/dev/null ) &
+    ( wget -qO- -T "$PUB_IP_TIMEOUT" https://api.ipify.org > "$pub4_file" 2>/dev/null ) &
     pid4=$!
-    ( wget -qO- -T "$PUB_IP_TIMEOUT" http://ipv6.icanhazip.com > "$pub6_file" 2>/dev/null ) &
+    ( wget -qO- -T "$PUB_IP_TIMEOUT" https://api6.ipify.org > "$pub6_file" 2>/dev/null ) &
     pid6=$!
 else
     pid4=""

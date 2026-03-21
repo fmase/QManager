@@ -19,6 +19,7 @@ import {
   HeartIcon,
   ScanIcon,
   SettingsIcon,
+  TerminalIcon,
 } from "lucide-react";
 
 import QManagerLogo from "@/public/qmanager-logo.svg";
@@ -61,6 +62,11 @@ const data = {
       title: "System Settings",
       url: "/system-settings",
       icon: SettingsIcon,
+    },
+    {
+      title: "AT Terminal",
+      url: "/system-settings/at-terminal",
+      icon: TerminalIcon,
     },
   ],
   navSecondary: [

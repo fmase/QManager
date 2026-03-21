@@ -47,3 +47,6 @@ qmanager_install
 # claude superpowers
 /.superpowers
 /docs/superpowers
+
+# RELEASE changelog
+RELEASE-*.md
