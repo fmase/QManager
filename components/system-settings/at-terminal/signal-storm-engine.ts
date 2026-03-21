@@ -240,7 +240,7 @@ export class SignalStormEngine {
     }
     const rawDt = (timestamp - this.lastTime) / 1000;
     this.lastTime = timestamp;
-    const dt = Math.min(rawDt, 0.1); // cap at 100ms
+    const dt = Math.max(0.016, Math.min(rawDt, 0.1)); // floor at ~60fps, cap at 100ms
 
     if (this.gameState === "GAME_OVER") {
       // Update stars and particles even on game-over screen for ambience

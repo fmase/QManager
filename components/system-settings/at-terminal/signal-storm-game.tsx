@@ -82,7 +82,7 @@ export default function SignalStormGame({ onExit }: { onExit: () => void }) {
     <div
       ref={wrapperRef}
       tabIndex={0}
-      className="max-h-[60vh] min-h-48 outline-none focus:outline-none"
+      className="max-h-[clamp(12rem,50vh,60vh)] min-h-48 outline-none focus:outline-none"
       onKeyDown={handleKeyDown}
       onKeyUp={handleKeyUp}
     >

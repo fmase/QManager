@@ -1,8 +1,14 @@
+/** A named AT command preset shown in the Commands popover. */
 export interface ATCommandPreset {
   label: string;
   command: string;
 }
 
+/**
+ * Default AT command presets loaded from the original `/etc/config/atcommands.user`.
+ * Covers modem control (CFUN), network mode (QNWPREFCFG), SIM slots (QUIMSLOT),
+ * APN management (CGDCONT), band queries, and IP passthrough (QMAP).
+ */
 export const DEFAULT_AT_COMMANDS: ATCommandPreset[] = [
   { label: "Reboot", command: "AT+CFUN=1,1" },
   { label: "Disconnect", command: "AT+CFUN=0" },

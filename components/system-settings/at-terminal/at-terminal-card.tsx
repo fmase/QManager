@@ -70,7 +70,11 @@ const CGI_ENDPOINT = "/cgi-bin/quecmanager/at_cmd/send_command.sh";
 // --- Helpers ---
 
 function generateId(): string {
-  return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  try {
+    return crypto.randomUUID();
+  } catch {
+    return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  }
 }
 
 function loadHistory(): HistoryEntry[] {
@@ -88,7 +92,13 @@ function saveHistory(entries: HistoryEntry[]): void {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
   } catch {
-    // Quota exceeded — degrade to in-memory only
+    // Quota exceeded — trim to half and retry
+    try {
+      const trimmed = entries.slice(-Math.floor(MAX_HISTORY / 2));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(trimmed));
+    } catch {
+      // Still failing — degrade to in-memory only
+    }
   }
 }
 
@@ -344,7 +354,7 @@ export default function ATTerminalCard() {
         <>
           {/* History area */}
           <div
-            className="max-h-[60vh] min-h-48 overflow-y-auto px-4 py-3"
+            className="max-h-[clamp(12rem,50vh,60vh)] min-h-48 overflow-y-auto px-4 py-3"
             aria-live="polite"
           >
             {isEmpty ? (

@@ -96,11 +96,18 @@ export default function CommandsPopover({
     }
 
     const allCommands = [...DEFAULT_AT_COMMANDS, ...customCommands];
-    const isDuplicate = allCommands.some(
+    const isDuplicateCommand = allCommands.some(
       (p) => p.command.toLowerCase() === trimmedCommand.toLowerCase()
     );
-    if (isDuplicate) {
+    if (isDuplicateCommand) {
       setAddError("This command already exists.");
+      return;
+    }
+    const isDuplicateLabel = allCommands.some(
+      (p) => p.label.toLowerCase() === trimmedLabel.toLowerCase()
+    );
+    if (isDuplicateLabel) {
+      setAddError("A command with this label already exists.");
       return;
     }
 
