@@ -370,7 +370,7 @@ install_backend() {
 
     if [ -d "$SRC_SCRIPTS/usr/lib/qmanager" ]; then
         cp "$SRC_SCRIPTS/usr/lib/qmanager"/* "$LIB_DIR/"
-        chmod 644 "$LIB_DIR"/*.sh
+        find "$LIB_DIR" -maxdepth 1 -name "*.sh" -exec chmod 644 {} \;
         local lib_count
         lib_count=$(count_files "$LIB_DIR")
         info "  $lib_count library files installed"
