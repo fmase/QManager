@@ -9,6 +9,7 @@ export interface SystemSettings {
   distance_unit: "km" | "miles";
   timezone: string; // POSIX TZ string, e.g. "EST5EDT,M3.2.0,M11.1.0"
   zonename: string; // IANA zone name, e.g. "America/New_York"
+  sms_tool_device: string; // "" = default (smd11), "/dev/smd7" = alternate
 }
 
 export interface ScheduleConfig {

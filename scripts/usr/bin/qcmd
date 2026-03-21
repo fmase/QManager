@@ -39,6 +39,11 @@ LOCK_WAIT_LONG=10      # seconds to wait for lock (long commands)
 # Ensure lock directory exists
 mkdir -p /var/lock 2>/dev/null
 
+# --- SMS tool device override (e.g. "-d /dev/smd7") -------------------------
+SMS_TOOL_ARGS=""
+_sms_dev=$(uci -q get quecmanager.settings.sms_tool_device 2>/dev/null)
+[ -n "$_sms_dev" ] && SMS_TOOL_ARGS="-d $_sms_dev"
+
 # --- Parse Arguments ---------------------------------------------------------
 JSON_MODE=0
 if [ "$1" = "-j" ]; then
@@ -161,11 +166,11 @@ if is_long_command "$COMMAND"; then
             echo $$ > "$PID_FILE"
 
             # Warm-up: flush residual serial buffer data + confirm modem responsive
-            sms_tool at "AT" > /dev/null 2>&1 || { rm -f "$PID_FILE"; exit 3; }
+            sms_tool $SMS_TOOL_ARGS at "AT" > /dev/null 2>&1 || { rm -f "$PID_FILE"; exit 3; }
 
             # Real command with explicit native timeout (sms_tool -t)
             # Outer timeout is a safety net in case sms_tool hangs
-            timeout "$LONG_SAFETY_TIMEOUT" sms_tool -t "$LONG_TIMEOUT" at "$COMMAND" 2>/dev/null
+            timeout "$LONG_SAFETY_TIMEOUT" sms_tool $SMS_TOOL_ARGS -t "$LONG_TIMEOUT" at "$COMMAND" 2>/dev/null
             cmd_rc=$?
             rm -f "$PID_FILE"
             exit $cmd_rc
@@ -221,7 +226,7 @@ else
                 exit 2
             fi
             echo $$ > "$PID_FILE"
-            timeout "$SHORT_TIMEOUT" sms_tool at "$COMMAND" 2>/dev/null
+            timeout "$SHORT_TIMEOUT" sms_tool $SMS_TOOL_ARGS at "$COMMAND" 2>/dev/null
             cmd_rc=$?
             rm -f "$PID_FILE"
             exit $cmd_rc
@@ -240,7 +245,7 @@ else
                         exit 2
                     fi
                     echo $$ > "$PID_FILE"
-                    timeout "$SHORT_TIMEOUT" sms_tool at "$COMMAND" 2>/dev/null
+                    timeout "$SHORT_TIMEOUT" sms_tool $SMS_TOOL_ARGS at "$COMMAND" 2>/dev/null
                     cmd_rc=$?
                     rm -f "$PID_FILE"
                     exit $cmd_rc

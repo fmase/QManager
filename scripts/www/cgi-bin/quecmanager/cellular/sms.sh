@@ -27,6 +27,11 @@ qlog_init "cgi_sms"
 cgi_headers
 cgi_handle_options
 
+# --- SMS tool device override (e.g. "-d /dev/smd7") -------------------------
+SMS_TOOL_ARGS=""
+_sms_dev=$(uci -q get quecmanager.settings.sms_tool_device 2>/dev/null)
+[ -n "$_sms_dev" ] && SMS_TOOL_ARGS="-d $_sms_dev"
+
 # --- MCC to country calling code lookup --------------------------------------
 # Maps the SIM's MCC (first 3 digits of IMSI) to ITU-T calling code.
 # Used to normalize local numbers (leading 0) to international format.
@@ -277,7 +282,7 @@ if [ "$REQUEST_METHOD" = "GET" ]; then
     qlog_info "Fetching SMS inbox and status"
 
     # 1. Get messages via sms_tool recv -j (JSON output: {"msg":[...]})
-    raw_json=$(sms_tool recv -j 2>/dev/null)
+    raw_json=$(sms_tool $SMS_TOOL_ARGS recv -j 2>/dev/null)
     if [ -n "$raw_json" ]; then
         raw_msgs=$(printf '%s' "$raw_json" | jq '.msg // []' 2>/dev/null)
         [ -z "$raw_msgs" ] && raw_msgs="[]"
@@ -311,7 +316,7 @@ if [ "$REQUEST_METHOD" = "GET" ]; then
     printf '%s' "$messages" | jq empty 2>/dev/null || messages="[]"
 
     # 2. Get storage status via sms_tool status (plain text, needs parsing)
-    status_raw=$(sms_tool status 2>/dev/null)
+    status_raw=$(sms_tool $SMS_TOOL_ARGS status 2>/dev/null)
     # Parse "used" and "total" from output — expected pattern: N/M somewhere in output
     storage_used=$(printf '%s' "$status_raw" | grep -o '[0-9]*/[0-9]*' | head -1 | cut -d'/' -f1)
     storage_total=$(printf '%s' "$status_raw" | grep -o '[0-9]*/[0-9]*' | head -1 | cut -d'/' -f2)
@@ -365,7 +370,7 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
         PHONE=$(normalize_phone "$RAW_PHONE")
 
         qlog_info "Sending SMS to $PHONE (raw: $RAW_PHONE)"
-        result=$(sms_tool send "$PHONE" "$MESSAGE" 2>&1)
+        result=$(sms_tool $SMS_TOOL_ARGS send "$PHONE" "$MESSAGE" 2>&1)
         rc=$?
 
         if [ $rc -ne 0 ]; then
@@ -396,7 +401,7 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
         idx_tmp="/tmp/qmanager_sms_idx.tmp"
         printf '%s' "$INDEXES_JSON" | jq -r '.[]' > "$idx_tmp"
         while read -r idx; do
-            result=$(sms_tool delete "$idx" 2>&1)
+            result=$(sms_tool $SMS_TOOL_ARGS delete "$idx" 2>&1)
             rc=$?
             if [ $rc -ne 0 ]; then
                 qlog_warn "Failed to delete index $idx: $result"
@@ -419,7 +424,7 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
     # --- action: delete_all --------------------------------------------------
     if [ "$ACTION" = "delete_all" ]; then
         qlog_info "Deleting all SMS messages"
-        result=$(sms_tool delete all 2>&1)
+        result=$(sms_tool $SMS_TOOL_ARGS delete all 2>&1)
         rc=$?
 
         if [ $rc -ne 0 ]; then
