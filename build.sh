@@ -5,7 +5,8 @@ ROOT_DIR="$(cd "$(dirname "$0")" && pwd)"
 INSTALL_DIR="$ROOT_DIR/qmanager_install"
 OUT_DIR="$ROOT_DIR/out"
 SCRIPTS_DIR="$ROOT_DIR/scripts"
-ARCHIVE="$ROOT_DIR/qmanager.tar.gz"
+BUILD_DIR="$ROOT_DIR/qmanager-build"
+ARCHIVE="$BUILD_DIR/qmanager.tar.gz"
 
 # Colors
 if [ -t 1 ]; then
@@ -39,6 +40,7 @@ cp "$SCRIPTS_DIR/install.sh" "$INSTALL_DIR/install.sh"
 cp "$SCRIPTS_DIR/uninstall.sh" "$INSTALL_DIR/uninstall.sh"
 
 step "Creating qmanager.tar.gz..."
+mkdir -p "$BUILD_DIR"
 [ -f "$ARCHIVE" ] && rm -f "$ARCHIVE"
 tar czf "$ARCHIVE" -C "$ROOT_DIR" qmanager_install
 
