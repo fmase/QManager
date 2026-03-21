@@ -1,5 +1,3 @@
-import Link from "next/link";
-import { Button } from "@/components/ui/button";
 import LoginComponent from "@/components/auth/login-component";
 
 export default function Home() {
