@@ -65,19 +65,27 @@ check_lock() {
     fi
 }
 
-# Fetch URL to a file, capturing HTTP status. Returns body in $1, status in $2.
-# Uses wget -S to capture headers for rate-limit detection.
+# Fetch URL to a file, capturing HTTP headers for rate-limit detection.
+# Tries uclient-fetch first (native OpenWRT HTTPS), then wget-ssl, then curl.
 http_api_fetch() {
     local url="$1" out_file="$2" header_file="$3" timeout="${4:-15}"
-    if command -v wget >/dev/null 2>&1; then
-        wget -qO "$out_file" -T "$timeout" -S "$url" 2>"$header_file"
-    elif command -v curl >/dev/null 2>&1; then
-        curl -sL --max-time "$timeout" -o "$out_file" -D "$header_file" "$url"
-    elif command -v uclient-fetch >/dev/null 2>&1; then
-        uclient-fetch -qO "$out_file" --timeout="$timeout" "$url" 2>"$header_file"
-    else
-        return 1
+
+    # uclient-fetch — native OpenWRT HTTPS downloader (most reliable on device)
+    if command -v uclient-fetch >/dev/null 2>&1; then
+        uclient-fetch -qO "$out_file" --timeout="$timeout" "$url" 2>"$header_file" && return 0
     fi
+
+    # curl (if installed — supports -D for headers)
+    if command -v curl >/dev/null 2>&1; then
+        curl -sL --max-time "$timeout" -o "$out_file" -D "$header_file" "$url" && return 0
+    fi
+
+    # wget (full wget-ssl supports -S; BusyBox wget may not)
+    if command -v wget >/dev/null 2>&1; then
+        wget -qO "$out_file" -T "$timeout" -S "$url" 2>"$header_file" && return 0
+    fi
+
+    return 1
 }
 
 # Semver comparison. Exit codes: 0 = $1 newer, 1 = same, 2 = $1 older
