@@ -50,6 +50,14 @@ fi
 
 tar czf "$ARCHIVE" -C "$ROOT_DIR" qmanager_install
 
+# Update SHA-256 hash in standalone installer
+INSTALLER="$ROOT_DIR/qmanager-installer.sh"
+if [ -f "$INSTALLER" ]; then
+  NEW_SHA256=$(sha256sum "$ARCHIVE" | awk '{print $1}')
+  sed -i "s/^EXPECTED_SHA256=.*/EXPECTED_SHA256=\"${NEW_SHA256}\"/" "$INSTALLER"
+  step "Updated EXPECTED_SHA256 in qmanager-installer.sh → ${NEW_SHA256:0:16}..."
+fi
+
 ARCHIVE_SIZE=$(du -h "$ARCHIVE" | cut -f1)
 FILE_COUNT=$(tar tzf "$ARCHIVE" | wc -l)
 printf "\n${GREEN}${BOLD}Build complete!${NC} qmanager.tar.gz (%s, %d files)\n" "$ARCHIVE_SIZE" "$FILE_COUNT"
