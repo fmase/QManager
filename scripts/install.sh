@@ -24,6 +24,7 @@
 #   --no-enable        Don't enable init.d services
 #   --no-start         Don't start services after install
 #   --skip-packages    Skip opkg package installation
+#   --no-reboot        Don't reboot after installation (useful for scripted/OTA updates)
 #   --uninstall        Remove QManager completely
 #   --help             Show this help
 #
@@ -721,6 +722,7 @@ usage() {
     printf "  --no-enable        Don't enable init.d services\n"
     printf "  --no-start         Don't start services after install\n"
     printf "  --skip-packages    Skip opkg package installation\n"
+    printf "  --no-reboot        Don't reboot after installation\n"
     printf "  --uninstall        Remove QManager completely\n"
     printf "  --help             Show this help\n\n"
     printf "Expected archive layout:\n"
@@ -744,6 +746,7 @@ main() {
     DO_START=1
     DO_UNINSTALL=0
     DO_PACKAGES=1
+    DO_REBOOT=1
 
     # Parse arguments
     while [ $# -gt 0 ]; do
@@ -764,6 +767,9 @@ main() {
                 ;;
             --skip-packages)
                 DO_PACKAGES=0
+                ;;
+            --no-reboot)
+                DO_REBOOT=0
                 ;;
             --uninstall)
                 DO_UNINSTALL=1
@@ -839,9 +845,13 @@ main() {
 
     print_summary
 
-    printf "  Rebooting in 5 seconds — press Ctrl+C to cancel...\n\n"
-    sleep 5
-    reboot
+    mkdir -p /etc/qmanager && echo "$VERSION" > /etc/qmanager/VERSION
+
+    if [ "$DO_REBOOT" = "1" ]; then
+        printf "  Rebooting in 5 seconds — press Ctrl+C to cancel...\n\n"
+        sleep 5
+        reboot
+    fi
 }
 
 main "$@"
