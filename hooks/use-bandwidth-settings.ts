@@ -30,10 +30,6 @@ export interface SaveBandwidthPayload {
   interfaces?: string;
 }
 
-export interface RegenerateSslPayload {
-  action: "regenerate_ssl";
-}
-
 export interface UseBandwidthSettingsReturn {
   settings: BandwidthSettings | null;
   status: BandwidthStatus | null;
@@ -42,7 +38,6 @@ export interface UseBandwidthSettingsReturn {
   isSaving: boolean;
   error: string | null;
   saveSettings: (payload: SaveBandwidthPayload) => Promise<boolean>;
-  regenerateSsl: () => Promise<boolean>;
   refresh: () => void;
 }
 
@@ -109,7 +104,7 @@ export function useBandwidthSettings(): UseBandwidthSettingsReturn {
 
   const postAction = useCallback(
     async (
-      payload: SaveBandwidthPayload | RegenerateSslPayload,
+      payload: SaveBandwidthPayload,
     ): Promise<boolean> => {
       setError(null);
       setIsSaving(true);
@@ -158,11 +153,6 @@ export function useBandwidthSettings(): UseBandwidthSettingsReturn {
     [postAction],
   );
 
-  const regenerateSsl = useCallback(
-    () => postAction({ action: "regenerate_ssl" }),
-    [postAction],
-  );
-
   const refresh = useCallback(() => {
     fetchSettings();
   }, [fetchSettings]);
@@ -175,7 +165,6 @@ export function useBandwidthSettings(): UseBandwidthSettingsReturn {
     isSaving,
     error,
     saveSettings,
-    regenerateSsl,
     refresh,
   };
 }

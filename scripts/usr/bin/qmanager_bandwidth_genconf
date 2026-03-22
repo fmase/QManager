@@ -39,7 +39,7 @@ channel=${channel}
 refresh_rate_ms=${refresh_rate_ms}
 required_interfaces=${interfaces}
 websocat_enabled=yes
-websocat_url=wss://localhost:${ws_port}
+websocat_url=ws://localhost:${ws_port}
 EOF
 
 exit 0

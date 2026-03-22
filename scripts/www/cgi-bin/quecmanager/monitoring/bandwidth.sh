@@ -18,8 +18,6 @@ qlog_init "cgi_bandwidth"
 cgi_headers
 cgi_handle_options
 
-SSL_CERT="/etc/qmanager/bandwidth_certs/ws.p12"
-
 # Ensure UCI section exists with defaults
 ensure_bandwidth_config() {
     uci -q get quecmanager.bridge_monitor >/dev/null 2>&1 && return
@@ -60,15 +58,9 @@ if [ "$REQUEST_METHOD" = "GET" ]; then
     monitor_running="false"
     pidof bridge_traffic_monitor_rm551 >/dev/null 2>&1 && monitor_running="true"
 
-    ssl_cert_exists="false"
-    [ -f "$SSL_CERT" ] && ssl_cert_exists="true"
-
     # Check dependencies
     websocat_installed="false"
     command -v websocat >/dev/null 2>&1 && websocat_installed="true"
-
-    openssl_installed="false"
-    command -v openssl >/dev/null 2>&1 && openssl_installed="true"
 
     jq -n \
         --argjson enabled "$enabled" \
@@ -77,9 +69,7 @@ if [ "$REQUEST_METHOD" = "GET" ]; then
         --arg interfaces "$interfaces" \
         --argjson websocat_running "$websocat_running" \
         --argjson monitor_running "$monitor_running" \
-        --argjson ssl_cert_exists "$ssl_cert_exists" \
         --argjson websocat_installed "$websocat_installed" \
-        --argjson openssl_installed "$openssl_installed" \
         '{
             success: true,
             settings: {
@@ -90,12 +80,10 @@ if [ "$REQUEST_METHOD" = "GET" ]; then
             },
             status: {
                 websocat_running: $websocat_running,
-                monitor_running: $monitor_running,
-                ssl_cert_exists: $ssl_cert_exists
+                monitor_running: $monitor_running
             },
             dependencies: {
-                websocat_installed: $websocat_installed,
-                openssl_installed: $openssl_installed
+                websocat_installed: $websocat_installed
             }
         }'
     exit 0
@@ -158,32 +146,6 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
             /etc/init.d/qmanager_bandwidth stop >/dev/null 2>&1
             /etc/init.d/qmanager_bandwidth disable 2>/dev/null
             qlog_info "Bandwidth monitor stopped and disabled"
-        fi
-
-        echo '{"success":true}'
-        exit 0
-    fi
-
-    # ─── action: regenerate_ssl ─────────────────────────────────────────
-    if [ "$ACTION" = "regenerate_ssl" ]; then
-        qlog_info "Regenerating SSL certificate"
-
-        # Remove existing certificate
-        rm -f /etc/qmanager/bandwidth_certs/key.pem
-        rm -f /etc/qmanager/bandwidth_certs/cert.pem
-        rm -f "$SSL_CERT"
-
-        # Regenerate
-        /usr/bin/qmanager_bandwidth_ssl_setup
-        if [ $? -ne 0 ]; then
-            cgi_error "ssl_failed" "Failed to regenerate SSL certificate"
-            exit 0
-        fi
-
-        # Restart service if enabled
-        enabled=$(uci -q get quecmanager.bridge_monitor.enabled 2>/dev/null)
-        if [ "$enabled" = "1" ]; then
-            ( /etc/init.d/qmanager_bandwidth restart >/dev/null 2>&1 & )
         fi
 
         echo '{"success":true}'

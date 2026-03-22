@@ -41,13 +41,11 @@ export interface BandwidthSettings {
 export interface BandwidthStatus {
   websocat_running: boolean;
   monitor_running: boolean;
-  ssl_cert_exists: boolean;
 }
 
 /** System dependency availability */
 export interface BandwidthDependencies {
   websocat_installed: boolean;
-  openssl_installed: boolean;
 }
 
 /** Full GET response from bandwidth.sh */

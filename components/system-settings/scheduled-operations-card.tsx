@@ -24,7 +24,6 @@ import { Toggle } from "@/components/ui/toggle";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -550,7 +549,7 @@ const ScheduledOperationsCard = ({
                 <p>
                   Monitors real-time network throughput across multiple <br />
                   interfaces using a dedicated binary and WebSocket stream. <br />
-                  Requires <code>websocat</code> and <code>openssl-util</code> packages.
+                  Requires <code>websocat</code> package.
                 </p>
               </TooltipContent>
             </Tooltip>
@@ -581,18 +580,6 @@ const ScheduledOperationsCard = ({
                   </Alert>
                 </motion.div>
               )}
-              {bandwidth?.dependencies && !bandwidth.dependencies.openssl_installed && (
-                <motion.div variants={itemVariants}>
-                  <Alert>
-                    <AlertTriangleIcon className="size-4" />
-                    <AlertDescription>
-                      <code>openssl-util</code> is not installed. Install with:{" "}
-                      <code className="text-xs">opkg install openssl-util</code>
-                    </AlertDescription>
-                  </Alert>
-                </motion.div>
-              )}
-
               {/* Enable toggle */}
               <motion.div variants={itemVariants} className="flex items-center justify-between">
                 <p className="font-semibold text-muted-foreground text-sm">
@@ -653,6 +640,7 @@ const ScheduledOperationsCard = ({
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent className="rounded-xl">
+                        <SelectItem value="500" className="rounded-lg">500 ms</SelectItem>
                         <SelectItem value="1000" className="rounded-lg">1 second</SelectItem>
                         <SelectItem value="2000" className="rounded-lg">2 seconds</SelectItem>
                         <SelectItem value="3000" className="rounded-lg">3 seconds</SelectItem>
@@ -691,34 +679,6 @@ const ScheduledOperationsCard = ({
                   </motion.div>
                   <Separator />
 
-                  {/* Regenerate SSL */}
-                  <motion.div variants={itemVariants} className="flex items-center justify-between mt-4">
-                    <div>
-                      <p className="font-semibold text-muted-foreground text-sm">
-                        SSL Certificate
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {bandwidth.status?.ssl_cert_exists
-                          ? "Certificate exists"
-                          : "No certificate found"}
-                      </p>
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={bandwidth.isSaving}
-                      onClick={async () => {
-                        const success = await bandwidth.regenerateSsl();
-                        if (success) {
-                          toast.success("SSL certificate regenerated");
-                        } else {
-                          toast.error("Failed to regenerate certificate");
-                        }
-                      }}
-                    >
-                      Regenerate
-                    </Button>
-                  </motion.div>
                 </>
               )}
             </>

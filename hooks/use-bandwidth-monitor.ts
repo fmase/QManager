@@ -16,8 +16,8 @@ import type {
 // Fetches bandwidth settings via HTTP, then connects to the WebSocket server
 // when bandwidth monitoring is enabled and running.
 //
-// Returns rolling chart data (30 points = 30 seconds), current speeds,
-// per-interface breakdown, and connection/cert state.
+// Returns rolling chart data (15 seconds), current speeds,
+// per-interface breakdown, and connection state.
 // =============================================================================
 
 const CGI_ENDPOINT = "/cgi-bin/quecmanager/monitoring/bandwidth.sh";
@@ -30,7 +30,7 @@ const RECONNECT_MAX_MS = 30000;
 const EXCLUDED_INTERFACES = new Set(["rmnet_ipa0", "rmnet_data2", "tailscale0"]);
 
 export interface UseBandwidthMonitorReturn {
-  /** Rolling chart data points (last 30 seconds) */
+  /** Rolling chart data points (last 15 seconds) */
   chartData: BandwidthChartPoint[];
   /** Latest aggregate download speed in bits per second */
   currentDownload: number;
@@ -46,10 +46,6 @@ export interface UseBandwidthMonitorReturn {
   isLoading: boolean;
   /** WebSocket error message, if any */
   wsError: string | null;
-  /** Whether the browser has accepted the self-signed certificate */
-  certAccepted: boolean;
-  /** Manually trigger a certificate acceptance check */
-  checkCertAcceptance: () => Promise<boolean>;
 }
 
 export function useBandwidthMonitor(): UseBandwidthMonitorReturn {
@@ -65,7 +61,6 @@ export function useBandwidthMonitor(): UseBandwidthMonitorReturn {
   const [interfaces, setInterfaces] = useState<BandwidthInterfaceData[]>([]);
   const [isConnected, setIsConnected] = useState(false);
   const [wsError, setWsError] = useState<string | null>(null);
-  const [certAccepted, setCertAccepted] = useState(false);
 
   // ─── Refs ──────────────────────────────────────────────────────────────────
   const mountedRef = useRef(true);
@@ -106,28 +101,6 @@ export function useBandwidthMonitor(): UseBandwidthMonitorReturn {
     fetchSettings();
   }, [fetchSettings]);
 
-  // ─── Certificate acceptance probe ──────────────────────────────────────────
-
-  const checkCertAcceptance = useCallback(async (): Promise<boolean> => {
-    if (!settings) return false;
-    const host =
-      typeof window !== "undefined" && window.location.hostname === "localhost"
-        ? "192.168.224.1"
-        : typeof window !== "undefined"
-          ? window.location.hostname
-          : "192.168.224.1";
-
-    try {
-      // no-cors fetch: any response (even opaque) means cert is accepted
-      await fetch(`https://${host}:${settings.ws_port}/`, { mode: "no-cors" });
-      if (mountedRef.current) setCertAccepted(true);
-      return true;
-    } catch {
-      if (mountedRef.current) setCertAccepted(false);
-      return false;
-    }
-  }, [settings]);
-
   // ─── Buffer → state sync (coalesced to avoid excessive re-renders) ────────
 
   useEffect(() => {
@@ -159,7 +132,7 @@ export function useBandwidthMonitor(): UseBandwidthMonitorReturn {
           ? window.location.hostname
           : "192.168.224.1";
 
-    const url = `wss://${host}:${settings.ws_port}`;
+    const url = `ws://${host}:${settings.ws_port}`;
 
     try {
       const ws = new WebSocket(url);
@@ -219,15 +192,10 @@ export function useBandwidthMonitor(): UseBandwidthMonitorReturn {
         }
       };
 
-      ws.onclose = (event) => {
+      ws.onclose = () => {
         if (!mountedRef.current) return;
         setIsConnected(false);
         wsRef.current = null;
-
-        // Don't reconnect on code 1006 with SSL issues
-        if (event.code === 1006) {
-          setCertAccepted(false);
-        }
 
         // Schedule reconnect with exponential backoff
         const delay = reconnectDelayRef.current;
@@ -261,12 +229,7 @@ export function useBandwidthMonitor(): UseBandwidthMonitorReturn {
       status?.monitor_running;
 
     if (shouldConnect) {
-      // Probe cert, then connect
-      checkCertAcceptance().then((accepted) => {
-        if (accepted && mountedRef.current) {
-          connect();
-        }
-      });
+      connect();
     }
 
     return () => {
@@ -280,7 +243,7 @@ export function useBandwidthMonitor(): UseBandwidthMonitorReturn {
         reconnectTimerRef.current = null;
       }
     };
-  }, [settings, status, connect, checkCertAcceptance]);
+  }, [settings, status, connect]);
 
   return {
     chartData,
@@ -291,7 +254,5 @@ export function useBandwidthMonitor(): UseBandwidthMonitorReturn {
     isEnabled: settings?.enabled ?? false,
     isLoading,
     wsError,
-    certAccepted,
-    checkCertAcceptance,
   };
 }

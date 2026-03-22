@@ -28,7 +28,6 @@ import type {
 import {
   formatBytesPerSec,
   formatBitsPerSec,
-  formatBytes,
   formatUptime,
   calculateLteDistance,
   calculateNrDistance,
@@ -106,9 +105,6 @@ const DeviceMetricsComponent = ({
 
   const rxSpeed = trafficData?.rx_bytes_per_sec ?? 0;
   const txSpeed = trafficData?.tx_bytes_per_sec ?? 0;
-  const totalRx = trafficData?.total_rx_bytes ?? 0;
-  const totalTx = trafficData?.total_tx_bytes ?? 0;
-
   const isTempHigh = temp !== null && temp >= TEMP_WARN;
   const isCpuHigh = cpu !== null && cpu >= CPU_WARN;
   const memPct = memTotal > 0 ? (memUsed / memTotal) * 100 : 0;
@@ -239,28 +235,6 @@ const DeviceMetricsComponent = ({
                   {liveBandwidth
                     ? formatBitsPerSec(liveBandwidth.upload)
                     : formatBytesPerSec(txSpeed)}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Data Usage */}
-          <Separator />
-          <div className="flex items-center justify-between">
-            <p className="font-semibold text-muted-foreground text-sm">
-              Data Usage
-            </p>
-            <div className="flex items-center gap-x-2">
-              <div className="flex items-center gap-1">
-                <TbCircleArrowDownFilled className="text-info size-5" />
-                <p className="font-semibold text-sm tabular-nums">
-                  {formatBytes(totalRx)}
-                </p>
-              </div>
-              <div className="flex items-center gap-1">
-                <TbCircleArrowUpFilled className="text-purple-500 size-5" />
-                <p className="font-semibold text-sm tabular-nums">
-                  {formatBytes(totalTx)}
                 </p>
               </div>
             </div>

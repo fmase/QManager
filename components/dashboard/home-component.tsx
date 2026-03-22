@@ -9,7 +9,6 @@ import DeviceStatus from "./device-status";
 import LTEStatusComponent from "./lte-status";
 import NrStatusComponent from "./nr-status";
 import { SignalHistoryComponent } from "./signal-history";
-import BandwidthMonitorComponent from "./bandwidth-monitor";
 import RecentActivitiesComponent from "./recent-activities";
 import DeviceMetricsComponent from "./device-metrics";
 import LiveLatencyComponent from "./live-latency";
@@ -110,15 +109,6 @@ const HomeComponent = () => {
       <div className="col-span-full">
         <SignalHistoryComponent />
       </div>
-
-      <motion.div
-        className="col-span-full"
-        variants={itemVariants}
-        initial="hidden"
-        animate="visible"
-      >
-        <BandwidthMonitorComponent />
-      </motion.div>
     </div>
   );
 };
