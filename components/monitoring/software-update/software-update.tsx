@@ -187,7 +187,13 @@ function UpdateProgressStepper({
 
 function SegmentedProgress({ activeIndex }: { activeIndex: number }) {
   return (
-    <div className="flex w-full gap-1.5">
+    <div
+      className="flex w-full gap-1.5"
+      role="progressbar"
+      aria-valuenow={activeIndex + 1}
+      aria-valuemax={STEPS.length}
+      aria-label="Update progress"
+    >
       {STEPS.map((step, i) => (
         <div
           key={step.label}
@@ -288,7 +294,7 @@ const SoftwareUpdateComponent = () => {
               <SegmentedProgress activeIndex={activeIndex} />
 
               {/* Warning footer */}
-              <div className="flex items-center justify-center gap-2 rounded-lg bg-warning/10 px-4 py-2.5">
+              <div role="alert" className="flex items-center justify-center gap-2 rounded-lg bg-warning/10 px-4 py-2.5">
                 <AlertTriangleIcon className="size-4 shrink-0 text-warning" />
                 <p className="text-xs font-medium text-warning">
                   Do not power off the device during the update

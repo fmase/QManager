@@ -47,6 +47,18 @@ import { StatusBadge } from "./software-update";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
+const PROSE_CLASSES = [
+  "prose prose-sm dark:prose-invert max-w-none",
+  "prose-headings:text-foreground prose-headings:font-semibold prose-headings:mt-4 prose-headings:mb-2 first:prose-headings:mt-0",
+  "prose-p:text-muted-foreground prose-p:leading-relaxed prose-p:my-1.5",
+  "prose-li:text-muted-foreground prose-li:my-0.5",
+  "prose-ul:my-1.5 prose-ol:my-1.5",
+  "prose-strong:text-foreground",
+  "prose-code:text-foreground prose-code:bg-muted prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:text-xs prose-code:before:content-none prose-code:after:content-none",
+  "prose-a:text-primary prose-a:no-underline hover:prose-a:underline",
+  "prose-hr:border-border prose-hr:my-3",
+].join(" ");
+
 function formatRelativeTime(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
   const mins = Math.floor(diff / 60000);
@@ -157,27 +169,29 @@ export function UpdateStatusCard({
             </Alert>
           )}
 
-          <div className="grid gap-2">
+          <div className="grid gap-2 min-w-0">
             {/* ── Version display ─────────────────────────────────── */}
             <Separator />
             {updateAvailable && updateInfo?.latest_version ? (
-              <div className="flex items-center gap-3 py-1">
-                <div className="flex flex-col gap-0.5">
-                  <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                    Installed
-                  </span>
-                  <span className="text-sm font-medium">
-                    {updateInfo.current_version}
-                  </span>
-                </div>
-                <ArrowRightIcon className="size-4 text-muted-foreground" />
-                <div className="flex flex-col gap-0.5">
-                  <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                    Available
-                  </span>
-                  <span className="text-sm font-medium text-primary">
-                    {updateInfo.latest_version}
-                  </span>
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 py-1">
+                <div className="flex items-center gap-3">
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                      Installed
+                    </span>
+                    <span className="text-sm font-medium">
+                      {updateInfo.current_version}
+                    </span>
+                  </div>
+                  <ArrowRightIcon className="size-4 text-muted-foreground" />
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                      Available
+                    </span>
+                    <span className="text-sm font-medium text-primary">
+                      {updateInfo.latest_version}
+                    </span>
+                  </div>
                 </div>
                 {updateInfo.download_size && (
                   <Badge variant="secondary" className="ml-auto">
@@ -200,29 +214,24 @@ export function UpdateStatusCard({
             {updateAvailable && updateInfo?.changelog && (
               <>
                 <Separator />
-                <div className="flex flex-col gap-2">
+                <div className="flex flex-col gap-2 min-w-0">
                   <div className="flex items-center justify-between">
                     <p className="font-semibold text-sm">Release Notes</p>
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="h-auto px-2 py-1 text-xs text-muted-foreground"
+                      className="text-xs text-muted-foreground"
                       onClick={() => setShowChangelog(true)}
                     >
                       <FileTextIcon className="size-3.5" />
                       View full
                     </Button>
                   </div>
-                  <div className="max-h-64 overflow-y-auto rounded-lg border bg-muted/50 p-4
-                    prose prose-sm dark:prose-invert max-w-none
-                    prose-headings:text-foreground prose-headings:font-semibold prose-headings:mt-4 prose-headings:mb-2 first:prose-headings:mt-0
-                    prose-p:text-muted-foreground prose-p:leading-relaxed prose-p:my-1.5
-                    prose-li:text-muted-foreground prose-li:my-0.5
-                    prose-ul:my-1.5 prose-ol:my-1.5
-                    prose-strong:text-foreground
-                    prose-code:text-foreground prose-code:bg-muted prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:text-xs prose-code:before:content-none prose-code:after:content-none
-                    prose-a:text-primary prose-a:no-underline hover:prose-a:underline
-                    prose-hr:border-border prose-hr:my-3"
+                  <div
+                    role="region"
+                    aria-label="Release notes"
+                    tabIndex={0}
+                    className={`max-h-64 overflow-y-auto overflow-x-hidden wrap-break-word rounded-lg border bg-muted/50 p-4 ${PROSE_CLASSES}`}
                   >
                     <Markdown>{updateInfo.changelog}</Markdown>
                   </div>
@@ -232,7 +241,7 @@ export function UpdateStatusCard({
 
             {/* ── Footer: timestamp + action button ───────────────── */}
             <Separator />
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-2">
               <span className="text-xs text-muted-foreground">
                 {lastChecked
                   ? `Last checked ${formatRelativeTime(lastChecked)}`
@@ -278,16 +287,11 @@ export function UpdateStatusCard({
               Release Notes — {updateInfo?.latest_version}
             </DialogTitle>
           </DialogHeader>
-          <div className="max-h-[60vh] overflow-y-auto rounded-lg border bg-muted/50 p-5
-            prose prose-sm dark:prose-invert max-w-none
-            prose-headings:text-foreground prose-headings:font-semibold prose-headings:mt-4 prose-headings:mb-2 first:prose-headings:mt-0
-            prose-p:text-muted-foreground prose-p:leading-relaxed prose-p:my-1.5
-            prose-li:text-muted-foreground prose-li:my-0.5
-            prose-ul:my-1.5 prose-ol:my-1.5
-            prose-strong:text-foreground
-            prose-code:text-foreground prose-code:bg-muted prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:text-xs prose-code:before:content-none prose-code:after:content-none
-            prose-a:text-primary prose-a:no-underline hover:prose-a:underline
-            prose-hr:border-border prose-hr:my-3"
+          <div
+            role="region"
+            aria-label="Full release notes"
+            tabIndex={0}
+            className={`max-h-[60vh] overflow-y-auto overflow-x-hidden wrap-break-word rounded-lg border bg-muted/50 p-5 ${PROSE_CLASSES}`}
           >
             <Markdown>{updateInfo?.changelog ?? ""}</Markdown>
           </div>

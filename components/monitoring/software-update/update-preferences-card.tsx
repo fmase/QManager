@@ -73,7 +73,7 @@ export function UpdatePreferencesCard({
         toast.success(
           checked
             ? "Pre-release updates enabled"
-            : "Pre-release updates disabled"
+            : "Pre-release updates disabled",
         );
       } catch {
         toast.error("Failed to update preference");
@@ -81,7 +81,7 @@ export function UpdatePreferencesCard({
         setPrereleaseToggling(false);
       }
     },
-    [togglePrerelease]
+    [togglePrerelease],
   );
 
   const handleRollback = useCallback(async () => {
@@ -99,9 +99,7 @@ export function UpdatePreferencesCard({
       try {
         await saveAutoUpdate(checked, autoUpdateTime);
         toast.success(
-          checked
-            ? "Automatic updates enabled"
-            : "Automatic updates disabled"
+          checked ? "Automatic updates enabled" : "Automatic updates disabled",
         );
       } catch {
         toast.error("Failed to update preference");
@@ -109,7 +107,7 @@ export function UpdatePreferencesCard({
         setAutoUpdateToggling(false);
       }
     },
-    [saveAutoUpdate, autoUpdateTime]
+    [saveAutoUpdate, autoUpdateTime],
   );
 
   const handleAutoUpdateTimeChange = useCallback(
@@ -128,7 +126,7 @@ export function UpdatePreferencesCard({
         }
       }, AUTO_UPDATE_DEBOUNCE);
     },
-    [saveAutoUpdate, updateInfo?.auto_update_enabled]
+    [saveAutoUpdate, updateInfo?.auto_update_enabled],
   );
 
   // Clean up debounce timer
@@ -218,35 +216,50 @@ export function UpdatePreferencesCard({
                   </Label>
                 </div>
               </div>
-              {updateInfo?.auto_update_enabled && (
-                <div className="flex items-center justify-between rounded-lg border bg-muted/50 p-3">
-                  <div className="flex flex-col gap-0.5">
-                    <span className="text-xs text-muted-foreground">
-                      Update at
-                    </span>
-                    <p className="text-xs text-muted-foreground">
-                      Checks for updates and installs automatically. The device
-                      will reboot if an update is found.
-                    </p>
-                  </div>
-                  <Input
-                    type="time"
-                    value={autoUpdateTime}
-                    onChange={(e) => handleAutoUpdateTimeChange(e.target.value)}
-                    disabled={isUpdating}
-                    className="w-28 shrink-0"
-                  />
-                </div>
-              )}
             </div>
+
+            {/* Time Configuration for Automatic Updates */}
+            {updateInfo?.auto_update_enabled && (
+              <>
+                <Separator />
+                <div className="flex flex-col gap-2">
+                  <p className="font-semibold text-sm">
+                    Update Installation Time
+                  </p>
+
+                  <div className="flex flex-col @sm/card:flex-row @sm/card:items-center gap-2 @sm/card:justify-between rounded-lg border bg-muted/50 p-3">
+                    <div className="flex flex-col gap-0.5 min-w-0">
+                      <span className="text-xs text-muted-foreground">
+                        Update at
+                      </span>
+                      <p className="text-xs text-muted-foreground">
+                        Checks for updates and installs automatically. The
+                        device will reboot if an update is found.
+                      </p>
+                    </div>
+                    <Input
+                      id="auto-update-time"
+                      type="time"
+                      value={autoUpdateTime}
+                      onChange={(e) =>
+                        handleAutoUpdateTimeChange(e.target.value)
+                      }
+                      disabled={isUpdating || autoUpdateToggling}
+                      aria-label="Automatic update time"
+                      className="w-28 shrink-0"
+                    />
+                  </div>
+                </div>
+              </>
+            )}
 
             {/* ── Rollback section ────────────────────────────────── */}
             <Separator />
             {updateInfo?.rollback_available && updateInfo?.rollback_version ? (
               <div className="flex flex-col gap-2">
                 <p className="font-semibold text-sm">Version Rollback</p>
-                <div className="flex items-center justify-between rounded-lg border bg-muted/50 p-3">
-                  <div className="flex flex-col gap-0.5">
+                <div className="flex items-center justify-between gap-2 rounded-lg border bg-muted/50 p-3">
+                  <div className="flex flex-col gap-0.5 min-w-0">
                     <span className="text-xs text-muted-foreground">
                       Previous version
                     </span>
@@ -259,6 +272,7 @@ export function UpdatePreferencesCard({
                     size="sm"
                     onClick={() => setShowRollbackDialog(true)}
                     disabled={isUpdating}
+                    className="shrink-0"
                   >
                     <RotateCcwIcon className="size-4" />
                     Restore
