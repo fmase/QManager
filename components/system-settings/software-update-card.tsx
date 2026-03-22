@@ -13,6 +13,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -37,7 +38,7 @@ import {
   CheckIcon,
   AlertTriangleIcon,
   DownloadIcon,
-  LoaderCircleIcon,
+  LoaderCircle,
   RotateCcwIcon,
   RefreshCwIcon,
   ArrowRightIcon,
@@ -276,7 +277,7 @@ export default function SoftwareUpdateCard() {
             >
               {isChecking ? (
                 <>
-                  <LoaderCircleIcon className="size-4 animate-spin" />
+                  <LoaderCircle className="size-4 animate-spin" />
                   Checking...
                 </>
               ) : (
@@ -321,7 +322,7 @@ export default function SoftwareUpdateCard() {
             className="flex flex-col items-center gap-4 py-6"
             aria-live="polite"
           >
-            <LoaderCircleIcon className="size-9 animate-spin text-primary" />
+            <LoaderCircle className="size-9 animate-spin text-primary" />
             <div className="text-center" role="status">
               <p className="text-sm font-medium">
                 {updateStatus.message ||
@@ -402,9 +403,9 @@ export default function SoftwareUpdateCard() {
               </div>
             ) : (
               <div className="flex items-center justify-between">
-                <span className="text-sm font-semibold text-muted-foreground">
+                <p className="font-semibold text-muted-foreground text-sm">
                   Installed Version
-                </span>
+                </p>
                 <span className="text-sm font-medium">
                   {updateInfo?.current_version ?? "Unknown"}
                 </span>
@@ -416,9 +417,9 @@ export default function SoftwareUpdateCard() {
               <>
                 <Separator />
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-semibold text-muted-foreground">
+                  <p className="font-semibold text-muted-foreground text-sm">
                     Release Notes
-                  </span>
+                  </p>
                   <Button
                     variant="outline"
                     size="sm"
@@ -436,9 +437,9 @@ export default function SoftwareUpdateCard() {
               <>
                 <Separator />
                 <div className="flex flex-col gap-2">
-                  <span className="text-sm font-semibold text-muted-foreground">
+                  <p className="font-semibold text-sm">
                     Rollback
-                  </span>
+                  </p>
                   <div className="flex items-center justify-between rounded-lg border bg-muted/50 p-3">
                     <div className="flex flex-col gap-0.5">
                       <span className="text-xs text-muted-foreground">
@@ -465,16 +466,20 @@ export default function SoftwareUpdateCard() {
             {/* ── Pre-release toggle ──────────────────────────────── */}
             <Separator />
             <div className="flex items-center justify-between">
-              <span className="text-sm font-semibold text-muted-foreground">
+              <p className="font-semibold text-muted-foreground text-sm">
                 Include pre-releases
-              </span>
-              <Switch
-                id="include-prerelease"
-                checked={updateInfo?.include_prerelease ?? false}
-                onCheckedChange={handleTogglePrerelease}
-                disabled={prereleaseToggling || isUpdating}
-                aria-label="Include pre-release updates"
-              />
+              </p>
+              <div className="flex items-center space-x-2">
+                <Switch
+                  id="include-prerelease"
+                  checked={updateInfo?.include_prerelease ?? false}
+                  onCheckedChange={handleTogglePrerelease}
+                  disabled={prereleaseToggling || isUpdating}
+                />
+                <Label htmlFor="include-prerelease">
+                  {updateInfo?.include_prerelease ? "Enabled" : "Disabled"}
+                </Label>
+              </div>
             </div>
 
             {/* ── Footer: timestamp + action button ───────────────── */}
@@ -501,7 +506,7 @@ export default function SoftwareUpdateCard() {
                 >
                   {isChecking ? (
                     <>
-                      <LoaderCircleIcon className="size-4 animate-spin" />
+                      <LoaderCircle className="size-4 animate-spin" />
                       Checking...
                     </>
                   ) : (
@@ -526,7 +531,7 @@ export default function SoftwareUpdateCard() {
             </DialogTitle>
           </DialogHeader>
           <div className="max-h-[60vh] overflow-y-auto rounded-lg border bg-muted/50 p-4">
-            <pre className="whitespace-pre-wrap break-words text-sm leading-relaxed text-muted-foreground font-[inherit]">
+            <pre className="whitespace-pre-wrap break-words text-sm leading-relaxed text-muted-foreground font-sans">
               {updateInfo?.changelog}
             </pre>
           </div>
