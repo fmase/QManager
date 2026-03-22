@@ -1,0 +1,141 @@
+#!/bin/sh
+# =============================================================================
+# qmanager_auto_update — Unattended update check + install
+# =============================================================================
+# Called by cron. Checks GitHub Releases API for a newer version and, if found,
+# hands off to qmanager_update to download, install, and reboot.
+#
+# UCI config: quecmanager.update.include_prerelease (respects user preference)
+# Lock:       /tmp/qmanager_update.pid (shared with manual updates)
+# =============================================================================
+
+. /usr/lib/qmanager/qlog.sh 2>/dev/null || {
+    qlog_init() { :; }
+    qlog_info() { logger -t auto_update "$1"; }
+    qlog_warn() { logger -t auto_update "WARN: $1"; }
+}
+
+qlog_init "auto_update"
+
+# --- Configuration -----------------------------------------------------------
+
+REPO="dr-dolomite/QManager"
+BRANCH="development-home"
+VERSION_FILE="/etc/qmanager/VERSION"
+PID_FILE="/tmp/qmanager_update.pid"
+UPDATER="/usr/bin/qmanager_update"
+
+# --- Guard: skip if update already in progress -------------------------------
+
+if [ -f "$PID_FILE" ]; then
+    pid=$(cat "$PID_FILE" 2>/dev/null)
+    if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
+        qlog_info "Update already in progress (PID $pid), skipping"
+        exit 0
+    fi
+    rm -f "$PID_FILE"
+fi
+
+# --- Read current state ------------------------------------------------------
+
+current_version=$(tr -d '[:space:]' < "$VERSION_FILE" 2>/dev/null)
+[ -z "$current_version" ] && current_version="0.0.0"
+
+include_prerelease=$(uci -q get quecmanager.update.include_prerelease 2>/dev/null)
+[ -z "$include_prerelease" ] && include_prerelease="1"
+
+# --- Fetch GitHub releases ---------------------------------------------------
+
+api_url="https://api.github.com/repos/$REPO/releases"
+tmp_body="/tmp/qm_auto_update_body.json"
+rm -f "$tmp_body"
+
+fetched=0
+if command -v uclient-fetch >/dev/null 2>&1; then
+    uclient-fetch -qO "$tmp_body" --timeout=15 "$api_url" 2>/dev/null && fetched=1
+fi
+if [ "$fetched" != "1" ] && command -v curl >/dev/null 2>&1; then
+    curl -sL --max-time 15 -o "$tmp_body" "$api_url" 2>/dev/null && fetched=1
+fi
+if [ "$fetched" != "1" ] && command -v wget >/dev/null 2>&1; then
+    wget -qO "$tmp_body" -T 15 "$api_url" 2>/dev/null && fetched=1
+fi
+
+if [ "$fetched" != "1" ] || [ ! -s "$tmp_body" ]; then
+    qlog_warn "Failed to fetch releases from GitHub"
+    rm -f "$tmp_body"
+    exit 1
+fi
+
+# --- Parse latest version ----------------------------------------------------
+
+if [ "$include_prerelease" = "1" ]; then
+    filter='.[0]'
+else
+    filter='[ .[] | select(.prerelease == false) ] | .[0]'
+fi
+
+latest_tag=$(jq -r "$filter | .tag_name // empty" "$tmp_body")
+rm -f "$tmp_body"
+
+if [ -z "$latest_tag" ]; then
+    qlog_info "No releases found"
+    exit 0
+fi
+
+# --- Semver comparison -------------------------------------------------------
+# Exit codes: 0 = $1 newer, 1 = same, 2 = $1 older
+# Duplicated from update.sh — kept self-contained per project convention.
+
+semver_compare() {
+    local a="$1" b="$2"
+    a="${a#v}"; b="${b#v}"
+    local a_ver="${a%%-*}" a_pre="" b_ver="${b%%-*}" b_pre=""
+    case "$a" in *-*) a_pre="${a#*-}" ;; esac
+    case "$b" in *-*) b_pre="${b#*-}" ;; esac
+
+    local a1 a2 a3 b1 b2 b3
+    IFS='.' read a1 a2 a3 <<EOF
+$a_ver
+EOF
+    IFS='.' read b1 b2 b3 <<EOF
+$b_ver
+EOF
+    a1=${a1:-0}; a2=${a2:-0}; a3=${a3:-0}
+    b1=${b1:-0}; b2=${b2:-0}; b3=${b3:-0}
+
+    [ "$a1" -gt "$b1" ] 2>/dev/null && return 0
+    [ "$a1" -lt "$b1" ] 2>/dev/null && return 2
+    [ "$a2" -gt "$b2" ] 2>/dev/null && return 0
+    [ "$a2" -lt "$b2" ] 2>/dev/null && return 2
+    [ "$a3" -gt "$b3" ] 2>/dev/null && return 0
+    [ "$a3" -lt "$b3" ] 2>/dev/null && return 2
+
+    # Equal major.minor.patch — no pre-release > any pre-release
+    [ -z "$a_pre" ] && [ -n "$b_pre" ] && return 0
+    [ -n "$a_pre" ] && [ -z "$b_pre" ] && return 2
+    [ -z "$a_pre" ] && [ -z "$b_pre" ] && return 1
+
+    # Both have pre-release — lexical comparison
+    if [ "$a_pre" != "$b_pre" ]; then
+        _lesser=$(printf '%s\n%s\n' "$a_pre" "$b_pre" | sort | head -1)
+        if [ "$_lesser" = "$a_pre" ]; then
+            return 2
+        else
+            return 0
+        fi
+    fi
+    return 1
+}
+
+# --- Check + install ---------------------------------------------------------
+
+semver_compare "$latest_tag" "$current_version"
+case $? in
+    0) ;; # latest is newer — continue to install
+    *) qlog_info "Up to date ($current_version)"; exit 0 ;;
+esac
+
+download_url="https://github.com/${REPO}/raw/refs/heads/${BRANCH}/qmanager-build/qmanager.tar.gz"
+qlog_info "Auto-update: installing $latest_tag (current: $current_version)"
+exec "$UPDATER" install "$download_url" "$latest_tag"

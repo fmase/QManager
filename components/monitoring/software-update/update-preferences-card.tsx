@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import {
   Card,
   CardContent,
@@ -9,6 +9,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
@@ -36,9 +37,12 @@ interface UpdatePreferencesCardProps {
   isUpdating: boolean;
   rollback: () => Promise<void>;
   togglePrerelease: (enabled: boolean) => Promise<void>;
+  saveAutoUpdate: (enabled: boolean, time: string) => Promise<void>;
 }
 
 // ─── Component ──────────────────────────────────────────────────────────────
+
+const AUTO_UPDATE_DEBOUNCE = 800;
 
 export function UpdatePreferencesCard({
   updateInfo,
@@ -46,9 +50,20 @@ export function UpdatePreferencesCard({
   isUpdating,
   rollback,
   togglePrerelease,
+  saveAutoUpdate,
 }: UpdatePreferencesCardProps) {
   const [showRollbackDialog, setShowRollbackDialog] = useState(false);
   const [prereleaseToggling, setPrereleaseToggling] = useState(false);
+  const [autoUpdateToggling, setAutoUpdateToggling] = useState(false);
+  const [autoUpdateTime, setAutoUpdateTime] = useState("03:00");
+  const autoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Sync local time from server data
+  useEffect(() => {
+    if (updateInfo?.auto_update_time) {
+      setAutoUpdateTime(updateInfo.auto_update_time);
+    }
+  }, [updateInfo?.auto_update_time]);
 
   const handleTogglePrerelease = useCallback(
     async (checked: boolean) => {
@@ -78,6 +93,51 @@ export function UpdatePreferencesCard({
     }
   }, [rollback]);
 
+  const handleAutoUpdateToggle = useCallback(
+    async (checked: boolean) => {
+      setAutoUpdateToggling(true);
+      try {
+        await saveAutoUpdate(checked, autoUpdateTime);
+        toast.success(
+          checked
+            ? "Automatic updates enabled"
+            : "Automatic updates disabled"
+        );
+      } catch {
+        toast.error("Failed to update preference");
+      } finally {
+        setAutoUpdateToggling(false);
+      }
+    },
+    [saveAutoUpdate, autoUpdateTime]
+  );
+
+  const handleAutoUpdateTimeChange = useCallback(
+    (newTime: string) => {
+      setAutoUpdateTime(newTime);
+      if (!updateInfo?.auto_update_enabled) return;
+
+      // Debounced save
+      if (autoTimerRef.current) clearTimeout(autoTimerRef.current);
+      autoTimerRef.current = setTimeout(async () => {
+        try {
+          await saveAutoUpdate(true, newTime);
+          toast.success("Update schedule saved");
+        } catch {
+          toast.error("Failed to save schedule");
+        }
+      }, AUTO_UPDATE_DEBOUNCE);
+    },
+    [saveAutoUpdate, updateInfo?.auto_update_enabled]
+  );
+
+  // Clean up debounce timer
+  useEffect(() => {
+    return () => {
+      if (autoTimerRef.current) clearTimeout(autoTimerRef.current);
+    };
+  }, []);
+
   // ── Loading skeleton ──────────────────────────────────────────────────
   if (isLoading) {
     return (
@@ -90,6 +150,11 @@ export function UpdatePreferencesCard({
         </CardHeader>
         <CardContent>
           <div className="grid gap-2">
+            <Separator />
+            <div className="flex items-center justify-between">
+              <Skeleton className="h-5 w-36" />
+              <Skeleton className="h-6 w-12" />
+            </div>
             <Separator />
             <div className="flex items-center justify-between">
               <Skeleton className="h-5 w-36" />
@@ -132,6 +197,47 @@ export function UpdatePreferencesCard({
                   {updateInfo?.include_prerelease ? "Enabled" : "Disabled"}
                 </Label>
               </div>
+            </div>
+
+            {/* ── Automatic updates ─────────────────────────────── */}
+            <Separator />
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center justify-between">
+                <p className="font-semibold text-muted-foreground text-sm">
+                  Automatic updates
+                </p>
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    id="auto-update"
+                    checked={updateInfo?.auto_update_enabled ?? false}
+                    onCheckedChange={handleAutoUpdateToggle}
+                    disabled={autoUpdateToggling || isUpdating}
+                  />
+                  <Label htmlFor="auto-update">
+                    {updateInfo?.auto_update_enabled ? "Enabled" : "Disabled"}
+                  </Label>
+                </div>
+              </div>
+              {updateInfo?.auto_update_enabled && (
+                <div className="flex items-center justify-between rounded-lg border bg-muted/50 p-3">
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-xs text-muted-foreground">
+                      Update at
+                    </span>
+                    <p className="text-xs text-muted-foreground">
+                      Checks for updates and installs automatically. The device
+                      will reboot if an update is found.
+                    </p>
+                  </div>
+                  <Input
+                    type="time"
+                    value={autoUpdateTime}
+                    onChange={(e) => handleAutoUpdateTimeChange(e.target.value)}
+                    disabled={isUpdating}
+                    className="w-28 shrink-0"
+                  />
+                </div>
+              )}
             </div>
 
             {/* ── Rollback section ────────────────────────────────── */}

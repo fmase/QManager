@@ -322,6 +322,7 @@ const SoftwareUpdateComponent = () => {
           isUpdating={isUpdating}
           rollback={hookData.rollback}
           togglePrerelease={hookData.togglePrerelease}
+          saveAutoUpdate={hookData.saveAutoUpdate}
         />
       </div>
     </PageWrapper>

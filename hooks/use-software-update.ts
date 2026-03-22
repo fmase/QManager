@@ -28,6 +28,8 @@ export interface UpdateInfo {
   rollback_available: boolean;
   rollback_version: string | null;
   include_prerelease: boolean;
+  auto_update_enabled: boolean;
+  auto_update_time: string;
   check_error: string | null;
 }
 
@@ -50,6 +52,7 @@ export interface UseSoftwareUpdateReturn {
   installUpdate: () => Promise<void>;
   rollback: () => Promise<void>;
   togglePrerelease: (enabled: boolean) => Promise<void>;
+  saveAutoUpdate: (enabled: boolean, time: string) => Promise<void>;
 }
 
 // ─── Hook ───────────────────────────────────────────────────────────────────
@@ -255,6 +258,27 @@ export function useSoftwareUpdate(): UseSoftwareUpdateReturn {
     }
   }, [fetchUpdateInfo]);
 
+  const saveAutoUpdate = useCallback(async (enabled: boolean, time: string) => {
+    try {
+      const resp = await authFetch(CGI_ENDPOINT, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "save_auto_update", enabled, time }),
+      });
+
+      const json = await resp.json();
+      if (!json.success) {
+        setError(json.detail || json.error || "Failed to save auto-update preference");
+        return;
+      }
+
+      await fetchUpdateInfo(true);
+    } catch (err) {
+      if (!mountedRef.current) return;
+      setError(err instanceof Error ? err.message : "Failed to save auto-update preference");
+    }
+  }, [fetchUpdateInfo]);
+
   return {
     updateInfo,
     updateStatus,
@@ -267,5 +291,6 @@ export function useSoftwareUpdate(): UseSoftwareUpdateReturn {
     installUpdate,
     rollback: rollbackFn,
     togglePrerelease,
+    saveAutoUpdate,
   };
 }

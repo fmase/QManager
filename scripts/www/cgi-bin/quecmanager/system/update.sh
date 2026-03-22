@@ -49,7 +49,16 @@ ensure_update_config() {
     uci -q get quecmanager.update >/dev/null 2>&1 && return
     uci set quecmanager.update=update
     uci set quecmanager.update.include_prerelease=1
+    uci set quecmanager.update.auto_update_enabled=0
+    uci set quecmanager.update.auto_update_time=03:00
     uci commit quecmanager
+}
+
+strip_leading_zero() {
+    local v
+    v=$(echo "$1" | sed 's/^0*//')
+    [ -z "$v" ] && v=0
+    echo "$v"
 }
 
 # Check if an update process is already running
@@ -152,6 +161,8 @@ if [ "$REQUEST_METHOD" = "GET" ]; then
 
     current_version=$(get_current_version)
     include_prerelease=$(uci_update_get include_prerelease "1")
+    auto_enabled=$(uci_update_get auto_update_enabled "0")
+    auto_time=$(uci_update_get auto_update_time "03:00")
 
     # Rollback availability — previous version stored locally after each update
     rollback_available="false"
@@ -174,12 +185,16 @@ if [ "$REQUEST_METHOD" = "GET" ]; then
             --argjson prerelease "$include_prerelease" \
             --argjson rb "$rollback_available" \
             --arg rbv "$rollback_version" \
+            --arg auto_en "$auto_enabled" \
+            --arg auto_time "$auto_time" \
             '{
                 success: true, current_version: $cv,
                 latest_version: null, update_available: false,
                 changelog: null, download_url: null, download_size: null,
                 rollback_available: $rb, rollback_version: $rbv,
                 include_prerelease: ($prerelease == 1),
+                auto_update_enabled: ($auto_en == "1"),
+                auto_update_time: $auto_time,
                 check_error: "Unable to check for updates. Check your internet connection."
             }'
         exit 0
@@ -204,12 +219,16 @@ if [ "$REQUEST_METHOD" = "GET" ]; then
             --argjson rb "$rollback_available" \
             --arg rbv "$rollback_version" \
             --arg err "$wait_msg" \
+            --arg auto_en "$auto_enabled" \
+            --arg auto_time "$auto_time" \
             '{
                 success: true, current_version: $cv,
                 latest_version: null, update_available: false,
                 changelog: null, download_url: null, download_size: null,
                 rollback_available: $rb, rollback_version: $rbv,
                 include_prerelease: ($prerelease == 1),
+                auto_update_enabled: ($auto_en == "1"),
+                auto_update_time: $auto_time,
                 check_error: $err
             }'
         exit 0
@@ -254,6 +273,8 @@ if [ "$REQUEST_METHOD" = "GET" ]; then
         --argjson rb "$rollback_available" \
         --arg rbv "$rollback_version" \
         --argjson prerelease "$include_prerelease" \
+        --arg auto_en "$auto_enabled" \
+        --arg auto_time "$auto_time" \
         '{
             success: true,
             current_version: $cv,
@@ -265,6 +286,8 @@ if [ "$REQUEST_METHOD" = "GET" ]; then
             rollback_available: $rb,
             rollback_version: (if $rbv == "" then null else $rbv end),
             include_prerelease: ($prerelease == 1),
+            auto_update_enabled: ($auto_en == "1"),
+            auto_update_time: $auto_time,
             check_error: null
         }'
     exit 0
@@ -285,13 +308,61 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
     # --- Save pre-release preference ---
     if [ "$ACTION" = "save_prerelease" ]; then
         ensure_update_config
-        enabled=$(printf '%s' "$POST_DATA" | jq -r '.enabled // empty')
+        enabled=$(printf '%s' "$POST_DATA" | jq -r '(.enabled) | if . == null then empty else tostring end')
         case "$enabled" in
             true)  uci set quecmanager.update.include_prerelease=1 ;;
             false) uci set quecmanager.update.include_prerelease=0 ;;
             *) cgi_error "invalid_value" "enabled must be true or false"; exit 0 ;;
         esac
         uci commit quecmanager
+        cgi_success
+        exit 0
+    fi
+
+    # --- Save auto-update preference ---
+    if [ "$ACTION" = "save_auto_update" ]; then
+        ensure_update_config
+        enabled=$(printf '%s' "$POST_DATA" | jq -r '(.enabled) | if . == null then empty else tostring end')
+        auto_time=$(printf '%s' "$POST_DATA" | jq -r '.time // empty')
+
+        case "$enabled" in
+            true|false) ;;
+            *) cgi_error "invalid_value" "enabled must be true or false"; exit 0 ;;
+        esac
+        echo "$auto_time" | grep -qE '^[0-9]{2}:[0-9]{2}$' || {
+            cgi_error "invalid_value" "time must be HH:MM format"; exit 0
+        }
+
+        case "$enabled" in
+            true)  uci set quecmanager.update.auto_update_enabled=1 ;;
+            false) uci set quecmanager.update.auto_update_enabled=0 ;;
+        esac
+        uci set quecmanager.update.auto_update_time="$auto_time"
+        uci commit quecmanager
+
+        # Manage crontab (same pattern as settings.sh scheduled reboot)
+        CRON_MARKER="# qmanager_auto_update"
+        AUTO_UPDATE_SCRIPT="/usr/bin/qmanager_auto_update"
+        current_cron=$(crontab -l 2>/dev/null || true)
+        filtered_cron=$(printf '%s\n' "$current_cron" | grep -v "$CRON_MARKER")
+
+        if [ "$enabled" = "true" ]; then
+            sched_hour=$(printf '%s' "$auto_time" | cut -d: -f1)
+            sched_min=$(printf '%s' "$auto_time" | cut -d: -f2)
+            sched_hour=$(strip_leading_zero "$sched_hour")
+            sched_min=$(strip_leading_zero "$sched_min")
+
+            new_cron=$(printf '%s\n%s %s * * * %s  %s' \
+                "$filtered_cron" "$sched_min" "$sched_hour" "$AUTO_UPDATE_SCRIPT" "$CRON_MARKER")
+            printf '%s\n' "$new_cron" | crontab -
+        else
+            if [ -z "$(printf '%s' "$filtered_cron" | tr -d '[:space:]')" ]; then
+                echo "" | crontab -
+            else
+                printf '%s\n' "$filtered_cron" | crontab -
+            fi
+        fi
+
         cgi_success
         exit 0
     fi
