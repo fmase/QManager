@@ -273,7 +273,7 @@ stop_services() {
     # Stop auxiliary services
     for svc in qmanager_eth_link qmanager_mtu qmanager_imei_check \
                qmanager_wan_guard qmanager_watchcat qmanager_tower_failover \
-               qmanager_ttl qmanager_low_power_check; do
+               qmanager_ttl qmanager_low_power_check qmanager_bandwidth; do
         if [ -x "$INITD_DIR/$svc" ]; then
             "$INITD_DIR/$svc" stop 2>/dev/null || true
         fi
@@ -286,7 +286,9 @@ stop_services() {
                 qmanager_neighbour_scanner qmanager_mtu_apply \
                 qmanager_profile_apply qmanager_imei_check \
                 qmanager_wan_guard qmanager_low_power \
-                qmanager_low_power_check qmanager_scheduled_reboot; do
+                qmanager_low_power_check qmanager_scheduled_reboot \
+                qmanager_update qmanager_auto_update \
+                bridge_traffic_monitor_rm551 websocat; do
         killall "$proc" 2>/dev/null || true
     done
 
@@ -344,7 +346,7 @@ install_frontend() {
 
     # Remove old QManager frontend directories (keep cgi-bin/ and non-QM files)
     for dir in _next dashboard cellular monitoring local-network \
-               login about-device support system-settings; do
+               login about-device support system-settings setup reboot; do
         rm -rf "$WWW_ROOT/$dir"
     done
 
@@ -482,29 +484,31 @@ enable_services() {
         info "Enabled qmanager (main service)"
     fi
 
-    # Auxiliary services
+    # Auxiliary services (always enabled)
     for svc in qmanager_eth_link qmanager_ttl qmanager_mtu \
-               qmanager_imei_check; do
+               qmanager_imei_check qmanager_wan_guard \
+               qmanager_low_power_check; do
         if [ -x "$INITD_DIR/$svc" ]; then
             "$INITD_DIR/$svc" enable
             info "Enabled $svc"
         fi
     done
 
-    # Tower failover — only enable if previously enabled
-    if [ -x "$INITD_DIR/qmanager_tower_failover" ]; then
-        local was_enabled=0
-        # Check if it was already enabled (symlink exists in /etc/rc.d/)
-        for _rc in /etc/rc.d/*qmanager_tower_failover*; do
-            [ -e "$_rc" ] && was_enabled=1 && break
-        done
-        if [ "$was_enabled" = "1" ]; then
-            "$INITD_DIR/qmanager_tower_failover" enable
-            info "Enabled qmanager_tower_failover (was previously enabled)"
-        else
-            info "Skipped qmanager_tower_failover (enable manually if needed)"
+    # UCI-gated / optional services — only enable if previously enabled
+    for svc in qmanager_tower_failover qmanager_watchcat qmanager_bandwidth; do
+        if [ -x "$INITD_DIR/$svc" ]; then
+            local was_enabled=0
+            for _rc in /etc/rc.d/*"$svc"*; do
+                [ -e "$_rc" ] && was_enabled=1 && break
+            done
+            if [ "$was_enabled" = "1" ]; then
+                "$INITD_DIR/$svc" enable
+                info "Enabled $svc (was previously enabled)"
+            else
+                info "Skipped $svc (enable manually if needed)"
+            fi
         fi
-    fi
+    done
 }
 
 # --- Start Services ----------------------------------------------------------
@@ -551,7 +555,7 @@ uninstall() {
     fi
     for svc in qmanager_eth_link qmanager_mtu qmanager_imei_check \
                qmanager_wan_guard qmanager_watchcat qmanager_tower_failover \
-               qmanager_ttl qmanager_low_power_check; do
+               qmanager_ttl qmanager_low_power_check qmanager_bandwidth; do
         if [ -x "$INITD_DIR/$svc" ]; then
             "$INITD_DIR/$svc" stop 2>/dev/null || true
         fi
@@ -562,7 +566,9 @@ uninstall() {
                 qmanager_neighbour_scanner qmanager_mtu_apply \
                 qmanager_profile_apply qmanager_imei_check \
                 qmanager_wan_guard qmanager_low_power \
-                qmanager_low_power_check qmanager_scheduled_reboot; do
+                qmanager_low_power_check qmanager_scheduled_reboot \
+                qmanager_update qmanager_auto_update \
+                bridge_traffic_monitor_rm551 websocat; do
         killall "$proc" 2>/dev/null || true
     done
     sleep 1
@@ -571,7 +577,8 @@ uninstall() {
     # Disable and remove init.d services
     for svc in qmanager qmanager_eth_link qmanager_ttl qmanager_mtu \
                qmanager_wan_guard qmanager_watchcat qmanager_imei_check \
-               qmanager_tower_failover qmanager_low_power_check; do
+               qmanager_tower_failover qmanager_low_power_check \
+               qmanager_bandwidth; do
         if [ -x "$INITD_DIR/$svc" ]; then
             "$INITD_DIR/$svc" disable 2>/dev/null || true
             rm -f "$INITD_DIR/$svc"
@@ -601,7 +608,7 @@ uninstall() {
 
     # Remove frontend and restore original index.html
     for dir in _next dashboard cellular monitoring local-network \
-               login about-device support system-settings; do
+               login about-device support system-settings setup reboot; do
         rm -rf "$WWW_ROOT/$dir"
     done
     rm -f "$WWW_ROOT/index.html" "$WWW_ROOT/404.html" "$WWW_ROOT/favicon.ico"
@@ -614,8 +621,22 @@ uninstall() {
 
     # Remove runtime state
     rm -f /tmp/qmanager_*.json /tmp/qmanager.log* 2>/dev/null || true
+    rm -f /tmp/qmanager_update.pid /tmp/qmanager_update.log 2>/dev/null || true
+    rm -f /tmp/qmanager_*.lock /tmp/qmanager_long_running 2>/dev/null || true
+    rm -f /tmp/qmanager_email_reload /tmp/qmanager_imei_check_done 2>/dev/null || true
+    rm -f /tmp/qmanager_low_power_active /tmp/qmanager_recovery_active 2>/dev/null || true
+    rm -rf /tmp/quecmanager 2>/dev/null || true
     rm -rf "$SESSION_DIR"
     info "Removed runtime state from /tmp"
+
+    # Remove cron jobs
+    if crontab -l 2>/dev/null | grep -q qmanager; then
+        crontab -l 2>/dev/null | grep -v qmanager | crontab - 2>/dev/null || true
+        info "Removed cron jobs"
+    fi
+
+    # Remove firewall rules
+    rm -f /etc/firewall.user.ttl /etc/firewall.user.mtu 2>/dev/null || true
 
     # Ask about config
     if [ -d "$CONF_DIR" ]; then

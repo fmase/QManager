@@ -180,8 +180,8 @@ stop_services() {
 
     # Stop auxiliary services
     for svc in qmanager_eth_link qmanager_mtu qmanager_imei_check \
-               qmanager_wan_guard qmanager_tower_failover qmanager_ttl \
-               qmanager_low_power_check; do
+               qmanager_wan_guard qmanager_watchcat qmanager_tower_failover \
+               qmanager_ttl qmanager_low_power_check qmanager_bandwidth; do
         if [ -x "$INITD_DIR/$svc" ]; then
             "$INITD_DIR/$svc" stop 2>/dev/null || true
         fi
@@ -194,7 +194,9 @@ stop_services() {
                 qmanager_neighbour_scanner qmanager_mtu_apply \
                 qmanager_profile_apply qmanager_imei_check \
                 qmanager_wan_guard qmanager_low_power \
-                qmanager_low_power_check qmanager_scheduled_reboot; do
+                qmanager_low_power_check qmanager_scheduled_reboot \
+                qmanager_update qmanager_auto_update \
+                bridge_traffic_monitor_rm551 websocat; do
         killall "$proc" 2>/dev/null || true
     done
 
@@ -210,7 +212,8 @@ remove_services() {
     local removed=0
     for svc in qmanager qmanager_eth_link qmanager_ttl qmanager_mtu \
                qmanager_wan_guard qmanager_imei_check \
-               qmanager_tower_failover qmanager_low_power_check; do
+               qmanager_tower_failover qmanager_low_power_check \
+               qmanager_watchcat qmanager_bandwidth; do
         if [ -f "$INITD_DIR/$svc" ]; then
             "$INITD_DIR/$svc" disable 2>/dev/null || true
             rm -f "$INITD_DIR/$svc"
@@ -288,6 +291,18 @@ remove_backend() {
         rm -f /etc/qmanager/msmtprc
         info "Removed /etc/qmanager/msmtprc (email config)"
     fi
+
+    # Remove bandwidth monitor SSL certs
+    if [ -d /etc/qmanager/bandwidth_certs ]; then
+        rm -rf /etc/qmanager/bandwidth_certs
+        info "Removed /etc/qmanager/bandwidth_certs (bandwidth SSL)"
+    fi
+
+    # Remove cron jobs (auto-update, low power, etc.)
+    if crontab -l 2>/dev/null | grep -q qmanager; then
+        crontab -l 2>/dev/null | grep -v qmanager | crontab - 2>/dev/null || true
+        info "Removed qmanager cron jobs"
+    fi
 }
 
 # --- Remove Frontend Files ---------------------------------------------------
@@ -298,7 +313,7 @@ remove_frontend() {
     # Remove QManager-specific directories from /www/
     local removed_dirs=0
     for dir in _next dashboard cellular monitoring local-network \
-               login about-device support system-settings; do
+               login about-device support system-settings setup reboot; do
         if [ -d "$WWW_ROOT/$dir" ]; then
             rm -rf "$WWW_ROOT/$dir"
             removed_dirs=$(( removed_dirs + 1 ))
@@ -339,7 +354,8 @@ remove_runtime_state() {
               /tmp/qmanager_profile_state.json \
               /tmp/qmanager_watchcat.json \
               /tmp/qmanager_band_failover_state.json \
-              /tmp/qmanager_tower_failover_state.json; do
+              /tmp/qmanager_tower_failover_state.json \
+              /tmp/qmanager_update.json; do
         if [ -f "$f" ]; then
             rm -f "$f"
             tmp_count=$(( tmp_count + 1 ))
@@ -347,16 +363,24 @@ remove_runtime_state() {
     done
 
     # Log files
-    for f in /tmp/qmanager.log /tmp/qmanager.log.1; do
+    for f in /tmp/qmanager.log /tmp/qmanager.log.1 /tmp/qmanager_update.log; do
         [ -f "$f" ] && rm -f "$f" && tmp_count=$(( tmp_count + 1 )) || true
     done
 
-    # Lock and flag files
+    # Lock, PID, and flag files
     rm -f /tmp/qmanager_*.lock \
           /tmp/qmanager_email_reload \
           /tmp/qmanager_imei_check_done \
+          /tmp/qmanager_update.pid \
+          /tmp/qmanager_long_running \
+          /tmp/qmanager_low_power_active \
+          /tmp/qmanager_recovery_active \
+          /tmp/qmanager_watchcat.pid \
           /tmp/qm_spin_out \
           2>/dev/null || true
+
+    # Bandwidth monitor runtime directory
+    rm -rf /tmp/quecmanager 2>/dev/null || true
 
     # Session directory
     if [ -d "$SESSION_DIR" ]; then

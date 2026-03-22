@@ -221,8 +221,8 @@ do_uninstall() {
         "$INITD_DIR/qmanager" stop 2>/dev/null || true
     fi
     for svc in qmanager_eth_link qmanager_mtu qmanager_imei_check \
-               qmanager_wan_guard qmanager_tower_failover qmanager_ttl \
-               qmanager_low_power_check; do
+               qmanager_wan_guard qmanager_watchcat qmanager_tower_failover \
+               qmanager_ttl qmanager_low_power_check qmanager_bandwidth; do
         [ -x "$INITD_DIR/$svc" ] && "$INITD_DIR/$svc" stop 2>/dev/null || true
     done
 
@@ -232,7 +232,9 @@ do_uninstall() {
                 qmanager_neighbour_scanner qmanager_mtu_apply \
                 qmanager_profile_apply qmanager_imei_check \
                 qmanager_wan_guard qmanager_low_power \
-                qmanager_low_power_check qmanager_scheduled_reboot; do
+                qmanager_low_power_check qmanager_scheduled_reboot \
+                qmanager_update qmanager_auto_update \
+                bridge_traffic_monitor_rm551 websocat; do
         killall "$proc" 2>/dev/null || true
     done
     sleep 1
@@ -243,7 +245,7 @@ do_uninstall() {
     for svc in qmanager qmanager_eth_link qmanager_ttl qmanager_mtu \
                qmanager_wan_guard qmanager_imei_check \
                qmanager_tower_failover qmanager_low_power_check \
-               qmanager_watchcat; do
+               qmanager_watchcat qmanager_bandwidth; do
         if [ -f "$INITD_DIR/$svc" ]; then
             "$INITD_DIR/$svc" disable 2>/dev/null || true
             rm -f "$INITD_DIR/$svc"
@@ -293,13 +295,19 @@ do_uninstall() {
           /tmp/qmanager_profile_state.json \
           /tmp/qmanager_watchcat.json \
           /tmp/qmanager_band_failover_state.json \
-          /tmp/qmanager_tower_failover_state.json
-    rm -f /tmp/qmanager.log /tmp/qmanager.log.1
+          /tmp/qmanager_tower_failover_state.json \
+          /tmp/qmanager_update.json
+    rm -f /tmp/qmanager.log /tmp/qmanager.log.1 /tmp/qmanager_update.log
     rm -f /tmp/qmanager_*.lock \
           /tmp/qmanager_email_reload \
           /tmp/qmanager_imei_check_done \
-          /tmp/qm_spin_out \
-          /tmp/qmanager_low_power_active 2>/dev/null || true
+          /tmp/qmanager_update.pid \
+          /tmp/qmanager_long_running \
+          /tmp/qmanager_low_power_active \
+          /tmp/qmanager_recovery_active \
+          /tmp/qmanager_watchcat.pid \
+          /tmp/qm_spin_out 2>/dev/null || true
+    rm -rf /tmp/quecmanager 2>/dev/null || true
     rm -rf "$SESSION_DIR"
     info "Runtime state cleaned"
 
@@ -320,7 +328,10 @@ do_uninstall() {
         info "Cron jobs removed"
     fi
 
-    # --- 9. Config directory ---
+    # --- 9. Bandwidth SSL certs ---
+    rm -rf /etc/qmanager/bandwidth_certs 2>/dev/null || true
+
+    # --- 10. Config directory ---
     if [ "$KEEP_CONFIG" -eq 0 ]; then
         rm -rf "$CONF_DIR"
         info "Configuration directory removed"
