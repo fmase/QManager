@@ -6,7 +6,7 @@
 # GET:  Returns all received SMS messages and storage status via sms_tool.
 # POST: Sends, deletes individual, or deletes all SMS messages.
 #
-# External tool (pre-installed, pre-configured port — NEVER change port):
+# External tool (pre-installed; port overridable via UCI sms_tool_device):
 #   sms_tool recv -j              -> JSON: {"msg":[{index,sender,timestamp,content,...}]}
 #   sms_tool send <phone> <msg>   -> Send an SMS
 #   sms_tool delete <index>       -> Delete one message
@@ -31,6 +31,15 @@ cgi_handle_options
 SMS_TOOL_ARGS=""
 _sms_dev=$(uci -q get quecmanager.settings.sms_tool_device 2>/dev/null)
 [ -n "$_sms_dev" ] && SMS_TOOL_ARGS="-d $_sms_dev"
+
+# Strip sms_tool tty diagnostics (stdout noise when device is not a real tty)
+_strip_tty_noise() {
+    if [ -n "$SMS_TOOL_ARGS" ]; then
+        printf '%s\n' "$1" | grep -v -e '^tcgetattr(' -e '^tcsetattr(' -e '^Failed tcsetattr('
+    else
+        printf '%s' "$1"
+    fi
+}
 
 # --- MCC to country calling code lookup --------------------------------------
 # Maps the SIM's MCC (first 3 digits of IMSI) to ITU-T calling code.
@@ -372,6 +381,7 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
         qlog_info "Sending SMS to $PHONE (raw: $RAW_PHONE)"
         result=$(sms_tool $SMS_TOOL_ARGS send "$PHONE" "$MESSAGE" 2>&1)
         rc=$?
+        result=$(_strip_tty_noise "$result")
 
         if [ $rc -ne 0 ]; then
             qlog_error "sms_tool send failed (rc=$rc): $result"
@@ -403,6 +413,7 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
         while read -r idx; do
             result=$(sms_tool $SMS_TOOL_ARGS delete "$idx" 2>&1)
             rc=$?
+            result=$(_strip_tty_noise "$result")
             if [ $rc -ne 0 ]; then
                 qlog_warn "Failed to delete index $idx: $result"
                 fail_count=$((fail_count + 1))
@@ -426,6 +437,7 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
         qlog_info "Deleting all SMS messages"
         result=$(sms_tool $SMS_TOOL_ARGS delete all 2>&1)
         rc=$?
+        result=$(_strip_tty_noise "$result")
 
         if [ $rc -ne 0 ]; then
             qlog_error "sms_tool delete all failed (rc=$rc): $result"

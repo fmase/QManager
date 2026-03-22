@@ -215,11 +215,14 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
         fi
 
         # --- SMS tool device override ---
-        val=$(printf '%s' "$POST_DATA" | jq -r 'if has("sms_tool_device") then .sms_tool_device else "" end')
-        if [ -n "$val" ]; then
+        # Two-step: check if field exists, then read value.
+        # Empty string is a valid "disable" value, so [ -n ] would skip it.
+        _has_sms_dev=$(printf '%s' "$POST_DATA" | jq -r 'if has("sms_tool_device") then "yes" else "no" end')
+        if [ "$_has_sms_dev" = "yes" ]; then
+            val=$(printf '%s' "$POST_DATA" | jq -r '.sms_tool_device')
             case "$val" in
                 /dev/smd7) uci set quecmanager.settings.sms_tool_device="$val" ;;
-                "")        uci -q delete quecmanager.settings.sms_tool_device 2>/dev/null ;;
+                ""|null)   uci -q delete quecmanager.settings.sms_tool_device 2>/dev/null ;;
                 *)
                     cgi_error "invalid_sms_tool_device" "sms_tool_device must be '/dev/smd7' or empty"
                     exit 0
