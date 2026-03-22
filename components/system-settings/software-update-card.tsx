@@ -4,6 +4,7 @@ import { useState, useCallback } from "react";
 import { toast } from "sonner";
 import {
   Card,
+  CardAction,
   CardContent,
   CardDescription,
   CardHeader,
@@ -12,7 +13,6 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -27,6 +27,13 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   CheckIcon,
   AlertTriangleIcon,
   DownloadIcon,
@@ -34,6 +41,7 @@ import {
   RotateCcwIcon,
   RefreshCwIcon,
   ArrowRightIcon,
+  FileTextIcon,
 } from "lucide-react";
 
 import { useSoftwareUpdate } from "@/hooks/use-software-update";
@@ -108,11 +116,15 @@ function UpdateSteps({ status }: { status: string }) {
   const activeIndex = STEP_MAP[status] ?? 0;
 
   return (
-    <div className="flex items-center gap-5">
+    <div className="flex items-center gap-5" aria-label="Update progress">
       {STEPS.map((label, i) => {
         const state = getStepState(i, activeIndex);
         return (
-          <div key={label} className="flex items-center gap-1.5">
+          <div
+            key={label}
+            className="flex items-center gap-1.5"
+            aria-current={state === "active" ? "step" : undefined}
+          >
             <span
               className={`size-2 rounded-full ${
                 state === "done"
@@ -121,6 +133,7 @@ function UpdateSteps({ status }: { status: string }) {
                     ? "bg-primary"
                     : "bg-muted-foreground/40"
               }`}
+              aria-hidden="true"
             />
             <span
               className={`text-xs font-medium ${
@@ -131,7 +144,7 @@ function UpdateSteps({ status }: { status: string }) {
                     : "text-muted-foreground"
               }`}
             >
-              {label}
+              {state === "done" ? `${label} ✓` : label}
             </span>
           </div>
         );
@@ -160,6 +173,7 @@ export default function SoftwareUpdateCard() {
   // Dialog state
   const [showInstallDialog, setShowInstallDialog] = useState(false);
   const [showRollbackDialog, setShowRollbackDialog] = useState(false);
+  const [showChangelog, setShowChangelog] = useState(false);
 
   // Pre-release toggle (optimistic)
   const [prereleaseToggling, setPrereleaseToggling] = useState(false);
@@ -170,7 +184,9 @@ export default function SoftwareUpdateCard() {
       try {
         await togglePrerelease(checked);
         toast.success(
-          checked ? "Pre-release updates enabled" : "Pre-release updates disabled"
+          checked
+            ? "Pre-release updates enabled"
+            : "Pre-release updates disabled"
         );
       } catch {
         toast.error("Failed to update preference");
@@ -199,25 +215,19 @@ export default function SoftwareUpdateCard() {
     }
   }, [rollback]);
 
-  const handleCheckForUpdates = useCallback(async () => {
-    await checkForUpdates();
-  }, [checkForUpdates]);
-
   // ── Loading skeleton ────────────────────────────────────────────────────
 
   if (isLoading) {
     return (
       <Card className="@container/card">
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <div className="space-y-1">
-              <CardTitle>Software Update</CardTitle>
-              <CardDescription>
-                Manage QManager software updates.
-              </CardDescription>
-            </div>
-            <Skeleton className="h-6 w-24 rounded-full" />
-          </div>
+          <CardTitle>Software Update</CardTitle>
+          <CardDescription>
+            Manage QManager software updates.
+          </CardDescription>
+          <CardAction>
+            <Skeleton className="h-5 w-24 rounded-full" />
+          </CardAction>
         </CardHeader>
         <CardContent>
           <div className="grid gap-2">
@@ -261,7 +271,7 @@ export default function SoftwareUpdateCard() {
           <div className="mt-4 flex justify-end">
             <Button
               variant="outline"
-              onClick={handleCheckForUpdates}
+              onClick={checkForUpdates}
               disabled={isChecking}
             >
               {isChecking ? (
@@ -294,24 +304,25 @@ export default function SoftwareUpdateCard() {
     return (
       <Card className="@container/card">
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <div className="space-y-1">
-              <CardTitle>Software Update</CardTitle>
-              <CardDescription>
-                Manage QManager software updates.
-              </CardDescription>
-            </div>
+          <CardTitle>Software Update</CardTitle>
+          <CardDescription>
+            Manage QManager software updates.
+          </CardDescription>
+          <CardAction>
             <StatusBadge
               updateAvailable={false}
               isUpdating={true}
               updateStatus={updateStatus}
             />
-          </div>
+          </CardAction>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-col items-center gap-4 py-6">
+          <div
+            className="flex flex-col items-center gap-4 py-6"
+            aria-live="polite"
+          >
             <LoaderCircleIcon className="size-9 animate-spin text-primary" />
-            <div className="text-center">
+            <div className="text-center" role="status">
               <p className="text-sm font-medium">
                 {updateStatus.message ||
                   statusMessages[updateStatus.status] ||
@@ -332,41 +343,32 @@ export default function SoftwareUpdateCard() {
   // ── Normal state (up-to-date or update available) ───────────────────────
 
   const updateAvailable = updateInfo?.update_available ?? false;
+  const displayError = updateInfo?.check_error || error;
 
   return (
     <>
       <Card className="@container/card">
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <div className="space-y-1">
-              <CardTitle>Software Update</CardTitle>
-              <CardDescription>
-                Manage QManager software updates.
-              </CardDescription>
-            </div>
-            {updateInfo && (
+          <CardTitle>Software Update</CardTitle>
+          <CardDescription>
+            Manage QManager software updates.
+          </CardDescription>
+          {updateInfo && (
+            <CardAction>
               <StatusBadge
                 updateAvailable={updateAvailable}
                 isUpdating={false}
                 updateStatus={updateStatus}
               />
-            )}
-          </div>
+            </CardAction>
+          )}
         </CardHeader>
         <CardContent>
-          {/* Non-fatal update error (e.g., rate limited) */}
-          {error && updateInfo && (
+          {/* Non-fatal error (rate limited, network issue, etc.) */}
+          {displayError && (
             <Alert variant="destructive" className="mb-4">
               <AlertTriangleIcon className="size-4" />
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
-
-          {/* Non-fatal check error from backend (e.g., rate limited, network issue) */}
-          {updateInfo?.check_error && (
-            <Alert variant="destructive" className="mb-4">
-              <AlertTriangleIcon className="size-4" />
-              <AlertDescription>{updateInfo.check_error}</AlertDescription>
+              <AlertDescription>{displayError}</AlertDescription>
             </Alert>
           )}
 
@@ -376,7 +378,7 @@ export default function SoftwareUpdateCard() {
             {updateAvailable && updateInfo?.latest_version ? (
               <div className="flex items-center gap-3 py-1">
                 <div className="flex flex-col gap-0.5">
-                  <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                  <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                     Installed
                   </span>
                   <span className="text-sm font-medium">
@@ -385,13 +387,18 @@ export default function SoftwareUpdateCard() {
                 </div>
                 <ArrowRightIcon className="size-4 text-muted-foreground" />
                 <div className="flex flex-col gap-0.5">
-                  <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                  <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                     Available
                   </span>
                   <span className="text-sm font-medium text-primary">
                     {updateInfo.latest_version}
                   </span>
                 </div>
+                {updateInfo.download_size && (
+                  <Badge variant="secondary" className="ml-auto">
+                    {updateInfo.download_size}
+                  </Badge>
+                )}
               </div>
             ) : (
               <div className="flex items-center justify-between">
@@ -404,19 +411,22 @@ export default function SoftwareUpdateCard() {
               </div>
             )}
 
-            {/* ── Release notes (when update available) ───────────── */}
+            {/* ── Release notes button (when update available) ────── */}
             {updateAvailable && updateInfo?.changelog && (
               <>
                 <Separator />
-                <div className="flex flex-col gap-2">
+                <div className="flex items-center justify-between">
                   <span className="text-sm font-semibold text-muted-foreground">
                     Release Notes
                   </span>
-                  <div className="rounded-lg border bg-muted/50 p-3 max-h-[140px] overflow-y-auto">
-                    <pre className="whitespace-pre-wrap break-words text-xs leading-relaxed text-muted-foreground font-[inherit]">
-                      {updateInfo.changelog}
-                    </pre>
-                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowChangelog(true)}
+                  >
+                    <FileTextIcon className="size-4" />
+                    View Release Notes
+                  </Button>
                 </div>
               </>
             )}
@@ -458,17 +468,13 @@ export default function SoftwareUpdateCard() {
               <span className="text-sm font-semibold text-muted-foreground">
                 Include pre-releases
               </span>
-              <div className="flex items-center space-x-2">
-                <Switch
-                  id="include-prerelease"
-                  checked={updateInfo?.include_prerelease ?? false}
-                  onCheckedChange={handleTogglePrerelease}
-                  disabled={prereleaseToggling || isUpdating}
-                />
-                <Label htmlFor="include-prerelease">
-                  {updateInfo?.include_prerelease ? "Enabled" : "Disabled"}
-                </Label>
-              </div>
+              <Switch
+                id="include-prerelease"
+                checked={updateInfo?.include_prerelease ?? false}
+                onCheckedChange={handleTogglePrerelease}
+                disabled={prereleaseToggling || isUpdating}
+                aria-label="Include pre-release updates"
+              />
             </div>
 
             {/* ── Footer: timestamp + action button ───────────────── */}
@@ -490,7 +496,7 @@ export default function SoftwareUpdateCard() {
               ) : (
                 <Button
                   variant="outline"
-                  onClick={handleCheckForUpdates}
+                  onClick={checkForUpdates}
                   disabled={isChecking || isUpdating}
                 >
                   {isChecking ? (
@@ -511,8 +517,28 @@ export default function SoftwareUpdateCard() {
         </CardContent>
       </Card>
 
+      {/* ── Release notes dialog ──────────────────────────────────────── */}
+      <Dialog open={showChangelog} onOpenChange={setShowChangelog}>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>
+              Release Notes — {updateInfo?.latest_version}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="max-h-[60vh] overflow-y-auto rounded-lg border bg-muted/50 p-4">
+            <pre className="whitespace-pre-wrap break-words text-sm leading-relaxed text-muted-foreground font-[inherit]">
+              {updateInfo?.changelog}
+            </pre>
+          </div>
+          <DialogFooter showCloseButton />
+        </DialogContent>
+      </Dialog>
+
       {/* ── Install confirmation dialog ──────────────────────────────── */}
-      <AlertDialog open={showInstallDialog} onOpenChange={setShowInstallDialog}>
+      <AlertDialog
+        open={showInstallDialog}
+        onOpenChange={setShowInstallDialog}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Install Update</AlertDialogTitle>
@@ -521,7 +547,11 @@ export default function SoftwareUpdateCard() {
               <strong>{updateInfo?.current_version}</strong> to{" "}
               <strong>{updateInfo?.latest_version}</strong>.
               {updateInfo?.download_size && (
-                <> Download size: {updateInfo.download_size}.</>
+                <>
+                  {" "}
+                  Download size:{" "}
+                  <strong>{updateInfo.download_size}</strong>.
+                </>
               )}{" "}
               The device will reboot automatically after installation. Do not
               power off the device during the update.
