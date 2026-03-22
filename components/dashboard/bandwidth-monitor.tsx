@@ -175,9 +175,10 @@ export default function BandwidthMonitorComponent() {
     time: formatTimeLabel(point.timestamp, latestTs),
   }));
 
-  // ─── Active interfaces for footer (exclude rmnet_ipa0, only "up") ─────────
+  // ─── Active interfaces for footer (exclude noisy/duplicate interfaces) ────
+  const HIDDEN_INTERFACES = new Set(["rmnet_ipa0", "rmnet_data2", "tailscale0"]);
   const activeInterfaces = interfaces.filter(
-    (iface) => iface.state === "up" && iface.name !== "rmnet_ipa0",
+    (iface) => iface.state === "up" && !HIDDEN_INTERFACES.has(iface.name),
   );
 
   // ─── Connected state with chart ────────────────────────────────────────────
@@ -223,7 +224,7 @@ export default function BandwidthMonitorComponent() {
             config={chartConfig}
             className="aspect-auto h-[250px] w-full"
           >
-            <AreaChart data={displayData}>
+            <AreaChart data={displayData} margin={{ left: 0, right: 0 }}>
               <defs>
                 <linearGradient id={dlGradient} x1="0" y1="0" x2="0" y2="1">
                   <stop
@@ -282,6 +283,8 @@ export default function BandwidthMonitorComponent() {
                 fill={`url(#${dlGradient})`}
                 stroke="var(--color-download)"
                 baseValue={0}
+                animationDuration={500}
+                animationEasing="linear"
               />
               <Area
                 dataKey="upload"
@@ -289,6 +292,8 @@ export default function BandwidthMonitorComponent() {
                 fill={`url(#${ulGradient})`}
                 stroke="var(--color-upload)"
                 baseValue={0}
+                animationDuration={500}
+                animationEasing="linear"
               />
               <ChartLegend content={<ChartLegendContent />} />
             </AreaChart>

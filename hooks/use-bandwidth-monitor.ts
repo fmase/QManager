@@ -16,21 +16,21 @@ import type {
 // Fetches bandwidth settings via HTTP, then connects to the WebSocket server
 // when bandwidth monitoring is enabled and running.
 //
-// Returns rolling chart data (60 points = 1 minute), current speeds,
+// Returns rolling chart data (30 points = 30 seconds), current speeds,
 // per-interface breakdown, and connection/cert state.
 // =============================================================================
 
 const CGI_ENDPOINT = "/cgi-bin/quecmanager/monitoring/bandwidth.sh";
-const CHART_BUFFER_SIZE = 60;
+const CHART_WINDOW_MS = 15_000; // keep last 15 seconds of data
 const STATE_SYNC_INTERVAL = 500; // ms — coalesce buffer→state updates
 const RECONNECT_BASE_MS = 1000;
 const RECONNECT_MAX_MS = 30000;
 
-/** Interfaces to exclude from aggregate speed calculation (avoid double-counting) */
-const EXCLUDED_INTERFACES = new Set(["rmnet_ipa0"]);
+/** Interfaces to exclude from aggregate speed calculation and display */
+const EXCLUDED_INTERFACES = new Set(["rmnet_ipa0", "rmnet_data2", "tailscale0"]);
 
 export interface UseBandwidthMonitorReturn {
-  /** Rolling chart data points (last 60 seconds) */
+  /** Rolling chart data points (last 30 seconds) */
   chartData: BandwidthChartPoint[];
   /** Latest aggregate download speed in bits per second */
   currentDownload: number;
@@ -198,17 +198,21 @@ export function useBandwidthMonitor(): UseBandwidthMonitorReturn {
           latestUploadRef.current = totalUpload;
           latestInterfacesRef.current = msg.interfaces || [];
 
-          // Push to rolling buffer
+          // Push to rolling buffer, trim by time window
+          const now = Date.now();
           const point: BandwidthChartPoint = {
-            timestamp: Date.now(),
+            timestamp: now,
             download: totalDownload,
             upload: totalUpload,
           };
 
           const buf = bufferRef.current;
           buf.push(point);
-          if (buf.length > CHART_BUFFER_SIZE) {
-            bufferRef.current = buf.slice(-CHART_BUFFER_SIZE);
+          // Evict points older than the time window
+          const cutoff = now - CHART_WINDOW_MS;
+          const firstValid = buf.findIndex((p) => p.timestamp >= cutoff);
+          if (firstValid > 0) {
+            bufferRef.current = buf.slice(firstValid);
           }
         } catch {
           // Ignore malformed messages

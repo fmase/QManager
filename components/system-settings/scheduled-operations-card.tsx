@@ -653,9 +653,9 @@ const ScheduledOperationsCard = ({
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent className="rounded-xl">
-                        <SelectItem value="500" className="rounded-lg">500ms</SelectItem>
-                        <SelectItem value="1000" className="rounded-lg">1000ms</SelectItem>
-                        <SelectItem value="2000" className="rounded-lg">2000ms</SelectItem>
+                        <SelectItem value="1000" className="rounded-lg">1 second</SelectItem>
+                        <SelectItem value="2000" className="rounded-lg">2 seconds</SelectItem>
+                        <SelectItem value="3000" className="rounded-lg">3 seconds</SelectItem>
                       </SelectContent>
                     </Select>
                   </motion.div>
