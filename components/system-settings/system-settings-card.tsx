@@ -57,6 +57,7 @@ import {
   LoaderCircle,
 } from "lucide-react";
 import { SaveButton, useSaveFlash } from "@/components/ui/save-button";
+import { motion, type Variants } from "motion/react";
 import { TbInfoCircleFilled } from "react-icons/tb";
 
 import type {
@@ -65,6 +66,18 @@ import type {
 } from "@/hooks/use-system-settings";
 import { TIMEZONES } from "@/types/system-settings";
 import { cn } from "@/lib/utils";
+
+// ─── Animation variants ────────────────────────────────────────────────────
+
+const containerVariants: Variants = {
+  hidden: {},
+  visible: { transition: { staggerChildren: 0.06 } },
+};
+
+const itemVariants: Variants = {
+  hidden: { opacity: 0, y: 8 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.25, ease: "easeOut" } },
+};
 
 // ─── Component ──────────────────────────────────────────────────────────────
 
@@ -341,10 +354,15 @@ function SystemSettingsForm({
           </Alert>
         )}
 
-        <div className="grid gap-2">
+        <motion.div
+          className="grid gap-2"
+          variants={containerVariants}
+          initial="hidden"
+          animate="visible"
+        >
           {/* ── WAN Guard Toggle ──────────────────────────────────── */}
           <Separator />
-          <div className="flex items-center justify-between">
+          <motion.div variants={itemVariants} className="flex items-center justify-between">
             <div className="flex items-center gap-1.5">
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -379,11 +397,11 @@ function SystemSettingsForm({
                 {wanGuardEnabled ? "Enabled" : "Disabled"}
               </Label>
             </div>
-          </div>
+          </motion.div>
 
           {/* ── SMS Tool Port ────────────────────────────────────── */}
           <Separator />
-          <div className="flex items-center justify-between">
+          <motion.div variants={itemVariants} className="flex items-center justify-between">
             <div className="flex items-center gap-1.5">
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -418,11 +436,11 @@ function SystemSettingsForm({
                 {smsToolSmd7 ? "smd7" : "Default"}
               </Label>
             </div>
-          </div>
+          </motion.div>
 
           {/* ── Temperature Unit ──────────────────────────────────── */}
           <Separator />
-          <div className="flex items-center justify-between">
+          <motion.div variants={itemVariants} className="flex items-center justify-between">
             <p className="font-semibold text-muted-foreground text-sm">
               Temperature Unit
             </p>
@@ -438,11 +456,11 @@ function SystemSettingsForm({
                 <SelectItem value="fahrenheit">Fahrenheit</SelectItem>
               </SelectContent>
             </Select>
-          </div>
+          </motion.div>
 
           {/* ── Distance Unit ─────────────────────────────────────── */}
           <Separator />
-          <div className="flex items-center justify-between">
+          <motion.div variants={itemVariants} className="flex items-center justify-between">
             <p className="font-semibold text-muted-foreground text-sm">
               Distance Unit
             </p>
@@ -458,11 +476,11 @@ function SystemSettingsForm({
                 <SelectItem value="miles">Miles</SelectItem>
               </SelectContent>
             </Select>
-          </div>
+          </motion.div>
 
           {/* ── Timezone ──────────────────────────────────────────── */}
           <Separator />
-          <div className="flex items-center justify-between">
+          <motion.div variants={itemVariants} className="flex items-center justify-between">
             <p className="font-semibold text-muted-foreground text-sm">
               Timezone
             </p>
@@ -512,19 +530,19 @@ function SystemSettingsForm({
                 </Command>
               </PopoverContent>
             </Popover>
-          </div>
+          </motion.div>
 
           {/* ── Save Button ───────────────────────────────────────── */}
           <Separator />
-          <div className="flex justify-end">
+          <motion.div variants={itemVariants} className="flex justify-end">
             <SaveButton
               onClick={handleSave}
               isSaving={isSaving}
               saved={saved}
               disabled={!canSave}
             />
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
       </CardContent>
 
       {/* ── SMS Tool Port Reboot Confirmation Dialog ─────────── */}

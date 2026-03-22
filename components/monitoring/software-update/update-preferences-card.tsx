@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from "react";
+import { motion, type Variants } from "motion/react";
 import {
   Card,
   CardContent,
@@ -43,6 +44,16 @@ interface UpdatePreferencesCardProps {
 // ─── Component ──────────────────────────────────────────────────────────────
 
 const AUTO_UPDATE_DEBOUNCE = 800;
+
+const containerVariants: Variants = {
+  hidden: {},
+  visible: { transition: { staggerChildren: 0.06 } },
+};
+
+const itemVariants: Variants = {
+  hidden: { opacity: 0, y: 8 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.25, ease: "easeOut" } },
+};
 
 export function UpdatePreferencesCard({
   updateInfo,
@@ -177,10 +188,15 @@ export function UpdatePreferencesCard({
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-2">
+          <motion.div
+            className="grid gap-2"
+            variants={containerVariants}
+            initial="hidden"
+            animate="visible"
+          >
             {/* ── Pre-release toggle ──────────────────────────────── */}
             <Separator />
-            <div className="flex items-center justify-between">
+            <motion.div variants={itemVariants} className="flex items-center justify-between">
               <p className="font-semibold text-muted-foreground text-sm">
                 Include pre-releases
               </p>
@@ -195,11 +211,11 @@ export function UpdatePreferencesCard({
                   {updateInfo?.include_prerelease ? "Enabled" : "Disabled"}
                 </Label>
               </div>
-            </div>
+            </motion.div>
 
             {/* ── Automatic updates ─────────────────────────────── */}
             <Separator />
-            <div className="flex flex-col gap-2">
+            <motion.div variants={itemVariants} className="flex flex-col gap-2">
               <div className="flex items-center justify-between">
                 <p className="font-semibold text-muted-foreground text-sm">
                   Automatic updates
@@ -216,13 +232,13 @@ export function UpdatePreferencesCard({
                   </Label>
                 </div>
               </div>
-            </div>
+            </motion.div>
 
             {/* Time Configuration for Automatic Updates */}
             {updateInfo?.auto_update_enabled && (
               <>
                 <Separator />
-                <div className="flex flex-col gap-2">
+                <motion.div variants={itemVariants} className="flex flex-col gap-2">
                   <p className="font-semibold text-sm">
                     Update Installation Time
                   </p>
@@ -249,14 +265,14 @@ export function UpdatePreferencesCard({
                       className="w-28 shrink-0"
                     />
                   </div>
-                </div>
+                </motion.div>
               </>
             )}
 
             {/* ── Rollback section ────────────────────────────────── */}
             <Separator />
             {updateInfo?.rollback_available && updateInfo?.rollback_version ? (
-              <div className="flex flex-col gap-2">
+              <motion.div variants={itemVariants} className="flex flex-col gap-2">
                 <p className="font-semibold text-sm">Version Rollback</p>
                 <div className="flex items-center justify-between gap-2 rounded-lg border bg-muted/50 p-3">
                   <div className="flex flex-col gap-0.5 min-w-0">
@@ -278,16 +294,16 @@ export function UpdatePreferencesCard({
                     Restore
                   </Button>
                 </div>
-              </div>
+              </motion.div>
             ) : (
-              <div className="flex flex-col gap-2">
+              <motion.div variants={itemVariants} className="flex flex-col gap-2">
                 <p className="font-semibold text-sm">Version Rollback</p>
                 <p className="text-sm text-muted-foreground">
                   No previous version available for rollback.
                 </p>
-              </div>
+              </motion.div>
             )}
-          </div>
+          </motion.div>
         </CardContent>
       </Card>
 

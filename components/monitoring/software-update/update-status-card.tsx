@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import { motion, type Variants } from "motion/react";
 import Markdown from "react-markdown";
 import {
   Card,
@@ -58,6 +59,16 @@ const PROSE_CLASSES = [
   "prose-a:text-primary prose-a:no-underline hover:prose-a:underline",
   "prose-hr:border-border prose-hr:my-3",
 ].join(" ");
+
+const containerVariants: Variants = {
+  hidden: {},
+  visible: { transition: { staggerChildren: 0.06 } },
+};
+
+const itemVariants: Variants = {
+  hidden: { opacity: 0, y: 8 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.25, ease: "easeOut" } },
+};
 
 function formatRelativeTime(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
@@ -169,11 +180,16 @@ export function UpdateStatusCard({
             </Alert>
           )}
 
-          <div className="grid gap-2 min-w-0">
+          <motion.div
+            className="grid gap-2 min-w-0"
+            variants={containerVariants}
+            initial="hidden"
+            animate="visible"
+          >
             {/* ── Version display ─────────────────────────────────── */}
             <Separator />
             {updateAvailable && updateInfo?.latest_version ? (
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 py-1">
+              <motion.div variants={itemVariants} className="flex flex-wrap items-center gap-x-3 gap-y-1 py-1">
                 <div className="flex items-center gap-3">
                   <div className="flex flex-col gap-0.5">
                     <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
@@ -198,23 +214,23 @@ export function UpdateStatusCard({
                     {updateInfo.download_size}
                   </Badge>
                 )}
-              </div>
+              </motion.div>
             ) : (
-              <div className="flex items-center justify-between">
+              <motion.div variants={itemVariants} className="flex items-center justify-between">
                 <p className="font-semibold text-muted-foreground text-sm">
                   Installed Version
                 </p>
                 <span className="text-sm font-medium">
                   {updateInfo?.current_version ?? "Unknown"}
                 </span>
-              </div>
+              </motion.div>
             )}
 
             {/* ── Inline release notes (clickable → dialog) ────────── */}
             {updateAvailable && updateInfo?.changelog && (
               <>
                 <Separator />
-                <div className="flex flex-col gap-2 min-w-0">
+                <motion.div variants={itemVariants} className="flex flex-col gap-2 min-w-0">
                   <div className="flex items-center justify-between">
                     <p className="font-semibold text-sm">Release Notes</p>
                     <Button
@@ -235,13 +251,13 @@ export function UpdateStatusCard({
                   >
                     <Markdown>{updateInfo.changelog}</Markdown>
                   </div>
-                </div>
+                </motion.div>
               </>
             )}
 
             {/* ── Footer: timestamp + action button ───────────────── */}
             <Separator />
-            <div className="flex items-center justify-between gap-2">
+            <motion.div variants={itemVariants} className="flex items-center justify-between gap-2">
               <span className="text-xs text-muted-foreground">
                 {lastChecked
                   ? `Last checked ${formatRelativeTime(lastChecked)}`
@@ -274,8 +290,8 @@ export function UpdateStatusCard({
                   )}
                 </Button>
               )}
-            </div>
-          </div>
+            </motion.div>
+          </motion.div>
         </CardContent>
       </Card>
 
