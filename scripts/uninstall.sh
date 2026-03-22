@@ -30,7 +30,7 @@ set -e
 
 # --- Configuration -----------------------------------------------------------
 
-VERSION="v0.1.1"
+VERSION="v0.1.2"
 
 # Paths
 WWW_ROOT="/www"

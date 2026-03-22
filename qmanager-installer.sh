@@ -20,7 +20,7 @@ GITHUB_REPO="dr-dolomite/QManager"
 QMANAGER_BRANCH="${QMANAGER_BRANCH:-development-home}"
 DOWNLOAD_URL="https://github.com/${GITHUB_REPO}/raw/refs/heads/${QMANAGER_BRANCH}/qmanager-build/qmanager.tar.gz"
 ARCHIVE_PATH="/tmp/qmanager.tar.gz"
-EXPECTED_SHA256="8b08859bd4a529ae82489d3ae9632f1c69402adb8dc6a9cf12360f7ab9b0b1ed"
+EXPECTED_SHA256="c9e8c7c439e4daff2bb64e181c298f1f0dc49dd7efa42e4e76975722274e0143"
 EXTRACT_DIR="/tmp/qmanager_install"
 
 # Device paths (must match install.sh / uninstall.sh)
