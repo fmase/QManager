@@ -113,7 +113,7 @@ const LTELockingComponent = ({
   };
 
   const handleToggle = (checked: boolean) => {
-    if (isWatcherRunning) {
+    if (checked && isWatcherRunning) {
       toast.warning("Failover check in progress", {
         description: "Signal quality check is running, please wait.",
       });

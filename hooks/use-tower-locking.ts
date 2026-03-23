@@ -241,8 +241,10 @@ export function useTowerLocking(): UseTowerLockingReturn {
       body: Record<string, unknown>,
       setLocking: (v: boolean) => void
     ): Promise<boolean> => {
-      // Anti-spam: block lock/unlock while failover watcher is still running
-      if (failoverState?.watcher_running) {
+      // Anti-spam: block new LOCK operations while failover watcher is running.
+      // Unlock operations are allowed through — the backend will stop the
+      // watcher before sending the AT unlock command.
+      if (body.action === "lock" && failoverState?.watcher_running) {
         setError("Please wait — failover check is still in progress");
         return false;
       }
@@ -275,6 +277,13 @@ export function useTowerLocking(): UseTowerLockingReturn {
 
         // Re-fetch full state — modem should have reconnected by now
         await fetchStatus();
+
+        // On unlock, stop any active failover polling — the backend killed the
+        // watcher before sending the AT command, so there's nothing to poll.
+        if (body.action === "unlock" && failoverPollRef.current) {
+          clearInterval(failoverPollRef.current);
+          failoverPollRef.current = null;
+        }
 
         // If failover is armed (watcher spawned), update state + start polling.
         // lock.sh auto-enables failover in config, so sync frontend state.
