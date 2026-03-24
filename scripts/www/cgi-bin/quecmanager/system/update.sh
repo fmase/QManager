@@ -3,14 +3,17 @@
 # =============================================================================
 # update.sh — CGI Endpoint: Software Update (GET + POST)
 # =============================================================================
-# GET:              Check for updates via GitHub Releases API
-# GET action=status: Read update progress from status file
-# POST action=install: Spawn qmanager_update to download and install
-# POST action=rollback: Spawn qmanager_update to restore previous version
+# GET:                   Check for updates via GitHub Releases API
+# GET action=status:     Read update progress from status file
+# POST action=download:  Stage a version (download + SHA-256 verify)
+# POST action=install_staged: Install the staged tarball
+# POST action=install:   Legacy one-step install (used by auto-updater)
 # POST action=save_prerelease: Toggle pre-release preference
+# POST action=save_auto_update: Configure auto-update schedule
 #
 # Config: UCI quecmanager.update.*
 # State:  /tmp/qmanager_update.json, /tmp/qmanager_update.pid
+#         /tmp/qmanager_staged.tar.gz, /tmp/qmanager_staged_version
 #
 # Endpoint: GET/POST /cgi-bin/quecmanager/system/update.sh
 # =============================================================================
@@ -163,14 +166,6 @@ if [ "$REQUEST_METHOD" = "GET" ]; then
     auto_enabled=$(uci_update_get auto_update_enabled "0")
     auto_time=$(uci_update_get auto_update_time "03:00")
 
-    # Rollback availability — previous version stored locally after each update
-    rollback_available="false"
-    rollback_version=""
-    if [ -f "$UPDATES_DIR/previous_version" ]; then
-        rollback_available="true"
-        rollback_version=$(cat "$UPDATES_DIR/previous_version" 2>/dev/null)
-    fi
-
     # Query GitHub Releases API with header capture for rate-limit detection
     api_url="https://api.github.com/repos/$GITHUB_REPO/releases"
     tmp_body="/tmp/qm_update_api_body.json"
@@ -182,15 +177,14 @@ if [ "$REQUEST_METHOD" = "GET" ]; then
         jq -n \
             --arg cv "$current_version" \
             --argjson prerelease "$include_prerelease" \
-            --argjson rb "$rollback_available" \
-            --arg rbv "$rollback_version" \
             --arg auto_en "$auto_enabled" \
             --arg auto_time "$auto_time" \
             '{
                 success: true, current_version: $cv,
                 latest_version: null, update_available: false,
-                changelog: null, download_url: null, download_size: null,
-                rollback_available: $rb, rollback_version: $rbv,
+                changelog: null, current_changelog: null,
+                download_url: null, download_size: null,
+                available_versions: [], download_state: null,
                 include_prerelease: ($prerelease == 1),
                 auto_update_enabled: ($auto_en == "1"),
                 auto_update_time: $auto_time,
@@ -215,16 +209,15 @@ if [ "$REQUEST_METHOD" = "GET" ]; then
         jq -n \
             --arg cv "$current_version" \
             --argjson prerelease "$include_prerelease" \
-            --argjson rb "$rollback_available" \
-            --arg rbv "$rollback_version" \
             --arg err "$wait_msg" \
             --arg auto_en "$auto_enabled" \
             --arg auto_time "$auto_time" \
             '{
                 success: true, current_version: $cv,
                 latest_version: null, update_available: false,
-                changelog: null, download_url: null, download_size: null,
-                rollback_available: $rb, rollback_version: $rbv,
+                changelog: null, current_changelog: null,
+                download_url: null, download_size: null,
+                available_versions: [], download_state: null,
                 include_prerelease: ($prerelease == 1),
                 auto_update_enabled: ($auto_en == "1"),
                 auto_update_time: $auto_time,
@@ -255,16 +248,38 @@ if [ "$REQUEST_METHOD" = "GET" ]; then
             '[ .[] | select(.tag_name == $cv) ] | .[0].body // empty')
     fi
 
-    # Validate rollback: check if previous version has a downloadable tarball
-    if [ "$rollback_available" = "true" ] && [ -n "$rollback_version" ]; then
-        rb_has_assets=$(echo "$api_response" | jq -r \
-            --arg rbv "$rollback_version" \
-            '[ .[] | select(.tag_name == $rbv) ] | .[0].assets | length // 0')
-        if [ "$rb_has_assets" = "0" ] || [ "$rb_has_assets" = "null" ] || [ -z "$rb_has_assets" ]; then
-            rollback_available="false"
-            rollback_version=""
+    # Detect staged download state
+    download_state="null"
+    staged_tarball="/tmp/qmanager_staged.tar.gz"
+    staged_version_file="/tmp/qmanager_staged_version"
+
+    if [ -f "$PID_FILE" ]; then
+        pid=$(cat "$PID_FILE" 2>/dev/null)
+        if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null && [ -f "$STATUS_FILE" ]; then
+            download_state=$(cat "$STATUS_FILE" 2>/dev/null)
         fi
+    elif [ -f "$staged_tarball" ] && [ -f "$staged_version_file" ]; then
+        staged_ver=$(cat "$staged_version_file" 2>/dev/null)
+        staged_size=$(du -k "$staged_tarball" 2>/dev/null | awk '{printf "%.1f MB", $1/1024}')
+        download_state=$(jq -n \
+            --arg status "ready" \
+            --arg version "$staged_ver" \
+            --arg message "Download verified ($staged_size)" \
+            --arg size "$staged_size" \
+            '{status: $status, version: $version, message: $message, size: $size}')
     fi
+
+    # Build available_versions list from API response
+    available_versions=$(echo "$api_response" | jq \
+        --arg cv "$current_version" \
+        '[ .[] | {
+            tag: .tag_name,
+            has_assets: ((.assets | length) > 0),
+            asset_size: (if (.assets | length) > 0 then
+                (.assets[0].size / 1048576 * 10 | floor / 10 | tostring + " MB")
+            else null end),
+            is_current: (.tag_name == $cv)
+        }]')
 
     # Download URL from GitHub Releases (stable, redirect handled by uclient-fetch/curl)
     download_url=""
@@ -289,8 +304,8 @@ if [ "$REQUEST_METHOD" = "GET" ]; then
         --arg ccl "$current_changelog" \
         --arg dl "${download_url:-}" \
         --arg ds "$download_size" \
-        --argjson rb "$rollback_available" \
-        --arg rbv "$rollback_version" \
+        --argjson av "$available_versions" \
+        --argjson ds_obj "$download_state" \
         --argjson prerelease "$include_prerelease" \
         --arg auto_en "$auto_enabled" \
         --arg auto_time "$auto_time" \
@@ -303,8 +318,8 @@ if [ "$REQUEST_METHOD" = "GET" ]; then
             current_changelog: (if $ccl == "" then null else $ccl end),
             download_url: (if $dl == "" then null else $dl end),
             download_size: (if $ds == "" then null else $ds end),
-            rollback_available: $rb,
-            rollback_version: (if $rbv == "" then null else $rbv end),
+            available_versions: $av,
+            download_state: $ds_obj,
             include_prerelease: ($prerelease == 1),
             auto_update_enabled: ($auto_en == "1"),
             auto_update_time: $auto_time,
@@ -384,6 +399,37 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
         fi
 
         cgi_success
+        exit 0
+    fi
+
+    # --- Download update (stage without installing) ---
+    if [ "$ACTION" = "download" ]; then
+        check_lock
+
+        version=$(printf '%s' "$POST_DATA" | jq -r '.version // empty')
+        if [ -z "$version" ]; then
+            cgi_error "missing_version" "version is required"; exit 0
+        fi
+
+        download_url="https://github.com/${GITHUB_REPO}/releases/download/${version}/qmanager.tar.gz"
+        checksum_url="https://github.com/${GITHUB_REPO}/releases/download/${version}/sha256sum.txt"
+
+        jq -n '{"success":true,"status":"starting"}'
+        ( "$UPDATER" download "$download_url" "$checksum_url" "$version" </dev/null >>/tmp/qmanager_update.log 2>&1 & )
+        exit 0
+    fi
+
+    # --- Install staged tarball ---
+    if [ "$ACTION" = "install_staged" ]; then
+        check_lock
+
+        if [ ! -f "/tmp/qmanager_staged.tar.gz" ]; then
+            cgi_error "no_staged" "No staged download found. Download first."
+            exit 0
+        fi
+
+        jq -n '{"success":true,"status":"starting"}'
+        ( "$UPDATER" install_staged </dev/null >>/tmp/qmanager_update.log 2>&1 & )
         exit 0
     fi
 
