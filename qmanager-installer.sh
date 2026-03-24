@@ -166,7 +166,7 @@ do_install() {
             die "Release $QMANAGER_VERSION not found on GitHub"
         fi
     else
-        if ! fetch_release_info "${GITHUB_API}"; then
+        if ! fetch_release_info "${GITHUB_API}?per_page=1"; then
             die "Could not fetch latest release from GitHub. Check your internet connection."
         fi
     fi
@@ -442,7 +442,7 @@ do_download_only() {
             die "Release $QMANAGER_VERSION not found on GitHub"
         fi
     else
-        if ! fetch_release_info "${GITHUB_API}"; then
+        if ! fetch_release_info "${GITHUB_API}?per_page=1"; then
             die "Could not fetch latest release from GitHub. Check your internet connection."
         fi
     fi
