@@ -247,6 +247,25 @@ if [ "$REQUEST_METHOD" = "GET" ]; then
     latest_tag=$(echo "$api_response" | jq -r "$release_filter | .tag_name // empty")
     changelog=$(echo "$api_response" | jq -r "$release_filter | .body // empty")
 
+    # Extract current version's changelog from the same API response
+    current_changelog=""
+    if [ -n "$current_version" ] && [ "$current_version" != "0.0.0" ]; then
+        current_changelog=$(echo "$api_response" | jq -r \
+            --arg cv "$current_version" \
+            '[ .[] | select(.tag_name == $cv) ] | .[0].body // empty')
+    fi
+
+    # Validate rollback: check if previous version has a downloadable tarball
+    if [ "$rollback_available" = "true" ] && [ -n "$rollback_version" ]; then
+        rb_has_assets=$(echo "$api_response" | jq -r \
+            --arg rbv "$rollback_version" \
+            '[ .[] | select(.tag_name == $rbv) ] | .[0].assets | length // 0')
+        if [ "$rb_has_assets" = "0" ] || [ "$rb_has_assets" = "null" ] || [ -z "$rb_has_assets" ]; then
+            rollback_available="false"
+            rollback_version=""
+        fi
+    fi
+
     # Download URL from GitHub Releases (stable, redirect handled by uclient-fetch/curl)
     download_url=""
     if [ -n "$latest_tag" ]; then
@@ -267,6 +286,7 @@ if [ "$REQUEST_METHOD" = "GET" ]; then
         --arg lv "${latest_tag:-}" \
         --argjson ua "$update_available" \
         --arg cl "$changelog" \
+        --arg ccl "$current_changelog" \
         --arg dl "${download_url:-}" \
         --arg ds "$download_size" \
         --argjson rb "$rollback_available" \
@@ -280,6 +300,7 @@ if [ "$REQUEST_METHOD" = "GET" ]; then
             latest_version: (if $lv == "" then null else $lv end),
             update_available: $ua,
             changelog: (if $cl == "" then null else $cl end),
+            current_changelog: (if $ccl == "" then null else $ccl end),
             download_url: (if $dl == "" then null else $dl end),
             download_size: (if $ds == "" then null else $ds end),
             rollback_available: $rb,

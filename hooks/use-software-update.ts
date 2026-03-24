@@ -23,6 +23,7 @@ export interface UpdateInfo {
   latest_version: string | null;
   update_available: boolean;
   changelog: string | null;
+  current_changelog: string | null;
   download_url: string | null;
   download_size: string | null;
   rollback_available: boolean;

@@ -227,33 +227,41 @@ export function UpdateStatusCard({
             )}
 
             {/* ── Inline release notes (clickable → dialog) ────────── */}
-            {updateAvailable && updateInfo?.changelog && (
-              <>
-                <Separator />
-                <motion.div variants={itemVariants} className="flex flex-col gap-2 min-w-0">
-                  <div className="flex items-center justify-between">
-                    <p className="font-semibold text-sm">Release Notes</p>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-xs text-muted-foreground"
-                      onClick={() => setShowChangelog(true)}
+            {(() => {
+              const displayChangelog = updateAvailable
+                ? updateInfo?.changelog
+                : updateInfo?.current_changelog;
+              if (!displayChangelog) return null;
+              return (
+                <>
+                  <Separator />
+                  <motion.div variants={itemVariants} className="flex flex-col gap-2 min-w-0">
+                    <div className="flex items-center justify-between">
+                      <p className="font-semibold text-sm">
+                        {updateAvailable ? "Release Notes" : "Current Release Notes"}
+                      </p>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-xs text-muted-foreground"
+                        onClick={() => setShowChangelog(true)}
+                      >
+                        <FileTextIcon className="size-3.5" />
+                        View full
+                      </Button>
+                    </div>
+                    <div
+                      role="region"
+                      aria-label="Release notes"
+                      tabIndex={0}
+                      className={`max-h-64 overflow-y-auto overflow-x-hidden wrap-break-word rounded-lg border bg-muted/50 p-4 ${PROSE_CLASSES}`}
                     >
-                      <FileTextIcon className="size-3.5" />
-                      View full
-                    </Button>
-                  </div>
-                  <div
-                    role="region"
-                    aria-label="Release notes"
-                    tabIndex={0}
-                    className={`max-h-64 overflow-y-auto overflow-x-hidden wrap-break-word rounded-lg border bg-muted/50 p-4 ${PROSE_CLASSES}`}
-                  >
-                    <Markdown>{updateInfo.changelog}</Markdown>
-                  </div>
-                </motion.div>
-              </>
-            )}
+                      <Markdown>{displayChangelog}</Markdown>
+                    </div>
+                  </motion.div>
+                </>
+              );
+            })()}
 
             {/* ── Footer: timestamp + action button ───────────────── */}
             <Separator />
@@ -300,7 +308,7 @@ export function UpdateStatusCard({
         <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>
-              Release Notes — {updateInfo?.latest_version}
+              Release Notes — {updateAvailable ? updateInfo?.latest_version : updateInfo?.current_version}
             </DialogTitle>
           </DialogHeader>
           <div
@@ -309,7 +317,9 @@ export function UpdateStatusCard({
             tabIndex={0}
             className={`max-h-[60vh] overflow-y-auto overflow-x-hidden wrap-break-word rounded-lg border bg-muted/50 p-5 ${PROSE_CLASSES}`}
           >
-            <Markdown>{updateInfo?.changelog ?? ""}</Markdown>
+            <Markdown>
+              {(updateAvailable ? updateInfo?.changelog : updateInfo?.current_changelog) ?? ""}
+            </Markdown>
           </div>
           <DialogFooter showCloseButton />
         </DialogContent>

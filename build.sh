@@ -43,6 +43,11 @@ step "Creating qmanager.tar.gz..."
 mkdir -p "$BUILD_DIR"
 tar czf "$ARCHIVE" -C "$ROOT_DIR" qmanager_install
 
+step "Generating sha256sum.txt..."
+(cd "$BUILD_DIR" && sha256sum qmanager.tar.gz > sha256sum.txt)
+
 ARCHIVE_SIZE=$(du -h "$ARCHIVE" | cut -f1)
 FILE_COUNT=$(tar tzf "$ARCHIVE" | wc -l)
-printf "\n${GREEN}${BOLD}Build complete!${NC} qmanager.tar.gz (%s, %d files)\n\n" "$ARCHIVE_SIZE" "$FILE_COUNT"
+SHA_VALUE=$(awk '{print $1}' "$BUILD_DIR/sha256sum.txt")
+printf "\n${GREEN}${BOLD}Build complete!${NC} qmanager.tar.gz (%s, %d files)\n" "$ARCHIVE_SIZE" "$FILE_COUNT"
+printf "SHA-256: %s\n\n" "$SHA_VALUE"
