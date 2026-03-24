@@ -241,6 +241,8 @@ export default function VideoOptimizerSettingsCard() {
     saveSettings,
     verifyResult,
     runVerification,
+    installResult,
+    runInstall,
   } = useVideoOptimizer();
 
   const [isEnabled, setIsEnabled] = useState(false);
@@ -296,24 +298,69 @@ export default function VideoOptimizerSettingsCard() {
       </CardHeader>
       <CardContent>
         {!settings?.binary_installed && (
-          <Alert className="mb-4">
-            <Download className="h-4 w-4" />
-            <AlertDescription>
-              Video Optimizer requires the <code>nfqws</code> binary. Install
-              via{" "}
-              <code className="text-xs">opkg install zapret</code> or download
-              from{" "}
-              <a
-                href="https://github.com/remittor/zapret-openwrt/releases"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="underline"
-              >
-                zapret-openwrt releases
-              </a>
-              .
-            </AlertDescription>
-          </Alert>
+          <div className="mb-4 space-y-3">
+            <Alert>
+              <Download className="h-4 w-4" />
+              <AlertDescription>
+                Video Optimizer requires the <code>nfqws</code> binary from the{" "}
+                <a
+                  href="https://github.com/bol-van/zapret"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline"
+                >
+                  zapret
+                </a>{" "}
+                project. Click below to download and install it automatically.
+              </AlertDescription>
+            </Alert>
+
+            {installResult.status === "complete" && (
+              <Alert className="border-green-500/30 bg-green-500/5">
+                <CheckCircle2 className="h-4 w-4 text-green-500" />
+                <AlertDescription className="text-green-500">
+                  {installResult.message}
+                  {installResult.detail && (
+                    <span className="text-muted-foreground">
+                      {" "}({installResult.detail})
+                    </span>
+                  )}
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {installResult.status === "error" && (
+              <Alert variant="destructive">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription>
+                  {installResult.message}
+                  {installResult.detail && (
+                    <span className="block text-xs mt-1 opacity-80">
+                      {installResult.detail}
+                    </span>
+                  )}
+                </AlertDescription>
+              </Alert>
+            )}
+
+            <Button
+              className="w-full"
+              onClick={runInstall}
+              disabled={installResult.status === "running"}
+            >
+              {installResult.status === "running" ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  {installResult.message || "Installing..."}
+                </>
+              ) : (
+                <>
+                  <Download className="mr-2 h-4 w-4" />
+                  Install nfqws from zapret
+                </>
+              )}
+            </Button>
+          </div>
         )}
 
         {settings?.binary_installed && !settings?.kernel_module_loaded && (

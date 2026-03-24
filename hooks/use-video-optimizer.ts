@@ -6,6 +6,7 @@ import type {
   VideoOptimizerResponse,
   VideoOptimizerSettings,
   VerifyResult,
+  InstallResult,
 } from "@/types/video-optimizer";
 
 const API_URL = "/cgi-bin/quecmanager/network/video_optimizer.sh";
@@ -19,14 +20,22 @@ export function useVideoOptimizer() {
     success: true,
     status: "idle",
   });
+  const [installResult, setInstallResult] = useState<InstallResult>({
+    success: true,
+    status: "idle",
+  });
   const mountedRef = useRef(true);
   const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const installPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     return () => {
       mountedRef.current = false;
       if (pollTimerRef.current) {
         clearInterval(pollTimerRef.current);
+      }
+      if (installPollRef.current) {
+        clearInterval(installPollRef.current);
       }
     };
   }, []);
@@ -156,6 +165,58 @@ export function useVideoOptimizer() {
     }
   }, [pollVerifyStatus]);
 
+  const stopInstallPolling = useCallback(() => {
+    if (installPollRef.current) {
+      clearInterval(installPollRef.current);
+      installPollRef.current = null;
+    }
+  }, []);
+
+  const pollInstallStatus = useCallback(async () => {
+    try {
+      const response = await authFetch(`${API_URL}?action=install_status`);
+      if (!response.ok) return;
+
+      const data: InstallResult = await response.json();
+      if (!mountedRef.current) return;
+
+      setInstallResult(data);
+
+      if (data.status === "complete" || data.status === "error") {
+        stopInstallPolling();
+        // Refresh settings to pick up binary_installed change
+        await fetchSettings(true);
+      }
+    } catch {
+      // Silently retry on next poll interval
+    }
+  }, [stopInstallPolling, fetchSettings]);
+
+  const runInstall = useCallback(async () => {
+    setInstallResult({ success: true, status: "running", message: "Starting installation..." });
+
+    try {
+      const response = await authFetch(API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "install" }),
+      });
+
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+      // Start polling for results every 2 seconds
+      installPollRef.current = setInterval(pollInstallStatus, 2000);
+    } catch (err) {
+      if (mountedRef.current) {
+        setInstallResult({
+          success: false,
+          status: "error",
+          message: err instanceof Error ? err.message : "Failed to start installation",
+        });
+      }
+    }
+  }, [pollInstallStatus]);
+
   useEffect(() => {
     fetchSettings();
   }, [fetchSettings]);
@@ -168,6 +229,8 @@ export function useVideoOptimizer() {
     saveSettings,
     verifyResult,
     runVerification,
+    installResult,
+    runInstall,
     refresh: fetchSettings,
   };
 }

@@ -210,7 +210,7 @@ Video Optimizer helper functions. Guard-loaded (`_DPI_HELPER_LOADED`).
 | Function | Description |
 |----------|-------------|
 | `dpi_check_binary()` | Verify nfqws binary exists |
-| `dpi_check_kmod()` | Verify/load kernel module |
+| `dpi_check_kmod()` | Check NFQUEUE support (built-in via `/proc/config.gz` or loadable module) |
 | `dpi_check_libs()` | Verify shared library dependencies |
 | `dpi_insert_rules(iface)` | Add nftables NFQUEUE rules |
 | `dpi_remove_rules()` | Remove nftables NFQUEUE rules by comment |
@@ -356,6 +356,38 @@ Boot-time one-shot: checks if the device rebooted during a scheduled low power w
 4. Handle both normal (08:00-17:00) and overnight (23:00-06:00) windows
 5. If inside window: set state flags immediately, sleep 30s (modem init), send `AT+CFUN=0`
 6. If outside window: clean up any stale flags from before reboot
+
+### qmanager_dpi_install (nfqws Installer)
+
+**Type:** One-shot background script (spawned by CGI)
+**Location:** `scripts/usr/bin/qmanager_dpi_install`
+**State file:** `/tmp/qmanager_dpi_install.json`
+**PID file:** `/tmp/qmanager_dpi_install.pid`
+
+Downloads and installs the nfqws binary from the [zapret](https://github.com/bol-van/zapret) GitHub releases. The binary is **not bundled** with QManager and is **not installed via opkg** — it is fetched on demand from upstream to avoid dependency issues on custom firmware (e.g., iamromulan's RM551E-GL build).
+
+**Flow:**
+
+1. Detect device architecture via `uname -m` (aarch64, armv7l, x86_64, mips, mipsel)
+2. Query GitHub API (`/repos/bol-van/zapret/releases/latest`) for the latest release
+3. Find the `openwrt-embedded.tar.gz` asset (smaller tarball with only binaries); falls back to the full release tarball
+4. Download the tarball to `/tmp/qmanager_dpi_download/`
+5. Extract only the architecture-specific `nfqws` binary (`binaries/<arch>/nfqws`)
+6. Install to `/usr/bin/nfqws` with `chmod 755`
+7. Verify the binary runs (`nfqws --help`)
+8. Write success/error result to `/tmp/qmanager_dpi_install.json`
+
+**Singleton:** The CGI checks the PID file before spawning; if an install is already running, it returns `"status": "running"` without starting a second instance.
+
+**Cleanup:** Removes the download directory and PID file on exit (via `trap cleanup EXIT INT TERM`).
+
+**Result file format:**
+
+```json
+{"success": true, "status": "complete", "message": "nfqws installed successfully", "detail": "v69"}
+```
+
+Status values: `running`, `complete`, `error`
 
 ### qmanager_dpi (Video Optimizer)
 
@@ -510,6 +542,7 @@ All auth endpoints set `_SKIP_AUTH=1`.
 | `mtu.sh` | GET/POST | MTU size |
 | `dns.sh` | GET/POST | Custom DNS override |
 | `ip_passthrough.sh` | GET/POST | IP passthrough mode |
+| `video_optimizer.sh` | GET/POST | Video Optimizer settings, install, and verify |
 
 #### Custom Profiles (`profiles/`)
 
@@ -582,6 +615,10 @@ All auth endpoints set `_SKIP_AUTH=1`.
 | `qmanager_email_reload` | CGI | Trigger file for config reload |
 | `qmanager_low_power_active` | low_power | Low power mode flag (timestamp; suppresses events + alerts) |
 | `qmanager_watchcat.lock` | low_power | Watchdog pause lock (forces LOCKED state) |
+| `qmanager_dpi_install.json` | dpi_install | nfqws installer progress/result |
+| `qmanager_dpi_install.pid` | dpi_install | Installer singleton PID |
+| `qmanager_dpi_verify.json` | dpi_verify | DPI verification test results |
+| `qmanager_dpi_verify.pid` | dpi_verify | Verification singleton PID |
 | `qmanager_sessions/` | CGI (auth) | Session files |
 | `qmanager.log` | all (qlog) | Centralized log file |
 

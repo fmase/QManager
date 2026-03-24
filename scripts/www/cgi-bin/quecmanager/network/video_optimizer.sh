@@ -8,6 +8,8 @@ cgi_handle_options
 
 DPI_VERIFY_RESULT="/tmp/qmanager_dpi_verify.json"
 DPI_VERIFY_PID="/tmp/qmanager_dpi_verify.pid"
+DPI_INSTALL_RESULT="/tmp/qmanager_dpi_install.json"
+DPI_INSTALL_PID="/tmp/qmanager_dpi_install.pid"
 RELOAD_FLAG="/tmp/qmanager_dpi_reload"
 
 # Ensure UCI section exists with defaults
@@ -18,7 +20,7 @@ ensure_dpi_config() {
         uci set quecmanager.video_optimizer=video_optimizer
         uci set quecmanager.video_optimizer.enabled='0'
         uci set quecmanager.video_optimizer.quic_enabled='1'
-        uci set quecmanager.video_optimizer.interface='wwan0'
+        uci set quecmanager.video_optimizer.interface='rmnet_data0'
         uci commit quecmanager
     fi
 }
@@ -34,6 +36,16 @@ GET)
         # Return verification test results
         if [ -f "$DPI_VERIFY_RESULT" ]; then
             cat "$DPI_VERIFY_RESULT"
+        else
+            printf '{"success":true,"status":"idle"}'
+        fi
+        exit 0
+    fi
+
+    if [ "$action" = "install_status" ]; then
+        # Return install progress
+        if [ -f "$DPI_INSTALL_RESULT" ]; then
+            cat "$DPI_INSTALL_RESULT"
         else
             printf '{"success":true,"status":"idle"}'
         fi
@@ -56,7 +68,7 @@ GET)
     # Build response
     jq -n \
         --argjson success true \
-        --argjson enabled "${enabled:-false}" \
+        --arg enabled "${enabled:-0}" \
         --arg status "$status" \
         --arg uptime "$uptime" \
         --argjson packets_processed "${packets:-0}" \
@@ -65,7 +77,7 @@ GET)
         --argjson kernel_module_loaded "$kmod_ok" \
         '{
             success: $success,
-            enabled: (if $enabled == "1" or $enabled == true then true else false end),
+            enabled: ($enabled == "1"),
             status: $status,
             uptime: $uptime,
             packets_processed: $packets_processed,
@@ -124,6 +136,24 @@ POST)
         echo $! > "$DPI_VERIFY_PID"
 
         qlog_info "Verification test started"
+        printf '{"success":true,"status":"started"}'
+        ;;
+
+    install)
+        # Check if install is already running
+        if [ -f "$DPI_INSTALL_PID" ] && kill -0 "$(cat "$DPI_INSTALL_PID" 2>/dev/null)" 2>/dev/null; then
+            printf '{"success":true,"status":"running"}'
+            exit 0
+        fi
+
+        # Clear old results
+        rm -f "$DPI_INSTALL_RESULT"
+
+        # Spawn background installer
+        /usr/bin/qmanager_dpi_install </dev/null >/dev/null 2>&1 &
+        echo $! > "$DPI_INSTALL_PID"
+
+        qlog_info "nfqws installation started"
         printf '{"success":true,"status":"started"}'
         ;;
 

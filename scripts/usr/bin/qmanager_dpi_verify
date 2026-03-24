@@ -8,8 +8,14 @@
 qlog_init "dpi_verify"
 
 # Verify full curl is available (BusyBox curl lacks --connect-to)
-if ! curl --help 2>&1 | grep -q "connect-to"; then
+# Check that curl is not BusyBox and supports --connect-to
+if curl --version 2>/dev/null | grep -q "^BusyBox"; then
     printf '{"success":false,"status":"error","error":"Full curl package required. Run: opkg install curl"}' \
+        > /tmp/qmanager_dpi_verify.json
+    exit 1
+fi
+if ! curl --connect-to 2>&1 | grep -qi "requires\|parameter\|argument"; then
+    printf '{"success":false,"status":"error","error":"curl does not support --connect-to. Update or reinstall curl."}' \
         > /tmp/qmanager_dpi_verify.json
     exit 1
 fi

@@ -43,3 +43,10 @@ export interface VideoOptimizerSavePayload {
 export interface VideoOptimizerVerifyPayload {
   action: "verify";
 }
+
+export interface InstallResult {
+  success: boolean;
+  status: "idle" | "running" | "complete" | "error";
+  message?: string;
+  detail?: string;
+}

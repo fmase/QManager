@@ -914,6 +914,30 @@ Poll verification test progress/results.
 }
 ```
 
+### GET `/network/video_optimizer.sh?action=install_status`
+
+Poll nfqws installation progress/results.
+
+**Response (idle — no install started):**
+```json
+{"success": true, "status": "idle"}
+```
+
+**Response (running):**
+```json
+{"success": false, "status": "running", "message": "Downloading zapret v69...", "detail": ""}
+```
+
+**Response (complete):**
+```json
+{"success": true, "status": "complete", "message": "nfqws installed successfully", "detail": "v69"}
+```
+
+**Response (error):**
+```json
+{"success": false, "status": "error", "message": "Binary not found in archive", "detail": "No nfqws for linux-arm64 in tarball"}
+```
+
 ### POST `/network/video_optimizer.sh`
 
 Save settings:
@@ -925,6 +949,13 @@ Start verification:
 ```json
 {"action": "verify"}
 ```
+
+Install nfqws binary (downloads from zapret GitHub releases):
+```json
+{"action": "install"}
+```
+
+Returns `{"success": true, "status": "started"}` if the installer was spawned, or `{"success": true, "status": "running"}` if an install is already in progress. Poll `?action=install_status` for progress.
 
 ---
 
