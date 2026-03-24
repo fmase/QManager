@@ -102,7 +102,11 @@ download_archive() {
 
 fetch_release_info() {
     local api_url="$1" tmp_file="/tmp/qm_installer_api.json"
+    local is_list=false
     rm -f "$tmp_file"
+
+    # Detect if we're querying the list endpoint (array) vs a single release (object)
+    case "$api_url" in */releases) is_list=true ;; esac
 
     if ! download_archive "$api_url" "$tmp_file"; then
         return 1
@@ -110,11 +114,19 @@ fetch_release_info() {
 
     # Parse with jsonfilter (stock OpenWRT) or jq (if available)
     if command -v jsonfilter >/dev/null 2>&1; then
-        RELEASE_TAG=$(jsonfilter -i "$tmp_file" -e '@.tag_name' 2>/dev/null)
+        if $is_list; then
+            RELEASE_TAG=$(jsonfilter -i "$tmp_file" -e '@[0].tag_name' 2>/dev/null)
+        else
+            RELEASE_TAG=$(jsonfilter -i "$tmp_file" -e '@.tag_name' 2>/dev/null)
+        fi
     elif command -v jq >/dev/null 2>&1; then
-        RELEASE_TAG=$(jq -r '.tag_name // empty' "$tmp_file" 2>/dev/null)
+        if $is_list; then
+            RELEASE_TAG=$(jq -r '.[0].tag_name // empty' "$tmp_file" 2>/dev/null)
+        else
+            RELEASE_TAG=$(jq -r '.tag_name // empty' "$tmp_file" 2>/dev/null)
+        fi
     else
-        # Fallback: grep for tag_name in JSON (fragile but works in a pinch)
+        # Fallback: grep for tag_name in JSON (first match works for both list and single)
         RELEASE_TAG=$(grep -o '"tag_name"[[:space:]]*:[[:space:]]*"[^"]*"' "$tmp_file" | head -1 | cut -d'"' -f4)
     fi
 
@@ -154,7 +166,7 @@ do_install() {
             die "Release $QMANAGER_VERSION not found on GitHub"
         fi
     else
-        if ! fetch_release_info "${GITHUB_API}/latest"; then
+        if ! fetch_release_info "${GITHUB_API}"; then
             die "Could not fetch latest release from GitHub. Check your internet connection."
         fi
     fi
@@ -430,7 +442,7 @@ do_download_only() {
             die "Release $QMANAGER_VERSION not found on GitHub"
         fi
     else
-        if ! fetch_release_info "${GITHUB_API}/latest"; then
+        if ! fetch_release_info "${GITHUB_API}"; then
             die "Could not fetch latest release from GitHub. Check your internet connection."
         fi
     fi
