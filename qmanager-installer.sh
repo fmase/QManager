@@ -106,7 +106,7 @@ fetch_release_info() {
     rm -f "$tmp_file"
 
     # Detect if we're querying the list endpoint (array) vs a single release (object)
-    case "$api_url" in */releases) is_list=true ;; esac
+    case "$api_url" in */releases|*/releases\?*) is_list=true ;; esac
 
     if ! download_archive "$api_url" "$tmp_file"; then
         return 1
