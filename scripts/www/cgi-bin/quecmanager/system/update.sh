@@ -22,7 +22,6 @@ cgi_handle_options
 # --- Configuration -----------------------------------------------------------
 
 GITHUB_REPO="dr-dolomite/QManager"
-DOWNLOAD_BRANCH="development-home"
 VERSION_FILE="/etc/qmanager/VERSION"
 UPDATES_DIR="/etc/qmanager/updates"
 STATUS_FILE="/tmp/qmanager_update.json"
@@ -244,14 +243,14 @@ if [ "$REQUEST_METHOD" = "GET" ]; then
         release_filter='[ .[] | select(.prerelease == false) ] | .[0]'
     fi
 
-    # Extract release info (version + changelog from API, download from raw branch)
+    # Extract release info
     latest_tag=$(echo "$api_response" | jq -r "$release_filter | .tag_name // empty")
     changelog=$(echo "$api_response" | jq -r "$release_filter | .body // empty")
 
-    # Download URL points to raw branch archive (release asset redirects fail on OpenWRT)
+    # Download URL from GitHub Releases (stable, redirect handled by uclient-fetch/curl)
     download_url=""
     if [ -n "$latest_tag" ]; then
-        download_url="https://github.com/${GITHUB_REPO}/raw/refs/heads/${DOWNLOAD_BRANCH}/qmanager-build/qmanager.tar.gz"
+        download_url="https://github.com/${GITHUB_REPO}/releases/download/${latest_tag}/qmanager.tar.gz"
     fi
     download_size=""
 
@@ -395,7 +394,7 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
         fi
 
         rollback_version=$(cat "$UPDATES_DIR/previous_version" 2>/dev/null)
-        rollback_url="https://github.com/${GITHUB_REPO}/raw/refs/heads/${DOWNLOAD_BRANCH}/qmanager-build/qmanager.tar.gz.old"
+        rollback_url="https://github.com/${GITHUB_REPO}/releases/download/${rollback_version}/qmanager.tar.gz"
         jq -n --arg v "$rollback_version" '{"success":true,"status":"starting","version":$v}'
         ( "$UPDATER" rollback "$rollback_url" "$rollback_version" </dev/null >>/tmp/qmanager_update.log 2>&1 & )
         exit 0
