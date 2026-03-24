@@ -34,7 +34,7 @@ set -e
 
 # --- Configuration -----------------------------------------------------------
 
-VERSION="v0.1.3"
+VERSION="v0.1.5"
 INSTALL_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 # Destinations
@@ -811,7 +811,7 @@ main() {
     printf "\n"
     printf "  ══════════════════════════════════════════\n"
     printf "  ${BOLD}  QManager - Installation Script${NC}\n"
-    printf "  ${DIM}  Version: v%s${NC}\n" "$VERSION"
+    printf "  ${DIM}  Version: %s${NC}\n" "$VERSION"
     printf "  ══════════════════════════════════════════\n"
 
     # Handle uninstall path (2 steps: preflight + uninstall)
