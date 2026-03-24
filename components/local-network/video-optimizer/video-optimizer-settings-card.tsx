@@ -1,0 +1,386 @@
+"use client";
+
+import { useCallback, useState, useMemo } from "react";
+import { toast } from "sonner";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Field, FieldGroup, FieldSet } from "@/components/ui/field";
+import { Switch } from "@/components/ui/switch";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { SaveButton, useSaveFlash } from "@/components/ui/save-button";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  AlertTriangle,
+  CheckCircle2,
+  Download,
+  Loader2,
+  ShieldCheck,
+  ShieldOff,
+  Zap,
+} from "lucide-react";
+import { useVideoOptimizer } from "@/hooks/use-video-optimizer";
+
+function VideoOptimizerSkeleton() {
+  return (
+    <Card className="@container/card">
+      <CardHeader>
+        <Skeleton className="h-5 w-40" />
+        <Skeleton className="h-4 w-72" />
+      </CardHeader>
+      <CardContent className="grid gap-4">
+        <Skeleton className="h-10 w-full" />
+        <Skeleton className="h-24 w-full" />
+        <Skeleton className="h-32 w-full" />
+      </CardContent>
+    </Card>
+  );
+}
+
+function StatusBadge({ status }: { status: string }) {
+  if (status === "running") {
+    return (
+      <Badge
+        variant="outline"
+        className="border-green-500/30 bg-green-500/10 text-green-500"
+      >
+        <span className="mr-1.5 h-1.5 w-1.5 rounded-full bg-green-500" />
+        Active
+      </Badge>
+    );
+  }
+  return (
+    <Badge
+      variant="outline"
+      className="border-muted-foreground/30 bg-muted/50 text-muted-foreground"
+    >
+      <span className="mr-1.5 h-1.5 w-1.5 rounded-full bg-muted-foreground" />
+      Inactive
+    </Badge>
+  );
+}
+
+function ServiceStats({
+  uptime,
+  packets,
+  domains,
+}: {
+  uptime: string;
+  packets: number;
+  domains: number;
+}) {
+  return (
+    <div className="grid grid-cols-3 gap-3">
+      {[
+        { label: "Uptime", value: uptime },
+        { label: "Packets Processed", value: packets.toLocaleString() },
+        { label: "Domains Protected", value: domains.toString() },
+      ].map((stat) => (
+        <div
+          key={stat.label}
+          className="rounded-lg bg-muted/50 p-3"
+        >
+          <div className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+            {stat.label}
+          </div>
+          <div className="mt-1 text-base font-semibold">{stat.value}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function VerificationDisplay({
+  verifyResult,
+  onRunTest,
+  isRunning,
+  serviceRunning,
+}: {
+  verifyResult: ReturnType<typeof useVideoOptimizer>["verifyResult"];
+  onRunTest: () => void;
+  isRunning: boolean;
+  serviceRunning: boolean;
+}) {
+  return (
+    <div className="space-y-3">
+      <div>
+        <h4 className="text-sm font-medium">Verify Bypass</h4>
+        <p className="text-xs text-muted-foreground">
+          Run a before &amp; after speed test against a video CDN to confirm
+          throttle bypass is working
+        </p>
+      </div>
+
+      {verifyResult.status === "complete" &&
+        verifyResult.without_bypass &&
+        verifyResult.with_bypass && (
+          <div className="overflow-hidden rounded-lg border">
+            <div className="grid grid-cols-[1fr_auto_1fr]">
+              <div className="p-4 text-center">
+                <div className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+                  Without Bypass
+                </div>
+                <div
+                  className={`mt-2 text-2xl font-bold ${
+                    verifyResult.without_bypass.throttled
+                      ? "text-destructive"
+                      : "text-green-500"
+                  }`}
+                >
+                  {verifyResult.without_bypass.speed_mbps.toFixed(1)}
+                </div>
+                <div className="text-xs text-muted-foreground">Mbps</div>
+                <Badge
+                  variant="outline"
+                  className={`mt-1.5 text-[11px] ${
+                    verifyResult.without_bypass.throttled
+                      ? "border-destructive/30 bg-destructive/10 text-destructive"
+                      : "border-green-500/30 bg-green-500/10 text-green-500"
+                  }`}
+                >
+                  {verifyResult.without_bypass.throttled
+                    ? "Throttled"
+                    : "Not Throttled"}
+                </Badge>
+              </div>
+
+              <div className="flex items-center px-2 text-muted-foreground">
+                &rarr;
+              </div>
+
+              <div className="p-4 text-center">
+                <div className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+                  With Bypass
+                </div>
+                <div
+                  className={`mt-2 text-2xl font-bold ${
+                    verifyResult.with_bypass.throttled
+                      ? "text-destructive"
+                      : "text-green-500"
+                  }`}
+                >
+                  {verifyResult.with_bypass.speed_mbps.toFixed(1)}
+                </div>
+                <div className="text-xs text-muted-foreground">Mbps</div>
+                <Badge
+                  variant="outline"
+                  className={`mt-1.5 text-[11px] ${
+                    verifyResult.with_bypass.throttled
+                      ? "border-destructive/30 bg-destructive/10 text-destructive"
+                      : "border-green-500/30 bg-green-500/10 text-green-500"
+                  }`}
+                >
+                  {verifyResult.with_bypass.throttled
+                    ? "Throttled"
+                    : "Unthrottled"}
+                </Badge>
+              </div>
+            </div>
+
+            {verifyResult.improvement && (
+              <div className="border-t bg-green-500/5 p-2.5 text-center">
+                <span className="text-sm font-semibold text-green-500">
+                  {verifyResult.improvement} faster
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  {" "}
+                  &mdash; Video throttle successfully bypassed
+                </span>
+              </div>
+            )}
+          </div>
+        )}
+
+      {verifyResult.status === "error" && verifyResult.error && (
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>{verifyResult.error}</AlertDescription>
+        </Alert>
+      )}
+
+      <Button
+        variant="outline"
+        className="w-full"
+        onClick={onRunTest}
+        disabled={isRunning || !serviceRunning}
+      >
+        {isRunning ? (
+          <>
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            Running Verification...
+          </>
+        ) : (
+          <>
+            <Zap className="mr-2 h-4 w-4" />
+            Run Verification Test
+          </>
+        )}
+      </Button>
+
+      {isRunning && (
+        <p className="text-center text-[11px] text-muted-foreground">
+          Takes ~25 seconds. Briefly disables bypass during test.
+        </p>
+      )}
+    </div>
+  );
+}
+
+export default function VideoOptimizerSettingsCard() {
+  const {
+    settings,
+    isLoading,
+    isSaving,
+    error,
+    saveSettings,
+    verifyResult,
+    runVerification,
+  } = useVideoOptimizer();
+
+  const [isEnabled, setIsEnabled] = useState(false);
+  const { saved, markSaved } = useSaveFlash();
+
+  // Sync settings to local form state
+  const [formKey, setFormKey] = useState(0);
+  if (settings && formKey === 0) {
+    setIsEnabled(settings.enabled);
+    setFormKey(1);
+  }
+
+  const isDirty = useMemo(() => {
+    if (!settings) return false;
+    return isEnabled !== settings.enabled;
+  }, [settings, isEnabled]);
+
+  const handleSave = useCallback(
+    async (e: React.FormEvent) => {
+      e.preventDefault();
+      const success = await saveSettings(isEnabled);
+      if (success) {
+        markSaved();
+        toast.success(
+          isEnabled ? "Video Optimizer enabled" : "Video Optimizer disabled"
+        );
+      } else {
+        toast.error(error || "Failed to save settings");
+      }
+    },
+    [isEnabled, saveSettings, markSaved, error]
+  );
+
+  if (isLoading) return <VideoOptimizerSkeleton />;
+
+  const canEnable =
+    settings?.binary_installed && settings?.kernel_module_loaded;
+  const isRunning = settings?.status === "running";
+
+  return (
+    <Card className="@container/card">
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle>Video Optimizer</CardTitle>
+            <CardDescription>
+              Bypass carrier video throttling on cellular connections using DPI
+              evasion. Targets known video CDN hostnames only.
+            </CardDescription>
+          </div>
+          {settings && <StatusBadge status={settings.status} />}
+        </div>
+      </CardHeader>
+      <CardContent>
+        {!settings?.binary_installed && (
+          <Alert className="mb-4">
+            <Download className="h-4 w-4" />
+            <AlertDescription>
+              Video Optimizer requires the <code>nfqws</code> binary. Install
+              via{" "}
+              <code className="text-xs">opkg install zapret</code> or download
+              from{" "}
+              <a
+                href="https://github.com/remittor/zapret-openwrt/releases"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline"
+              >
+                zapret-openwrt releases
+              </a>
+              .
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {settings?.binary_installed && !settings?.kernel_module_loaded && (
+          <Alert className="mb-4">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>
+              Required kernel module not found. Run{" "}
+              <code className="text-xs">opkg install kmod-nft-queue</code>{" "}
+              on the device.
+            </AlertDescription>
+          </Alert>
+        )}
+
+        <form className="grid gap-4" onSubmit={handleSave}>
+          <FieldSet>
+            <FieldGroup>
+              <Field orientation="horizontal" className="w-fit">
+                <label
+                  htmlFor="dpi-enabled"
+                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                >
+                  Enable Video Optimizer
+                </label>
+                <Switch
+                  id="dpi-enabled"
+                  checked={isEnabled}
+                  onCheckedChange={setIsEnabled}
+                  disabled={!canEnable || isSaving}
+                  aria-label="Enable Video Optimizer"
+                />
+              </Field>
+              <p className="text-xs text-muted-foreground -mt-2">
+                Apply DPI evasion to video traffic on the cellular interface
+              </p>
+
+              {isRunning && settings && (
+                <>
+                  <div className="h-px bg-border" />
+                  <ServiceStats
+                    uptime={settings.uptime}
+                    packets={settings.packets_processed}
+                    domains={settings.domains_loaded}
+                  />
+                </>
+              )}
+
+              <div className="h-px bg-border" />
+
+              <VerificationDisplay
+                verifyResult={verifyResult}
+                onRunTest={runVerification}
+                isRunning={verifyResult.status === "running"}
+                serviceRunning={isRunning}
+              />
+
+              <div className="h-px bg-border" />
+
+              <SaveButton
+                type="submit"
+                isSaving={isSaving}
+                saved={saved}
+                disabled={!isDirty || !canEnable}
+              />
+            </FieldGroup>
+          </FieldSet>
+        </form>
+      </CardContent>
+    </Card>
+  );
+}
