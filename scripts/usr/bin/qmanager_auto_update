@@ -20,7 +20,6 @@ qlog_init "auto_update"
 # --- Configuration -----------------------------------------------------------
 
 REPO="dr-dolomite/QManager"
-BRANCH="development-home"
 VERSION_FILE="/etc/qmanager/VERSION"
 PID_FILE="/tmp/qmanager_update.pid"
 UPDATER="/usr/bin/qmanager_update"
@@ -136,6 +135,6 @@ case $? in
     *) qlog_info "Up to date ($current_version)"; exit 0 ;;
 esac
 
-download_url="https://github.com/${REPO}/raw/refs/heads/${BRANCH}/qmanager-build/qmanager.tar.gz"
+download_url="https://github.com/${REPO}/releases/download/${latest_tag}/qmanager.tar.gz"
 qlog_info "Auto-update: installing $latest_tag (current: $current_version)"
 exec "$UPDATER" install "$download_url" "$latest_tag"
