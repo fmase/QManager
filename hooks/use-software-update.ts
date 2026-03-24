@@ -18,6 +18,20 @@ const LAST_CHECKED_KEY = "qm_update_last_checked";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
+export interface AvailableVersion {
+  tag: string;
+  has_assets: boolean;
+  asset_size: string | null;
+  is_current: boolean;
+}
+
+export interface DownloadState {
+  status: "downloading" | "verifying" | "ready" | "error";
+  version: string;
+  message?: string;
+  size?: string;
+}
+
 export interface UpdateInfo {
   current_version: string;
   latest_version: string | null;
@@ -26,8 +40,8 @@ export interface UpdateInfo {
   current_changelog: string | null;
   download_url: string | null;
   download_size: string | null;
-  rollback_available: boolean;
-  rollback_version: string | null;
+  available_versions: AvailableVersion[];
+  download_state: DownloadState | null;
   include_prerelease: boolean;
   auto_update_enabled: boolean;
   auto_update_time: string;
@@ -44,14 +58,17 @@ export interface UpdateStatus {
 export interface UseSoftwareUpdateReturn {
   updateInfo: UpdateInfo | null;
   updateStatus: UpdateStatus;
+  downloadState: DownloadState | null;
   isLoading: boolean;
   isChecking: boolean;
   isUpdating: boolean;
+  isDownloading: boolean;
   error: string | null;
   lastChecked: string | null;
   checkForUpdates: () => Promise<void>;
+  downloadUpdate: (version?: string) => Promise<void>;
+  installStaged: () => Promise<void>;
   installUpdate: () => Promise<void>;
-  rollback: () => Promise<void>;
   togglePrerelease: (enabled: boolean) => Promise<void>;
   saveAutoUpdate: (enabled: boolean, time: string) => Promise<void>;
 }
@@ -65,6 +82,8 @@ export function useSoftwareUpdate(): UseSoftwareUpdateReturn {
   const [isChecking, setIsChecking] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [downloadState, setDownloadState] = useState<DownloadState | null>(null);
+  const [isDownloading, setIsDownloading] = useState(false);
   const [lastChecked, setLastChecked] = useState<string | null>(null);
 
   const mountedRef = useRef(true);
@@ -79,6 +98,40 @@ export function useSoftwareUpdate(): UseSoftwareUpdateReturn {
       mountedRef.current = false;
       if (pollRef.current) clearInterval(pollRef.current);
     };
+  }, []);
+
+  // ---------------------------------------------------------------------------
+  // Poll download status during background download
+  // ---------------------------------------------------------------------------
+  const startDownloadPolling = useCallback(() => {
+    if (pollRef.current) clearInterval(pollRef.current);
+
+    pollRef.current = setInterval(async () => {
+      try {
+        const resp = await authFetch(`${CGI_ENDPOINT}?action=status`);
+        if (!resp.ok) return;
+
+        const json = await resp.json();
+        if (!mountedRef.current) return;
+
+        setDownloadState(json as DownloadState);
+
+        if (json.status === "ready") {
+          if (pollRef.current) clearInterval(pollRef.current);
+          pollRef.current = null;
+          setIsDownloading(false);
+        }
+
+        if (json.status === "error") {
+          if (pollRef.current) clearInterval(pollRef.current);
+          pollRef.current = null;
+          setIsDownloading(false);
+          setError(json.message || "Download failed");
+        }
+      } catch {
+        // Silently retry on next interval
+      }
+    }, POLL_INTERVAL);
   }, []);
 
   // ---------------------------------------------------------------------------
@@ -102,6 +155,16 @@ export function useSoftwareUpdate(): UseSoftwareUpdateReturn {
 
       setUpdateInfo(json as UpdateInfo);
 
+      // Sync download state from backend
+      const info = json as UpdateInfo;
+      if (info.download_state) {
+        setDownloadState(info.download_state);
+        if (info.download_state.status === "downloading" || info.download_state.status === "verifying") {
+          setIsDownloading(true);
+          startDownloadPolling();
+        }
+      }
+
       // Update last checked timestamp
       const now = new Date().toISOString();
       localStorage.setItem(LAST_CHECKED_KEY, now);
@@ -112,7 +175,7 @@ export function useSoftwareUpdate(): UseSoftwareUpdateReturn {
     } finally {
       if (mountedRef.current && !silent) setIsLoading(false);
     }
-  }, []);
+  }, [startDownloadPolling]);
 
   // Fetch on mount
   useEffect(() => {
@@ -175,6 +238,65 @@ export function useSoftwareUpdate(): UseSoftwareUpdateReturn {
     if (mountedRef.current) setIsChecking(false);
   }, [fetchUpdateInfo]);
 
+  const downloadUpdate = useCallback(async (version?: string) => {
+    const targetVersion = version || updateInfo?.latest_version;
+    if (!targetVersion) return;
+
+    setError(null);
+    setIsDownloading(true);
+    setDownloadState({ status: "downloading", version: targetVersion });
+
+    try {
+      const resp = await authFetch(CGI_ENDPOINT, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "download", version: targetVersion }),
+      });
+
+      const json = await resp.json();
+      if (!json.success) {
+        setError(json.detail || json.error || "Failed to start download");
+        setIsDownloading(false);
+        setDownloadState(null);
+        return;
+      }
+
+      startDownloadPolling();
+    } catch (err) {
+      if (!mountedRef.current) return;
+      setError(err instanceof Error ? err.message : "Failed to start download");
+      setIsDownloading(false);
+      setDownloadState(null);
+    }
+  }, [updateInfo, startDownloadPolling]);
+
+  const installStaged = useCallback(async () => {
+    setError(null);
+    setIsUpdating(true);
+    setUpdateStatus({ status: "installing", message: "Installing update..." });
+
+    try {
+      const resp = await authFetch(CGI_ENDPOINT, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "install_staged" }),
+      });
+
+      const json = await resp.json();
+      if (!json.success) {
+        setError(json.detail || json.error || "Failed to start installation");
+        setIsUpdating(false);
+        return;
+      }
+
+      startPolling();
+    } catch (err) {
+      if (!mountedRef.current) return;
+      setError(err instanceof Error ? err.message : "Failed to start installation");
+      setIsUpdating(false);
+    }
+  }, [startPolling]);
+
   const installUpdate = useCallback(async () => {
     if (!updateInfo?.download_url || !updateInfo?.latest_version) return;
 
@@ -201,7 +323,6 @@ export function useSoftwareUpdate(): UseSoftwareUpdateReturn {
         return;
       }
 
-      // Start polling for progress
       startPolling();
     } catch (err) {
       if (!mountedRef.current) return;
@@ -209,33 +330,6 @@ export function useSoftwareUpdate(): UseSoftwareUpdateReturn {
       setIsUpdating(false);
     }
   }, [updateInfo, startPolling]);
-
-  const rollbackFn = useCallback(async () => {
-    setError(null);
-    setIsUpdating(true);
-    setUpdateStatus({ status: "installing", message: "Restoring previous version..." });
-
-    try {
-      const resp = await authFetch(CGI_ENDPOINT, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "rollback" }),
-      });
-
-      const json = await resp.json();
-      if (!json.success) {
-        setError(json.detail || json.error || "Failed to start rollback");
-        setIsUpdating(false);
-        return;
-      }
-
-      startPolling();
-    } catch (err) {
-      if (!mountedRef.current) return;
-      setError(err instanceof Error ? err.message : "Failed to start rollback");
-      setIsUpdating(false);
-    }
-  }, [startPolling]);
 
   const togglePrerelease = useCallback(async (enabled: boolean) => {
     try {
@@ -283,14 +377,17 @@ export function useSoftwareUpdate(): UseSoftwareUpdateReturn {
   return {
     updateInfo,
     updateStatus,
+    downloadState,
     isLoading,
     isChecking,
     isUpdating,
+    isDownloading,
     error,
     lastChecked,
     checkForUpdates,
+    downloadUpdate,
+    installStaged,
     installUpdate,
-    rollback: rollbackFn,
     togglePrerelease,
     saveAutoUpdate,
   };
