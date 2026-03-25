@@ -4,6 +4,7 @@ import { useCallback, useState, useMemo } from "react";
 import { toast } from "sonner";
 import {
   Card,
+  CardAction,
   CardContent,
   CardDescription,
   CardHeader,
@@ -12,19 +13,28 @@ import {
 import {
   Field,
   FieldDescription,
+  FieldError,
   FieldGroup,
+  FieldLabel,
   FieldSet,
 } from "@/components/ui/field";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { SaveButton, useSaveFlash } from "@/components/ui/save-button";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { AlertTriangle, CheckCircle2, Info, Loader2, Zap } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
+import {
+  AlertTriangle,
+  CheckCircle2,
+  Info,
+  Loader2,
+  Zap,
+} from "lucide-react";
 import { TbAlertTriangleFilled } from "react-icons/tb";
 import { useTrafficMasquerade } from "@/hooks/use-traffic-masquerade";
+import { ServiceStatusBadge } from "./service-status-badge";
 
 function MasqueradeSkeleton() {
   return (
@@ -42,29 +52,6 @@ function MasqueradeSkeleton() {
   );
 }
 
-function StatusBadge({ status }: { status: string }) {
-  if (status === "running") {
-    return (
-      <Badge
-        variant="outline"
-        className="border-green-500/30 bg-green-500/10 text-green-500"
-      >
-        <span className="mr-1.5 h-1.5 w-1.5 rounded-full bg-green-500" />
-        Active
-      </Badge>
-    );
-  }
-  return (
-    <Badge
-      variant="outline"
-      className="border-muted-foreground/30 bg-muted/50 text-muted-foreground"
-    >
-      <span className="mr-1.5 h-1.5 w-1.5 rounded-full bg-muted-foreground" />
-      Inactive
-    </Badge>
-  );
-}
-
 interface TrafficMasqueradeSettingsCardProps {
   hook: ReturnType<typeof useTrafficMasquerade>;
   otherActive?: boolean;
@@ -76,19 +63,71 @@ export default function TrafficMasqueradeSettingsCard({
   otherActive = false,
   onSaved,
 }: TrafficMasqueradeSettingsCardProps) {
-  const { settings, isLoading, isSaving, error, saveSettings, testResult, runTest } = hook;
+  const { settings, isLoading, error, refresh } = hook;
 
-  const [isEnabled, setIsEnabled] = useState(false);
-  const [sniDomain, setSniDomain] = useState("speedtest.net");
-  const { saved, markSaved } = useSaveFlash();
+  if (isLoading) return <MasqueradeSkeleton />;
 
-  // Sync settings to local form state
-  const [formKey, setFormKey] = useState(0);
-  if (settings && formKey === 0) {
-    setIsEnabled(settings.enabled);
-    setSniDomain(settings.sni_domain || "speedtest.net");
-    setFormKey(1);
+  // H4: Error state — fetch failed, no settings to show
+  if (error && !settings) {
+    return (
+      <Card className="@container/card">
+        <CardHeader>
+          <CardTitle>Traffic Masquerade</CardTitle>
+          <CardDescription>
+            Make HTTPS traffic appear as a whitelisted service to carrier DPI.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Alert variant="destructive">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>
+              Failed to load settings.{" "}
+              <button
+                type="button"
+                className="underline underline-offset-4"
+                onClick={() => refresh()}
+              >
+                Retry
+              </button>
+            </AlertDescription>
+          </Alert>
+        </CardContent>
+      </Card>
+    );
   }
+
+  // H3: Key-based remount — when settings change (initial load or post-save
+  // re-fetch), the form reinitializes with fresh values from useState defaults.
+  const formKey = settings
+    ? `${settings.enabled}-${settings.sni_domain}`
+    : "empty";
+
+  return (
+    <TrafficMasqueradeForm
+      key={formKey}
+      hook={hook}
+      otherActive={otherActive}
+      onSaved={onSaved}
+    />
+  );
+}
+
+function TrafficMasqueradeForm({
+  hook,
+  otherActive,
+  onSaved,
+}: {
+  hook: ReturnType<typeof useTrafficMasquerade>;
+  otherActive: boolean;
+  onSaved?: () => void;
+}) {
+  const { settings, isSaving, error, saveSettings, testResult, runTest } = hook;
+
+  const [isEnabled, setIsEnabled] = useState(settings?.enabled ?? false);
+  const [sniDomain, setSniDomain] = useState(
+    settings?.sni_domain || "speedtest.net"
+  );
+  const { saved, markSaved } = useSaveFlash();
 
   const isDirty = useMemo(() => {
     if (!settings) return false;
@@ -127,8 +166,6 @@ export default function TrafficMasqueradeSettingsCard({
     [isEnabled, sniDomain, sniError, saveSettings, markSaved, error, onSaved]
   );
 
-  if (isLoading) return <MasqueradeSkeleton />;
-
   const canEnable =
     settings?.binary_installed && settings?.kernel_module_loaded && !otherActive;
   const canToggle = canEnable || settings?.enabled;
@@ -137,31 +174,33 @@ export default function TrafficMasqueradeSettingsCard({
   return (
     <Card className="@container/card">
       <CardHeader>
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle>Traffic Masquerade</CardTitle>
-            <CardDescription>
-              Make HTTPS traffic appear as a whitelisted service to carrier DPI
-              by injecting fake TLS handshakes with a spoofed domain.
-            </CardDescription>
-          </div>
-          {settings && <StatusBadge status={settings.status} />}
-        </div>
+        <CardTitle>Traffic Masquerade</CardTitle>
+        <CardDescription>
+          Make HTTPS traffic appear as a whitelisted service to carrier DPI
+          by injecting fake TLS handshakes with a spoofed domain.
+        </CardDescription>
+        {settings && (
+          <CardAction>
+            <ServiceStatusBadge status={settings.status} installed={settings.binary_installed} />
+          </CardAction>
+        )}
       </CardHeader>
       <CardContent>
-        <div className="flex items-start gap-2 p-2 rounded-md bg-warning/10 border border-warning/30 text-warning text-sm mb-4">
-          <TbAlertTriangleFilled className="size-5 mt-0.5 shrink-0" />
-          <p className="font-semibold">Experimental Feature</p>
-        </div>
+        <Alert className="border-warning/30 bg-warning/10 text-warning mb-4">
+          <TbAlertTriangleFilled />
+          <AlertTitle className="text-warning">
+            Experimental Feature
+          </AlertTitle>
+        </Alert>
 
-        <div className="flex items-start gap-2 p-2 rounded-md bg-info/10 border border-info/30 text-info text-sm mb-4">
-          <Info className="size-4 mt-0.5 shrink-0" />
-          <p>
+        <Alert className="border-info/30 bg-info/10 text-info mb-4">
+          <Info />
+          <AlertDescription className="text-info">
             This sends fake TLS handshakes with a spoofed domain name. Some
             carriers may detect this behavior and de-prioritize your connection.
             Use at your own risk.
-          </p>
-        </div>
+          </AlertDescription>
+        </Alert>
 
         {!settings?.binary_installed && (
           <Alert className="mb-4">
@@ -197,33 +236,29 @@ export default function TrafficMasqueradeSettingsCard({
         <form className="grid gap-4" onSubmit={handleSave}>
           <FieldSet>
             <FieldGroup>
-              <Field orientation="horizontal" className="w-fit">
-                <label
-                  htmlFor="masq-enabled"
-                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                >
-                  Enable Traffic Masquerade
-                </label>
-                <Switch
-                  id="masq-enabled"
-                  checked={isEnabled}
-                  onCheckedChange={setIsEnabled}
-                  disabled={!canToggle || isSaving}
-                  aria-label="Enable Traffic Masquerade"
-                />
-              </Field>
-              <p className="text-xs text-muted-foreground -mt-2">
-                Inject fake TLS handshakes to masquerade traffic as a
-                whitelisted service
-              </p>
+              <div className="space-y-1.5">
+                <Field orientation="horizontal" className="w-fit">
+                  <FieldLabel htmlFor="masq-enabled">
+                    Enable Traffic Masquerade
+                  </FieldLabel>
+                  <Switch
+                    id="masq-enabled"
+                    checked={isEnabled}
+                    onCheckedChange={setIsEnabled}
+                    disabled={!canToggle || isSaving}
+                    aria-label="Enable Traffic Masquerade"
+                  />
+                </Field>
+                <FieldDescription>
+                  Inject fake TLS handshakes to masquerade traffic as a
+                  whitelisted service
+                </FieldDescription>
+              </div>
 
               <Field>
-                <label
-                  htmlFor="sni-domain"
-                  className="text-sm font-medium leading-none"
-                >
+                <FieldLabel htmlFor="sni-domain">
                   Masquerade Domain
-                </label>
+                </FieldLabel>
                 <Input
                   id="sni-domain"
                   type="text"
@@ -233,10 +268,12 @@ export default function TrafficMasqueradeSettingsCard({
                   placeholder="speedtest.net"
                   className="max-w-sm"
                   aria-invalid={!!sniError && isEnabled}
-                  aria-describedby="sni-desc"
+                  aria-describedby={
+                    sniError && isEnabled ? "sni-error" : "sni-desc"
+                  }
                 />
                 {sniError && isEnabled ? (
-                  <p className="text-xs text-destructive">{sniError}</p>
+                  <FieldError id="sni-error">{sniError}</FieldError>
                 ) : (
                   <FieldDescription id="sni-desc">
                     Carriers typically whitelist speedtest domains to ensure
@@ -247,7 +284,7 @@ export default function TrafficMasqueradeSettingsCard({
 
               {isRunning && settings && (
                 <>
-                  <div className="h-px bg-border" />
+                  <Separator />
                   <div className="grid grid-cols-2 gap-3">
                     {[
                       { label: "Uptime", value: settings.uptime },
@@ -274,7 +311,7 @@ export default function TrafficMasqueradeSettingsCard({
 
               {isRunning && (
                 <>
-                  <div className="h-px bg-border" />
+                  <Separator />
                   <div className="space-y-3">
                     <div>
                       <h4 className="text-sm font-medium">Test Injection</h4>
@@ -285,20 +322,28 @@ export default function TrafficMasqueradeSettingsCard({
                     </div>
 
                     {testResult.status === "complete" && (
-                      <div
-                        className={`flex items-center gap-2 p-2.5 rounded-lg text-sm ${
+                      <Alert
+                        className={
                           testResult.injected
-                            ? "bg-green-500/10 border border-green-500/30 text-green-500"
-                            : "bg-destructive/10 border border-destructive/30 text-destructive"
-                        }`}
+                            ? "border-success/30 bg-success/5 text-success"
+                            : "border-destructive/30 bg-destructive/10 text-destructive"
+                        }
                       >
                         {testResult.injected ? (
-                          <CheckCircle2 className="h-4 w-4 shrink-0" />
+                          <CheckCircle2 />
                         ) : (
-                          <AlertTriangle className="h-4 w-4 shrink-0" />
+                          <AlertTriangle />
                         )}
-                        <p>{testResult.message}</p>
-                      </div>
+                        <AlertDescription
+                          className={
+                            testResult.injected
+                              ? "text-success"
+                              : "text-destructive"
+                          }
+                        >
+                          {testResult.message}
+                        </AlertDescription>
+                      </Alert>
                     )}
 
                     {testResult.status === "error" && testResult.error && (
@@ -317,12 +362,12 @@ export default function TrafficMasqueradeSettingsCard({
                     >
                       {testResult.status === "running" ? (
                         <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          <Loader2 className="animate-spin" />
                           Testing...
                         </>
                       ) : (
                         <>
-                          <Zap className="mr-2 h-4 w-4" />
+                          <Zap />
                           Test Injection
                         </>
                       )}
@@ -331,7 +376,7 @@ export default function TrafficMasqueradeSettingsCard({
                 </>
               )}
 
-              <div className="h-px bg-border" />
+              <Separator />
 
               <SaveButton
                 type="submit"

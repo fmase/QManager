@@ -4,30 +4,37 @@ import { useCallback, useState, useMemo } from "react";
 import { toast } from "sonner";
 import {
   Card,
+  CardAction,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Field, FieldGroup, FieldSet } from "@/components/ui/field";
+import {
+  Field,
+  FieldDescription,
+  FieldGroup,
+  FieldLabel,
+  FieldSet,
+} from "@/components/ui/field";
 import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { SaveButton, useSaveFlash } from "@/components/ui/save-button";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
 import {
   AlertTriangle,
   CheckCircle2,
   Download,
   Info,
   Loader2,
-  ShieldCheck,
-  ShieldOff,
   Zap,
 } from "lucide-react";
 import { TbAlertTriangleFilled } from "react-icons/tb";
 import { useVideoOptimizer } from "@/hooks/use-video-optimizer";
+import { ServiceStatusBadge } from "./service-status-badge";
 
 function VideoOptimizerSkeleton() {
   return (
@@ -45,29 +52,6 @@ function VideoOptimizerSkeleton() {
   );
 }
 
-function StatusBadge({ status }: { status: string }) {
-  if (status === "running") {
-    return (
-      <Badge
-        variant="outline"
-        className="border-green-500/30 bg-green-500/10 text-green-500"
-      >
-        <span className="mr-1.5 h-1.5 w-1.5 rounded-full bg-green-500" />
-        Active
-      </Badge>
-    );
-  }
-  return (
-    <Badge
-      variant="outline"
-      className="border-muted-foreground/30 bg-muted/50 text-muted-foreground"
-    >
-      <span className="mr-1.5 h-1.5 w-1.5 rounded-full bg-muted-foreground" />
-      Inactive
-    </Badge>
-  );
-}
-
 function ServiceStats({
   uptime,
   packets,
@@ -78,7 +62,7 @@ function ServiceStats({
   domains: number;
 }) {
   return (
-    <div className="grid grid-cols-3 gap-3">
+    <div className="grid grid-cols-1 @sm/card:grid-cols-3 gap-3">
       {[
         { label: "Uptime", value: uptime },
         { label: "Packets Processed", value: packets.toLocaleString() },
@@ -123,7 +107,7 @@ function VerificationDisplay({
         verifyResult.without_bypass &&
         verifyResult.with_bypass && (
           <div className="overflow-hidden rounded-lg border">
-            <div className="grid grid-cols-[1fr_auto_1fr]">
+            <div className="grid grid-cols-1 @sm/card:grid-cols-[1fr_auto_1fr]">
               <div className="p-4 text-center">
                 <div className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
                   Without Bypass
@@ -132,7 +116,7 @@ function VerificationDisplay({
                   className={`mt-2 text-2xl font-bold ${
                     verifyResult.without_bypass.throttled
                       ? "text-destructive"
-                      : "text-green-500"
+                      : "text-success"
                   }`}
                 >
                   {verifyResult.without_bypass.speed_mbps.toFixed(1)}
@@ -143,7 +127,7 @@ function VerificationDisplay({
                   className={`mt-1.5 text-[11px] ${
                     verifyResult.without_bypass.throttled
                       ? "border-destructive/30 bg-destructive/10 text-destructive"
-                      : "border-green-500/30 bg-green-500/10 text-green-500"
+                      : "border-success/30 bg-success/10 text-success"
                   }`}
                 >
                   {verifyResult.without_bypass.throttled
@@ -152,8 +136,10 @@ function VerificationDisplay({
                 </Badge>
               </div>
 
-              <div className="flex items-center px-2 text-muted-foreground">
-                &rarr;
+              <div className="flex items-center justify-center py-1 @sm/card:py-0 @sm/card:px-2 text-muted-foreground">
+                <span className="inline-block rotate-90 @sm/card:rotate-0">
+                  &rarr;
+                </span>
               </div>
 
               <div className="p-4 text-center">
@@ -164,7 +150,7 @@ function VerificationDisplay({
                   className={`mt-2 text-2xl font-bold ${
                     verifyResult.with_bypass.throttled
                       ? "text-destructive"
-                      : "text-green-500"
+                      : "text-success"
                   }`}
                 >
                   {verifyResult.with_bypass.speed_mbps.toFixed(1)}
@@ -175,7 +161,7 @@ function VerificationDisplay({
                   className={`mt-1.5 text-[11px] ${
                     verifyResult.with_bypass.throttled
                       ? "border-destructive/30 bg-destructive/10 text-destructive"
-                      : "border-green-500/30 bg-green-500/10 text-green-500"
+                      : "border-success/30 bg-success/10 text-success"
                   }`}
                 >
                   {verifyResult.with_bypass.throttled
@@ -186,8 +172,8 @@ function VerificationDisplay({
             </div>
 
             {verifyResult.improvement && (
-              <div className="border-t bg-green-500/5 p-2.5 text-center">
-                <span className="text-sm font-semibold text-green-500">
+              <div className="border-t bg-success/5 p-2.5 text-center">
+                <span className="text-sm font-semibold text-success">
                   {verifyResult.improvement} faster
                 </span>
                 <span className="text-xs text-muted-foreground">
@@ -214,12 +200,12 @@ function VerificationDisplay({
       >
         {isRunning ? (
           <>
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            <Loader2 className="animate-spin" />
             Running Verification...
           </>
         ) : (
           <>
-            <Zap className="mr-2 h-4 w-4" />
+            <Zap />
             Run Verification Test
           </>
         )}
@@ -245,9 +231,65 @@ export default function VideoOptimizerSettingsCard({
   otherActive = false,
   onSaved,
 }: VideoOptimizerSettingsCardProps) {
+  const { settings, isLoading, error, refresh } = hook;
+
+  if (isLoading) return <VideoOptimizerSkeleton />;
+
+  // H4: Error state — fetch failed, no settings to show
+  if (error && !settings) {
+    return (
+      <Card className="@container/card">
+        <CardHeader>
+          <CardTitle>Video Optimizer</CardTitle>
+          <CardDescription>
+            Bypass carrier video throttling on cellular connections using DPI
+            evasion.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Alert variant="destructive">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>
+              Failed to load settings.{" "}
+              <button
+                type="button"
+                className="underline underline-offset-4"
+                onClick={() => refresh()}
+              >
+                Retry
+              </button>
+            </AlertDescription>
+          </Alert>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // H3: Key-based remount — when settings change (initial load or post-save
+  // re-fetch), the form reinitializes with fresh values from useState defaults.
+  const formKey = settings ? `${settings.enabled}` : "empty";
+
+  return (
+    <VideoOptimizerForm
+      key={formKey}
+      hook={hook}
+      otherActive={otherActive}
+      onSaved={onSaved}
+    />
+  );
+}
+
+function VideoOptimizerForm({
+  hook,
+  otherActive,
+  onSaved,
+}: {
+  hook: ReturnType<typeof useVideoOptimizer>;
+  otherActive: boolean;
+  onSaved?: () => void;
+}) {
   const {
     settings,
-    isLoading,
     isSaving,
     error,
     saveSettings,
@@ -257,15 +299,8 @@ export default function VideoOptimizerSettingsCard({
     runInstall,
   } = hook;
 
-  const [isEnabled, setIsEnabled] = useState(false);
+  const [isEnabled, setIsEnabled] = useState(settings?.enabled ?? false);
   const { saved, markSaved } = useSaveFlash();
-
-  // Sync settings to local form state
-  const [formKey, setFormKey] = useState(0);
-  if (settings && formKey === 0) {
-    setIsEnabled(settings.enabled);
-    setFormKey(1);
-  }
 
   const isDirty = useMemo(() => {
     if (!settings) return false;
@@ -289,8 +324,6 @@ export default function VideoOptimizerSettingsCard({
     [isEnabled, saveSettings, markSaved, error, onSaved]
   );
 
-  if (isLoading) return <VideoOptimizerSkeleton />;
-
   const canEnable =
     settings?.binary_installed && settings?.kernel_module_loaded && !otherActive;
   // Allow toggling OFF even when canEnable is false (e.g., other feature is active)
@@ -300,31 +333,33 @@ export default function VideoOptimizerSettingsCard({
   return (
     <Card className="@container/card">
       <CardHeader>
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle>Video Optimizer</CardTitle>
-            <CardDescription>
-              Bypass carrier video throttling on cellular connections using DPI
-              evasion. Targets known video CDN hostnames only.
-            </CardDescription>
-          </div>
-          {settings && <StatusBadge status={settings.status} />}
-        </div>
+        <CardTitle>Video Optimizer</CardTitle>
+        <CardDescription>
+          Bypass carrier video throttling on cellular connections using DPI
+          evasion. Targets known video CDN hostnames only.
+        </CardDescription>
+        {settings && (
+          <CardAction>
+            <ServiceStatusBadge status={settings.status} installed={settings.binary_installed} />
+          </CardAction>
+        )}
       </CardHeader>
       <CardContent>
-        <div className="flex items-start gap-2 p-2 rounded-md bg-warning/10 border border-warning/30 text-warning text-sm mb-4">
-          <TbAlertTriangleFilled className="size-5 mt-0.5 shrink-0" />
-          <p className="font-semibold">Experimental Feature</p>
-        </div>
+        <Alert className="border-warning/30 bg-warning/10 text-warning mb-4">
+          <TbAlertTriangleFilled />
+          <AlertTitle className="text-warning">
+            Experimental Feature
+          </AlertTitle>
+        </Alert>
 
-        <div className="flex items-start gap-2 p-2 rounded-md bg-info/10 border border-info/30 text-info text-sm mb-4">
-          <Info className="size-4 mt-0.5 shrink-0" />
-          <p>
+        <Alert className="border-info/30 bg-info/10 text-info mb-4">
+          <Info />
+          <AlertDescription className="text-info">
             Some carriers (e.g., T-Mobile) may detect DPI evasion and
             de-prioritize your connection. Use the verification test to confirm
             it works on your carrier without side effects.
-          </p>
-        </div>
+          </AlertDescription>
+        </Alert>
 
         {!settings?.binary_installed && (
           <div className="mb-4 space-y-3">
@@ -345,9 +380,9 @@ export default function VideoOptimizerSettingsCard({
             </Alert>
 
             {installResult.status === "complete" && (
-              <Alert className="border-green-500/30 bg-green-500/5">
-                <CheckCircle2 className="h-4 w-4 text-green-500" />
-                <AlertDescription className="text-green-500">
+              <Alert className="border-success/30 bg-success/5">
+                <CheckCircle2 className="text-success" />
+                <AlertDescription className="text-success">
                   {installResult.message}
                   {installResult.detail && (
                     <span className="text-muted-foreground">
@@ -379,12 +414,12 @@ export default function VideoOptimizerSettingsCard({
             >
               {installResult.status === "running" ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <Loader2 className="animate-spin" />
                   {installResult.message || "Installing..."}
                 </>
               ) : (
                 <>
-                  <Download className="mr-2 h-4 w-4" />
+                  <Download />
                   Install nfqws from zapret
                 </>
               )}
@@ -416,28 +451,27 @@ export default function VideoOptimizerSettingsCard({
         <form className="grid gap-4" onSubmit={handleSave}>
           <FieldSet>
             <FieldGroup>
-              <Field orientation="horizontal" className="w-fit">
-                <label
-                  htmlFor="dpi-enabled"
-                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                >
-                  Enable Video Optimizer
-                </label>
-                <Switch
-                  id="dpi-enabled"
-                  checked={isEnabled}
-                  onCheckedChange={setIsEnabled}
-                  disabled={!canToggle || isSaving}
-                  aria-label="Enable Video Optimizer"
-                />
-              </Field>
-              <p className="text-xs text-muted-foreground -mt-2">
-                Apply DPI evasion to video traffic on the cellular interface
-              </p>
+              <div className="space-y-1.5">
+                <Field orientation="horizontal" className="w-fit">
+                  <FieldLabel htmlFor="dpi-enabled">
+                    Enable Video Optimizer
+                  </FieldLabel>
+                  <Switch
+                    id="dpi-enabled"
+                    checked={isEnabled}
+                    onCheckedChange={setIsEnabled}
+                    disabled={!canToggle || isSaving}
+                    aria-label="Enable Video Optimizer"
+                  />
+                </Field>
+                <FieldDescription>
+                  Apply DPI evasion to video traffic on the cellular interface
+                </FieldDescription>
+              </div>
 
               {isRunning && settings && (
                 <>
-                  <div className="h-px bg-border" />
+                  <Separator />
                   <ServiceStats
                     uptime={settings.uptime}
                     packets={settings.packets_processed}
@@ -446,7 +480,7 @@ export default function VideoOptimizerSettingsCard({
                 </>
               )}
 
-              <div className="h-px bg-border" />
+              <Separator />
 
               <VerificationDisplay
                 verifyResult={verifyResult}
@@ -455,7 +489,7 @@ export default function VideoOptimizerSettingsCard({
                 serviceRunning={isRunning}
               />
 
-              <div className="h-px bg-border" />
+              <Separator />
 
               <SaveButton
                 type="submit"
