@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   Card,
   CardContent,
@@ -86,23 +86,22 @@ export default function TestInjectionCard({
   runTest,
   serviceRunning,
 }: TestInjectionCardProps) {
-  const [currentStep, setCurrentStep] = useState<TestStep>("idle");
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [activeStep, setActiveStep] = useState<TestStep>("idle");
+
+  // Only "idle" when not running — derived, not set in effect
+  const currentStep =
+    testResult.status === "running" ? activeStep : "idle";
 
   // Advance through visual steps when test is running
   useEffect(() => {
-    if (testResult.status !== "running") {
-      setCurrentStep("idle");
-      return;
-    }
+    if (testResult.status !== "running") return;
 
-    // Walk through steps with cumulative delays
-    let cumulativeDelay = 0;
     const timers: ReturnType<typeof setTimeout>[] = [];
+    let cumulativeDelay = 0;
 
     for (const step of STEPS) {
       const timer = setTimeout(() => {
-        setCurrentStep(step.key);
+        setActiveStep(step.key);
       }, cumulativeDelay);
       timers.push(timer);
       cumulativeDelay += step.duration;
@@ -110,15 +109,9 @@ export default function TestInjectionCard({
 
     return () => {
       timers.forEach(clearTimeout);
+      setActiveStep("idle");
     };
   }, [testResult.status]);
-
-  // Clean up timer ref on unmount
-  useEffect(() => {
-    return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
-    };
-  }, []);
 
   const handleRunTest = useCallback(() => {
     runTest();
