@@ -10,13 +10,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Field,
-  FieldDescription,
-  FieldGroup,
-  FieldLabel,
-  FieldSet,
-} from "@/components/ui/field";
+import { Field, FieldGroup, FieldLabel, FieldSet } from "@/components/ui/field";
 import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -351,7 +345,9 @@ function VideoOptimizerForm({
         ) : (
           <Alert className="border-warning/30 bg-warning/10 text-warning mb-4">
             <TbAlertTriangleFilled />
-            <AlertTitle className="text-warning">Experimental Feature</AlertTitle>
+            <AlertTitle className="text-warning">
+              Experimental Feature
+            </AlertTitle>
           </Alert>
         )}
 
@@ -481,15 +477,16 @@ function VideoOptimizerForm({
               )}
 
               <Separator />
-
-              <SaveButton
-                type="submit"
-                isSaving={isSaving}
-                saved={saved}
-                disabled={!isDirty || !canToggle}
-              />
             </FieldGroup>
           </FieldSet>
+          <div>
+            <SaveButton
+              type="submit"
+              isSaving={isSaving}
+              saved={saved}
+              disabled={!isDirty || !canToggle}
+            />
+          </div>
         </form>
       </CardContent>
     </Card>

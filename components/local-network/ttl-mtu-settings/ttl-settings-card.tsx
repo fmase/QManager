@@ -10,10 +10,15 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 
-import { Field, FieldError, FieldGroup, FieldLabel, FieldSet } from "@/components/ui/field";
+import {
+  Field,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+  FieldSet,
+} from "@/components/ui/field";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { SaveButton, useSaveFlash } from "@/components/ui/save-button";
@@ -38,56 +43,105 @@ const TTLSettingsCard = () => {
     isLoading: profilesLoading,
   } = useSimProfiles();
 
-  const { saved, markSaved } = useSaveFlash();
+  // --- SIM Profile override check (async) ------------------------------------
+  const [profileOverride, setProfileOverride] = useState<{
+    profileId: string;
+    name: string;
+  } | null>(null);
 
-  // --- Local form state -------------------------------------------------------
-  const [isEnabled, setIsEnabled] = useState(false);
-  const [ttlValue, setTtlValue] = useState("");
-  const [hlValue, setHlValue] = useState("");
-
-  // --- SIM Profile override check --------------------------------------------
-  const [profileName, setProfileName] = useState<string | null>(null);
-  const [isProfileControlled, setIsProfileControlled] = useState(false);
-
-  // When data arrives, sync local form state
   useEffect(() => {
-    if (data) {
-      setIsEnabled(data.isEnabled);
-      setTtlValue(data.ttl > 0 ? String(data.ttl) : "");
-      setHlValue(data.hl > 0 ? String(data.hl) : "");
-    }
-  }, [data]);
+    if (!activeProfileId) return;
 
-  // Check active profile for TTL/HL override
-  useEffect(() => {
     let cancelled = false;
-
-    const checkProfile = async () => {
-      if (!activeProfileId) {
-        setIsProfileControlled(false);
-        setProfileName(null);
-        return;
-      }
-
+    (async () => {
       const profile = await getProfile(activeProfileId);
       if (cancelled) return;
 
       if (profile && (profile.settings.ttl > 0 || profile.settings.hl > 0)) {
-        setIsProfileControlled(true);
-        setProfileName(profile.name);
+        setProfileOverride({ profileId: activeProfileId, name: profile.name });
       } else {
-        setIsProfileControlled(false);
-        setProfileName(null);
+        setProfileOverride(null);
       }
-    };
+    })();
 
-    checkProfile();
     return () => {
       cancelled = true;
     };
   }, [activeProfileId, getProfile]);
 
-  // --- Form is dirty check ---------------------------------------------------
+  // Derive — no sync setState needed
+  const isProfileControlled =
+    !!activeProfileId && profileOverride?.profileId === activeProfileId;
+  const profileName = isProfileControlled ? profileOverride.name : null;
+
+  // --- Render ----------------------------------------------------------------
+  const pageLoading = isLoading || profilesLoading;
+
+  if (pageLoading) {
+    return (
+      <Card className="@container/card">
+        <CardHeader>
+          <CardTitle>TTL &amp; Hop Limit Configuration</CardTitle>
+          <CardDescription>
+            Set custom TTL (IPv4) and Hop Limit (IPv6) values applied to
+            outbound packets on the cellular interface.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-4">
+            <Skeleton className="h-8 w-48" />
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Key-based remount — form reinitializes when data changes
+  const formKey = data
+    ? `${data.isEnabled}-${data.ttl}-${data.hl}`
+    : "empty";
+
+  return (
+    <TTLForm
+      key={formKey}
+      data={data}
+      isSaving={isSaving}
+      error={error}
+      saveTtlHl={saveTtlHl}
+      isProfileControlled={isProfileControlled}
+      profileName={profileName}
+    />
+  );
+};
+
+function TTLForm({
+  data,
+  isSaving,
+  error,
+  saveTtlHl,
+  isProfileControlled,
+  profileName,
+}: {
+  data: ReturnType<typeof useTtlSettings>["data"];
+  isSaving: boolean;
+  error: string | null;
+  saveTtlHl: ReturnType<typeof useTtlSettings>["saveTtlHl"];
+  isProfileControlled: boolean;
+  profileName: string | null;
+}) {
+  const { saved, markSaved } = useSaveFlash();
+
+  // Form state initialized from data — no sync effect needed
+  const [isEnabled, setIsEnabled] = useState(data?.isEnabled ?? false);
+  const [ttlValue, setTtlValue] = useState(
+    data && data.ttl > 0 ? String(data.ttl) : "",
+  );
+  const [hlValue, setHlValue] = useState(
+    data && data.hl > 0 ? String(data.hl) : "",
+  );
+
   const isDirty = useMemo(() => {
     if (!data) return false;
     const currentTtl = data.ttl > 0 ? String(data.ttl) : "";
@@ -99,22 +153,18 @@ const TTLSettingsCard = () => {
     );
   }, [data, ttlValue, hlValue, isEnabled]);
 
-  // --- Handle toggle ---------------------------------------------------------
   const handleToggle = useCallback((checked: boolean) => {
     setIsEnabled(checked);
     if (!checked) {
-      // Turning off = clear values (will send 0/0 to backend)
       setTtlValue("");
       setHlValue("");
     }
   }, []);
 
-  // --- Handle save -----------------------------------------------------------
   const handleSave = useCallback(async () => {
     const ttl = isEnabled ? parseInt(ttlValue || "0", 10) : 0;
     const hl = isEnabled ? parseInt(hlValue || "0", 10) : 0;
 
-    // Validate
     if (isEnabled && ttl === 0 && hl === 0) return;
 
     const success = await saveTtlHl(ttl, hl);
@@ -128,10 +178,7 @@ const TTLSettingsCard = () => {
     } else {
       toast.error(error || "Failed to apply TTL/Hop Limit settings");
     }
-  }, [isEnabled, ttlValue, hlValue, saveTtlHl, error]);
-
-  // --- Render ----------------------------------------------------------------
-  const pageLoading = isLoading || profilesLoading;
+  }, [isEnabled, ttlValue, hlValue, saveTtlHl, error, markSaved]);
 
   return (
     <Card className="@container/card">
@@ -143,8 +190,7 @@ const TTLSettingsCard = () => {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        {/* SIM Profile Override Banner */}
-        {isProfileControlled && !pageLoading && (
+        {isProfileControlled && (
           <Alert className="mb-4">
             <InfoIcon className="size-4" />
             <AlertDescription>
@@ -157,88 +203,81 @@ const TTLSettingsCard = () => {
           </Alert>
         )}
 
-        {pageLoading ? (
-          <div className="grid gap-4">
-            <Skeleton className="h-8 w-48" />
-            <Skeleton className="h-10 w-full" />
-            <Skeleton className="h-10 w-full" />
-          </div>
-        ) : (
-          <form
-            className="grid gap-4"
-            onSubmit={(e) => {
-              e.preventDefault();
-              handleSave();
-            }}
-          >
-            <FieldSet disabled={isProfileControlled}>
-              <FieldGroup>
-                <div className="grid gap-2">
-                  <Field orientation="horizontal" className="w-fit">
-                    <FieldLabel htmlFor="ttl-setting">
-                      Enable Custom TTL/HL
-                    </FieldLabel>
-                    <Switch
-                      id="ttl-setting"
-                      checked={isEnabled}
-                      onCheckedChange={handleToggle}
-                      disabled={isProfileControlled}
-                    />
-                  </Field>
-                </div>
-
-                <Field>
-                  <FieldLabel htmlFor="ttl-value">TTL Value</FieldLabel>
-                  <Input
-                    id="ttl-value"
-                    type="number"
-                    min="1"
-                    max="255"
-                    placeholder="e.g. 64"
-                    className="w-full"
-                    value={ttlValue}
-                    onChange={(e) => setTtlValue(e.target.value)}
-                    disabled={!isEnabled || isProfileControlled}
-                  />
-                </Field>
-
-                <Field>
-                  <FieldLabel htmlFor="hl-value">
-                    Hop Limit (HL) Value
+        <form
+          className="grid gap-4"
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleSave();
+          }}
+        >
+          <FieldSet disabled={isProfileControlled}>
+            <FieldGroup>
+              <div className="grid gap-2">
+                <Field orientation="horizontal" className="w-fit">
+                  <FieldLabel htmlFor="ttl-setting">
+                    Enable Custom TTL/HL
                   </FieldLabel>
-                  <Input
-                    id="hl-value"
-                    type="number"
-                    min="1"
-                    max="255"
-                    placeholder="e.g. 64"
-                    className="w-full"
-                    value={hlValue}
-                    onChange={(e) => setHlValue(e.target.value)}
-                    disabled={!isEnabled || isProfileControlled}
+                  <Switch
+                    id="ttl-setting"
+                    checked={isEnabled}
+                    onCheckedChange={handleToggle}
+                    disabled={isProfileControlled}
                   />
                 </Field>
+              </div>
 
-                {isEnabled && !ttlValue && !hlValue && (
-                  <FieldError id="ttl-hl-error">
-                    Enter at least a TTL or Hop Limit value
-                  </FieldError>
-                )}
-
-                <SaveButton
-                  type="submit"
-                  isSaving={isSaving}
-                  saved={saved}
-                  label="Apply"
-                  disabled={isProfileControlled || !isDirty}
+              <Field>
+                <FieldLabel htmlFor="ttl-value">TTL Value</FieldLabel>
+                <Input
+                  id="ttl-value"
+                  type="number"
+                  min="1"
+                  max="255"
+                  placeholder="e.g. 64"
+                  className="w-full"
+                  value={ttlValue}
+                  onChange={(e) => setTtlValue(e.target.value)}
+                  disabled={!isEnabled || isProfileControlled}
                 />
-              </FieldGroup>
-            </FieldSet>
-          </form>
-        )}
+              </Field>
+
+              <Field>
+                <FieldLabel htmlFor="hl-value">
+                  Hop Limit (HL) Value
+                </FieldLabel>
+                <Input
+                  id="hl-value"
+                  type="number"
+                  min="1"
+                  max="255"
+                  placeholder="e.g. 64"
+                  className="w-full"
+                  value={hlValue}
+                  onChange={(e) => setHlValue(e.target.value)}
+                  disabled={!isEnabled || isProfileControlled}
+                />
+              </Field>
+
+              {isEnabled && !ttlValue && !hlValue && (
+                <FieldError id="ttl-hl-error">
+                  Enter at least a TTL or Hop Limit value
+                </FieldError>
+              )}
+            </FieldGroup>
+          </FieldSet>
+          <div>
+            <SaveButton
+              type="submit"
+              isSaving={isSaving}
+              saved={saved}
+              label="Apply"
+              disabled={isProfileControlled || !isDirty}
+            />
+          </div>
+        </form>
       </CardContent>
     </Card>
   );
-};
+}
 
 export default TTLSettingsCard;
