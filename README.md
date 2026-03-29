@@ -6,7 +6,7 @@
   <p>Visualize, configure, and optimize your cellular modem's performance with an intuitive web interface</p>
 
   ![Version](https://img.shields.io/badge/version-v0.1.8-blue?style=flat-square)
-  ![License](https://img.shields.io/badge/license-MIT-green?style=flat-square)
+  ![License](https://img.shields.io/badge/license-MIT%20%2B%20Commons%20Clause-green?style=flat-square)
   ![Platform](https://img.shields.io/badge/platform-OpenWRT-orange?style=flat-square)
   ![Next.js](https://img.shields.io/badge/Next.js-16-black?style=flat-square)
   ![React](https://img.shields.io/badge/React-19-61DAFB?style=flat-square)
@@ -274,7 +274,15 @@ QManager runs 11 init.d services on the device:
 
 ## License
 
-This project is licensed under the [MIT License](LICENSE) — see the LICENSE file for details.
+This project is licensed under the [MIT License with Commons Clause](LICENSE).
+
+**You are free to:** use, modify, fork, and share QManager for personal and non-commercial purposes.
+
+**You may not:** sell QManager, bundle it into a commercial product, or offer it as a paid service — including forked versions.
+
+### Commercial Licensing
+
+If you want to use QManager in a commercial product, OEM device, or reseller offering, commercial licenses are available. Contact [DrDolomite](https://github.com/dr-dolomite) directly to discuss terms.
 
 ---
 
