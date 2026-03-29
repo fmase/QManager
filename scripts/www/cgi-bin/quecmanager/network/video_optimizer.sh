@@ -360,6 +360,37 @@ POST)
         cgi_success
         ;;
 
+    uninstall)
+        # Safety: refuse if nfqws service is running
+        if [ "$(dpi_get_status)" = "running" ]; then
+            cgi_error "service_running" "Disable the service before uninstalling"
+            exit 0
+        fi
+
+        qlog_info "Uninstalling nfqws binary"
+
+        # Stop service and clean up nftables rules
+        [ -x /etc/init.d/qmanager_dpi ] && /etc/init.d/qmanager_dpi stop >/dev/null 2>&1
+
+        # Disable both features in UCI
+        uci -q set quecmanager.video_optimizer.enabled='0'
+        uci -q set quecmanager.traffic_masquerade.enabled='0'
+        uci commit quecmanager 2>/dev/null
+
+        # Remove binary
+        rm -f /usr/bin/nfqws
+
+        # Verify removal
+        if [ -x /usr/bin/nfqws ]; then
+            qlog_error "nfqws binary still present after removal"
+            cgi_error "uninstall_failed" "Failed to remove nfqws binary"
+            exit 0
+        fi
+
+        qlog_info "nfqws uninstalled successfully"
+        cgi_success
+        ;;
+
     *)
         cgi_error "invalid_action" "Unknown action: $action"
         ;;

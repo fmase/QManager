@@ -23,7 +23,7 @@ export default function VideoOptimizerComponent() {
           hook={videoOptimizer}
           otherActive={masqActive}
         />
-        <CdnHostlistCard />
+        {videoOptimizer.settings?.binary_installed && <CdnHostlistCard />}
       </div>
     </div>
   );

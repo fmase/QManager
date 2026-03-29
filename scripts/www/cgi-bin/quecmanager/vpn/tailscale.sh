@@ -224,9 +224,72 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
         exit 0
     fi
 
-    # All POST actions require tailscale to be installed
+    # -------------------------------------------------------------------------
+    # action: install — install tailscale via opkg (background)
+    # -------------------------------------------------------------------------
+    if [ "$ACTION" = "install" ]; then
+        TS_INSTALL_RESULT="/tmp/qmanager_tailscale_install.json"
+        TS_INSTALL_PID="/tmp/qmanager_tailscale_install.pid"
+
+        # Check if already running
+        if [ -f "$TS_INSTALL_PID" ] && kill -0 "$(cat "$TS_INSTALL_PID" 2>/dev/null)" 2>/dev/null; then
+            cgi_error "already_running" "Installation already in progress"
+            exit 0
+        fi
+
+        # Already installed?
+        if is_installed; then
+            cgi_error "already_installed" "Tailscale is already installed"
+            exit 0
+        fi
+
+        qlog_info "Starting Tailscale installation via opkg"
+
+        # Spawn background installer
+        (
+            echo $$ > "$TS_INSTALL_PID"
+            trap 'rm -f "$TS_INSTALL_PID"' EXIT
+
+            printf '{"success":true,"status":"running","message":"Updating package lists..."}' > "$TS_INSTALL_RESULT"
+            if ! opkg update >/dev/null 2>&1; then
+                printf '{"success":false,"status":"error","message":"Failed to update package lists","detail":"Check internet connection and opkg feeds"}' > "$TS_INSTALL_RESULT"
+                exit 1
+            fi
+
+            printf '{"success":true,"status":"running","message":"Installing tailscale..."}' > "$TS_INSTALL_RESULT"
+            if ! opkg install tailscale tailscaled >/dev/null 2>&1; then
+                printf '{"success":false,"status":"error","message":"opkg install failed","detail":"Package may not be available for this architecture"}' > "$TS_INSTALL_RESULT"
+                exit 1
+            fi
+
+            # Verify
+            if command -v tailscale >/dev/null 2>&1; then
+                printf '{"success":true,"status":"complete","message":"Tailscale installed successfully"}' > "$TS_INSTALL_RESULT"
+            else
+                printf '{"success":false,"status":"error","message":"Package installed but binary not found"}' > "$TS_INSTALL_RESULT"
+            fi
+        ) </dev/null >/dev/null 2>&1 &
+
+        cgi_success
+        exit 0
+    fi
+
+    # -------------------------------------------------------------------------
+    # action: install_status — poll install progress
+    # -------------------------------------------------------------------------
+    if [ "$ACTION" = "install_status" ]; then
+        TS_INSTALL_RESULT="/tmp/qmanager_tailscale_install.json"
+        if [ -f "$TS_INSTALL_RESULT" ]; then
+            cat "$TS_INSTALL_RESULT"
+        else
+            printf '{"success":true,"status":"idle"}'
+        fi
+        exit 0
+    fi
+
+    # All remaining POST actions require tailscale to be installed
     if ! is_installed; then
-        cgi_error "not_installed" "Tailscale is not installed. Install via: opkg update && opkg install luci-app-tailscale"
+        cgi_error "not_installed" "Tailscale is not installed"
         exit 0
     fi
 
@@ -406,6 +469,40 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
                 exit 0
                 ;;
         esac
+        cgi_success
+        exit 0
+    fi
+
+    # -------------------------------------------------------------------------
+    # action: uninstall — remove tailscale packages from the device
+    # -------------------------------------------------------------------------
+    if [ "$ACTION" = "uninstall" ]; then
+        # Safety: refuse if daemon is still running
+        if is_daemon_running; then
+            cgi_error "service_running" "Stop the Tailscale service before uninstalling"
+            exit 0
+        fi
+
+        qlog_info "Uninstalling Tailscale packages"
+
+        # Disable boot entry if init script exists
+        [ -x /etc/init.d/tailscale ] && /etc/init.d/tailscale disable >/dev/null 2>&1
+
+        # Remove packages
+        opkg remove tailscale tailscaled 2>/dev/null
+
+        # Clean up state files
+        rm -rf /var/lib/tailscale/
+        rm -f /tmp/qmanager_tailscale_auth_url /tmp/qmanager_tailscale_up_output /tmp/qmanager_tailscale_up_pid
+
+        # Verify removal
+        if command -v tailscale >/dev/null 2>&1; then
+            qlog_error "Tailscale binary still present after opkg remove"
+            cgi_error "uninstall_failed" "Failed to remove Tailscale packages"
+            exit 0
+        fi
+
+        qlog_info "Tailscale uninstalled successfully"
         cgi_success
         exit 0
     fi

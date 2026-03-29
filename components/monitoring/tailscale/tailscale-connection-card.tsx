@@ -40,6 +40,7 @@ import {
   CheckCircle2Icon,
   MinusCircleIcon,
   LogInIcon,
+  Trash2Icon,
 } from "lucide-react";
 import type { UseTailscaleReturn } from "@/hooks/use-tailscale";
 
@@ -75,6 +76,8 @@ export function TailscaleConnectionCard({
   isConnecting,
   isDisconnecting,
   isTogglingService,
+  isUninstalling,
+  installResult,
   error,
   connect,
   disconnect,
@@ -82,6 +85,8 @@ export function TailscaleConnectionCard({
   startService,
   stopService,
   setBootEnabled,
+  uninstall,
+  runInstall,
   refresh,
 }: TailscaleConnectionCardProps) {
   // --- Loading skeleton ------------------------------------------------------
@@ -136,6 +141,9 @@ export function TailscaleConnectionCard({
 
   // --- Not Installed ---------------------------------------------------------
   if (status && !status.installed) {
+    const installCmd =
+      status.install_hint || "opkg update && opkg install tailscale tailscaled";
+
     return (
       <Card className="@container/card">
         <CardHeader>
@@ -152,23 +160,79 @@ export function TailscaleConnectionCard({
                 Tailscale is not installed on this device.
               </p>
               <p className="text-xs text-muted-foreground">
-                Install it via the terminal, then check again.
+                Install automatically or run the command manually.
               </p>
             </div>
+
+            {installResult.status === "complete" && (
+              <Alert className="border-success/30 bg-success/5">
+                <CheckCircle2Icon className="text-success" />
+                <AlertDescription className="text-success">
+                  <p>{installResult.message}</p>
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {installResult.status === "error" && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  <p>
+                    {installResult.message}
+                    {installResult.detail && (
+                      <span className="block text-xs mt-1 opacity-80">
+                        {installResult.detail}
+                      </span>
+                    )}
+                  </p>
+                </AlertDescription>
+              </Alert>
+            )}
+
+            <div className="flex items-center gap-2">
+              <Button
+                onClick={runInstall}
+                disabled={installResult.status === "running"}
+              >
+                {installResult.status === "running" ? (
+                  <>
+                    <Loader2 className="size-4 animate-spin" />
+                    {installResult.message || "Installing..."}
+                  </>
+                ) : (
+                  <>
+                    <PackageIcon className="size-4" />
+                    Install Tailscale
+                  </>
+                )}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => refresh()}
+                disabled={installResult.status === "running"}
+              >
+                <RefreshCcwIcon className="size-3.5" />
+                Check Again
+              </Button>
+            </div>
+
+            <div className="w-full flex items-center gap-3 text-xs text-muted-foreground">
+              <div className="h-px flex-1 bg-border" />
+              <span>or install manually</span>
+              <div className="h-px flex-1 bg-border" />
+            </div>
+
             <button
               type="button"
               className="bg-muted px-4 py-2.5 rounded-md text-xs font-mono text-muted-foreground select-all max-w-full overflow-x-auto text-left cursor-pointer hover:bg-muted/80 transition-colors"
               onClick={async () => {
-                const cmd =
-                  status.install_hint ||
-                  "opkg update && opkg install luci-app-tailscale";
                 try {
-                  await navigator.clipboard.writeText(cmd);
+                  await navigator.clipboard.writeText(installCmd);
                   toast.success("Copied to clipboard");
                 } catch {
-                  // Fallback for older browsers / non-HTTPS contexts
                   const textarea = document.createElement("textarea");
-                  textarea.value = cmd;
+                  textarea.value = installCmd;
                   textarea.style.position = "fixed";
                   textarea.style.opacity = "0";
                   document.body.appendChild(textarea);
@@ -180,13 +244,8 @@ export function TailscaleConnectionCard({
               }}
               title="Click to copy"
             >
-              {status.install_hint ||
-                "opkg update && opkg install luci-app-tailscale"}
+              {installCmd}
             </button>
-            <Button variant="outline" size="sm" onClick={() => refresh()}>
-              <RefreshCcwIcon className="size-3.5" />
-              Check Again
-            </Button>
           </div>
         </CardContent>
       </Card>
@@ -275,7 +334,7 @@ export function TailscaleConnectionCard({
             </div>
             {bootToggle}
             <Separator />
-            <div className="pt-1">
+            <div className="flex items-center gap-2 flex-wrap pt-1">
               <Button
                 onClick={async () => {
                   const success = await startService();
@@ -296,6 +355,53 @@ export function TailscaleConnectionCard({
                   "Start Service"
                 )}
               </Button>
+
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    disabled={isUninstalling}
+                  >
+                    {isUninstalling ? (
+                      <>
+                        <Loader2 className="size-4 animate-spin" />
+                        Removing…
+                      </>
+                    ) : (
+                      <>
+                        <Trash2Icon className="size-4" />
+                        Uninstall
+                      </>
+                    )}
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Uninstall Tailscale?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This will remove the Tailscale packages and all connection
+                      state from this device. You will need to reinstall and
+                      re-authenticate to use Tailscale again.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={async () => {
+                        const success = await uninstall();
+                        if (success) {
+                          toast.success("Tailscale uninstalled");
+                        } else {
+                          toast.error("Failed to uninstall Tailscale");
+                        }
+                      }}
+                    >
+                      Uninstall
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </div>
           </div>
         </CardContent>

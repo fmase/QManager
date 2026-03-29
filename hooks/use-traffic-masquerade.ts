@@ -166,14 +166,44 @@ export function useTrafficMasquerade() {
     };
   }, [settings?.status, fetchSettings]);
 
+  const [isUninstalling, setIsUninstalling] = useState(false);
+
+  const runUninstall = useCallback(async (): Promise<boolean> => {
+    setIsUninstalling(true);
+    try {
+      const response = await authFetch(API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "uninstall" }),
+      });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const data = await response.json();
+      if (!data.success) {
+        setError(data.detail || "Failed to uninstall");
+        return false;
+      }
+      await fetchSettings(true);
+      return true;
+    } catch (err) {
+      if (mountedRef.current) {
+        setError(err instanceof Error ? err.message : "Failed to uninstall");
+      }
+      return false;
+    } finally {
+      if (mountedRef.current) setIsUninstalling(false);
+    }
+  }, [fetchSettings]);
+
   return {
     settings,
     isLoading,
     isSaving,
+    isUninstalling,
     error,
     saveSettings,
     testResult,
     runTest,
+    runUninstall,
     refresh: fetchSettings,
   };
 }

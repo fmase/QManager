@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useRef, useEffect } from "react";
 import { authFetch } from "@/lib/auth-fetch";
+import type { InstallResult } from "@/types/video-optimizer";
 
 // =============================================================================
 // useTailscale — Fetch & Action Hook for Tailscale VPN Management
@@ -67,6 +68,8 @@ export interface UseTailscaleReturn {
   isConnecting: boolean;
   isDisconnecting: boolean;
   isTogglingService: boolean;
+  isUninstalling: boolean;
+  installResult: InstallResult;
   error: string | null;
   connect: () => Promise<boolean>;
   disconnect: () => Promise<boolean>;
@@ -74,6 +77,8 @@ export interface UseTailscaleReturn {
   startService: () => Promise<boolean>;
   stopService: () => Promise<boolean>;
   setBootEnabled: (enabled: boolean) => Promise<boolean>;
+  uninstall: () => Promise<boolean>;
+  runInstall: () => Promise<void>;
   refresh: () => void;
 }
 
@@ -85,6 +90,12 @@ export function useTailscale(): UseTailscaleReturn {
   const [isConnecting, setIsConnecting] = useState(false);
   const [isDisconnecting, setIsDisconnecting] = useState(false);
   const [isTogglingService, setIsTogglingService] = useState(false);
+  const [isUninstalling, setIsUninstalling] = useState(false);
+  const [installResult, setInstallResult] = useState<InstallResult>({
+    success: true,
+    status: "idle",
+  });
+  const installPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const mountedRef = useRef(true);
@@ -94,6 +105,7 @@ export function useTailscale(): UseTailscaleReturn {
     mountedRef.current = true;
     return () => {
       mountedRef.current = false;
+      if (installPollRef.current) clearInterval(installPollRef.current);
     };
   }, []);
 
@@ -330,12 +342,82 @@ export function useTailscale(): UseTailscaleReturn {
     [postAction, fetchStatus],
   );
 
+  // ---------------------------------------------------------------------------
+  // Install via opkg
+  // ---------------------------------------------------------------------------
+  const stopInstallPolling = useCallback(() => {
+    if (installPollRef.current) {
+      clearInterval(installPollRef.current);
+      installPollRef.current = null;
+    }
+  }, []);
+
+  const pollInstallStatus = useCallback(async () => {
+    try {
+      const json = await postAction({ action: "install_status" });
+      if (!mountedRef.current) return;
+      setInstallResult(json as unknown as InstallResult);
+      const r = json as unknown as InstallResult;
+      if (r.status === "complete" || r.status === "error") {
+        stopInstallPolling();
+        await fetchStatus(true);
+      }
+    } catch {
+      // Silently retry on next poll
+    }
+  }, [postAction, stopInstallPolling, fetchStatus]);
+
+  const runInstall = useCallback(async () => {
+    setInstallResult({ success: true, status: "running", message: "Starting installation..." });
+    try {
+      await authFetch(CGI_ENDPOINT, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "install" }),
+      });
+      installPollRef.current = setInterval(pollInstallStatus, 2000);
+    } catch (err) {
+      if (mountedRef.current) {
+        setInstallResult({
+          success: false,
+          status: "error",
+          message: err instanceof Error ? err.message : "Failed to start installation",
+        });
+      }
+    }
+  }, [pollInstallStatus]);
+
+  const uninstall = useCallback(async (): Promise<boolean> => {
+    setIsUninstalling(true);
+    try {
+      const json = await postAction({ action: "uninstall" });
+      if (!mountedRef.current) return false;
+      if (!json.success) {
+        setError(json.detail || "Failed to uninstall");
+        return false;
+      }
+      await fetchStatus(true);
+      return true;
+    } catch (err) {
+      if (mountedRef.current) {
+        setError(
+          err instanceof Error ? err.message : "Failed to uninstall",
+        );
+      }
+      return false;
+    } finally {
+      if (mountedRef.current) setIsUninstalling(false);
+    }
+  }, [postAction, fetchStatus]);
+
   return {
     status,
     isLoading,
     isConnecting,
     isDisconnecting,
     isTogglingService,
+    isUninstalling,
+    installResult,
     error,
     connect,
     disconnect,
@@ -343,6 +425,8 @@ export function useTailscale(): UseTailscaleReturn {
     startService,
     stopService,
     setBootEnabled,
+    uninstall,
+    runInstall,
     refresh: fetchStatus,
   };
 }

@@ -14,6 +14,17 @@ import { Field, FieldGroup, FieldLabel, FieldSet } from "@/components/ui/field";
 import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { SaveButton, useSaveFlash } from "@/components/ui/save-button";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -25,6 +36,7 @@ import {
   Loader2,
   PackageIcon,
   RefreshCcwIcon,
+  Trash2Icon,
   Zap,
 } from "lucide-react";
 import { TbAlertTriangleFilled } from "react-icons/tb";
@@ -383,10 +395,13 @@ function VideoOptimizerForm({
   const {
     settings,
     isSaving,
+    isUninstalling,
     error,
     saveSettings,
     verifyResult,
     runVerification,
+    runUninstall,
+    refresh,
   } = hook;
 
   const [isEnabled, setIsEnabled] = useState(settings?.enabled ?? false);
@@ -520,6 +535,69 @@ function VideoOptimizerForm({
             />
           </div>
         </form>
+
+        {!isRunning && (
+          <>
+            <Separator className="mt-4" />
+            <div className="flex items-center justify-between pt-4">
+              <div>
+                <p className="text-sm font-medium">Remove nfqws</p>
+                <p className="text-xs text-muted-foreground">
+                  Uninstall the nfqws binary from this device.
+                </p>
+              </div>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    disabled={isUninstalling || isRunning}
+                  >
+                    {isUninstalling ? (
+                      <>
+                        <Loader2 className="size-4 animate-spin" />
+                        Removing…
+                      </>
+                    ) : (
+                      <>
+                        <Trash2Icon className="size-4" />
+                        Uninstall
+                      </>
+                    )}
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Uninstall nfqws?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This will remove the nfqws binary and disable both Video
+                      Optimizer and Traffic Masquerade. You can reinstall it
+                      later from this page.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={async () => {
+                        const success = await runUninstall();
+                        if (success) {
+                          toast.success("nfqws uninstalled");
+                          refresh();
+                        } else {
+                          toast.error(
+                            error || "Failed to uninstall nfqws",
+                          );
+                        }
+                      }}
+                    >
+                      Uninstall
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
+          </>
+        )}
       </CardContent>
     </Card>
   );
