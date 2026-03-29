@@ -167,7 +167,7 @@ const NeighbourCellScanner = () => {
       {/* Lock confirmation dialog */}
       <AlertDialog
         open={!!lockTarget}
-        onOpenChange={(open) => !open && setLockTarget(null)}
+        onOpenChange={(open) => !open && !isLocking && setLockTarget(null)}
       >
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -185,7 +185,7 @@ const NeighbourCellScanner = () => {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isLocking}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmLockCell} disabled={isLocking}>
+            <AlertDialogAction onClick={(e) => { e.preventDefault(); confirmLockCell(); }} disabled={isLocking}>
               {isLocking ? (
                 <>
                   <LoaderCircleIcon className="size-4 animate-spin" />

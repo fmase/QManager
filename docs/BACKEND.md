@@ -201,6 +201,47 @@ Ethernet negotiation helpers:
 
 AT command execution helpers for CGI scripts that need to send AT commands.
 
+### dpi_helper.sh
+
+Video Optimizer helper functions. Guard-loaded (`_DPI_HELPER_LOADED`).
+
+**Functions:**
+
+| Function | Description |
+|----------|-------------|
+| `dpi_check_binary()` | Verify nfqws binary exists |
+| `dpi_check_kmod()` | Check NFQUEUE support (built-in via `/proc/config.gz` or loadable module) |
+| `dpi_check_libs()` | Verify shared library dependencies |
+| `dpi_insert_rules(iface)` | Add nftables NFQUEUE rules (queue 200) |
+| `dpi_remove_rules()` | Remove nftables NFQUEUE rules by comment (`qmanager_dpi`) |
+| `dpi_get_status()` | Return running/stopped |
+| `dpi_get_uptime()` | Calculate from PID timestamp |
+| `dpi_get_packet_count()` | Read nftables counter |
+| `dpi_get_domain_count()` | Count hostlist entries |
+
+### masq_helper.sh
+
+Traffic Masquerade helper functions. Guard-loaded (`_MASQ_HELPER_LOADED`). Sources `dpi_helper.sh` for shared constants and prerequisite checks.
+
+**Constants:**
+
+| Constant | Value | Description |
+|----------|-------|-------------|
+| `MASQ_PID` | `/var/run/nfqws_masq.pid` | PID file for uptime tracking |
+| `MASQ_QUEUE_NUM` | `201` | NFQUEUE number (separate from Video Optimizer's queue 200) |
+| `MASQ_NFT_COMMENT` | `qmanager_masq` | nftables rule comment for identification |
+
+**Functions:**
+
+| Function | Description |
+|----------|-------------|
+| `masq_insert_rules(iface)` | Add nftables NFQUEUE rules for all HTTPS traffic (TCP + QUIC port 443, queue 201) |
+| `masq_remove_rules()` | Remove nftables rules by comment (`qmanager_masq`) |
+| `masq_get_status()` | Return `running` or `stopped` based on PID file |
+| `masq_get_uptime()` | Calculate human-readable uptime from PID file timestamp |
+| `masq_get_packet_count()` | Read nftables counter for masquerade rules |
+| `get_nfqws_pid_by_queue(qnum)` | Find nfqws PID by scanning `/proc/*/cmdline` for `qnum=<N>` |
+
 ---
 
 ## Daemons
@@ -339,6 +380,53 @@ Boot-time one-shot: checks if the device rebooted during a scheduled low power w
 5. If inside window: set state flags immediately, sleep 30s (modem init), send `AT+CFUN=0`
 6. If outside window: clean up any stale flags from before reboot
 
+### qmanager_dpi_install (nfqws Installer)
+
+**Type:** One-shot background script (spawned by CGI)
+**Location:** `scripts/usr/bin/qmanager_dpi_install`
+**State file:** `/tmp/qmanager_dpi_install.json`
+**PID file:** `/tmp/qmanager_dpi_install.pid`
+
+Downloads and installs the nfqws binary from the [zapret](https://github.com/bol-van/zapret) GitHub releases. The binary is **not bundled** with QManager and is **not installed via opkg** — it is fetched on demand from upstream to avoid dependency issues on custom firmware (e.g., iamromulan's RM551E-GL build).
+
+**Flow:**
+
+1. Detect device architecture via `uname -m` (aarch64, armv7l, x86_64, mips, mipsel)
+2. Query GitHub API (`/repos/bol-van/zapret/releases/latest`) for the latest release
+3. Find the `openwrt-embedded.tar.gz` asset (smaller tarball with only binaries); falls back to the full release tarball
+4. Download the tarball to `/tmp/qmanager_dpi_download/`
+5. Extract only the architecture-specific `nfqws` binary (`binaries/<arch>/nfqws`)
+6. Install to `/usr/bin/nfqws` with `chmod 755`
+7. Verify the binary runs (`nfqws --help`)
+8. Write success/error result to `/tmp/qmanager_dpi_install.json`
+
+**Singleton:** The CGI checks the PID file before spawning; if an install is already running, it returns `"status": "running"` without starting a second instance.
+
+**Cleanup:** Removes the download directory and PID file on exit (via `trap cleanup EXIT INT TERM`).
+
+**Result file format:**
+
+```json
+{"success": true, "status": "complete", "message": "nfqws installed successfully", "detail": "v69"}
+```
+
+Status values: `running`, `complete`, `error`
+
+### qmanager_dpi (DPI Evasion — Video Optimizer + Traffic Masquerade)
+
+**Type:** Procd service (multi-instance daemon pattern)
+**Binary:** `/usr/bin/nfqws` (from zapret project)
+**Config:** UCI `quecmanager.video_optimizer` + `quecmanager.traffic_masquerade`
+
+Manages up to two nfqws instances for DPI evasion. Each instance runs on its own NFQUEUE number and is independently UCI-gated:
+
+- **Instance 1 (`nfqws`)**: Video Optimizer — SNI split on queue 200, filtered by hostname list. Enabled via `quecmanager.video_optimizer.enabled`.
+- **Instance 2 (`nfqws_masq`)**: Traffic Masquerade — fake TLS ClientHello with spoofed SNI on queue 201, applied to all HTTPS traffic. Enabled via `quecmanager.traffic_masquerade.enabled`.
+
+**Start:** Checks binary + kernel module (shared prerequisites) → for each enabled instance: inserts nftables rules → launches nfqws via procd → writes PID files by scanning `/proc/*/cmdline` for queue numbers
+**Stop:** Removes all nftables rules (both `qmanager_dpi` and `qmanager_masq` comments) → kills both instances → cleans up PID files
+**Respawn:** 3600s window, 5s delay, max 5 respawns (per instance)
+
 ### qcmd
 
 AT command wrapper — handles modem device path, locking, and response parsing.
@@ -361,6 +449,7 @@ result=$(qcmd 'AT+QENG="servingcell"')
 | `qmanager_wan_guard` | non-procd | 99 | `qmanager_wan_guard` | WAN profile validation (one-shot) |
 | `qmanager_tower_failover` | non-procd | 99 | `qmanager_tower_failover` | Tower failover watchdog |
 | `qmanager_low_power_check` | non-procd | 99 | `qmanager_low_power_check` | Boot-time low power window check (one-shot, double-fork) |
+| `qmanager_dpi` | procd | 99 | `nfqws` (x2) | DPI evasion: Video Optimizer (queue 200) + Traffic Masquerade (queue 201), each UCI-gated |
 
 Non-procd services use the double-fork pattern for daemonization:
 ```sh
@@ -479,6 +568,7 @@ All auth endpoints set `_SKIP_AUTH=1`.
 | `mtu.sh` | GET/POST | MTU size |
 | `dns.sh` | GET/POST | Custom DNS override |
 | `ip_passthrough.sh` | GET/POST | IP passthrough mode |
+| `video_optimizer.sh` | GET/POST | DPI Settings (Video Optimizer + Traffic Masquerade), install, and verify |
 
 #### Custom Profiles (`profiles/`)
 
@@ -551,8 +641,13 @@ All auth endpoints set `_SKIP_AUTH=1`.
 | `qmanager_email_reload` | CGI | Trigger file for config reload |
 | `qmanager_low_power_active` | low_power | Low power mode flag (timestamp; suppresses events + alerts) |
 | `qmanager_watchcat.lock` | low_power | Watchdog pause lock (forces LOCKED state) |
+| `qmanager_dpi_install.json` | dpi_install | nfqws installer progress/result |
+| `qmanager_dpi_install.pid` | dpi_install | Installer singleton PID |
+| `qmanager_dpi_verify.json` | dpi_verify | DPI verification test results |
+| `qmanager_dpi_verify.pid` | dpi_verify | Verification singleton PID |
 | `qmanager_sessions/` | CGI (auth) | Session files |
 | `qmanager.log` | all (qlog) | Centralized log file |
+| `/var/run/nfqws_masq.pid` | qmanager_dpi | Traffic Masquerade nfqws instance PID (uptime tracking) |
 
 ### Persistent Configuration (`/etc/qmanager/`)
 
@@ -580,6 +675,11 @@ All auth endpoints set `_SKIP_AUTH=1`.
 | `quecmanager.settings.low_power_start` | `HH:MM` | Low power window start |
 | `quecmanager.settings.low_power_end` | `HH:MM` | Low power window end |
 | `quecmanager.settings.low_power_days` | `0,1,...,6` | Low power days (0=Sun) |
+| `quecmanager.video_optimizer.enabled` | `0`, `1` | Video Optimizer on/off |
+| `quecmanager.video_optimizer.quic_enabled` | `0`, `1` | QUIC desync on/off (default `1`) |
+| `quecmanager.video_optimizer.interface` | interface name | WAN interface (default `rmnet_data0`) |
+| `quecmanager.traffic_masquerade.enabled` | `0`, `1` | Traffic Masquerade on/off |
+| `quecmanager.traffic_masquerade.sni_domain` | domain name | Spoofed SNI domain (default `speedtest.net`) |
 | `system.@system[0].timezone` | POSIX TZ string | System timezone |
 | `system.@system[0].zonename` | IANA zone name | System timezone display name |
 

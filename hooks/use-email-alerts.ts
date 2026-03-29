@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useRef, useEffect } from "react";
 import { authFetch } from "@/lib/auth-fetch";
+import type { InstallResult } from "@/types/video-optimizer";
 
 // =============================================================================
 // useEmailAlerts — Fetch & Save Hook for Email Alert Settings
@@ -37,12 +38,17 @@ export interface EmailAlertsSavePayload {
 
 export interface UseEmailAlertsReturn {
   settings: EmailAlertsSettings | null;
+  msmtpInstalled: boolean;
   isLoading: boolean;
   isSaving: boolean;
   isSendingTest: boolean;
+  isUninstalling: boolean;
+  installResult: InstallResult;
   error: string | null;
   saveSettings: (payload: EmailAlertsSavePayload) => Promise<boolean>;
   sendTestEmail: () => Promise<boolean>;
+  uninstall: () => Promise<boolean>;
+  runInstall: () => Promise<void>;
   refresh: () => void;
 }
 
@@ -50,9 +56,16 @@ export interface UseEmailAlertsReturn {
 
 export function useEmailAlerts(): UseEmailAlertsReturn {
   const [settings, setSettings] = useState<EmailAlertsSettings | null>(null);
+  const [msmtpInstalled, setMsmtpInstalled] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isSendingTest, setIsSendingTest] = useState(false);
+  const [isUninstalling, setIsUninstalling] = useState(false);
+  const [installResult, setInstallResult] = useState<InstallResult>({
+    success: true,
+    status: "idle",
+  });
+  const installPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const mountedRef = useRef(true);
@@ -61,6 +74,7 @@ export function useEmailAlerts(): UseEmailAlertsReturn {
     mountedRef.current = true;
     return () => {
       mountedRef.current = false;
+      if (installPollRef.current) clearInterval(installPollRef.current);
     };
   }, []);
 
@@ -85,6 +99,7 @@ export function useEmailAlerts(): UseEmailAlertsReturn {
         return;
       }
 
+      setMsmtpInstalled(json.msmtp_installed !== false);
       setSettings(json.settings);
     } catch (err) {
       if (!mountedRef.current) return;
@@ -177,14 +192,95 @@ export function useEmailAlerts(): UseEmailAlertsReturn {
     }
   }, []);
 
+  // ---------------------------------------------------------------------------
+  // Install via opkg
+  // ---------------------------------------------------------------------------
+  const stopInstallPolling = useCallback(() => {
+    if (installPollRef.current) {
+      clearInterval(installPollRef.current);
+      installPollRef.current = null;
+    }
+  }, []);
+
+  const pollInstallStatus = useCallback(async () => {
+    try {
+      const resp = await authFetch(CGI_ENDPOINT, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "install_status" }),
+      });
+      if (!resp.ok) return;
+      const data: InstallResult = await resp.json();
+      if (!mountedRef.current) return;
+      setInstallResult(data);
+      if (data.status === "complete" || data.status === "error") {
+        stopInstallPolling();
+        await fetchSettings(true);
+      }
+    } catch {
+      // Silently retry on next poll
+    }
+  }, [stopInstallPolling, fetchSettings]);
+
+  const runInstall = useCallback(async () => {
+    setInstallResult({ success: true, status: "running", message: "Starting installation..." });
+    try {
+      await authFetch(CGI_ENDPOINT, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "install" }),
+      });
+      installPollRef.current = setInterval(pollInstallStatus, 2000);
+    } catch (err) {
+      if (mountedRef.current) {
+        setInstallResult({
+          success: false,
+          status: "error",
+          message: err instanceof Error ? err.message : "Failed to start installation",
+        });
+      }
+    }
+  }, [pollInstallStatus]);
+
+  const uninstall = useCallback(async (): Promise<boolean> => {
+    setIsUninstalling(true);
+    try {
+      const resp = await authFetch(CGI_ENDPOINT, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "uninstall" }),
+      });
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const json = await resp.json();
+      if (!json.success) {
+        setError(json.detail || "Failed to uninstall");
+        return false;
+      }
+      await fetchSettings(true);
+      return true;
+    } catch (err) {
+      if (mountedRef.current) {
+        setError(err instanceof Error ? err.message : "Failed to uninstall");
+      }
+      return false;
+    } finally {
+      if (mountedRef.current) setIsUninstalling(false);
+    }
+  }, [fetchSettings]);
+
   return {
     settings,
+    msmtpInstalled,
     isLoading,
     isSaving,
     isSendingTest,
+    isUninstalling,
+    installResult,
     error,
     saveSettings,
     sendTestEmail,
+    uninstall,
+    runInstall,
     refresh: fetchSettings,
   };
 }

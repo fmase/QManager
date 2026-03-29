@@ -14,6 +14,7 @@ import {
   LogsIcon,
   MessageCircleIcon,
   DogIcon,
+  DownloadIcon,
   RouterIcon,
   User2Icon,
   HeartIcon,
@@ -62,6 +63,12 @@ const data = {
       title: "System Settings",
       url: "/system-settings",
       icon: SettingsIcon,
+      items: [
+        {
+          title: "Bandwidth Monitor",
+          url: "/system-settings/bandwidth-monitor",
+        },
+      ],
     },
     {
       title: "AT Terminal",
@@ -181,6 +188,14 @@ const data = {
           title: "TTL & MTU Settings",
           url: "/local-network/ttl-settings",
         },
+        {
+          title: "Video Optimizer",
+          url: "/local-network/video-optimizer",
+        },
+        {
+          title: "Traffic Masquerade",
+          url: "/local-network/traffic-masquerade",
+        },
       ],
     },
   ],
@@ -215,6 +230,11 @@ const data = {
       title: "Logs",
       url: "/monitoring/logs",
       icon: LogsIcon,
+    },
+    {
+      title: "Updates",
+      url: "/monitoring/software-update",
+      icon: DownloadIcon,
     },
   ],
 };

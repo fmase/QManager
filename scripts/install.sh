@@ -24,6 +24,7 @@
 #   --no-enable        Don't enable init.d services
 #   --no-start         Don't start services after install
 #   --skip-packages    Skip opkg package installation
+#   --no-reboot        Don't reboot after installation (useful for scripted/OTA updates)
 #   --uninstall        Remove QManager completely
 #   --help             Show this help
 #
@@ -33,7 +34,7 @@ set -e
 
 # --- Configuration -----------------------------------------------------------
 
-VERSION="0.1.0-beta.1"
+VERSION="v0.1.8"
 INSTALL_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 # Destinations
@@ -272,7 +273,8 @@ stop_services() {
     # Stop auxiliary services
     for svc in qmanager_eth_link qmanager_mtu qmanager_imei_check \
                qmanager_wan_guard qmanager_watchcat qmanager_tower_failover \
-               qmanager_ttl qmanager_low_power_check; do
+               qmanager_ttl qmanager_low_power_check qmanager_bandwidth \
+               qmanager_dpi; do
         if [ -x "$INITD_DIR/$svc" ]; then
             "$INITD_DIR/$svc" stop 2>/dev/null || true
         fi
@@ -285,7 +287,9 @@ stop_services() {
                 qmanager_neighbour_scanner qmanager_mtu_apply \
                 qmanager_profile_apply qmanager_imei_check \
                 qmanager_wan_guard qmanager_low_power \
-                qmanager_low_power_check qmanager_scheduled_reboot; do
+                qmanager_low_power_check qmanager_scheduled_reboot \
+                qmanager_update qmanager_auto_update \
+                bridge_traffic_monitor_rm551 websocat nfqws; do
         killall "$proc" 2>/dev/null || true
     done
 
@@ -300,36 +304,30 @@ backup_originals() {
 
     mkdir -p "$BACKUP_DIR"
 
-    local ts
-    ts=$(date +%Y%m%d_%H%M%S)
-
-    # Backup original index.html (the OpenWRT/LuCI default page)
-    if [ -f "$WWW_ROOT/index.html" ]; then
-        # Only backup if it's NOT already a QManager index.html
-        # (avoid backing up our own file on upgrades)
+    # Backup original index.html in-place (first install only)
+    # On upgrades, index.html.old already exists — don't overwrite it
+    if [ ! -f "$WWW_ROOT/index.html.old" ] && [ -f "$WWW_ROOT/index.html" ]; then
         if ! grep -q "QManager" "$WWW_ROOT/index.html" 2>/dev/null; then
-            cp "$WWW_ROOT/index.html" "$BACKUP_DIR/index.html.orig.$ts"
-            info "Backed up original index.html → $BACKUP_DIR/index.html.orig.$ts"
+            mv "$WWW_ROOT/index.html" "$WWW_ROOT/index.html.old"
+            info "Backed up original index.html → index.html.old"
         else
             info "Existing index.html is already QManager — skipping backup"
         fi
-
-        # Always keep a single .orig if we don't have one yet
-        if [ ! -f "$BACKUP_DIR/index.html.orig" ]; then
-            cp "$WWW_ROOT/index.html" "$BACKUP_DIR/index.html.orig"
-            info "Saved pristine backup as $BACKUP_DIR/index.html.orig"
-        fi
+    elif [ -f "$WWW_ROOT/index.html.old" ]; then
+        info "Original index.html.old already preserved — skipping"
     else
         info "No existing index.html to backup"
     fi
 
     # Backup existing QManager config if upgrading
     if [ -f "$CONF_DIR/shadow" ]; then
+        local ts
+        ts=$(date +%Y%m%d_%H%M%S)
         cp "$CONF_DIR/shadow" "$BACKUP_DIR/shadow.$ts" 2>/dev/null || true
         info "Backed up password hash"
     fi
 
-    info "Backups stored in $BACKUP_DIR"
+    info "Backups complete"
 }
 
 # --- Install Frontend --------------------------------------------------------
@@ -341,16 +339,14 @@ install_frontend() {
     file_count=$(count_files "$SRC_FRONTEND")
     info "Deploying $file_count frontend files"
 
-    # Remove old QManager frontend directories (keep cgi-bin/ and non-QM files)
-    for dir in _next dashboard cellular monitoring local-network \
-               login about-device support system-settings; do
-        rm -rf "$WWW_ROOT/$dir"
+    # Clean /www/ — remove everything except preserved items
+    for item in "$WWW_ROOT"/*; do
+        name=$(basename "$item")
+        case "$name" in
+            cgi-bin|luci-static|index.html.old) continue ;;
+            *) rm -rf "$item" ;;
+        esac
     done
-
-    # Remove old QManager root HTML files
-    rm -f "$WWW_ROOT/index.html"
-    rm -f "$WWW_ROOT/404.html"
-    rm -f "$WWW_ROOT/favicon.ico"
 
     # Copy new frontend
     cp -r "$SRC_FRONTEND"/* "$WWW_ROOT/"
@@ -369,7 +365,7 @@ install_backend() {
 
     if [ -d "$SRC_SCRIPTS/usr/lib/qmanager" ]; then
         cp "$SRC_SCRIPTS/usr/lib/qmanager"/* "$LIB_DIR/"
-        chmod 644 "$LIB_DIR"/*.sh
+        find "$LIB_DIR" -maxdepth 1 -name "*.sh" -exec chmod 644 {} \;
         local lib_count
         lib_count=$(count_files "$LIB_DIR")
         info "  $lib_count library files installed"
@@ -430,10 +426,81 @@ install_backend() {
     mkdir -p "$SESSION_DIR"
     mkdir -p /var/lock
 
+    # --- Config files (deploy new, don't overwrite existing) ---
+    if [ -d "$SRC_SCRIPTS/etc/qmanager" ]; then
+        for f in "$SRC_SCRIPTS/etc/qmanager"/*; do
+            [ -f "$f" ] || continue
+            fname=$(basename "$f")
+            # Don't overwrite user-modified config files
+            if [ ! -f "$CONF_DIR/$fname" ]; then
+                cp "$f" "$CONF_DIR/$fname"
+                info "  Deployed config: $fname"
+            fi
+        done
+    fi
+
     # --- Create UCI config file if missing ---
     [ -f /etc/config/quecmanager ] || touch /etc/config/quecmanager
 
     info "Backend installed"
+}
+
+# --- Clean Up Legacy Scripts -------------------------------------------------
+# Compares scripts on the device against the current package. Anything on
+# the device that is NOT in the package is a leftover from a previous version
+# and gets removed. This keeps the device clean across upgrades.
+
+cleanup_legacy_scripts() {
+    step "Cleaning up legacy scripts"
+
+    local removed=0
+
+    # --- /usr/bin/ daemons (qmanager_*, qcmd, bridge_traffic_monitor_*) ---
+    for f in "$BIN_DIR"/qmanager_* "$BIN_DIR/qcmd" \
+             "$BIN_DIR"/bridge_traffic_monitor_*; do
+        [ -f "$f" ] || continue
+        fname=$(basename "$f")
+        # Keep if this file exists in the current package
+        [ -f "$SRC_SCRIPTS/usr/bin/$fname" ] && continue
+        rm -f "$f"
+        info "  Removed legacy daemon: $fname"
+        removed=$(( removed + 1 ))
+    done
+
+    # --- /etc/init.d/ services (qmanager*) ---
+    for f in "$INITD_DIR"/qmanager*; do
+        [ -f "$f" ] || continue
+        fname=$(basename "$f")
+        [ -f "$SRC_SCRIPTS/etc/init.d/$fname" ] && continue
+        # Disable and stop before removing
+        "$f" disable 2>/dev/null || true
+        "$f" stop 2>/dev/null || true
+        rm -f "$f"
+        # Clean up rc.d symlinks for this service
+        for _link in /etc/rc.d/*"$fname"*; do
+            [ -e "$_link" ] && rm -f "$_link"
+        done
+        info "  Removed legacy service: $fname"
+        removed=$(( removed + 1 ))
+    done
+
+    # --- /usr/lib/qmanager/ libraries ---
+    if [ -d "$LIB_DIR" ]; then
+        for f in "$LIB_DIR"/*; do
+            [ -f "$f" ] || continue
+            fname=$(basename "$f")
+            [ -f "$SRC_SCRIPTS/usr/lib/qmanager/$fname" ] && continue
+            rm -f "$f"
+            info "  Removed legacy library: $fname"
+            removed=$(( removed + 1 ))
+        done
+    fi
+
+    if [ "$removed" -gt 0 ]; then
+        info "Removed $removed legacy file(s)"
+    else
+        info "No legacy scripts found"
+    fi
 }
 
 # --- Fix Line Endings --------------------------------------------------------
@@ -452,7 +519,7 @@ fix_line_endings() {
             > "$scanlist"
         while IFS= read -r f; do
             # grep for literal CR byte — portable, no 'file' command needed
-            if grep -ql "$(printf '\r')" "$f" 2>/dev/null; then
+            if grep -q "$(printf '\r')" "$f" 2>/dev/null; then
                 tr -d '\r' < "$f" > "$f.lf_tmp" && mv "$f.lf_tmp" "$f"
                 echo "$f" >> "$tmplist"
             fi
@@ -470,6 +537,42 @@ fix_line_endings() {
     fi
 }
 
+# --- Fix Permissions ---------------------------------------------------------
+# Ensures correct permissions on ALL qmanager scripts on the device,
+# including any that were already installed from a previous version.
+
+fix_permissions() {
+    step "Verifying file permissions"
+
+    # Daemons and utilities — must be executable (755)
+    for f in "$BIN_DIR"/qmanager_* "$BIN_DIR/qcmd" \
+             "$BIN_DIR"/bridge_traffic_monitor_*; do
+        [ -f "$f" ] && chmod 755 "$f"
+    done
+    info "Daemons and utilities: 755"
+
+    # Init.d services — must be executable (755)
+    for f in "$INITD_DIR"/qmanager*; do
+        [ -f "$f" ] && chmod 755 "$f"
+    done
+    info "Init.d services: 755"
+
+    # CGI endpoints — .sh executable (755), .json readable (644)
+    if [ -d "$CGI_DIR" ]; then
+        find "$CGI_DIR" -name "*.sh" -exec chmod 755 {} \;
+        find "$CGI_DIR" -name "*.json" -exec chmod 644 {} \;
+        info "CGI scripts: 755, JSON data: 644"
+    fi
+
+    # Shared libraries — readable, not executable (644)
+    if [ -d "$LIB_DIR" ]; then
+        find "$LIB_DIR" -maxdepth 1 -type f -exec chmod 644 {} \;
+        info "Shared libraries: 644"
+    fi
+
+    info "All permissions verified"
+}
+
 # --- Enable Services ---------------------------------------------------------
 
 enable_services() {
@@ -481,29 +584,31 @@ enable_services() {
         info "Enabled qmanager (main service)"
     fi
 
-    # Auxiliary services
+    # Auxiliary services (always enabled)
     for svc in qmanager_eth_link qmanager_ttl qmanager_mtu \
-               qmanager_imei_check; do
+               qmanager_imei_check qmanager_wan_guard \
+               qmanager_low_power_check; do
         if [ -x "$INITD_DIR/$svc" ]; then
             "$INITD_DIR/$svc" enable
             info "Enabled $svc"
         fi
     done
 
-    # Tower failover — only enable if previously enabled
-    if [ -x "$INITD_DIR/qmanager_tower_failover" ]; then
-        local was_enabled=0
-        # Check if it was already enabled (symlink exists in /etc/rc.d/)
-        for _rc in /etc/rc.d/*qmanager_tower_failover*; do
-            [ -e "$_rc" ] && was_enabled=1 && break
-        done
-        if [ "$was_enabled" = "1" ]; then
-            "$INITD_DIR/qmanager_tower_failover" enable
-            info "Enabled qmanager_tower_failover (was previously enabled)"
-        else
-            info "Skipped qmanager_tower_failover (enable manually if needed)"
+    # UCI-gated / optional services — only enable if previously enabled
+    for svc in qmanager_tower_failover qmanager_watchcat qmanager_bandwidth qmanager_dpi; do
+        if [ -x "$INITD_DIR/$svc" ]; then
+            local was_enabled=0
+            for _rc in /etc/rc.d/*"$svc"*; do
+                [ -e "$_rc" ] && was_enabled=1 && break
+            done
+            if [ "$was_enabled" = "1" ]; then
+                "$INITD_DIR/$svc" enable
+                info "Enabled $svc (was previously enabled)"
+            else
+                info "Skipped $svc (enable manually if needed)"
+            fi
         fi
-    fi
+    done
 }
 
 # --- Start Services ----------------------------------------------------------
@@ -550,7 +655,8 @@ uninstall() {
     fi
     for svc in qmanager_eth_link qmanager_mtu qmanager_imei_check \
                qmanager_wan_guard qmanager_watchcat qmanager_tower_failover \
-               qmanager_ttl qmanager_low_power_check; do
+               qmanager_ttl qmanager_low_power_check qmanager_bandwidth \
+               qmanager_dpi; do
         if [ -x "$INITD_DIR/$svc" ]; then
             "$INITD_DIR/$svc" stop 2>/dev/null || true
         fi
@@ -561,7 +667,9 @@ uninstall() {
                 qmanager_neighbour_scanner qmanager_mtu_apply \
                 qmanager_profile_apply qmanager_imei_check \
                 qmanager_wan_guard qmanager_low_power \
-                qmanager_low_power_check qmanager_scheduled_reboot; do
+                qmanager_low_power_check qmanager_scheduled_reboot \
+                qmanager_update qmanager_auto_update \
+                bridge_traffic_monitor_rm551 websocat nfqws; do
         killall "$proc" 2>/dev/null || true
     done
     sleep 1
@@ -570,7 +678,8 @@ uninstall() {
     # Disable and remove init.d services
     for svc in qmanager qmanager_eth_link qmanager_ttl qmanager_mtu \
                qmanager_wan_guard qmanager_watchcat qmanager_imei_check \
-               qmanager_tower_failover qmanager_low_power_check; do
+               qmanager_tower_failover qmanager_low_power_check \
+               qmanager_bandwidth qmanager_dpi; do
         if [ -x "$INITD_DIR/$svc" ]; then
             "$INITD_DIR/$svc" disable 2>/dev/null || true
             rm -f "$INITD_DIR/$svc"
@@ -581,6 +690,8 @@ uninstall() {
     # Remove daemons
     rm -f "$BIN_DIR/qcmd"
     rm -f "$BIN_DIR"/qmanager_*
+    rm -f "$BIN_DIR/bridge_traffic_monitor_rm551"
+    rm -f "$BIN_DIR/nfqws"
     info "Removed daemons from $BIN_DIR"
 
     # Remove libraries
@@ -598,23 +709,45 @@ uninstall() {
         info "Removed UCI config"
     fi
 
-    # Remove frontend and restore original index.html
-    for dir in _next dashboard cellular monitoring local-network \
-               login about-device support system-settings; do
-        rm -rf "$WWW_ROOT/$dir"
+    # Remove frontend — clean /www/ except preserved directories and backup
+    for item in "$WWW_ROOT"/*; do
+        name=$(basename "$item")
+        case "$name" in
+            cgi-bin|luci-static|index.html.old) continue ;;
+            *) rm -rf "$item" ;;
+        esac
     done
-    rm -f "$WWW_ROOT/index.html" "$WWW_ROOT/404.html" "$WWW_ROOT/favicon.ico"
 
-    if [ -f "$BACKUP_DIR/index.html.orig" ]; then
-        cp "$BACKUP_DIR/index.html.orig" "$WWW_ROOT/index.html"
-        info "Restored original index.html from backup"
+    # Restore original index.html from in-place backup
+    if [ -f "$WWW_ROOT/index.html.old" ]; then
+        mv "$WWW_ROOT/index.html.old" "$WWW_ROOT/index.html"
+        info "Restored original index.html"
     fi
     info "Removed frontend files"
 
+    # Remove firewall rules
+    rm -f /etc/firewall.user.ttl /etc/firewall.user.mtu 2>/dev/null || true
+
+    # Remove bandwidth SSL certs
+    rm -rf /etc/qmanager/bandwidth_certs 2>/dev/null || true
+
     # Remove runtime state
     rm -f /tmp/qmanager_*.json /tmp/qmanager.log* 2>/dev/null || true
+    rm -f /tmp/qmanager_update.pid /tmp/qmanager_update.log 2>/dev/null || true
+    rm -f /tmp/qmanager_dpi_install.pid /tmp/qmanager_watchcat.pid 2>/dev/null || true
+    rm -f /tmp/qmanager_*.lock /tmp/qmanager_long_running 2>/dev/null || true
+    rm -f /tmp/qmanager_email_reload /tmp/qmanager_imei_check_done 2>/dev/null || true
+    rm -f /tmp/qmanager_low_power_active /tmp/qmanager_recovery_active 2>/dev/null || true
+    rm -f /tmp/qmanager_staged.tar.gz /tmp/qmanager_staged_version 2>/dev/null || true
+    rm -rf /tmp/quecmanager 2>/dev/null || true
     rm -rf "$SESSION_DIR"
     info "Removed runtime state from /tmp"
+
+    # Remove cron jobs
+    if crontab -l 2>/dev/null | grep -q qmanager; then
+        crontab -l 2>/dev/null | grep -v qmanager | crontab - 2>/dev/null || true
+        info "Removed cron jobs"
+    fi
 
     # Ask about config
     if [ -d "$CONF_DIR" ]; then
@@ -721,6 +854,7 @@ usage() {
     printf "  --no-enable        Don't enable init.d services\n"
     printf "  --no-start         Don't start services after install\n"
     printf "  --skip-packages    Skip opkg package installation\n"
+    printf "  --no-reboot        Don't reboot after installation\n"
     printf "  --uninstall        Remove QManager completely\n"
     printf "  --help             Show this help\n\n"
     printf "Expected archive layout:\n"
@@ -744,6 +878,7 @@ main() {
     DO_START=1
     DO_UNINSTALL=0
     DO_PACKAGES=1
+    DO_REBOOT=1
 
     # Parse arguments
     while [ $# -gt 0 ]; do
@@ -765,6 +900,9 @@ main() {
             --skip-packages)
                 DO_PACKAGES=0
                 ;;
+            --no-reboot)
+                DO_REBOOT=0
+                ;;
             --uninstall)
                 DO_UNINSTALL=1
                 ;;
@@ -785,7 +923,7 @@ main() {
     printf "\n"
     printf "  ══════════════════════════════════════════\n"
     printf "  ${BOLD}  QManager - Installation Script${NC}\n"
-    printf "  ${DIM}  Version: v%s${NC}\n" "$VERSION"
+    printf "  ${DIM}  Version: %s${NC}\n" "$VERSION"
     printf "  ══════════════════════════════════════════\n"
 
     # Handle uninstall path (2 steps: preflight + uninstall)
@@ -804,7 +942,7 @@ main() {
         TOTAL_STEPS=$(( TOTAL_STEPS + 2 ))           # backup_originals + install_frontend
     fi
     if [ "$DO_BACKEND" = "1" ]; then
-        TOTAL_STEPS=$(( TOTAL_STEPS + 2 ))           # install_backend + fix_line_endings
+        TOTAL_STEPS=$(( TOTAL_STEPS + 4 ))           # install_backend + cleanup_legacy + fix_line_endings + fix_permissions
         [ "$DO_ENABLE" = "1" ] && TOTAL_STEPS=$(( TOTAL_STEPS + 1 ))  # enable_services
         [ "$DO_START"  = "1" ] && TOTAL_STEPS=$(( TOTAL_STEPS + 1 ))  # start_services
     fi
@@ -826,7 +964,9 @@ main() {
 
     if [ "$DO_BACKEND" = "1" ]; then
         install_backend
+        cleanup_legacy_scripts
         fix_line_endings
+        fix_permissions
 
         if [ "$DO_ENABLE" = "1" ]; then
             enable_services
@@ -839,9 +979,13 @@ main() {
 
     print_summary
 
-    printf "  Rebooting in 5 seconds — press Ctrl+C to cancel...\n\n"
-    sleep 5
-    reboot
+    mkdir -p /etc/qmanager && echo "$VERSION" > /etc/qmanager/VERSION
+
+    if [ "$DO_REBOOT" = "1" ]; then
+        printf "  Rebooting in 5 seconds — press Ctrl+C to cancel...\n\n"
+        sleep 5
+        reboot
+    fi
 }
 
 main "$@"

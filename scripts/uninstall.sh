@@ -17,11 +17,12 @@
 #   - Frontend files from /www/ (restores original index.html if backed up)
 #   - CGI endpoints from /www/cgi-bin/quecmanager/
 #   - Shared libraries from /usr/lib/qmanager/
-#   - Daemons from /usr/bin/qmanager_* and /usr/bin/qcmd
-#   - Init.d services from /etc/init.d/qmanager*
-#   - Runtime state from /tmp (JSON, logs, sessions, lock files)
+#   - Daemons from /usr/bin/qmanager_*, /usr/bin/qcmd, nfqws, bridge_traffic_monitor
+#   - Init.d services from /etc/init.d/qmanager* (dynamic scan)
+#   - Runtime state from /tmp (JSON, logs, sessions, lock files, staged updates)
 #   - UCI config namespace (quecmanager.*)
 #   - Firewall rule files (/etc/firewall.user.ttl, /etc/firewall.user.mtu)
+#   - nftables DPI rules (qmanager_dpi table)
 #   - Optionally: /etc/qmanager/ (password, profiles, backups)
 #
 # =============================================================================
@@ -30,7 +31,7 @@ set -e
 
 # --- Configuration -----------------------------------------------------------
 
-VERSION="0.1.0-beta.1"
+VERSION="v0.1.8"
 
 # Paths
 WWW_ROOT="/www"
@@ -172,20 +173,12 @@ confirm_uninstall() {
 stop_services() {
     step "Stopping all QManager services"
 
-    # Stop main service (poller + ping + watchcat)
-    if [ -x "$INITD_DIR/qmanager" ]; then
-        "$INITD_DIR/qmanager" stop 2>/dev/null || true
-        info "Stopped qmanager (poller, ping, watchcat)"
-    fi
-
-    # Stop auxiliary services
-    for svc in qmanager_eth_link qmanager_mtu qmanager_imei_check \
-               qmanager_wan_guard qmanager_tower_failover qmanager_ttl \
-               qmanager_low_power_check; do
-        if [ -x "$INITD_DIR/$svc" ]; then
-            "$INITD_DIR/$svc" stop 2>/dev/null || true
-        fi
+    # Stop all qmanager init.d services (dynamic — catches any version's services)
+    for f in "$INITD_DIR"/qmanager*; do
+        [ -x "$f" ] || continue
+        "$f" stop 2>/dev/null || true
     done
+    info "Stopped all init.d services"
 
     # Kill any lingering processes by name
     for proc in qmanager_poller qmanager_ping qmanager_watchcat \
@@ -194,7 +187,10 @@ stop_services() {
                 qmanager_neighbour_scanner qmanager_mtu_apply \
                 qmanager_profile_apply qmanager_imei_check \
                 qmanager_wan_guard qmanager_low_power \
-                qmanager_low_power_check qmanager_scheduled_reboot; do
+                qmanager_low_power_check qmanager_scheduled_reboot \
+                qmanager_update qmanager_auto_update \
+                qmanager_dpi_install qmanager_dpi_verify \
+                bridge_traffic_monitor_rm551 websocat nfqws; do
         killall "$proc" 2>/dev/null || true
     done
 
@@ -207,16 +203,15 @@ stop_services() {
 remove_services() {
     step "Removing init.d services"
 
+    # Dynamic scan — catches services from any QManager version
     local removed=0
-    for svc in qmanager qmanager_eth_link qmanager_ttl qmanager_mtu \
-               qmanager_wan_guard qmanager_imei_check \
-               qmanager_tower_failover qmanager_low_power_check; do
-        if [ -f "$INITD_DIR/$svc" ]; then
-            "$INITD_DIR/$svc" disable 2>/dev/null || true
-            rm -f "$INITD_DIR/$svc"
-            info "Removed /etc/init.d/$svc"
-            removed=$(( removed + 1 ))
-        fi
+    for f in "$INITD_DIR"/qmanager*; do
+        [ -f "$f" ] || continue
+        fname=$(basename "$f")
+        "$f" disable 2>/dev/null || true
+        rm -f "$f"
+        info "Removed /etc/init.d/$fname"
+        removed=$(( removed + 1 ))
     done
 
     # Clean up any leftover rc.d symlinks
@@ -246,6 +241,13 @@ remove_backend() {
         [ -f "$f" ] || continue
         rm -f "$f"
         bin_count=$(( bin_count + 1 ))
+    done
+    # Non-qmanager-prefixed binaries
+    for extra in bridge_traffic_monitor_rm551 nfqws; do
+        if [ -f "$BIN_DIR/$extra" ]; then
+            rm -f "$BIN_DIR/$extra"
+            bin_count=$(( bin_count + 1 ))
+        fi
     done
     info "Removed $bin_count binary/daemon file(s) from $BIN_DIR"
 
@@ -283,10 +285,28 @@ remove_backend() {
         info "Removed /etc/firewall.user.mtu"
     fi
 
+    # Remove nftables rules (DPI/nfqws)
+    nft list ruleset 2>/dev/null | grep -q "qmanager_dpi" && {
+        nft delete table inet qmanager_dpi 2>/dev/null || true
+        info "Removed nftables DPI rules"
+    }
+
     # Remove msmtp config
     if [ -f /etc/qmanager/msmtprc ]; then
         rm -f /etc/qmanager/msmtprc
         info "Removed /etc/qmanager/msmtprc (email config)"
+    fi
+
+    # Remove bandwidth monitor SSL certs
+    if [ -d /etc/qmanager/bandwidth_certs ]; then
+        rm -rf /etc/qmanager/bandwidth_certs
+        info "Removed /etc/qmanager/bandwidth_certs (bandwidth SSL)"
+    fi
+
+    # Remove cron jobs (auto-update, low power, etc.)
+    if crontab -l 2>/dev/null | grep -q qmanager; then
+        crontab -l 2>/dev/null | grep -v qmanager | crontab - 2>/dev/null || true
+        info "Removed qmanager cron jobs"
     fi
 }
 
@@ -295,26 +315,24 @@ remove_backend() {
 remove_frontend() {
     step "Removing frontend files"
 
-    # Remove QManager-specific directories from /www/
-    local removed_dirs=0
-    for dir in _next dashboard cellular monitoring local-network \
-               login about-device support system-settings; do
-        if [ -d "$WWW_ROOT/$dir" ]; then
-            rm -rf "$WWW_ROOT/$dir"
-            removed_dirs=$(( removed_dirs + 1 ))
-        fi
+    # Clean /www/ — remove everything except preserved directories and backup
+    local removed=0
+    for item in "$WWW_ROOT"/*; do
+        name=$(basename "$item")
+        case "$name" in
+            cgi-bin|luci-static|index.html.old) continue ;;
+            *)
+                rm -rf "$item"
+                removed=$(( removed + 1 ))
+                ;;
+        esac
     done
-    info "Removed $removed_dirs frontend director(ies) from $WWW_ROOT"
+    info "Removed $removed item(s) from $WWW_ROOT"
 
-    # Remove root-level QManager files
-    rm -f "$WWW_ROOT/index.html" \
-          "$WWW_ROOT/404.html" \
-          "$WWW_ROOT/favicon.ico"
-
-    # Restore the original OpenWRT/LuCI index.html from backup
-    if [ -f "$BACKUP_DIR/index.html.orig" ]; then
-        cp "$BACKUP_DIR/index.html.orig" "$WWW_ROOT/index.html"
-        info "Restored original index.html from $BACKUP_DIR/index.html.orig"
+    # Restore original index.html from in-place backup
+    if [ -f "$WWW_ROOT/index.html.old" ]; then
+        mv "$WWW_ROOT/index.html.old" "$WWW_ROOT/index.html"
+        info "Restored original index.html"
     else
         warn "No backup found — original index.html was not restored"
         warn "  Device web interface may show a blank page until LuCI is reinstalled"
@@ -339,7 +357,8 @@ remove_runtime_state() {
               /tmp/qmanager_profile_state.json \
               /tmp/qmanager_watchcat.json \
               /tmp/qmanager_band_failover_state.json \
-              /tmp/qmanager_tower_failover_state.json; do
+              /tmp/qmanager_tower_failover_state.json \
+              /tmp/qmanager_update.json; do
         if [ -f "$f" ]; then
             rm -f "$f"
             tmp_count=$(( tmp_count + 1 ))
@@ -347,16 +366,29 @@ remove_runtime_state() {
     done
 
     # Log files
-    for f in /tmp/qmanager.log /tmp/qmanager.log.1; do
+    for f in /tmp/qmanager.log /tmp/qmanager.log.1 /tmp/qmanager_update.log; do
         [ -f "$f" ] && rm -f "$f" && tmp_count=$(( tmp_count + 1 )) || true
     done
 
-    # Lock and flag files
+    # Lock, PID, and flag files
     rm -f /tmp/qmanager_*.lock \
+          /tmp/qmanager_*.pid \
           /tmp/qmanager_email_reload \
           /tmp/qmanager_imei_check_done \
+          /tmp/qmanager_long_running \
+          /tmp/qmanager_low_power_active \
+          /tmp/qmanager_recovery_active \
           /tmp/qm_spin_out \
           2>/dev/null || true
+
+    # Staged update files
+    rm -f /tmp/qmanager_staged.tar.gz \
+          /tmp/qmanager_staged_version \
+          /tmp/qmanager_staged_sha256.txt \
+          2>/dev/null || true
+
+    # Bandwidth monitor runtime directory
+    rm -rf /tmp/quecmanager 2>/dev/null || true
 
     # Session directory
     if [ -d "$SESSION_DIR" ]; then

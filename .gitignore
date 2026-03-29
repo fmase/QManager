@@ -40,13 +40,11 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# install
-qmanager_install
-/*.tar.gz
+# build artifacts
+qmanager-build/
+qmanager_install/
+RELEASE_NOTE.md
 
 # claude superpowers
 /.superpowers
 /docs/superpowers
-
-# RELEASE changelog
-RELEASE-*.md

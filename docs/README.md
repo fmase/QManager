@@ -2,7 +2,7 @@
 
 QManager is a modern web-based GUI for managing Quectel cellular modems on OpenWRT devices. It provides real-time signal monitoring, cellular configuration, network management, and advanced diagnostics through an intuitive interface.
 
-**Version:** 0.1.0-beta.1
+**Version:** v0.1.2
 **License:** MIT
 **Successor to:** [SimpleAdmin](https://github.com/dr-dolomite/simpleadmin-mockup)
 

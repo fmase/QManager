@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { motion, type Variants } from "motion/react";
 import { toast } from "sonner";
 
 import {
@@ -32,6 +33,18 @@ import type {
 } from "@/hooks/use-system-settings";
 import type { ScheduleConfig, LowPowerConfig } from "@/types/system-settings";
 import { DAY_LABELS } from "@/types/system-settings";
+
+// ─── Animation variants ────────────────────────────────────────────────────
+
+const containerVariants: Variants = {
+  hidden: {},
+  visible: { transition: { staggerChildren: 0.06 } },
+};
+
+const itemVariants: Variants = {
+  hidden: { opacity: 0, y: 8 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.25, ease: "easeOut" } },
+};
 
 type ScheduledOperationsCardProps = Pick<
   UseSystemSettingsReturn,
@@ -98,8 +111,13 @@ const ScheduledOperationsCard = ({
       if (rebootSaveTimerRef.current) {
         clearTimeout(rebootSaveTimerRef.current);
       }
-      rebootSaveTimerRef.current = setTimeout(() => {
-        saveScheduledReboot(payload);
+      rebootSaveTimerRef.current = setTimeout(async () => {
+        const success = await saveScheduledReboot(payload);
+        if (success) {
+          toast.success("Reboot schedule saved");
+        } else {
+          toast.error("Failed to save reboot schedule");
+        }
       }, 800);
     },
     [saveScheduledReboot],
@@ -110,8 +128,13 @@ const ScheduledOperationsCard = ({
       if (lpSaveTimerRef.current) {
         clearTimeout(lpSaveTimerRef.current);
       }
-      lpSaveTimerRef.current = setTimeout(() => {
-        saveLowPower(payload);
+      lpSaveTimerRef.current = setTimeout(async () => {
+        const success = await saveLowPower(payload);
+        if (success) {
+          toast.success("Low power schedule saved");
+        } else {
+          toast.error("Failed to save low power schedule");
+        }
       }, 800);
     },
     [saveLowPower],
@@ -133,9 +156,15 @@ const ScheduledOperationsCard = ({
       time: rebootTime,
       days: rebootDays,
     });
-    if (!success) {
+    if (success) {
+      toast.success(
+        checked
+          ? "Scheduled reboot enabled"
+          : "Scheduled reboot disabled",
+      );
+    } else {
       setRebootEnabled(!checked);
-      toast.warning("Failed to update reboot schedule");
+      toast.error("Failed to update reboot schedule");
     }
   };
 
@@ -184,9 +213,15 @@ const ScheduledOperationsCard = ({
       end_time: lpEndTime,
       days: lpDays,
     });
-    if (!success) {
+    if (success) {
+      toast.success(
+        checked
+          ? "Low power mode enabled"
+          : "Low power mode disabled",
+      );
+    } else {
       setLpEnabled(!checked);
-      toast.warning("Failed to update low power schedule");
+      toast.error("Failed to update low power schedule");
     }
   };
 
@@ -313,13 +348,18 @@ const ScheduledOperationsCard = ({
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="grid gap-2">
+        <motion.div
+          className="grid gap-2"
+          variants={containerVariants}
+          initial="hidden"
+          animate="visible"
+        >
           {/* ─── Section A: Scheduled Reboot ─────────────────────────────── */}
-          <p className="font-semibold text-sm">Scheduled Reboot</p>
+          <motion.p variants={itemVariants} className="font-semibold text-sm">Scheduled Reboot</motion.p>
           <Separator />
 
           {/* Enable toggle */}
-          <div className="flex items-center justify-between">
+          <motion.div variants={itemVariants} className="flex items-center justify-between">
             <p className="font-semibold text-muted-foreground text-sm">
               Enable Scheduled Reboot
             </p>
@@ -333,11 +373,11 @@ const ScheduledOperationsCard = ({
                 {rebootEnabled ? "Enabled" : "Disabled"}
               </Label>
             </div>
-          </div>
+          </motion.div>
           <Separator />
 
           {/* Reboot Time */}
-          <div className="flex items-center justify-between mt-4">
+          <motion.div variants={itemVariants} className="flex items-center justify-between mt-4">
             <Label className="font-semibold text-muted-foreground text-sm">
               Reboot Time
             </Label>
@@ -347,11 +387,11 @@ const ScheduledOperationsCard = ({
               value={rebootTime}
               onChange={(e) => handleRebootTimeChange(e.target.value)}
             />
-          </div>
+          </motion.div>
           <Separator />
 
           {/* Repeat On (reboot) */}
-          <fieldset className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-4">
+          <motion.fieldset variants={itemVariants} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-4">
             <legend className="font-semibold text-muted-foreground text-sm">
               Repeat On
             </legend>
@@ -375,13 +415,13 @@ const ScheduledOperationsCard = ({
                 </Toggle>
               ))}
             </div>
-          </fieldset>
+          </motion.fieldset>
 
           {/* ─── Visual break between sections ───────────────────────────── */}
           <Separator className="my-4" />
 
           {/* ─── Section B: Low Power Mode ───────────────────────────────── */}
-          <div className="flex items-center gap-1.5">
+          <motion.div variants={itemVariants} className="flex items-center gap-1.5">
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
@@ -401,11 +441,11 @@ const ScheduledOperationsCard = ({
               </TooltipContent>
             </Tooltip>
             <p className="font-semibold text-sm">Low Power Mode</p>
-          </div>
+          </motion.div>
           <Separator />
 
           {/* Enable toggle */}
-          <div className="flex items-center justify-between">
+          <motion.div variants={itemVariants} className="flex items-center justify-between">
             <p className="font-semibold text-muted-foreground text-sm">
               Enable Low Power Mode
             </p>
@@ -419,11 +459,11 @@ const ScheduledOperationsCard = ({
                 {lpEnabled ? "Enabled" : "Disabled"}
               </Label>
             </div>
-          </div>
+          </motion.div>
           <Separator />
 
           {/* Start Time */}
-          <div className="flex flex-col gap-4 mt-4">
+          <motion.div variants={itemVariants} className="flex flex-col gap-4 mt-4">
             <div className="flex items-center justify-between">
               <Label className="font-semibold text-muted-foreground text-sm">
                 Start Time
@@ -448,11 +488,11 @@ const ScheduledOperationsCard = ({
                 onChange={(e) => handleLpEndTimeChange(e.target.value)}
               />
             </div>
-          </div>
+          </motion.div>
           <Separator />
 
           {/* Repeat On (low power) */}
-          <fieldset className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-4">
+          <motion.fieldset variants={itemVariants} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-4">
             <legend className="font-semibold text-muted-foreground text-sm">
               Repeat On
             </legend>
@@ -476,8 +516,9 @@ const ScheduledOperationsCard = ({
                 </Toggle>
               ))}
             </div>
-          </fieldset>
-        </div>
+          </motion.fieldset>
+
+        </motion.div>
       </CardContent>
     </Card>
   );

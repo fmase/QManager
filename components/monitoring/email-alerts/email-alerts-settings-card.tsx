@@ -24,9 +24,22 @@ import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Loader2, EyeIcon, EyeOffIcon, SendIcon, AlertCircle, RefreshCcwIcon } from "lucide-react";
+import { Loader2, EyeIcon, EyeOffIcon, SendIcon, AlertCircle, RefreshCcwIcon, PackageIcon, Trash2Icon } from "lucide-react";
 import { SaveButton, useSaveFlash } from "@/components/ui/save-button";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { CopyableCommand } from "@/components/ui/copyable-command";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { Separator } from "@/components/ui/separator";
 import {
   useEmailAlerts,
   type EmailAlertsSavePayload,
@@ -46,12 +59,17 @@ interface EmailAlertsSettingsCardProps {
 const EmailAlertsSettingsCard = ({ onTestEmailSent }: EmailAlertsSettingsCardProps) => {
   const {
     settings,
+    msmtpInstalled,
     isLoading,
     isSaving,
     isSendingTest,
+    isUninstalling,
+    installResult,
     error,
     saveSettings,
     sendTestEmail,
+    uninstall,
+    runInstall,
     refresh,
   } = useEmailAlerts();
 
@@ -215,6 +233,94 @@ const EmailAlertsSettingsCard = ({ onTestEmailSent }: EmailAlertsSettingsCardPro
               </Button>
             </AlertDescription>
           </Alert>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // --- Not installed state — msmtp missing -----------------------------------
+  if (!msmtpInstalled) {
+    return (
+      <Card className="@container/card">
+        <CardHeader>
+          <CardTitle>Email Alert Settings</CardTitle>
+          <CardDescription>
+            Sends via Gmail SMTP using an app password.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col items-center justify-center py-6 gap-4">
+            <PackageIcon className="size-10 text-muted-foreground" />
+            <div className="text-center space-y-1.5">
+              <p className="text-sm font-medium">
+                <code>msmtp</code> is not installed on this device.
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Install automatically or run the command manually.
+              </p>
+            </div>
+
+            {installResult.status === "complete" && (
+              <Alert className="border-success/30 bg-success/5">
+                <AlertCircle className="text-success" />
+                <AlertDescription className="text-success">
+                  <p>{installResult.message}</p>
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {installResult.status === "error" && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  <p>
+                    {installResult.message}
+                    {installResult.detail && (
+                      <span className="block text-xs mt-1 opacity-80">
+                        {installResult.detail}
+                      </span>
+                    )}
+                  </p>
+                </AlertDescription>
+              </Alert>
+            )}
+
+            <div className="flex items-center gap-2">
+              <Button
+                onClick={runInstall}
+                disabled={installResult.status === "running"}
+              >
+                {installResult.status === "running" ? (
+                  <>
+                    <Loader2 className="size-4 animate-spin" />
+                    {installResult.message || "Installing..."}
+                  </>
+                ) : (
+                  <>
+                    <PackageIcon className="size-4" />
+                    Install msmtp
+                  </>
+                )}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => refresh()}
+                disabled={installResult.status === "running"}
+              >
+                <RefreshCcwIcon className="size-3.5" />
+                Check Again
+              </Button>
+            </div>
+
+            <div className="w-full flex items-center gap-3 text-xs text-muted-foreground">
+              <div className="h-px flex-1 bg-border" />
+              <span>or install manually</span>
+              <div className="h-px flex-1 bg-border" />
+            </div>
+
+            <CopyableCommand command="opkg update && opkg install msmtp" />
+          </div>
         </CardContent>
       </Card>
     );
@@ -421,6 +527,70 @@ const EmailAlertsSettingsCard = ({ onTestEmailSent }: EmailAlertsSettingsCardPro
             </FieldGroup>
           </FieldSet>
         </form>
+
+        {msmtpInstalled && !isEnabled && (
+          <>
+            <Separator className="mt-4" />
+            <div className="flex items-center justify-between pt-4">
+              <div>
+                <p className="text-sm font-medium">Remove msmtp</p>
+                <p className="text-xs text-muted-foreground">
+                  Uninstall the msmtp package from this device.
+                </p>
+              </div>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    disabled={isUninstalling}
+                  >
+                    {isUninstalling ? (
+                      <>
+                        <Loader2 className="size-4 animate-spin" />
+                        Removing…
+                      </>
+                    ) : (
+                      <>
+                        <Trash2Icon className="size-4" />
+                        Uninstall
+                      </>
+                    )}
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Uninstall msmtp?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This will remove the msmtp package from this device. Your
+                      email alert settings will be preserved, but alerts will
+                      not be sent until msmtp is reinstalled.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      onClick={async () => {
+                        const success = await uninstall();
+                        if (success) {
+                          toast.success("msmtp uninstalled");
+                          refresh();
+                        } else {
+                          toast.error(
+                            error || "Failed to uninstall msmtp",
+                          );
+                        }
+                      }}
+                    >
+                      Uninstall
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
+          </>
+        )}
       </CardContent>
     </Card>
   );

@@ -5,7 +5,8 @@ ROOT_DIR="$(cd "$(dirname "$0")" && pwd)"
 INSTALL_DIR="$ROOT_DIR/qmanager_install"
 OUT_DIR="$ROOT_DIR/out"
 SCRIPTS_DIR="$ROOT_DIR/scripts"
-ARCHIVE="$ROOT_DIR/qmanager.tar.gz"
+BUILD_DIR="$ROOT_DIR/qmanager-build"
+ARCHIVE="$BUILD_DIR/qmanager.tar.gz"
 
 # Colors
 if [ -t 1 ]; then
@@ -30,7 +31,7 @@ step "Copying backend scripts..."
 mkdir -p "$INSTALL_DIR/scripts"
 for item in "$SCRIPTS_DIR"/*; do
   name="$(basename "$item")"
-  [ "$name" = "install.sh" ] || [ "$name" = "uninstall.sh" ] && continue
+  case "$name" in install.sh|uninstall.sh) continue ;; esac
   cp -r "$item" "$INSTALL_DIR/scripts/$name"
 done
 
@@ -39,9 +40,14 @@ cp "$SCRIPTS_DIR/install.sh" "$INSTALL_DIR/install.sh"
 cp "$SCRIPTS_DIR/uninstall.sh" "$INSTALL_DIR/uninstall.sh"
 
 step "Creating qmanager.tar.gz..."
-[ -f "$ARCHIVE" ] && rm -f "$ARCHIVE"
+mkdir -p "$BUILD_DIR"
 tar czf "$ARCHIVE" -C "$ROOT_DIR" qmanager_install
+
+step "Generating sha256sum.txt..."
+(cd "$BUILD_DIR" && sha256sum qmanager.tar.gz > sha256sum.txt)
 
 ARCHIVE_SIZE=$(du -h "$ARCHIVE" | cut -f1)
 FILE_COUNT=$(tar tzf "$ARCHIVE" | wc -l)
-printf "\n${GREEN}${BOLD}Build complete!${NC} qmanager.tar.gz (%s, %d files)\n\n" "$ARCHIVE_SIZE" "$FILE_COUNT"
+SHA_VALUE=$(awk '{print $1}' "$BUILD_DIR/sha256sum.txt")
+printf "\n${GREEN}${BOLD}Build complete!${NC} qmanager.tar.gz (%s, %d files)\n" "$ARCHIVE_SIZE" "$FILE_COUNT"
+printf "SHA-256: %s\n\n" "$SHA_VALUE"

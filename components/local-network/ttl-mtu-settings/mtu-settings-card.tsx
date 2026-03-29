@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback } from "react";
 
 import {
   Card,
@@ -10,10 +10,15 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 
-import { Field, FieldError, FieldGroup, FieldLabel, FieldSet } from "@/components/ui/field";
+import {
+  Field,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+  FieldSet,
+} from "@/components/ui/field";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SaveButton, useSaveFlash } from "@/components/ui/save-button";
 import { toast } from "sonner";
@@ -30,21 +35,64 @@ const MTUSettingsCard = () => {
   const { data, isLoading, isSaving, error, saveMtu, disableMtu } =
     useMtuSettings();
 
+  if (isLoading) {
+    return (
+      <Card className="@container/card">
+        <CardHeader>
+          <CardTitle>Maximum Transmission Unit (MTU) Configuration</CardTitle>
+          <CardDescription>
+            Set the maximum packet size on the cellular data interface. Lower
+            values can help with fragmentation issues.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-4">
+            <Skeleton className="h-8 w-48" />
+            <Skeleton className="h-10 w-full" />
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Key-based remount — form reinitializes when data changes
+  const formKey = data
+    ? `${data.isEnabled}-${data.currentValue}`
+    : "empty";
+
+  return (
+    <MTUForm
+      key={formKey}
+      data={data}
+      isSaving={isSaving}
+      error={error}
+      saveMtu={saveMtu}
+      disableMtu={disableMtu}
+    />
+  );
+};
+
+function MTUForm({
+  data,
+  isSaving,
+  error,
+  saveMtu,
+  disableMtu,
+}: {
+  data: ReturnType<typeof useMtuSettings>["data"];
+  isSaving: boolean;
+  error: string | null;
+  saveMtu: ReturnType<typeof useMtuSettings>["saveMtu"];
+  disableMtu: ReturnType<typeof useMtuSettings>["disableMtu"];
+}) {
   const { saved, markSaved } = useSaveFlash();
 
-  // --- Local form state -------------------------------------------------------
-  const [isEnabled, setIsEnabled] = useState(false);
-  const [mtuValue, setMtuValue] = useState("");
+  // Form state initialized from data — no sync effect needed
+  const [isEnabled, setIsEnabled] = useState(data?.isEnabled ?? false);
+  const [mtuValue, setMtuValue] = useState(
+    data ? String(data.currentValue) : "",
+  );
 
-  // When data arrives, sync local form state
-  useEffect(() => {
-    if (data) {
-      setIsEnabled(data.isEnabled);
-      setMtuValue(String(data.currentValue));
-    }
-  }, [data]);
-
-  // --- Form is dirty check ---------------------------------------------------
   const isDirty = useMemo(() => {
     if (!data) return false;
     return (
@@ -52,26 +100,24 @@ const MTUSettingsCard = () => {
     );
   }, [data, mtuValue, isEnabled]);
 
-  // --- MTU validation ----------------------------------------------------------
   const mtuNum = Number(mtuValue);
-  const isMtuInvalid = isEnabled && mtuValue !== "" && (isNaN(mtuNum) || mtuNum < 576 || mtuNum > 9000);
+  const isMtuInvalid =
+    isEnabled &&
+    mtuValue !== "" &&
+    (isNaN(mtuNum) || mtuNum < 576 || mtuNum > 9000);
 
-  // --- Handle toggle ---------------------------------------------------------
   const handleToggle = useCallback(
     (checked: boolean) => {
       setIsEnabled(checked);
       if (!checked && data) {
-        // When turning off, reset to current interface value
         setMtuValue(String(data.currentValue));
       }
     },
     [data],
   );
 
-  // --- Handle save -----------------------------------------------------------
   const handleSave = useCallback(async () => {
     if (!isEnabled) {
-      // Disable custom MTU
       const success = await disableMtu();
       if (success) {
         markSaved();
@@ -92,7 +138,7 @@ const MTUSettingsCard = () => {
     } else {
       toast.error(error || "Failed to apply MTU settings");
     }
-  }, [isEnabled, mtuValue, saveMtu, disableMtu, error]);
+  }, [isEnabled, mtuValue, saveMtu, disableMtu, error, markSaved]);
 
   return (
     <Card className="@container/card">
@@ -104,70 +150,64 @@ const MTUSettingsCard = () => {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        {isLoading ? (
-          <div className="grid gap-4">
-            <Skeleton className="h-8 w-48" />
-            <Skeleton className="h-10 w-full" />
-          </div>
-        ) : (
-          <form
-            className="grid gap-4"
-            onSubmit={(e) => {
-              e.preventDefault();
-              handleSave();
-            }}
-          >
-            <FieldSet>
-              <FieldGroup>
-                <div className="grid gap-2">
-                  <Field orientation="horizontal" className="w-fit">
-                    <FieldLabel htmlFor="mtu-setting">
-                      Enable Custom MTU
-                    </FieldLabel>
-                    <Switch
-                      id="mtu-setting"
-                      checked={isEnabled}
-                      onCheckedChange={handleToggle}
-                    />
-                  </Field>
-                </div>
-
-                <Field>
-                  <FieldLabel htmlFor="mtu-value">MTU Value</FieldLabel>
-                  <Input
-                    id="mtu-value"
-                    type="number"
-                    min="576"
-                    max="9000"
-                    placeholder="e.g. 1500"
-                    className="w-full"
-                    value={mtuValue}
-                    onChange={(e) => setMtuValue(e.target.value)}
-                    disabled={!isEnabled}
-                    aria-invalid={isMtuInvalid}
-                    aria-describedby={isMtuInvalid ? "mtu-error" : undefined}
+        <form
+          className="grid gap-4"
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleSave();
+          }}
+        >
+          <FieldSet>
+            <FieldGroup>
+              <div className="grid gap-2">
+                <Field orientation="horizontal" className="w-fit">
+                  <FieldLabel htmlFor="mtu-setting">
+                    Enable Custom MTU
+                  </FieldLabel>
+                  <Switch
+                    id="mtu-setting"
+                    checked={isEnabled}
+                    onCheckedChange={handleToggle}
                   />
-                  {isMtuInvalid && (
-                    <FieldError id="mtu-error">
-                      MTU must be between 576 and 9000
-                    </FieldError>
-                  )}
                 </Field>
+              </div>
 
-                <SaveButton
-                  type="submit"
-                  isSaving={isSaving}
-                  saved={saved}
-                  label="Apply"
-                  disabled={!isDirty}
+              <Field>
+                <FieldLabel htmlFor="mtu-value">MTU Value</FieldLabel>
+                <Input
+                  id="mtu-value"
+                  type="number"
+                  min="576"
+                  max="9000"
+                  placeholder="e.g. 1500"
+                  className="w-full"
+                  value={mtuValue}
+                  onChange={(e) => setMtuValue(e.target.value)}
+                  disabled={!isEnabled}
+                  aria-invalid={isMtuInvalid}
+                  aria-describedby={isMtuInvalid ? "mtu-error" : undefined}
                 />
-              </FieldGroup>
-            </FieldSet>
-          </form>
-        )}
+                {isMtuInvalid && (
+                  <FieldError id="mtu-error">
+                    MTU must be between 576 and 9000
+                  </FieldError>
+                )}
+              </Field>
+            </FieldGroup>
+          </FieldSet>
+          <div>
+            <SaveButton
+              type="submit"
+              isSaving={isSaving}
+              saved={saved}
+              label="Apply"
+              disabled={!isDirty}
+            />
+          </div>
+        </form>
       </CardContent>
     </Card>
   );
-};
+}
 
 export default MTUSettingsCard;

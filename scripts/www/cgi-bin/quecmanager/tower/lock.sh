@@ -141,6 +141,13 @@ if [ "$LOCK_TYPE" = "lte" ]; then
             '{"success":true,"type":"lte","action":"lock","num_cells":$nc,"failover_armed":$fa}'
 
     elif [ "$ACTION" = "unlock" ]; then
+        # Kill failover watcher BEFORE sending unlock AT command.
+        # During the 3-5s modem disconnect from unlock, the daemon could
+        # misdetect "no signal" and clear ALL locks (including NR if active).
+        fo_was_enabled=$(tower_config_get ".failover.enabled")
+        tower_kill_failover_watcher
+        rm -f "$TOWER_FAILOVER_FLAG"
+
         result=$(tower_unlock_lte)
         rc=$?
 
@@ -163,11 +170,14 @@ if [ "$LOCK_TYPE" = "lte" ]; then
         # Update config — preserve ALL cell data, just set enabled=false
         tower_config_update '.lte.enabled = false'
 
-        # Stop failover if no other lock remains active
+        # Check if other lock remains active
         nr_active=$(tower_config_get ".nr_sa.enabled")
-        if [ "$nr_active" != "true" ]; then
-            tower_kill_failover_watcher
-            rm -f "$TOWER_FAILOVER_FLAG"
+        if [ "$nr_active" = "true" ] && [ "$fo_was_enabled" = "true" ]; then
+            # NR lock still active with failover — respawn watcher for it
+            tower_spawn_failover_watcher >/dev/null
+            qlog_info "NR lock still active — failover watcher respawned"
+        else
+            # No other lock — disable failover fully
             tower_config_update '.failover.enabled = false'
             /etc/init.d/qmanager_tower_failover disable 2>/dev/null
             qlog_info "No active locks — failover stopped and disabled"
@@ -237,6 +247,13 @@ elif [ "$LOCK_TYPE" = "nr_sa" ]; then
             '{"success":true,"type":"nr_sa","action":"lock","failover_armed":$fa}'
 
     elif [ "$ACTION" = "unlock" ]; then
+        # Kill failover watcher BEFORE sending unlock AT command.
+        # During the 3-5s modem disconnect from unlock, the daemon could
+        # misdetect "no signal" and clear ALL locks (including LTE if active).
+        fo_was_enabled=$(tower_config_get ".failover.enabled")
+        tower_kill_failover_watcher
+        rm -f "$TOWER_FAILOVER_FLAG"
+
         result=$(tower_unlock_nr)
         rc=$?
 
@@ -259,11 +276,14 @@ elif [ "$LOCK_TYPE" = "nr_sa" ]; then
         # Update config — preserve ALL NR params, just set enabled=false
         tower_config_update '.nr_sa.enabled = false'
 
-        # Stop failover if no other lock remains active
+        # Check if other lock remains active
         lte_active=$(tower_config_get ".lte.enabled")
-        if [ "$lte_active" != "true" ]; then
-            tower_kill_failover_watcher
-            rm -f "$TOWER_FAILOVER_FLAG"
+        if [ "$lte_active" = "true" ] && [ "$fo_was_enabled" = "true" ]; then
+            # LTE lock still active with failover — respawn watcher for it
+            tower_spawn_failover_watcher >/dev/null
+            qlog_info "LTE lock still active — failover watcher respawned"
+        else
+            # No other lock — disable failover fully
             tower_config_update '.failover.enabled = false'
             /etc/init.d/qmanager_tower_failover disable 2>/dev/null
             qlog_info "No active locks — failover stopped and disabled"

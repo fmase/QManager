@@ -30,6 +30,13 @@ RELOAD_FLAG="/tmp/qmanager_email_reload"
 if [ "$REQUEST_METHOD" = "GET" ]; then
     qlog_info "Fetching email alert settings"
 
+    # Check if msmtp is installed
+    if command -v msmtp >/dev/null 2>&1; then
+        msmtp_installed="true"
+    else
+        msmtp_installed="false"
+    fi
+
     if [ -f "$CONFIG" ]; then
         enabled=$(jq -r '(.enabled) | if . == null then "false" else tostring end' "$CONFIG" 2>/dev/null)
         sender_email=$(jq -r '.sender_email // ""' "$CONFIG" 2>/dev/null)
@@ -43,8 +50,10 @@ if [ "$REQUEST_METHOD" = "GET" ]; then
             --arg recipient_email "$recipient_email" \
             --arg app_password "$app_password" \
             --argjson threshold_minutes "$threshold_minutes" \
+            --argjson msmtp_installed "$msmtp_installed" \
             '{
                 success: true,
+                msmtp_installed: $msmtp_installed,
                 settings: {
                     enabled: $enabled,
                     sender_email: $sender_email,
@@ -55,7 +64,7 @@ if [ "$REQUEST_METHOD" = "GET" ]; then
             }'
     else
         # No config yet — return defaults
-        echo '{"success":true,"settings":{"enabled":false,"sender_email":"","recipient_email":"","app_password":"","threshold_minutes":5}}'
+        printf '{"success":true,"msmtp_installed":%s,"settings":{"enabled":false,"sender_email":"","recipient_email":"","app_password":"","threshold_minutes":5}}' "$msmtp_installed"
     fi
     exit 0
 fi
@@ -71,6 +80,69 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
 
     if [ -z "$ACTION" ]; then
         cgi_error "missing_action" "action field is required"
+        exit 0
+    fi
+
+    # -------------------------------------------------------------------------
+    # action: install — install msmtp via opkg (background)
+    # -------------------------------------------------------------------------
+    if [ "$ACTION" = "install" ]; then
+        MSMTP_INSTALL_RESULT="/tmp/qmanager_msmtp_install.json"
+        MSMTP_INSTALL_PID="/tmp/qmanager_msmtp_install.pid"
+
+        # Check if already running
+        if [ -f "$MSMTP_INSTALL_PID" ] && kill -0 "$(cat "$MSMTP_INSTALL_PID" 2>/dev/null)" 2>/dev/null; then
+            cgi_error "already_running" "Installation already in progress"
+            exit 0
+        fi
+
+        # Already installed?
+        if command -v msmtp >/dev/null 2>&1; then
+            cgi_error "already_installed" "msmtp is already installed"
+            exit 0
+        fi
+
+        qlog_info "Starting msmtp installation via opkg"
+
+        # Spawn background installer
+        (
+            echo $$ > "$MSMTP_INSTALL_PID"
+            trap 'rm -f "$MSMTP_INSTALL_PID"' EXIT
+
+            printf '{"success":true,"status":"running","message":"Updating package lists..."}' > "$MSMTP_INSTALL_RESULT"
+            if ! opkg update >/dev/null 2>&1; then
+                printf '{"success":false,"status":"error","message":"Failed to update package lists","detail":"Check internet connection and opkg feeds"}' > "$MSMTP_INSTALL_RESULT"
+                exit 1
+            fi
+
+            printf '{"success":true,"status":"running","message":"Installing msmtp..."}' > "$MSMTP_INSTALL_RESULT"
+            if ! opkg install msmtp >/dev/null 2>&1; then
+                printf '{"success":false,"status":"error","message":"opkg install failed","detail":"Package may not be available for this architecture"}' > "$MSMTP_INSTALL_RESULT"
+                exit 1
+            fi
+
+            # Verify
+            if command -v msmtp >/dev/null 2>&1; then
+                printf '{"success":true,"status":"complete","message":"msmtp installed successfully"}' > "$MSMTP_INSTALL_RESULT"
+            else
+                printf '{"success":false,"status":"error","message":"Package installed but binary not found"}' > "$MSMTP_INSTALL_RESULT"
+            fi
+        ) </dev/null >/dev/null 2>&1 &
+
+        cgi_success
+        exit 0
+    fi
+
+    # -------------------------------------------------------------------------
+    # action: install_status — poll install progress
+    # -------------------------------------------------------------------------
+    if [ "$ACTION" = "install_status" ]; then
+        MSMTP_INSTALL_RESULT="/tmp/qmanager_msmtp_install.json"
+        if [ -f "$MSMTP_INSTALL_RESULT" ]; then
+            cat "$MSMTP_INSTALL_RESULT"
+        else
+            printf '{"success":true,"status":"idle"}'
+        fi
         exit 0
     fi
 
@@ -179,6 +251,39 @@ MSMTPEOF
         else
             cgi_error "send_failed" "Failed to send test email. Check msmtp configuration and network connectivity."
         fi
+        exit 0
+    fi
+
+    # -------------------------------------------------------------------------
+    # action: uninstall — remove msmtp package from the device
+    # -------------------------------------------------------------------------
+    if [ "$ACTION" = "uninstall" ]; then
+        # Safety: refuse if email alerts are still enabled
+        if [ -f "$CONFIG" ]; then
+            ea_enabled=$(jq -r '(.enabled) | if . == null then "false" else tostring end' "$CONFIG" 2>/dev/null)
+            if [ "$ea_enabled" = "true" ]; then
+                cgi_error "still_enabled" "Disable email alerts before uninstalling msmtp"
+                exit 0
+            fi
+        fi
+
+        qlog_info "Uninstalling msmtp package"
+
+        # Remove package
+        opkg remove msmtp 2>/dev/null
+
+        # Clean up generated msmtp config
+        rm -f "$MSMTP_CONFIG"
+
+        # Verify removal
+        if command -v msmtp >/dev/null 2>&1; then
+            qlog_error "msmtp binary still present after opkg remove"
+            cgi_error "uninstall_failed" "Failed to remove msmtp package"
+            exit 0
+        fi
+
+        qlog_info "msmtp uninstalled successfully"
+        cgi_success
         exit 0
     fi
 

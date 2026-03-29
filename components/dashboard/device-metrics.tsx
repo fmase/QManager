@@ -27,7 +27,7 @@ import type {
 } from "@/types/modem-status";
 import {
   formatBytesPerSec,
-  formatBytes,
+  formatBitsPerSec,
   formatUptime,
   calculateLteDistance,
   calculateNrDistance,
@@ -42,6 +42,8 @@ interface DeviceMetricsComponentProps {
   lteData: LteStatus | null;
   nrData: NrStatus | null;
   isLoading: boolean;
+  /** Live bandwidth from WebSocket (bps). Falls back to poller data when null. */
+  liveBandwidth?: { download: number; upload: number } | null;
 }
 
 // --- Warning thresholds ---
@@ -88,6 +90,7 @@ const DeviceMetricsComponent = ({
   lteData,
   nrData,
   isLoading,
+  liveBandwidth,
 }: DeviceMetricsComponentProps) => {
   const unitPrefs = useUnitPreferences();
   const temp = deviceData?.temperature ?? null;
@@ -102,9 +105,6 @@ const DeviceMetricsComponent = ({
 
   const rxSpeed = trafficData?.rx_bytes_per_sec ?? 0;
   const txSpeed = trafficData?.tx_bytes_per_sec ?? 0;
-  const totalRx = trafficData?.total_rx_bytes ?? 0;
-  const totalTx = trafficData?.total_tx_bytes ?? 0;
-
   const isTempHigh = temp !== null && temp >= TEMP_WARN;
   const isCpuHigh = cpu !== null && cpu >= CPU_WARN;
   const memPct = memTotal > 0 ? (memUsed / memTotal) * 100 : 0;
@@ -210,42 +210,31 @@ const DeviceMetricsComponent = ({
           {/* Live Traffic */}
           <Separator />
           <div className="flex items-center justify-between">
-            <p className="font-semibold text-muted-foreground text-sm">
-              Live Traffic
-            </p>
-            <div className="flex items-center gap-x-2">
-              <div className="flex items-center gap-1">
-                <TbCircleArrowDownFilled className="text-info size-5" />
-                <p className="font-semibold text-sm tabular-nums">
-                  {formatBytesPerSec(rxSpeed)}
-                </p>
-              </div>
-              <div className="flex items-center gap-1">
-                <TbCircleArrowUpFilled className="text-purple-500 size-5" />
-                <p className="font-semibold text-sm tabular-nums">
-                  {formatBytesPerSec(txSpeed)}
-                </p>
-              </div>
+            <div className="flex items-center gap-1.5">
+              <p className="font-semibold text-muted-foreground text-sm">
+                Live Traffic
+              </p>
+              {liveBandwidth && (
+                <Badge className="bg-emerald-500/15 text-emerald-600 hover:bg-emerald-500/20 border-emerald-500/30 text-[10px] px-1.5 py-0">
+                  WS
+                </Badge>
+              )}
             </div>
-          </div>
-
-          {/* Data Usage */}
-          <Separator />
-          <div className="flex items-center justify-between">
-            <p className="font-semibold text-muted-foreground text-sm">
-              Data Usage
-            </p>
             <div className="flex items-center gap-x-2">
               <div className="flex items-center gap-1">
                 <TbCircleArrowDownFilled className="text-info size-5" />
                 <p className="font-semibold text-sm tabular-nums">
-                  {formatBytes(totalRx)}
+                  {liveBandwidth
+                    ? formatBitsPerSec(liveBandwidth.download)
+                    : formatBytesPerSec(rxSpeed)}
                 </p>
               </div>
               <div className="flex items-center gap-1">
                 <TbCircleArrowUpFilled className="text-purple-500 size-5" />
                 <p className="font-semibold text-sm tabular-nums">
-                  {formatBytes(totalTx)}
+                  {liveBandwidth
+                    ? formatBitsPerSec(liveBandwidth.upload)
+                    : formatBytesPerSec(txSpeed)}
                 </p>
               </div>
             </div>
