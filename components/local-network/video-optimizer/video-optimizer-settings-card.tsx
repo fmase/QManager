@@ -39,8 +39,8 @@ import {
   Trash2Icon,
   Zap,
 } from "lucide-react";
-import { TbAlertTriangleFilled } from "react-icons/tb";
 import { useVideoOptimizer } from "@/hooks/use-video-optimizer";
+import { ServiceStats } from "../service-stats";
 import { ServiceStatusBadge } from "../service-status-badge";
 
 function VideoOptimizerSkeleton() {
@@ -59,32 +59,6 @@ function VideoOptimizerSkeleton() {
   );
 }
 
-function ServiceStats({
-  uptime,
-  packets,
-  domains,
-}: {
-  uptime: string;
-  packets: number;
-  domains: number;
-}) {
-  return (
-    <div className="grid grid-cols-1 @sm/card:grid-cols-3 gap-3">
-      {[
-        { label: "Uptime", value: uptime },
-        { label: "Packets Processed", value: packets.toLocaleString() },
-        { label: "Domains Protected", value: domains.toString() },
-      ].map((stat) => (
-        <div key={stat.label} className="rounded-lg bg-muted/50 p-3">
-          <div className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-            {stat.label}
-          </div>
-          <div className="mt-1 text-base font-semibold">{stat.value}</div>
-        </div>
-      ))}
-    </div>
-  );
-}
 
 function VerificationDisplay({
   verifyResult,
@@ -191,7 +165,7 @@ function VerificationDisplay({
 
       {verifyResult.status === "error" && verifyResult.error && (
         <Alert variant="destructive">
-          <AlertTriangle className="h-4 w-4" />
+          <AlertTriangle className="size-4" />
           <AlertDescription>{verifyResult.error}</AlertDescription>
         </Alert>
       )}
@@ -252,18 +226,15 @@ export default function VideoOptimizerSettingsCard({
             evasion.
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent aria-live="polite">
           <Alert variant="destructive">
-            <AlertTriangle className="h-4 w-4" />
-            <AlertDescription>
-              Failed to load settings.{" "}
-              <button
-                type="button"
-                className="underline underline-offset-4"
-                onClick={() => refresh()}
-              >
+            <AlertTriangle className="size-4" />
+            <AlertDescription className="flex items-center justify-between">
+              <span>Failed to load settings.</span>
+              <Button variant="outline" size="sm" onClick={() => refresh()}>
+                <RefreshCcwIcon className="size-3.5" />
                 Retry
-              </button>
+              </Button>
             </AlertDescription>
           </Alert>
         </CardContent>
@@ -282,7 +253,7 @@ export default function VideoOptimizerSettingsCard({
             evasion.
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent aria-live="polite">
           <div className="flex flex-col items-center justify-center py-6 gap-4">
             <PackageIcon className="size-10 text-muted-foreground" />
             <div className="text-center space-y-1.5">
@@ -322,7 +293,7 @@ export default function VideoOptimizerSettingsCard({
 
             {installResult.status === "error" && (
               <Alert variant="destructive">
-                <AlertTriangle className="h-4 w-4" />
+                <AlertTriangle className="size-4" />
                 <AlertDescription>
                   <p>
                     {installResult.message}
@@ -447,10 +418,10 @@ function VideoOptimizerForm({
           de-prioritize your connection.
         </CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent aria-live="polite">
         {otherActive ? (
           <Alert className="border-warning/30 bg-warning/10 text-warning mb-4">
-            <TbAlertTriangleFilled />
+            <AlertTriangle className="size-4" />
             <AlertDescription className="text-warning">
               Traffic Masquerade is currently active. Disable it first before
               enabling Video Optimizer.
@@ -458,7 +429,7 @@ function VideoOptimizerForm({
           </Alert>
         ) : (
           <Alert className="border-warning/30 bg-warning/10 text-warning mb-4">
-            <TbAlertTriangleFilled />
+            <AlertTriangle className="size-4" />
             <AlertTitle className="text-warning">
               Experimental Feature
             </AlertTitle>
@@ -467,7 +438,7 @@ function VideoOptimizerForm({
 
         {!settings?.kernel_module_loaded && (
           <Alert className="mb-4">
-            <AlertTriangle className="h-4 w-4" />
+            <AlertTriangle className="size-4" />
             <AlertDescription>
               Required kernel module not found. Run{" "}
               <code className="text-xs">opkg install kmod-nft-queue</code> on
@@ -507,9 +478,11 @@ function VideoOptimizerForm({
                 <>
                   <Separator />
                   <ServiceStats
-                    uptime={settings.uptime}
-                    packets={settings.packets_processed}
-                    domains={settings.domains_loaded}
+                    stats={[
+                      { label: "Uptime", value: settings.uptime },
+                      { label: "Packets Processed", value: settings.packets_processed.toLocaleString() },
+                      { label: "Domains Protected", value: settings.domains_loaded.toString() },
+                    ]}
                   />
 
                   <Separator />
@@ -578,6 +551,7 @@ function VideoOptimizerForm({
                   <AlertDialogFooter>
                     <AlertDialogCancel>Cancel</AlertDialogCancel>
                     <AlertDialogAction
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                       onClick={async () => {
                         const success = await runUninstall();
                         if (success) {

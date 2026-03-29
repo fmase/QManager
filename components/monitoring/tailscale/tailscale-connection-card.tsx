@@ -30,6 +30,7 @@ import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { CopyableCommand } from "@/components/ui/copyable-command";
 import {
   Loader2,
   PackageIcon,
@@ -223,29 +224,7 @@ export function TailscaleConnectionCard({
               <div className="h-px flex-1 bg-border" />
             </div>
 
-            <button
-              type="button"
-              className="bg-muted px-4 py-2.5 rounded-md text-xs font-mono text-muted-foreground select-all max-w-full overflow-x-auto text-left cursor-pointer hover:bg-muted/80 transition-colors"
-              onClick={async () => {
-                try {
-                  await navigator.clipboard.writeText(installCmd);
-                  toast.success("Copied to clipboard");
-                } catch {
-                  const textarea = document.createElement("textarea");
-                  textarea.value = installCmd;
-                  textarea.style.position = "fixed";
-                  textarea.style.opacity = "0";
-                  document.body.appendChild(textarea);
-                  textarea.select();
-                  document.execCommand("copy");
-                  document.body.removeChild(textarea);
-                  toast.success("Copied to clipboard");
-                }
-              }}
-              title="Click to copy"
-            >
-              {installCmd}
-            </button>
+            <CopyableCommand command={installCmd} />
           </div>
         </CardContent>
       </Card>
@@ -328,7 +307,7 @@ export function TailscaleConnectionCard({
                 Service
               </p>
               <Badge variant="outline" className="bg-muted/50 text-muted-foreground border-muted-foreground/30">
-                <MinusCircleIcon className="h-3 w-3" />
+                <MinusCircleIcon className="size-3" />
                 Stopped
               </Badge>
             </div>
@@ -388,6 +367,7 @@ export function TailscaleConnectionCard({
                   <AlertDialogFooter>
                     <AlertDialogCancel>Cancel</AlertDialogCancel>
                     <AlertDialogAction
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                       onClick={async () => {
                         const success = await uninstall();
                         if (success) {
@@ -428,7 +408,7 @@ export function TailscaleConnectionCard({
                 Status
               </p>
               <Badge variant="outline" className="bg-warning/15 text-warning hover:bg-warning/20 border-warning/30">
-                <LogInIcon className="h-3 w-3" />
+                <LogInIcon className="size-3" />
                 Needs Login
               </Badge>
             </div>
@@ -607,7 +587,7 @@ export function TailscaleConnectionCard({
                 Status
               </p>
               <Badge variant="outline" className="bg-success/15 text-success hover:bg-success/20 border-success/30">
-                <CheckCircle2Icon className="h-3 w-3" />
+                <CheckCircle2Icon className="size-3" />
                 Connected
               </Badge>
             </div>
@@ -718,7 +698,7 @@ export function TailscaleConnectionCard({
               Status
             </p>
             <Badge variant="outline" className="bg-muted/50 text-muted-foreground border-muted-foreground/30">
-              <MinusCircleIcon className="h-3 w-3" />
+              <MinusCircleIcon className="size-3" />
               Disconnected
             </Badge>
           </div>

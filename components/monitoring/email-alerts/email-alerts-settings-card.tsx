@@ -27,6 +27,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Loader2, EyeIcon, EyeOffIcon, SendIcon, AlertCircle, RefreshCcwIcon, PackageIcon, Trash2Icon } from "lucide-react";
 import { SaveButton, useSaveFlash } from "@/components/ui/save-button";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { CopyableCommand } from "@/components/ui/copyable-command";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -318,30 +319,7 @@ const EmailAlertsSettingsCard = ({ onTestEmailSent }: EmailAlertsSettingsCardPro
               <div className="h-px flex-1 bg-border" />
             </div>
 
-            <button
-              type="button"
-              className="bg-muted px-4 py-2.5 rounded-md text-xs font-mono text-muted-foreground select-all max-w-full overflow-x-auto text-left cursor-pointer hover:bg-muted/80 transition-colors"
-              onClick={async () => {
-                const cmd = "opkg update && opkg install msmtp";
-                try {
-                  await navigator.clipboard.writeText(cmd);
-                  toast.success("Copied to clipboard");
-                } catch {
-                  const textarea = document.createElement("textarea");
-                  textarea.value = cmd;
-                  textarea.style.position = "fixed";
-                  textarea.style.opacity = "0";
-                  document.body.appendChild(textarea);
-                  textarea.select();
-                  document.execCommand("copy");
-                  document.body.removeChild(textarea);
-                  toast.success("Copied to clipboard");
-                }
-              }}
-              title="Click to copy"
-            >
-              opkg update &amp;&amp; opkg install msmtp
-            </button>
+            <CopyableCommand command="opkg update && opkg install msmtp" />
           </div>
         </CardContent>
       </Card>
@@ -592,6 +570,7 @@ const EmailAlertsSettingsCard = ({ onTestEmailSent }: EmailAlertsSettingsCardPro
                   <AlertDialogFooter>
                     <AlertDialogCancel>Cancel</AlertDialogCancel>
                     <AlertDialogAction
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                       onClick={async () => {
                         const success = await uninstall();
                         if (success) {

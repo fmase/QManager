@@ -12,9 +12,9 @@ export function ServiceStatusBadge({
     return (
       <Badge
         variant="outline"
-        className="border-success/30 bg-success/10 text-success"
+        className="border-success/30 bg-success/15 text-success hover:bg-success/20"
       >
-        <CheckCircle2Icon className="h-3 w-3" />
+        <CheckCircle2Icon className="size-3" />
         Active
       </Badge>
     );
@@ -24,7 +24,7 @@ export function ServiceStatusBadge({
       variant="outline"
       className="border-muted-foreground/30 bg-muted/50 text-muted-foreground"
     >
-      <MinusCircleIcon className="h-3 w-3" />
+      <MinusCircleIcon className="size-3" />
       {installed ? "Inactive" : "Not Installed"}
     </Badge>
   );

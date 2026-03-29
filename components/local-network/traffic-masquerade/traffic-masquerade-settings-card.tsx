@@ -10,7 +10,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Field, FieldGroup, FieldLabel, FieldSet } from "@/components/ui/field";
+import { Field, FieldDescription, FieldGroup, FieldLabel, FieldSet } from "@/components/ui/field";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -31,8 +31,8 @@ import { Separator } from "@/components/ui/separator";
 import { AlertTriangle, Loader2, PackageIcon, RefreshCcwIcon, Trash2Icon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { TbAlertTriangleFilled } from "react-icons/tb";
 import { useTrafficMasquerade } from "@/hooks/use-traffic-masquerade";
+import { ServiceStats } from "../service-stats";
 import { ServiceStatusBadge } from "../service-status-badge";
 
 function MasqueradeSkeleton() {
@@ -76,18 +76,15 @@ export default function TrafficMasqueradeSettingsCard({
             Make HTTPS traffic appear as a whitelisted service to carrier DPI.
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent aria-live="polite">
           <Alert variant="destructive">
-            <AlertTriangle className="h-4 w-4" />
-            <AlertDescription>
-              Failed to load settings.{" "}
-              <button
-                type="button"
-                className="underline underline-offset-4"
-                onClick={() => refresh()}
-              >
+            <AlertTriangle className="size-4" />
+            <AlertDescription className="flex items-center justify-between">
+              <span>Failed to load settings.</span>
+              <Button variant="outline" size="sm" onClick={() => refresh()}>
+                <RefreshCcwIcon className="size-3.5" />
                 Retry
-              </button>
+              </Button>
             </AlertDescription>
           </Alert>
         </CardContent>
@@ -105,7 +102,7 @@ export default function TrafficMasqueradeSettingsCard({
             Make HTTPS traffic appear as a whitelisted service to carrier DPI.
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent aria-live="polite">
           <div className="flex flex-col items-center justify-center py-6 gap-4">
             <PackageIcon className="size-10 text-muted-foreground" />
             <div className="text-center space-y-1.5">
@@ -214,15 +211,14 @@ function TrafficMasqueradeForm({
         <CardTitle>Traffic Masquerade</CardTitle>
         <CardDescription>
           Make HTTPS traffic appear as a whitelisted service to carrier DPI by
-          injecting fake TLS handshakes with a spoofed domain. This sends fake
-          Some carriers may detect this behavior and de-prioritize your
-          connection.
+          injecting fake TLS handshakes with a spoofed domain. Some carriers
+          may detect this behavior and de-prioritize your connection.
         </CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent aria-live="polite">
         {otherActive ? (
           <Alert className="border-warning/30 bg-warning/10 text-warning mb-4">
-            <TbAlertTriangleFilled />
+            <AlertTriangle className="size-4" />
             <AlertDescription className="text-warning">
               Video Optimizer is currently active. Disable it first before
               enabling Traffic Masquerade.
@@ -230,7 +226,7 @@ function TrafficMasqueradeForm({
           </Alert>
         ) : (
           <Alert className="border-warning/30 bg-warning/10 text-warning mb-4">
-            <TbAlertTriangleFilled />
+            <AlertTriangle className="size-4" />
             <AlertTitle className="text-warning">
               Experimental Feature
             </AlertTitle>
@@ -239,7 +235,7 @@ function TrafficMasqueradeForm({
 
         {!settings?.kernel_module_loaded && (
           <Alert className="mb-4">
-            <AlertTriangle className="h-4 w-4" />
+            <AlertTriangle className="size-4" />
             <AlertDescription>
               Required kernel module not found. Run{" "}
               <code className="text-xs">opkg install kmod-nft-queue</code> on
@@ -290,32 +286,21 @@ function TrafficMasqueradeForm({
                     sniError && isEnabled ? "sni-error" : "sni-desc"
                   }
                 />
+                <FieldDescription id="sni-desc">
+                  The domain that appears in the fake TLS handshake sent to the
+                  carrier.
+                </FieldDescription>
               </Field>
 
               {isRunning && settings && (
                 <>
                   <Separator />
-                  <div className="grid grid-cols-2 gap-3">
-                    {[
+                  <ServiceStats
+                    stats={[
                       { label: "Uptime", value: settings.uptime },
-                      {
-                        label: "Packets Processed",
-                        value: settings.packets_processed.toLocaleString(),
-                      },
-                    ].map((stat) => (
-                      <div
-                        key={stat.label}
-                        className="rounded-lg bg-muted/50 p-3"
-                      >
-                        <div className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-                          {stat.label}
-                        </div>
-                        <div className="mt-1 text-base font-semibold">
-                          {stat.value}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                      { label: "Packets Processed", value: settings.packets_processed.toLocaleString() },
+                    ]}
+                  />
                 </>
               )}
 
@@ -374,6 +359,7 @@ function TrafficMasqueradeForm({
                   <AlertDialogFooter>
                     <AlertDialogCancel>Cancel</AlertDialogCancel>
                     <AlertDialogAction
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                       onClick={async () => {
                         const success = await runUninstall();
                         if (success) {
