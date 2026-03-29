@@ -191,14 +191,16 @@ function TrafficMasqueradeForm({
           <Alert className="mb-4">
             <AlertTriangle className="h-4 w-4" />
             <AlertDescription>
-              Requires the <code>nfqws</code> binary. Install it from the{" "}
-              <Link
-                href="/local-network/video-optimizer"
-                className="underline underline-offset-4"
-              >
-                Video Optimizer
-              </Link>{" "}
-              page.
+              <p>
+                Requires the <code>nfqws</code> binary. Install it from the{" "}
+                <Link
+                  href="/local-network/video-optimizer"
+                  className="underline underline-offset-4"
+                >
+                  Video Optimizer
+                </Link>{" "}
+                page.
+              </p>
             </AlertDescription>
           </Alert>
         )}

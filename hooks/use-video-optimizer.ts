@@ -223,6 +223,26 @@ export function useVideoOptimizer() {
     fetchSettings();
   }, [fetchSettings]);
 
+  // Poll for live stats while service is running
+  const statsPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    if (statsPollRef.current) {
+      clearInterval(statsPollRef.current);
+      statsPollRef.current = null;
+    }
+
+    if (settings?.status === "running") {
+      statsPollRef.current = setInterval(() => fetchSettings(true), 5000);
+    }
+
+    return () => {
+      if (statsPollRef.current) {
+        clearInterval(statsPollRef.current);
+      }
+    };
+  }, [settings?.status, fetchSettings]);
+
   return {
     settings,
     isLoading,

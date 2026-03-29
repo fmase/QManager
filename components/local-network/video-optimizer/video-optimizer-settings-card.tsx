@@ -355,16 +355,20 @@ function VideoOptimizerForm({
             <Alert>
               <Download className="h-4 w-4" />
               <AlertDescription>
-                Video Optimizer requires the <code>nfqws</code> binary from the{" "}
-                <a
-                  href="https://github.com/bol-van/zapret"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="underline"
-                >
-                  zapret
-                </a>{" "}
-                project. Click below to download and install it automatically.
+                <p>
+                  Video Optimizer requires the <code>nfqws</code> binary from
+                  the{" "}
+                  <a
+                    href="https://github.com/bol-van/zapret"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline"
+                  >
+                    zapret
+                  </a>{" "}
+                  project. Click below to download and install it
+                  automatically.
+                </p>
               </AlertDescription>
             </Alert>
 

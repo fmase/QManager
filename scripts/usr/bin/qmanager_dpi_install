@@ -69,22 +69,45 @@ write_result "running" "Architecture: $arch" "Fetching latest release..."
 # Step 2: Get latest release tarball URL
 # Look for the openwrt-embedded tarball (smaller, contains only binaries)
 qlog_info "Querying GitHub API for latest zapret release"
-release_json=$(curl -s -L "$GITHUB_API" 2>/dev/null)
+release_json=$(curl -s -L -H "User-Agent: QManager" -w '\n%{http_code}' "$GITHUB_API" 2>/dev/null)
+
+# Split response body from HTTP status code (last line)
+http_code=$(echo "$release_json" | tail -1)
+release_json=$(echo "$release_json" | sed '$d')
+
 if [ -z "$release_json" ]; then
     write_result "error" "Failed to reach GitHub API" "Check internet connection"
     exit 1
 fi
 
-tarball_url=$(echo "$release_json" | jq -r '.assets[] | select(.name | test("openwrt-embedded\\.tar\\.gz$")) | .browser_download_url' 2>/dev/null)
+# Check for GitHub API errors (rate limiting, auth issues, etc.)
+api_error=$(echo "$release_json" | jq -r '.message // empty' 2>/dev/null)
+if [ -n "$api_error" ] && [ -z "$(echo "$release_json" | jq -r '.assets // empty' 2>/dev/null)" ]; then
+    qlog_error "GitHub API error (HTTP $http_code): $api_error"
+    write_result "error" "GitHub API error (HTTP $http_code)" "$api_error"
+    exit 1
+fi
+
 release_tag=$(echo "$release_json" | jq -r '.tag_name // empty' 2>/dev/null)
+qlog_info "Latest release: ${release_tag:-unknown} (HTTP $http_code)"
+
+# List available assets for debugging
+asset_names=$(echo "$release_json" | jq -r '.assets[].name' 2>/dev/null)
+qlog_info "Release assets: $asset_names"
+
+# Note: jq test() requires oniguruma regex which many OpenWRT jq builds lack.
+# Use endswith()/contains() instead — they are built-in and always available.
+tarball_url=$(echo "$release_json" | jq -r '.assets[] | select(.name | endswith("-openwrt-embedded.tar.gz")) | .browser_download_url' 2>/dev/null)
 
 if [ -z "$tarball_url" ]; then
-    # Fallback: try the full release tarball
-    tarball_url=$(echo "$release_json" | jq -r '.assets[] | select(.name | test("zapret-.*\\.tar\\.gz$")) | .browser_download_url' 2>/dev/null | head -1)
+    # Fallback: try any .tar.gz asset (skip sha256sum.txt, .zip)
+    tarball_url=$(echo "$release_json" | jq -r '.assets[] | select(.name | endswith(".tar.gz")) | .browser_download_url' 2>/dev/null | head -1)
 fi
 
 if [ -z "$tarball_url" ]; then
-    write_result "error" "No compatible release found" "Could not find zapret tarball in latest release"
+    asset_count=$(echo "$release_json" | jq '.assets | length' 2>/dev/null)
+    qlog_error "No matching tarball in ${asset_count:-0} assets: $asset_names"
+    write_result "error" "No compatible release found" "Release $release_tag has ${asset_count:-0} assets, none match expected pattern. Check /tmp/qmanager.log"
     exit 1
 fi
 
