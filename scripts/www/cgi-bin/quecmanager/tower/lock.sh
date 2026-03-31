@@ -130,6 +130,9 @@ if [ "$LOCK_TYPE" = "lte" ]; then
 
         qlog_info "LTE tower lock applied successfully"
 
+        # Re-apply custom MTU after interface bounce
+        mtu_reapply_after_bounce
+
         # Update config file + auto-enable failover for this lock session
         tower_config_update_lte "true" "$c1_earfcn" "$c1_pci" "$c2_earfcn" "$c2_pci" "$c3_earfcn" "$c3_pci"
         tower_config_update '.failover.enabled = true'
@@ -166,6 +169,9 @@ if [ "$LOCK_TYPE" = "lte" ]; then
         esac
 
         qlog_info "LTE tower lock cleared"
+
+        # Re-apply custom MTU after interface bounce
+        mtu_reapply_after_bounce
 
         # Update config — preserve ALL cell data, just set enabled=false
         tower_config_update '.lte.enabled = false'
@@ -236,6 +242,9 @@ elif [ "$LOCK_TYPE" = "nr_sa" ]; then
 
         qlog_info "NR-SA tower lock applied successfully"
 
+        # Re-apply custom MTU after interface bounce
+        mtu_reapply_after_bounce
+
         # Update config + auto-enable failover for this lock session
         tower_config_update_nr "true" "$nr_pci" "$nr_arfcn" "$nr_scs" "$nr_band"
         tower_config_update '.failover.enabled = true'
@@ -272,6 +281,9 @@ elif [ "$LOCK_TYPE" = "nr_sa" ]; then
         esac
 
         qlog_info "NR-SA tower lock cleared"
+
+        # Re-apply custom MTU after interface bounce
+        mtu_reapply_after_bounce
 
         # Update config — preserve ALL NR params, just set enabled=false
         tower_config_update '.nr_sa.enabled = false'
