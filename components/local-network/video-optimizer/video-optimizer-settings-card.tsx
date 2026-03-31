@@ -26,7 +26,6 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { SaveButton, useSaveFlash } from "@/components/ui/save-button";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -74,99 +73,36 @@ function VerificationDisplay({
   return (
     <div className="space-y-3">
       <div>
-        <h4 className="text-sm font-medium">Verify Bypass</h4>
+        <h4 className="text-sm font-medium">Verify Service</h4>
         <p className="text-xs text-muted-foreground">
-          Run a before &amp; after speed test against a video CDN to confirm
-          throttle bypass is working
+          Confirm DPI evasion is intercepting traffic for hostlisted domains
         </p>
       </div>
 
-      {verifyResult.status === "complete" &&
-        verifyResult.without_bypass &&
-        verifyResult.with_bypass && (
-          <div className="overflow-hidden rounded-lg border">
-            <div className="grid grid-cols-1 @sm/card:grid-cols-[1fr_auto_1fr]">
-              <div className="p-4 text-center">
-                <div className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-                  Without Bypass
-                </div>
-                <div
-                  className={`mt-2 text-2xl font-bold ${
-                    verifyResult.without_bypass.throttled
-                      ? "text-destructive"
-                      : "text-success"
-                  }`}
-                >
-                  {verifyResult.without_bypass.speed_mbps.toFixed(1)}
-                </div>
-                <div className="text-xs text-muted-foreground">Mbps</div>
-                <Badge
-                  variant="outline"
-                  className={`mt-1.5 text-[11px] ${
-                    verifyResult.without_bypass.throttled
-                      ? "border-destructive/30 bg-destructive/10 text-destructive"
-                      : "border-success/30 bg-success/10 text-success"
-                  }`}
-                >
-                  {verifyResult.without_bypass.throttled
-                    ? "Throttled"
-                    : "Not Throttled"}
-                </Badge>
-              </div>
+      {verifyResult.status === "complete" && verifyResult.passed === true && (
+        <Alert className="border-success/30 bg-success/5">
+          <CheckCircle2 className="text-success" />
+          <AlertDescription className="text-success">
+            <p>{verifyResult.message}</p>
+          </AlertDescription>
+        </Alert>
+      )}
 
-              <div className="flex items-center justify-center py-1 @sm/card:py-0 @sm/card:px-2 text-muted-foreground">
-                <span className="inline-block rotate-90 @sm/card:rotate-0">
-                  &rarr;
-                </span>
-              </div>
-
-              <div className="p-4 text-center">
-                <div className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-                  With Bypass
-                </div>
-                <div
-                  className={`mt-2 text-2xl font-bold ${
-                    verifyResult.with_bypass.throttled
-                      ? "text-destructive"
-                      : "text-success"
-                  }`}
-                >
-                  {verifyResult.with_bypass.speed_mbps.toFixed(1)}
-                </div>
-                <div className="text-xs text-muted-foreground">Mbps</div>
-                <Badge
-                  variant="outline"
-                  className={`mt-1.5 text-[11px] ${
-                    verifyResult.with_bypass.throttled
-                      ? "border-destructive/30 bg-destructive/10 text-destructive"
-                      : "border-success/30 bg-success/10 text-success"
-                  }`}
-                >
-                  {verifyResult.with_bypass.throttled
-                    ? "Throttled"
-                    : "Unthrottled"}
-                </Badge>
-              </div>
-            </div>
-
-            {verifyResult.improvement && (
-              <div className="border-t bg-success/5 p-2.5 text-center">
-                <span className="text-sm font-semibold text-success">
-                  {verifyResult.improvement} faster
-                </span>
-                <span className="text-xs text-muted-foreground">
-                  {" "}
-                  &mdash; Video throttle successfully bypassed
-                </span>
-              </div>
-            )}
-          </div>
-        )}
+      {verifyResult.status === "complete" && verifyResult.passed === false && (
+        <Alert className="border-warning/30 bg-warning/10">
+          <AlertTriangle className="text-warning" />
+          <AlertDescription className="text-warning">
+            <p>{verifyResult.message}</p>
+          </AlertDescription>
+        </Alert>
+      )}
 
       {verifyResult.status === "error" && verifyResult.error && (
         <Alert variant="destructive">
           <AlertTriangle className="size-4" />
-          <AlertDescription>{verifyResult.error}</AlertDescription>
+          <AlertDescription>
+            <p>{verifyResult.error}</p>
+          </AlertDescription>
         </Alert>
       )}
 
@@ -179,21 +115,15 @@ function VerificationDisplay({
         {isRunning ? (
           <>
             <Loader2 className="animate-spin" />
-            Running Verification...
+            Verifying...
           </>
         ) : (
           <>
             <Zap />
-            Run Verification Test
+            Verify Service
           </>
         )}
       </Button>
-
-      {isRunning && (
-        <p className="text-center text-[11px] text-muted-foreground">
-          Takes ~25 seconds. Briefly disables bypass during test.
-        </p>
-      )}
     </div>
   );
 }

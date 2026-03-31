@@ -24,16 +24,10 @@ export interface VideoOptimizerResponse {
 export interface VerifyResult {
   success: boolean;
   status: "idle" | "running" | "complete" | "error";
-  timestamp?: string;
-  without_bypass?: {
-    speed_mbps: number;
-    throttled: boolean;
-  };
-  with_bypass?: {
-    speed_mbps: number;
-    throttled: boolean;
-  };
-  improvement?: string;
+  passed?: boolean;
+  test_domain?: string;
+  packets?: number;
+  message?: string;
   error?: string;
 }
 
