@@ -10,6 +10,13 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useModemStatus } from "@/hooks/use-modem-status";
 import {
@@ -26,8 +33,8 @@ import type { SignalPerAntenna } from "@/types/modem-status";
 // =============================================================================
 
 const ANTENNA_LABELS = [
-  { name: "Main", rx: "RX0" },
-  { name: "Diversity", rx: "RX1" },
+  { name: "Main", rx: "PRX" },
+  { name: "Diversity", rx: "DRX" },
   { name: "MIMO 3", rx: "RX2" },
   { name: "MIMO 4", rx: "RX3" },
 ] as const;
@@ -98,12 +105,12 @@ function MetricRow({
 
   return (
     <div className="flex items-center gap-2">
-      <span className="text-[10px] uppercase tracking-wide text-muted-foreground w-9 shrink-0">
+      <span className="text-xs uppercase tracking-wide text-muted-foreground w-10 shrink-0">
         {label}
       </span>
       <AnimatedProgress value={progress} />
       <span
-        className={`text-xs font-semibold tabular-nums min-w-[60px] text-right shrink-0 ${QUALITY_COLORS[quality]}`}
+        className={`text-sm font-semibold tabular-nums min-w-17 text-right shrink-0 ${QUALITY_COLORS[quality]}`}
       >
         {fmtSignal(value, unit)}
       </span>
@@ -130,8 +137,8 @@ function AntennaSection({
   return (
     <div className={isInactive ? "opacity-25" : undefined}>
       <div className="flex items-baseline gap-1.5 mb-2">
-        <span className="text-sm font-semibold">{name}</span>
-        <span className="text-[10px] text-muted-foreground">{rx}</span>
+        <span className="text-base font-semibold">{name}</span>
+        <span className="text-xs text-muted-foreground">{rx}</span>
       </div>
       <div className="grid gap-1.5">
         <MetricRow label="RSRP" value={rsrp} unit="dBm" thresholds={RSRP_THRESHOLDS} />
@@ -158,21 +165,24 @@ function TechCard({
 
   if (!active) {
     return (
-      <Card className="opacity-60">
+      <Card>
         <CardHeader>
           <CardTitle>{title}</CardTitle>
           <CardDescription>{description}</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-col items-center justify-center py-8 text-center">
-            <SignalIcon className="size-8 text-muted-foreground/15 mb-2" />
-            <p className="text-sm text-muted-foreground/60">
-              No {title.split(" ")[0]} signal detected
-            </p>
-            <p className="text-xs text-muted-foreground/40 mt-1">
-              Antenna metrics appear when {prefix === "lte" ? "4G" : "NR"} is active
-            </p>
-          </div>
+          <Empty className="h-full bg-muted/30">
+            <EmptyHeader>
+              <EmptyMedia variant="icon">
+                <SignalIcon />
+              </EmptyMedia>
+              <EmptyTitle>No {title.split(" ")[0]} Signal</EmptyTitle>
+              <EmptyDescription className="max-w-xs text-pretty">
+                Antenna metrics will appear when{" "}
+                {prefix === "lte" ? "4G LTE" : "5G NR"} is active.
+              </EmptyDescription>
+            </EmptyHeader>
+          </Empty>
         </CardContent>
       </Card>
     );
@@ -246,7 +256,7 @@ function AntennaStatsSkeleton() {
                       <div key={k} className="flex items-center gap-2">
                         <Skeleton className="h-3 w-9" />
                         <Skeleton className="h-1.5 flex-1" />
-                        <Skeleton className="h-3 w-[60px]" />
+                        <Skeleton className="h-3 w-15" />
                       </div>
                     ))}
                   </div>
