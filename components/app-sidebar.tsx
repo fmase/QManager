@@ -8,19 +8,17 @@ import {
   HomeIcon,
   RadioTowerIcon,
   LucideSignal,
-  MailIcon,
   EthernetPortIcon,
   MonitorCloudIcon,
-  LogsIcon,
   MessageCircleIcon,
   DogIcon,
-  DownloadIcon,
   RouterIcon,
   User2Icon,
   HeartIcon,
   ScanIcon,
   SettingsIcon,
   TerminalIcon,
+  DownloadIcon,
 } from "lucide-react";
 
 import QManagerLogo from "@/public/qmanager-logo.svg";
@@ -68,7 +66,16 @@ const data = {
           title: "Bandwidth Monitor",
           url: "/system-settings/bandwidth-monitor",
         },
+        {
+          title: "Logs",
+          url: "/system-settings/logs",
+        },
       ],
+    },
+    {
+      title: "Software Update",
+      url: "/system-settings/software-update",
+      icon: DownloadIcon,
     },
     {
       title: "AT Terminal",
@@ -209,12 +216,11 @@ const data = {
           title: "Latency Monitor",
           url: "/monitoring/latency",
         },
+        {
+          title: "Email Alerts",
+          url: "/monitoring/email-alerts",
+        },
       ],
-    },
-    {
-      title: "Email Alerts",
-      url: "/monitoring/email-alerts",
-      icon: MailIcon,
     },
     {
       title: "Tailscale",
@@ -225,16 +231,6 @@ const data = {
       title: "Watchdog",
       url: "/monitoring/watchdog",
       icon: DogIcon,
-    },
-    {
-      title: "Logs",
-      url: "/monitoring/logs",
-      icon: LogsIcon,
-    },
-    {
-      title: "Updates",
-      url: "/monitoring/software-update",
-      icon: DownloadIcon,
     },
   ],
 };
