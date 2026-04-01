@@ -105,6 +105,12 @@ const data = {
       title: "Cellular Information",
       url: "/cellular",
       icon: RadioTowerIcon,
+      items: [
+        {
+          title: "Antenna Statistics",
+          url: "/cellular/antenna-statistics",
+        },
+      ],
     },
     {
       title: "SMS Center",
