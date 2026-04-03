@@ -34,8 +34,8 @@ qlog_init "ping"
 
 # --- Configuration -----------------------------------------------------------
 # Defaults — overridable via UCI (/etc/config/qmanager) when implemented
-PING_TARGET_1="${PING_TARGET_1:-8.8.8.8}"
-PING_TARGET_2="${PING_TARGET_2:-1.1.1.1}"
+PING_TARGET_1="${PING_TARGET_1:-google.com}"
+PING_TARGET_2="${PING_TARGET_2:-cloudflare.com}"
 PING_INTERVAL="${PING_INTERVAL:-5}"
 FAIL_THRESHOLD="${FAIL_THRESHOLD:-3}"
 RECOVER_THRESHOLD="${RECOVER_THRESHOLD:-2}"

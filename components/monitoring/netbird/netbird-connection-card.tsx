@@ -26,6 +26,7 @@ import {
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -34,44 +35,29 @@ import { CopyableCommand } from "@/components/ui/copyable-command";
 import {
   Loader2,
   PackageIcon,
-  ExternalLinkIcon,
   AlertCircle,
   RefreshCcwIcon,
   AlertTriangleIcon,
   CheckCircle2Icon,
   MinusCircleIcon,
-  LogInIcon,
   Trash2Icon,
+  KeyIcon,
 } from "lucide-react";
-import type { UseTailscaleReturn } from "@/hooks/use-tailscale";
+import type { UseNetBirdReturn } from "@/hooks/use-netbird";
 
 // =============================================================================
-// TailscaleConnectionCard — Multi-state connection + settings card
+// NetBirdConnectionCard — Multi-state connection + settings card
 // =============================================================================
 // States: Loading → Error → Not Installed → Service Stopped →
-//         NeedsLogin → Connected → Disconnected
+//         Disconnected → Connected
 
-type TailscaleConnectionCardProps = Omit<UseTailscaleReturn, "refresh"> & {
+type NetBirdConnectionCardProps = Omit<UseNetBirdReturn, "refresh"> & {
   refresh: () => void;
 };
 
-// ─── Helpers ────────────────────────────────────────────────────────────────
-
-function trimDNS(dns: string): string {
-  return dns?.replace(/\.$/, "") || "";
-}
-
-function getIPv4(ips: string[] | undefined): string {
-  return ips?.find((ip) => /^\d+\.\d+\.\d+\.\d+$/.test(ip)) || "—";
-}
-
-function getIPv6(ips: string[] | undefined): string {
-  return ips?.find((ip) => ip.includes(":")) || "—";
-}
-
 // ─── Component ──────────────────────────────────────────────────────────────
 
-export function TailscaleConnectionCard({
+export function NetBirdConnectionCard({
   status,
   isLoading,
   isConnecting,
@@ -82,14 +68,14 @@ export function TailscaleConnectionCard({
   error,
   connect,
   disconnect,
-  logout,
   startService,
   stopService,
   setBootEnabled,
   uninstall,
   runInstall,
   refresh,
-}: TailscaleConnectionCardProps) {
+}: NetBirdConnectionCardProps) {
+  const [setupKey, setSetupKey] = useState("");
   const [showRebootDialog, setShowRebootDialog] = useState(false);
   const [isRebooting, setIsRebooting] = useState(false);
 
@@ -116,7 +102,7 @@ export function TailscaleConnectionCard({
         <AlertDialogHeader>
           <AlertDialogTitle>Reboot Required</AlertDialogTitle>
           <AlertDialogDescription>
-            Tailscale has been removed. A reboot is recommended to clean up
+            NetBird has been removed. A reboot is recommended to clean up
             firewall rules and other artifacts. Would you like to reboot now?
           </AlertDialogDescription>
         </AlertDialogHeader>
@@ -147,9 +133,9 @@ export function TailscaleConnectionCard({
     return (
       <Card className="@container/card">
         <CardHeader>
-          <CardTitle>Tailscale Connection</CardTitle>
+          <CardTitle>NetBird Connection</CardTitle>
           <CardDescription>
-            Manage your Tailscale VPN connection.
+            Manage your NetBird VPN connection.
           </CardDescription>
         </CardHeader>
         <CardContent aria-live="polite">
@@ -170,15 +156,15 @@ export function TailscaleConnectionCard({
     return (
       <Card className="@container/card">
         <CardHeader>
-          <CardTitle>Tailscale Connection</CardTitle>
+          <CardTitle>NetBird Connection</CardTitle>
           <CardDescription>
-            Manage your Tailscale VPN connection.
+            Manage your NetBird VPN connection.
           </CardDescription>
         </CardHeader>
         <CardContent aria-live="polite">
           <Alert variant="destructive">
             <AlertCircle className="size-4" />
-            <AlertTitle>Failed to load Tailscale status</AlertTitle>
+            <AlertTitle>Failed to load NetBird status</AlertTitle>
             <AlertDescription className="flex items-center justify-between">
               <span>{error}</span>
               <Button variant="outline" size="sm" onClick={() => refresh()}>
@@ -195,14 +181,14 @@ export function TailscaleConnectionCard({
   // --- Not Installed ---------------------------------------------------------
   if (status && !status.installed) {
     const installCmd =
-      status.install_hint || "opkg update && opkg install tailscale tailscaled";
+      status.install_hint || "opkg update && opkg install netbird";
 
     return (
       <Card className="@container/card">
         <CardHeader>
-          <CardTitle>Tailscale Connection</CardTitle>
+          <CardTitle>NetBird Connection</CardTitle>
           <CardDescription>
-            Manage your Tailscale VPN connection.
+            Manage your NetBird VPN connection.
           </CardDescription>
         </CardHeader>
         <CardContent aria-live="polite">
@@ -210,7 +196,7 @@ export function TailscaleConnectionCard({
             <PackageIcon className="size-10 text-muted-foreground" />
             <div className="text-center space-y-1.5">
               <p className="text-sm font-medium">
-                Tailscale is not installed on this device.
+                NetBird is not installed on this device.
               </p>
               <p className="text-xs text-muted-foreground">
                 Install automatically or run the command manually.
@@ -255,7 +241,7 @@ export function TailscaleConnectionCard({
                 ) : (
                   <>
                     <PackageIcon className="size-4" />
-                    Install Tailscale
+                    Install NetBird
                   </>
                 )}
               </Button>
@@ -298,17 +284,11 @@ export function TailscaleConnectionCard({
     </Alert>
   );
 
-  // --- From here, Tailscale IS installed -------------------------------------
+  // --- From here, NetBird IS installed ---------------------------------------
   const version = status?.version;
   const backendState = status?.backend_state || "";
   const daemonRunning = status?.daemon_running;
   const bootEnabled = status?.enabled_on_boot ?? false;
-  const self = status?.self;
-  const tailnet = status?.tailnet;
-  const health = (status?.health || []).filter(
-    (msg) => !msg.includes("--accept-routes"),
-  );
-  const authUrl = status?.auth_url;
 
   // Boot toggle handler
   const handleBootToggle = async (checked: boolean) => {
@@ -316,8 +296,8 @@ export function TailscaleConnectionCard({
     if (success) {
       toast.success(
         checked
-          ? "Tailscale will start on boot"
-          : "Tailscale will not start on boot",
+          ? "NetBird will start on boot"
+          : "NetBird will not start on boot",
       );
     } else {
       toast.error("Failed to update boot setting");
@@ -335,7 +315,7 @@ export function TailscaleConnectionCard({
         <Switch
           checked={bootEnabled}
           onCheckedChange={handleBootToggle}
-          aria-label="Enable Tailscale on boot"
+          aria-label="Enable NetBird on boot"
         />
       </div>
     </>
@@ -347,9 +327,9 @@ export function TailscaleConnectionCard({
       <Separator className="mt-4" />
       <div className="flex items-center justify-between pt-4">
         <div>
-          <p className="text-sm font-medium">Remove Tailscale</p>
+          <p className="text-sm font-medium">Remove NetBird</p>
           <p className="text-xs text-muted-foreground">
-            Uninstall the Tailscale packages and firewall rules from this device.
+            Uninstall the NetBird package and firewall rules from this device.
           </p>
         </div>
         <AlertDialog>
@@ -362,7 +342,7 @@ export function TailscaleConnectionCard({
               {isUninstalling ? (
                 <>
                   <Loader2 className="size-4 animate-spin" />
-                  Removing…
+                  Removing...
                 </>
               ) : (
                 <>
@@ -374,9 +354,9 @@ export function TailscaleConnectionCard({
           </AlertDialogTrigger>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Uninstall Tailscale?</AlertDialogTitle>
+              <AlertDialogTitle>Uninstall NetBird?</AlertDialogTitle>
               <AlertDialogDescription>
-                This will remove the Tailscale packages, firewall rules, and
+                This will remove the NetBird package, firewall rules, and
                 all connection state from this device. The device will reboot
                 to clean up any remaining artifacts.
               </AlertDialogDescription>
@@ -388,10 +368,10 @@ export function TailscaleConnectionCard({
                 onClick={async () => {
                   const success = await uninstall();
                   if (success) {
-                    toast.success("Tailscale uninstalled");
+                    toast.success("NetBird uninstalled");
                     setShowRebootDialog(true);
                   } else {
-                    toast.error("Failed to uninstall Tailscale");
+                    toast.error("Failed to uninstall NetBird");
                   }
                 }}
               >
@@ -404,14 +384,34 @@ export function TailscaleConnectionCard({
     </>
   );
 
+  // Setup key input (reused in disconnected / needs-connect states)
+  const setupKeyInput = (
+    <div className="space-y-2">
+      <div className="flex items-center gap-2">
+        <Input
+          type="text"
+          placeholder="Setup key (optional)"
+          value={setupKey}
+          onChange={(e) => setSetupKey(e.target.value)}
+          className="font-mono text-xs"
+          disabled={isConnecting}
+        />
+      </div>
+      <p className="text-xs text-muted-foreground">
+        Enter a setup key from your NetBird dashboard, or leave empty if already
+        registered.
+      </p>
+    </div>
+  );
+
   // --- Service Stopped -------------------------------------------------------
   if (!daemonRunning) {
     return (
       <Card className="@container/card">
         <CardHeader>
-          <CardTitle>Tailscale Connection</CardTitle>
+          <CardTitle>NetBird Connection</CardTitle>
           <CardDescription>
-            {version ? `Tailscale v${version} · ` : ""}Manage your Tailscale VPN
+            {version ? `NetBird v${version} · ` : ""}Manage your NetBird VPN
             connection.
           </CardDescription>
         </CardHeader>
@@ -434,9 +434,9 @@ export function TailscaleConnectionCard({
                 onClick={async () => {
                   const success = await startService();
                   if (success) {
-                    toast.success("Tailscale service started");
+                    toast.success("NetBird service started");
                   } else {
-                    toast.error("Failed to start Tailscale service");
+                    toast.error("Failed to start NetBird service");
                   }
                 }}
                 disabled={isTogglingService}
@@ -444,12 +444,13 @@ export function TailscaleConnectionCard({
                 {isTogglingService ? (
                   <>
                     <Loader2 className="size-4 animate-spin" />
-                    Starting…
+                    Starting...
                   </>
                 ) : (
                   "Start Service"
                 )}
               </Button>
+
             </div>
             {uninstallSection}
             {rebootDialog}
@@ -459,170 +460,68 @@ export function TailscaleConnectionCard({
     );
   }
 
-  // --- Needs Login -----------------------------------------------------------
-  if (backendState === "NeedsLogin" || backendState === "NeedsMachineAuth") {
-    return (
-      <Card className="@container/card">
-        <CardHeader>
-          <CardTitle>Tailscale Connection</CardTitle>
-          <CardDescription>
-            {version ? `Tailscale v${version} · ` : ""}Manage your Tailscale VPN
-            connection.
-          </CardDescription>
-        </CardHeader>
-        <CardContent aria-live="polite">
-          <div className="grid gap-2">
-            {staleWarning}
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-semibold text-muted-foreground">
-                Status
-              </p>
-              <Badge variant="outline" className="bg-warning/15 text-warning hover:bg-warning/20 border-warning/30">
-                <LogInIcon className="size-3" />
-                Needs Login
-              </Badge>
-            </div>
-
-            {authUrl ? (
-              <>
-                <Separator />
-                <Alert>
-                  <AlertCircle className="size-4" />
-                  <AlertDescription className="space-y-3">
-                    <p>
-                      Visit the link below to authenticate with your Tailscale
-                      account (Google, Microsoft, etc.).
-                    </p>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => window.open(authUrl, "_blank", "noopener,noreferrer")}
-                    >
-                      <ExternalLinkIcon className="size-3.5" />
-                      Open Login Page
-                    </Button>
-                    <p className="text-xs text-muted-foreground animate-pulse motion-reduce:animate-none">
-                      Waiting for authentication…
-                    </p>
-                  </AlertDescription>
-                </Alert>
-              </>
-            ) : (
-              <>
-                <Separator />
-                <div className="pt-1">
-                  <Button
-                    onClick={async () => {
-                      const success = await connect();
-                      if (!success) {
-                        toast.error("Failed to initiate connection");
-                      }
-                    }}
-                    disabled={isConnecting}
-                  >
-                    {isConnecting ? (
-                      <>
-                        <Loader2 className="size-4 animate-spin" />
-                        Connecting…
-                      </>
-                    ) : (
-                      "Connect"
-                    )}
-                  </Button>
-                </div>
-              </>
-            )}
-
-            {bootToggle}
-            <Separator />
-            <div className="pt-1">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={async () => {
-                  const success = await stopService();
-                  if (success) {
-                    toast.success("Tailscale service stopped");
-                  } else {
-                    toast.error("Failed to stop Tailscale service");
-                  }
-                }}
-                disabled={isTogglingService}
-              >
-                {isTogglingService ? (
-                  <>
-                    <Loader2 className="size-4 animate-spin" />
-                    Stopping…
-                  </>
-                ) : (
-                  "Stop Service"
-                )}
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  // --- Connected (Running) ---------------------------------------------------
-  if (backendState === "Running") {
-    const ipv4 = getIPv4(self?.tailscale_ips);
-    const ipv6 = getIPv6(self?.tailscale_ips);
-    const dnsName = trimDNS(self?.dns_name || "");
-    const magicSuffix = tailnet?.magic_dns_enabled
-      ? tailnet.magic_dns_suffix
-      : "";
+  // --- Connected -------------------------------------------------------------
+  if (backendState === "Connected") {
+    const management = status?.management || "Unknown";
+    const signal = status?.signal || "Unknown";
+    const fqdn = status?.fqdn || "";
+    const netbirdIp = status?.netbird_ip || "";
 
     const infoRows: { label: string; value: React.ReactNode }[] = [
-      { label: "Hostname", value: self?.hostname || "—" },
+      ...(fqdn
+        ? [
+            {
+              label: "FQDN",
+              value: <span className="break-all">{fqdn}</span>,
+            },
+          ]
+        : []),
+      ...(netbirdIp
+        ? [
+            {
+              label: "NetBird IP",
+              value: <span className="font-mono">{netbirdIp}</span>,
+            },
+          ]
+        : []),
       {
-        label: "IPv4",
-        value: <span className="font-mono">{ipv4}</span>,
+        label: "Management",
+        value:
+          management === "Connected" ? (
+            <Badge variant="outline" className="bg-success/15 text-success hover:bg-success/20 border-success/30">
+              <CheckCircle2Icon className="size-3" />
+              Connected
+            </Badge>
+          ) : (
+            <Badge variant="outline" className="bg-destructive/15 text-destructive hover:bg-destructive/20 border-destructive/30">
+              <AlertTriangleIcon className="size-3" />
+              {management}
+            </Badge>
+          ),
       },
-      ...(ipv6 !== "—"
-        ? [
-            {
-              label: "IPv6",
-              value: (
-                <span className="font-mono break-all">{ipv6}</span>
-              ),
-            },
-          ]
-        : []),
-      ...(dnsName
-        ? [
-            {
-              label: "DNS Name",
-              value: <span className="break-all">{dnsName}</span>,
-            },
-          ]
-        : []),
-      ...(tailnet?.name ? [{ label: "Tailnet", value: tailnet.name }] : []),
-      ...(magicSuffix
-        ? [
-            {
-              label: "MagicDNS",
-              value: <span className="font-mono">{magicSuffix}</span>,
-            },
-          ]
-        : []),
-      ...(self?.relay
-        ? [
-            {
-              label: "DERP Relay",
-              value: self.relay.toUpperCase(),
-            },
-          ]
-        : []),
+      {
+        label: "Signal",
+        value:
+          signal === "Connected" ? (
+            <Badge variant="outline" className="bg-success/15 text-success hover:bg-success/20 border-success/30">
+              <CheckCircle2Icon className="size-3" />
+              Connected
+            </Badge>
+          ) : (
+            <Badge variant="outline" className="bg-destructive/15 text-destructive hover:bg-destructive/20 border-destructive/30">
+              <AlertTriangleIcon className="size-3" />
+              {signal}
+            </Badge>
+          ),
+      },
     ];
 
     return (
       <Card className="@container/card">
         <CardHeader>
-          <CardTitle>Tailscale Connection</CardTitle>
+          <CardTitle>NetBird Connection</CardTitle>
           <CardDescription>
-            {version ? `Tailscale v${version} · ` : ""}Manage your Tailscale VPN
+            {version ? `NetBird v${version} · ` : ""}Manage your NetBird VPN
             connection.
           </CardDescription>
         </CardHeader>
@@ -631,23 +530,6 @@ export function TailscaleConnectionCard({
             {staleWarning}
             {/* Boot toggle */}
             {bootToggle}
-            {/* Health warnings */}
-            {health.length > 0 && (
-              <>
-                <Separator />
-                <Alert variant="destructive">
-                  <AlertTriangleIcon className="size-4" />
-                  <AlertTitle>Health Warnings</AlertTitle>
-                  <AlertDescription>
-                    <ul className="list-disc pl-4 text-xs space-y-1">
-                      {health.map((msg, i) => (
-                        <li key={i}>{msg}</li>
-                      ))}
-                    </ul>
-                  </AlertDescription>
-                </Alert>
-              </>
-            )}
 
             <Separator />
 
@@ -691,7 +573,7 @@ export function TailscaleConnectionCard({
                 onClick={async () => {
                   const success = await disconnect();
                   if (success) {
-                    toast.success("Tailscale disconnected");
+                    toast.success("NetBird disconnected");
                   } else {
                     toast.error("Failed to disconnect");
                   }
@@ -701,48 +583,12 @@ export function TailscaleConnectionCard({
                 {isDisconnecting ? (
                   <>
                     <Loader2 className="size-4 animate-spin" />
-                    Disconnecting…
+                    Disconnecting...
                   </>
                 ) : (
                   "Disconnect"
                 )}
               </Button>
-
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    disabled={isDisconnecting}
-                  >
-                    Logout
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Logout from Tailscale?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      This will remove this device from your Tailscale network.
-                      You will need to re-authenticate to reconnect.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction
-                      onClick={async () => {
-                        const success = await logout();
-                        if (success) {
-                          toast.success("Logged out from Tailscale");
-                        } else {
-                          toast.error("Failed to logout");
-                        }
-                      }}
-                    >
-                      Logout
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
             </div>
           </div>
         </CardContent>
@@ -750,13 +596,13 @@ export function TailscaleConnectionCard({
     );
   }
 
-  // --- Disconnected (Stopped backend state) ----------------------------------
+  // --- Disconnected / Connecting / Unknown -----------------------------------
   return (
     <Card className="@container/card">
       <CardHeader>
-        <CardTitle>Tailscale Connection</CardTitle>
+        <CardTitle>NetBird Connection</CardTitle>
         <CardDescription>
-          {version ? `Tailscale v${version} · ` : ""}Manage your Tailscale VPN
+          {version ? `NetBird v${version} · ` : ""}Manage your NetBird VPN
           connection.
         </CardDescription>
       </CardHeader>
@@ -776,11 +622,17 @@ export function TailscaleConnectionCard({
           {bootToggle}
 
           <Separator />
+          {setupKeyInput}
+          <Separator />
+
           <div className="flex items-center gap-2 flex-wrap pt-1">
             <Button
               onClick={async () => {
-                const success = await connect();
-                if (!success) {
+                const success = await connect(setupKey || undefined);
+                if (success) {
+                  toast.success("NetBird connected");
+                  setSetupKey("");
+                } else {
                   toast.error("Failed to connect");
                 }
               }}
@@ -789,51 +641,41 @@ export function TailscaleConnectionCard({
               {isConnecting ? (
                 <>
                   <Loader2 className="size-4 animate-spin" />
-                  Connecting…
+                  Connecting...
                 </>
               ) : (
-                "Connect"
+                <>
+                  Connect
+                </>
               )}
             </Button>
 
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  disabled={isDisconnecting}
-                >
-                  Logout
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Logout from Tailscale?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This will remove this device from your Tailscale network.
-                    You will need to re-authenticate to reconnect.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={async () => {
-                      const success = await logout();
-                      if (success) {
-                        toast.success("Logged out from Tailscale");
-                      } else {
-                        toast.error("Failed to logout");
-                      }
-                    }}
-                  >
-                    Logout
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={async () => {
+                const success = await stopService();
+                if (success) {
+                  toast.success("NetBird service stopped");
+                } else {
+                  toast.error("Failed to stop NetBird service");
+                }
+              }}
+              disabled={isTogglingService}
+            >
+              {isTogglingService ? (
+                <>
+                  <Loader2 className="size-4 animate-spin" />
+                  Stopping...
+                </>
+              ) : (
+                "Stop Service"
+              )}
+            </Button>
+
           </div>
-          {uninstallSection}
-          {rebootDialog}
+            {uninstallSection}
+            {rebootDialog}
         </div>
       </CardContent>
     </Card>

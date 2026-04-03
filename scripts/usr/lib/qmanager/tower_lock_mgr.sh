@@ -429,3 +429,89 @@ tower_spawn_failover_watcher() {
     printf 'false'
     return 1
 }
+
+# =============================================================================
+# MTU Re-apply After Interface Bounce
+# =============================================================================
+# Tower lock/unlock causes the modem to briefly disconnect, which resets the
+# rmnet_data interface MTU back to the default 1500. The persistent file
+# /etc/firewall.user.mtu is intact but nothing re-applies it.
+#
+# This spawns a short-lived background process that polls until the interface
+# is back up, re-applies MTU, then exits. Self-terminates after 30s.
+#
+# PID file ensures only one re-apply process runs at a time.
+# =============================================================================
+
+MTU_REAPPLY_PID="/tmp/qmanager_mtu_reapply.pid"
+MTU_FILE="/etc/firewall.user.mtu"
+
+mtu_reapply_after_bounce() {
+    # Skip if no custom MTU is configured
+    if [ ! -s "$MTU_FILE" ]; then
+        return 0
+    fi
+
+    # Kill any previous re-apply process
+    if [ -f "$MTU_REAPPLY_PID" ]; then
+        local old_pid
+        old_pid=$(cat "$MTU_REAPPLY_PID" 2>/dev/null | tr -d ' \n\r')
+        if [ -n "$old_pid" ] && kill -0 "$old_pid" 2>/dev/null; then
+            kill "$old_pid" 2>/dev/null
+        fi
+        rm -f "$MTU_REAPPLY_PID"
+    fi
+
+    qlog_info "Spawning MTU re-apply watcher (polling up to 30s)"
+
+    # Double-fork for BusyBox (no setsid)
+    (
+        _mtu_reapply_worker </dev/null >/dev/null 2>&1 &
+        echo $! > "$MTU_REAPPLY_PID"
+    )
+}
+
+_mtu_reapply_worker() {
+    local elapsed=0
+    local max_wait=30
+    local interval=2
+
+    while [ "$elapsed" -lt "$max_wait" ]; do
+        sleep "$interval"
+        elapsed=$((elapsed + interval))
+
+        # Find any rmnet_data interface that is up
+        local iface=""
+        for f in /sys/class/net/rmnet_data*; do
+            [ -e "$f" ] || continue
+            local name
+            name=$(basename "$f")
+            local carrier
+            carrier=$(cat "/sys/class/net/${name}/carrier" 2>/dev/null)
+            if [ "$carrier" = "1" ]; then
+                iface="$name"
+                break
+            fi
+        done
+
+        [ -z "$iface" ] && continue
+
+        # Interface is up — check if MTU needs re-applying
+        local current_mtu expected_mtu
+        current_mtu=$(cat "/sys/class/net/${iface}/mtu" 2>/dev/null)
+        expected_mtu=$(grep -oE 'mtu [0-9]+' "$MTU_FILE" | head -1 | awk '{print $2}')
+
+        if [ -n "$expected_mtu" ] && [ "$current_mtu" != "$expected_mtu" ]; then
+            . "$MTU_FILE"
+            logger -t qmanager_mtu "Re-applied MTU after interface bounce (was $current_mtu, now $expected_mtu)"
+        fi
+
+        # Done — exit regardless of whether we re-applied
+        rm -f "$MTU_REAPPLY_PID"
+        return 0
+    done
+
+    # Timeout — clean up
+    logger -t qmanager_mtu "MTU re-apply timed out after ${max_wait}s (interface never came back)"
+    rm -f "$MTU_REAPPLY_PID"
+}

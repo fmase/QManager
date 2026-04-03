@@ -8,19 +8,18 @@ import {
   HomeIcon,
   RadioTowerIcon,
   LucideSignal,
-  MailIcon,
   EthernetPortIcon,
   MonitorCloudIcon,
-  LogsIcon,
+  BirdIcon,
   MessageCircleIcon,
   DogIcon,
-  DownloadIcon,
   RouterIcon,
   User2Icon,
   HeartIcon,
   ScanIcon,
   SettingsIcon,
   TerminalIcon,
+  DownloadIcon,
 } from "lucide-react";
 
 import QManagerLogo from "@/public/qmanager-logo.svg";
@@ -68,7 +67,16 @@ const data = {
           title: "Bandwidth Monitor",
           url: "/system-settings/bandwidth-monitor",
         },
+        {
+          title: "Logs",
+          url: "/system-settings/logs",
+        },
       ],
+    },
+    {
+      title: "Software Update",
+      url: "/system-settings/software-update",
+      icon: DownloadIcon,
     },
     {
       title: "AT Terminal",
@@ -98,6 +106,16 @@ const data = {
       title: "Cellular Information",
       url: "/cellular",
       icon: RadioTowerIcon,
+      items: [
+        {
+          title: "Antenna Statistics",
+          url: "/cellular/antenna-statistics",
+        },
+        {
+          title: "Antenna Alignment",
+          url: "/cellular/antenna-alignment",
+        }
+      ],
     },
     {
       title: "SMS Center",
@@ -209,12 +227,11 @@ const data = {
           title: "Latency Monitor",
           url: "/monitoring/latency",
         },
+        {
+          title: "Email Alerts",
+          url: "/monitoring/email-alerts",
+        },
       ],
-    },
-    {
-      title: "Email Alerts",
-      url: "/monitoring/email-alerts",
-      icon: MailIcon,
     },
     {
       title: "Tailscale",
@@ -222,19 +239,14 @@ const data = {
       icon: MonitorCloudIcon,
     },
     {
+      title: "NetBird",
+      url: "/monitoring/netbird",
+      icon: BirdIcon,
+    },
+    {
       title: "Watchdog",
       url: "/monitoring/watchdog",
       icon: DogIcon,
-    },
-    {
-      title: "Logs",
-      url: "/monitoring/logs",
-      icon: LogsIcon,
-    },
-    {
-      title: "Updates",
-      url: "/monitoring/software-update",
-      icon: DownloadIcon,
     },
   ],
 };

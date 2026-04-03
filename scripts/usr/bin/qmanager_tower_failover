@@ -145,6 +145,10 @@ while true; do
                 echo "activated" > "$FLAG_FILE"
                 qlog_warn "FAILOVER COMPLETE (retry)"
             fi
+
+            # Re-apply custom MTU after interface bounce
+            mtu_reapply_after_bounce
+
             exit 0
         fi
     else
