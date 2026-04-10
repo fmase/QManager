@@ -39,6 +39,7 @@
 - **Frequency Calculator** — EARFCN/ARFCN to frequency conversion tool
 - **SMS Center** — Send and receive SMS messages directly from the interface
 - **IMEI Settings** — Read, backup, and modify device IMEI
+- **IMEI Toolkit** — Generate and validate IMEI values with TAC presets, Luhn checks, and quick copy/lookup tools
 - **FPLMN Management** — View and manage the Forbidden PLMN list
 - **MBN Configuration** — Select and activate modem broadband configuration files
 
@@ -55,6 +56,7 @@
 
 - **Connection Watchdog** — 4-tier auto-recovery: ifup → CFUN toggle → SIM failover → full reboot (with token bucket rate limiting)
 - **Email Alerts** — Downtime notifications via Gmail SMTP (msmtp), sent on recovery with duration details
+- **SMS Alerts** — Downtime notifications via `sms_tool`, sent during active outages once threshold is exceeded
 - **WAN Interface Guard** — Automatically disables phantom WAN profiles to prevent netifd CPU-wasting retry loops
 - **Low Power Mode** — Scheduled CFUN power-down windows via cron
 - **Tailscale VPN** — One-click installation, authentication, and status monitoring
@@ -194,7 +196,7 @@ QManager/
 │   ├── local-network/          # Ethernet, IP passthrough, DNS, TTL, MTU,
 │   │                           #   video optimizer, traffic masquerade
 │   ├── monitoring/             # Network events, latency, email alerts, watchdog,
-│   │                           #   Tailscale, logs, software updates
+│   │                           #   SMS alerts, Tailscale, logs, software updates
 │   ├── system-settings/        # System config, bandwidth monitor, AT terminal
 │   └── (login, setup, reboot, about-device, support)
 ├── components/                 # React components (~185 files)

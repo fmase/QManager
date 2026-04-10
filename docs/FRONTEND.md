@@ -52,6 +52,7 @@ app/                            # Next.js App Router
 │   ├── page.tsx                # Network events hub
 │   ├── latency/                # Latency monitoring
 │   ├── email-alerts/           # Email alert settings
+│   ├── sms-alerts/             # SMS alert settings and log
 │   ├── watchdog/               # Watchdog settings
 │   ├── logs/                   # System logs
 │   └── tailscale/              # Tailscale VPN
@@ -101,7 +102,7 @@ constants/                      # Static configuration data
 | `/cellular` | CellularInformation | Cellular info cards |
 | `/cellular/settings` | CellularSettings | Mode, roaming, AMBR settings |
 | `/cellular/settings/apn-management` | APNSettings | APN profile CRUD |
-| `/cellular/settings/imei-settings` | IMEISettings | IMEI read/write/backup |
+| `/cellular/settings/imei-settings` | IMEISettings | IMEI read/write/backup + toolkit |
 | `/cellular/settings/network-priority` | NetworkPriority | LTE/NR mode preferences |
 | `/cellular/settings/fplmn-settings` | FPLMNSettings | Forbidden network cleanup |
 | `/cellular/cell-locking` | BandLocking | LTE/NR band selection |
@@ -122,6 +123,7 @@ constants/                      # Static configuration data
 | `/monitoring` | NetworkEvents | Event log hub |
 | `/monitoring/latency` | LatencyMonitoring | Real-time + history charts |
 | `/monitoring/email-alerts` | EmailAlerts | Downtime alert settings |
+| `/monitoring/sms-alerts` | SmsAlerts | SMS alert settings and send log |
 | `/monitoring/watchdog` | Watchdog | Connection health |
 | `/monitoring/logs` | SystemLogs | Log viewer |
 | `/monitoring/tailscale` | Tailscale | VPN status |
@@ -209,6 +211,7 @@ if (result.success) { /* toast success */ }
 | `useDNSSettings` | `/network/dns.sh` | — |
 | `useIPPassthrough` | `/network/ip_passthrough.sh` | `ip-passthrough.ts` |
 | `useEmailAlerts` | `/monitoring/email_alerts.sh` | In hook file |
+| `useSmsAlerts` | `/monitoring/sms_alerts.sh` | In hook file |
 | `useWatchdogSettings` | `/monitoring/watchdog.sh` | In hook file |
 | `useSystemSettings` | `/system/settings.sh` | `system-settings.ts` |
 | `useTailscale` | `/vpn/tailscale.sh` | — |
@@ -356,9 +359,17 @@ CSV export helper for data tables.
 
 Carrier-specific APN and TTL/HL preset configurations.
 
+### `constants/imei-presets.ts`
+
+IMEI TAC preset catalog used by the IMEI Toolkit generator UI.
+
 ### `constants/network-events.ts`
 
 Event type labels, descriptions, and severity mappings for the events UI.
+
+### `lib/imei-utils.ts`
+
+IMEI generation, validation, and structural parsing helpers (Luhn-based).
 
 ---
 
@@ -428,7 +439,7 @@ The sidebar (`app-sidebar.tsx`) defines the full navigation structure:
 | **Main** | Home (Dashboard) |
 | **Cellular** | Cellular Info, SMS, Custom Profiles (+ Connection Scenarios), Band Locking (+ Tower, Frequency), Cell Scanner (+ Neighbor, Calculator), Settings (+ APN, Network Priority, IMEI, FPLMN) |
 | **Local Network** | Ethernet Status, IP Passthrough, Custom DNS, TTL & MTU Settings |
-| **Monitoring** | Network Events (+ Latency), Email Alerts, Tailscale, Watchdog, Logs |
+| **Monitoring** | Network Events (+ Latency), Email Alerts, SMS Alerts, Tailscale, Watchdog, Logs |
 | **System** | System Settings |
 | **Secondary** | About Device, Support, Donate |
 | **Footer** | User menu (Change Password, Toggle Theme, Reboot Device, Logout) |

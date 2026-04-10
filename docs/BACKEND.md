@@ -191,6 +191,14 @@ Downtime email alert logic (sourced by poller):
 - Alert triggering on recovery (not during downtime)
 - Log writing to `/tmp/qmanager_email_log.json`
 
+### sms_alerts.sh
+
+Downtime SMS alert logic (sourced by poller):
+- Config management (`/etc/qmanager/sms_alerts.json`)
+- Alert triggering during active downtime after threshold
+- Test-send helper for CGI (`send_test` action)
+- Log writing to `/tmp/qmanager_sms_log.json`
+
 ### ethtool_helper.sh
 
 Ethernet negotiation helpers:
@@ -262,6 +270,7 @@ The core daemon — runs forever, polls the modem at tiered intervals.
 - Manage signal/ping history NDJSON files
 - Read ping daemon and watchcat status
 - Trigger email alerts on recovery via `email_alerts.sh`
+- Trigger SMS alerts during active outages via `sms_alerts.sh`
 
 **Tier System:**
 
@@ -599,6 +608,8 @@ All auth endpoints set `_SKIP_AUTH=1`.
 |--------|--------|-------------|
 | `email_alerts.sh` | GET/POST | Email alert settings |
 | `email_alert_log.sh` | GET | Email alert history |
+| `sms_alerts.sh` | GET/POST | SMS alert settings + test send |
+| `sms_alert_log.sh` | GET | SMS alert history |
 | `watchdog.sh` | GET/POST | Watchdog settings and status |
 
 #### Device (`device/`)
@@ -639,6 +650,9 @@ All auth endpoints set `_SKIP_AUTH=1`.
 | `qmanager_pci_state.json` | poller (events) | SCC PCI tracking |
 | `qmanager_email_log.json` | poller (email) | Email log NDJSON |
 | `qmanager_email_reload` | CGI | Trigger file for config reload |
+| `qmanager_sms_log.json` | poller (sms) | SMS log NDJSON |
+| `qmanager_sms_reload` | CGI | Trigger file for SMS config reload |
+| `qmanager_sms_last_err` | sms alerts CGI/library | Last sms_tool error detail |
 | `qmanager_low_power_active` | low_power | Low power mode flag (timestamp; suppresses events + alerts) |
 | `qmanager_watchcat.lock` | low_power | Watchdog pause lock (forces LOCKED state) |
 | `qmanager_dpi_install.json` | dpi_install | nfqws installer progress/result |
@@ -658,6 +672,7 @@ All auth endpoints set `_SKIP_AUTH=1`.
 | `tower_lock.json` | Tower lock configuration |
 | `band_lock.json` | Band lock configuration |
 | `imei_backup.json` | IMEI backup config (`{ enabled, imei }`) |
+| `sms_alerts.json` | SMS alert settings (`{ enabled, recipient_phone, threshold_minutes }`) |
 | `last_iccid` | Last seen SIM ICCID (for swap detection) |
 | `msmtprc` | Gmail SMTP config (chmod 600) |
 | `imei_check_pending` | Flag for boot-time IMEI check |

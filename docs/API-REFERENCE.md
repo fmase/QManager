@@ -737,6 +737,56 @@ Get the currently active scenario.
 }
 ```
 
+### GET/POST `/monitoring/sms_alerts.sh`
+
+**GET Response:**
+```json
+{
+  "success": true,
+  "settings": {
+    "enabled": true,
+    "recipient_phone": "+14155551234",
+    "threshold_minutes": 5
+  }
+}
+```
+
+**POST (save settings):**
+```json
+{
+  "action": "save_settings",
+  "enabled": true,
+  "recipient_phone": "+14155551234",
+  "threshold_minutes": 5
+}
+```
+
+**POST (send test):**
+```json
+{ "action": "send_test" }
+```
+
+Validation notes:
+- `recipient_phone` is required when `enabled=true`
+- `threshold_minutes` range is `1..60`
+
+### GET `/monitoring/sms_alert_log.sh`
+
+```json
+{
+  "success": true,
+  "entries": [
+    {
+      "timestamp": "2026-04-10 15:27:04",
+      "trigger": "Connection down 5m 2s",
+      "status": "sent",
+      "recipient": "+14155551234"
+    }
+  ],
+  "total": 3
+}
+```
+
 ### GET/POST `/monitoring/watchdog.sh`
 
 **GET Response:**
