@@ -43,7 +43,6 @@ next-env.d.ts
 # build artifacts
 qmanager-build/
 qmanager_install/
-RELEASE_NOTE.md
 
 # claude superpowers
 /.superpowers

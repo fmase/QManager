@@ -397,7 +397,7 @@ auto_apply_profile() {
 
     iccid_suffix=$(printf '%s' "$current_iccid" | tail -c 4)
     match_id=""
-    for pf in "$PROFILE_DIR"/*.json; do
+    for pf in "$PROFILE_DIR"/p_*.json; do
         [ -f "$pf" ] || continue
         pf_iccid=$(jq -r '(.sim_iccid) | if . == null then empty else . end' "$pf" 2>/dev/null)
         if [ "$pf_iccid" = "$current_iccid" ]; then
