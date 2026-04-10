@@ -365,7 +365,8 @@ install_backend() {
 
     if [ -d "$SRC_SCRIPTS/usr/lib/qmanager" ]; then
         cp "$SRC_SCRIPTS/usr/lib/qmanager"/* "$LIB_DIR/"
-        find "$LIB_DIR" -maxdepth 1 -name "*.sh" -exec chmod 644 {} \;
+        find "$LIB_DIR" -maxdepth 1 -type f -name "*.sh" -exec chmod 755 {} \;
+        find "$LIB_DIR" -maxdepth 1 -type f ! -name "*.sh" -exec chmod 644 {} \;
         local lib_count
         lib_count=$(count_files "$LIB_DIR")
         info "  $lib_count library files installed"
@@ -564,10 +565,11 @@ fix_permissions() {
         info "CGI scripts: 755, JSON data: 644"
     fi
 
-    # Shared libraries — readable, not executable (644)
+    # Shared libraries — shell libraries executable for direct diagnostics, others readable
     if [ -d "$LIB_DIR" ]; then
-        find "$LIB_DIR" -maxdepth 1 -type f -exec chmod 644 {} \;
-        info "Shared libraries: 644"
+        find "$LIB_DIR" -maxdepth 1 -type f -name "*.sh" -exec chmod 755 {} \;
+        find "$LIB_DIR" -maxdepth 1 -type f ! -name "*.sh" -exec chmod 644 {} \;
+        info "Shared libraries: *.sh=755, others=644"
     fi
 
     info "All permissions verified"
