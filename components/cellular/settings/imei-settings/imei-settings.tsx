@@ -3,6 +3,7 @@
 import IMEISettingsCard from "./imei-settings-card";
 import BackupIMEICard from "./backup-imei-card";
 import { useImeiSettings } from "@/hooks/use-imei-settings";
+import IMEIToolsCard from "./imei-tools-card";
 
 const IMEISettings = () => {
   const {
@@ -39,6 +40,7 @@ const IMEISettings = () => {
           isSaving={isSaving}
           onSave={saveBackup}
         />
+        <IMEIToolsCard/>
       </div>
     </div>
   );

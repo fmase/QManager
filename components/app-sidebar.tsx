@@ -237,6 +237,10 @@ const data = {
           title: "Email Alerts",
           url: "/monitoring/email-alerts",
         },
+        {
+          title: "SMS Alerts",
+          url: "/monitoring/sms-alerts",
+        }
       ],
     },
     {
