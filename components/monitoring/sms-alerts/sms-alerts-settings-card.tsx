@@ -125,7 +125,7 @@ const SmsAlertsSettingsCard = ({ onTestSmsSent }: SmsAlertsSettingsCardProps) =>
     if (success) {
       toast.success("Test SMS sent successfully");
     } else {
-      toast.error("Failed to send test SMS — check your configuration");
+      toast.error(error || "Failed to send test SMS — check your configuration");
     }
     onTestSmsSent?.();
   };

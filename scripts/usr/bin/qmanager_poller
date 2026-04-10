@@ -249,6 +249,13 @@ log_error() { qlog_error "$1"; }
     email_alerts_init() { :; }
 }
 
+# SMS alerts (optional — non-fatal if missing)
+. /usr/lib/qmanager/sms_alerts.sh 2>/dev/null || {
+    qlog_warn "sms_alerts.sh not found, SMS alerts disabled"
+    check_sms_alert() { :; }
+    sms_alerts_init() { :; }
+}
+
 # =============================================================================
 # HELPER: SAFE QCMD CALL
 # =============================================================================
@@ -493,6 +500,11 @@ collect_boot_data() {
                 fi
             fi
         fi
+    fi
+
+    # --- Auto-apply profile matching current SIM (boot) ---
+    if [ -n "$boot_iccid" ]; then
+        ( . /usr/lib/qmanager/profile_mgr.sh && auto_apply_profile "$boot_iccid" "boot" )
     fi
 
     # =========================================================================
@@ -1264,6 +1276,7 @@ poll_cycle() {
     update_proc_metrics
     read_ping_data
     check_email_alert
+    check_sms_alert
 
     if [ -f "$LONG_FLAG" ]; then
         if [ "$system_state" != "scan_in_progress" ]; then
@@ -1351,6 +1364,7 @@ main() {
     collect_boot_data
     update_proc_metrics
     email_alerts_init
+    sms_alerts_init
     write_cache
 
     qlog_info "Boot data collected, entering poll loop"

@@ -147,6 +147,7 @@ export function useSmsAlerts(): UseSmsAlertsReturn {
   // Send test SMS
   // ---------------------------------------------------------------------------
   const sendTestSms = useCallback(async (): Promise<boolean> => {
+    setError(null);
     setIsSendingTest(true);
 
     try {
@@ -156,12 +157,23 @@ export function useSmsAlerts(): UseSmsAlertsReturn {
         body: JSON.stringify({ action: "send_test" }),
       });
 
-      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      if (!resp.ok) {
+        throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
+      }
 
       const json = await resp.json();
       if (!mountedRef.current) return false;
-      return json.success;
-    } catch {
+
+      if (!json.success) {
+        setError(json.detail || json.error || "Failed to send test SMS");
+        return false;
+      }
+      return true;
+    } catch (err) {
+      if (!mountedRef.current) return false;
+      setError(
+        err instanceof Error ? err.message : "Failed to send test SMS",
+      );
       return false;
     } finally {
       if (mountedRef.current) {

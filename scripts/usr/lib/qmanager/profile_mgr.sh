@@ -373,6 +373,53 @@ clear_active_profile() {
     rm -f "$ACTIVE_PROFILE_FILE"
 }
 
+# auto_apply_profile <current_iccid> <caller_tag>
+# Look up a profile whose sim_iccid matches the supplied ICCID and, if found,
+# mark it active and spawn the apply worker detached. The worker owns its
+# own PID lock and per-step skip logic — this helper does NOT pre-compare
+# settings. Safe to call repeatedly (idempotent).
+auto_apply_profile() {
+    local current_iccid="$1"
+    local caller="${2:-unknown}"
+    local iccid_suffix pf pf_iccid match_id
+
+    if [ -z "$current_iccid" ]; then
+        qlog_info "[$caller] auto_apply_profile: empty ICCID, skipping" 2>/dev/null
+        return 1
+    fi
+
+    # Don't race a manual "Activate" click — if a worker is already running,
+    # let it finish. It will finalize the active marker on its own.
+    if ! profile_check_lock; then
+        qlog_info "[$caller] Apply already running (PID $_profile_lock_pid), skipping" 2>/dev/null
+        return 0
+    fi
+
+    iccid_suffix=$(printf '%s' "$current_iccid" | tail -c 4)
+    match_id=""
+    for pf in "$PROFILE_DIR"/*.json; do
+        [ -f "$pf" ] || continue
+        pf_iccid=$(jq -r '(.sim_iccid) | if . == null then empty else . end' "$pf" 2>/dev/null)
+        if [ "$pf_iccid" = "$current_iccid" ]; then
+            match_id=$(jq -r '(.id) | if . == null then empty else . end' "$pf" 2>/dev/null)
+            break
+        fi
+    done
+
+    if [ -z "$match_id" ]; then
+        # Only log "no match" when there ARE profiles — avoids noise on fresh installs.
+        if [ "$(profile_count)" -gt 0 ]; then
+            qlog_info "[$caller] No profile matches ICCID ...$iccid_suffix" 2>/dev/null
+        fi
+        return 1
+    fi
+
+    set_active_profile "$match_id" || return 1
+    qlog_info "[$caller] Auto-applying profile $match_id (ICCID ...$iccid_suffix)" 2>/dev/null
+    ( /usr/bin/qmanager_profile_apply "$match_id" </dev/null >/dev/null 2>&1 & )
+    return 0
+}
+
 # =============================================================================
 # AT Command Conversion Helpers
 # =============================================================================

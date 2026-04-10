@@ -354,6 +354,7 @@ remove_runtime_state() {
               /tmp/qmanager_signal_history.json \
               /tmp/qmanager_events.json \
               /tmp/qmanager_email_log.json \
+              /tmp/qmanager_sms_log.json \
               /tmp/qmanager_profile_state.json \
               /tmp/qmanager_watchcat.json \
               /tmp/qmanager_band_failover_state.json \
@@ -374,6 +375,8 @@ remove_runtime_state() {
     rm -f /tmp/qmanager_*.lock \
           /tmp/qmanager_*.pid \
           /tmp/qmanager_email_reload \
+                    /tmp/qmanager_sms_reload \
+                    /tmp/qmanager_sms_last_err \
           /tmp/qmanager_imei_check_done \
           /tmp/qmanager_long_running \
           /tmp/qmanager_low_power_active \
