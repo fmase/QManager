@@ -150,6 +150,10 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
             exit 0
         fi
 
+        # CGI context does not have poller registration globals.
+        # Test sends are user-initiated and should still attempt delivery.
+        _sa_is_registered() { return 0; }
+
         rm -f /tmp/qmanager_sms_last_err
 
         if _sa_send_test_sms; then

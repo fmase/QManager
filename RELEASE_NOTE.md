@@ -45,6 +45,12 @@ Path: Cellular -> Settings -> IMEI Settings (`/cellular/settings/imei-settings`)
 - **Cellular Information was highlighted on unrelated pages** — The parent item stayed active across other Cellular routes, which also kept its sub-items expanded even when viewing a different section.
 - **Fix** — Sidebar route matching now activates Cellular Information only for its own route and declared sub-routes, preventing false highlighting and incorrect submenu expansion.
 
+### APN Management Override with Active Custom Profile
+
+- **APN fields could override active profile settings** — Users could still edit APN values while a Custom SIM Profile was active, creating conflicts with profile-managed APN behavior.
+- **Fix** — APN form controls are now disabled whenever an active Custom SIM Profile is present, with an in-card notice showing profile ownership.
+- **Carrier Profile remains configurable** — The Carrier Profile card stays editable so MBN selection and related carrier firmware controls are unchanged.
+
 ---
 
 ## 📥 Installation

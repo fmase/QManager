@@ -2,21 +2,20 @@
 # =============================================================================
 # sms_alerts.sh - SMS Alert Library for QManager
 # =============================================================================
-# Sourced by qmanager_poller and the SMS alerts CGI. Detects prolonged
-# internet downtime and sends a single downtime notification via sms_tool
-# once the outage duration exceeds the configured threshold. Unlike email
-# alerts, SMS fires WHILE STILL DOWN because the cellular control channel
-# is independent of the data connection.
+# Sourced by qmanager_poller and CGI scripts. Detects prolonged internet
+# downtime and sends SMS notifications via sms_tool on the modem AT channel.
 #
-# Dependencies: jq, sms_tool (required package), qlog_* (optional)
-# Install location: /usr/lib/qmanager/sms_alerts.sh
-#
-# Global variables used from poller:
-#   Read: conn_internet_available ("true"/"false"/"null")
+# Behavior summary:
+# - When downtime exceeds threshold, attempt a "Connection down" SMS.
+# - On recovery:
+#   - if downtime SMS was sent, send a separate "Connection recovered" SMS.
+#   - if downtime SMS was never sent/failed, send one dedup combined SMS.
+# - Registration guard is enforced for runtime sends.
 #
 # Config:  /etc/qmanager/sms_alerts.json
-# Log:     /tmp/qmanager_sms_log.json  (NDJSON, max 100 entries)
-# Reload:  /tmp/qmanager_sms_reload    (flag file, touched by CGI)
+# Log:     /tmp/qmanager_sms_log.json (NDJSON, max 100 entries)
+# Reload:  /tmp/qmanager_sms_reload
+# Lock:    /tmp/qmanager_at.lock
 # =============================================================================
 
 [ -n "$_SMS_ALERTS_LOADED" ] && return 0
@@ -26,6 +25,9 @@ _SMS_ALERTS_LOADED=1
 _SA_CONFIG="/etc/qmanager/sms_alerts.json"
 _SA_LOG_FILE="/tmp/qmanager_sms_log.json"
 _SA_RELOAD_FLAG="/tmp/qmanager_sms_reload"
+_SA_LOCK_FILE="/tmp/qmanager_at.lock"
+_SA_SMS_TOOL="/usr/bin/sms_tool"
+_SA_DEFAULT_AT_DEVICE="/dev/smd11"
 _SA_MAX_LOG=100
 
 # --- State (populated by sms_alerts_init / _sa_read_config) ------------------
@@ -36,7 +38,54 @@ _sa_threshold_minutes=5
 # --- Downtime tracking (poller runtime only) ---------------------------------
 _sa_was_down="false"
 _sa_downtime_start=0
-_sa_alert_sent="false"   # Single-shot guard: one SMS per outage
+# Values: "none" | "pending" | "sent" | "failed"
+_sa_downtime_sms_status="none"
+
+# =============================================================================
+# _sa_flock_wait - BusyBox-compatible flock with timeout (polling loop)
+# =============================================================================
+# Usage: _sa_flock_wait <fd> <timeout_seconds>
+# Returns: 0 = lock acquired, non-zero = timed out
+_sa_flock_wait() {
+    _fd="$1"
+    _wait="$2"
+    _elapsed=0
+
+    while [ "$_elapsed" -lt "$_wait" ]; do
+        if flock -x -n "$_fd" 2>/dev/null; then
+            return 0
+        fi
+        sleep 1
+        _elapsed=$((_elapsed + 1))
+    done
+
+    flock -x -n "$_fd" 2>/dev/null
+}
+
+# =============================================================================
+# _sa_get_sms_device - Resolve sms_tool device (UCI override, fallback default)
+# =============================================================================
+_sa_get_sms_device() {
+    _sa_dev=$(uci -q get quecmanager.settings.sms_tool_device 2>/dev/null)
+    if [ -n "$_sa_dev" ]; then
+        printf '%s' "$_sa_dev"
+    else
+        printf '%s' "$_SA_DEFAULT_AT_DEVICE"
+    fi
+}
+
+# =============================================================================
+# _sa_sms_locked - Run sms_tool under shared AT lock
+# =============================================================================
+_sa_sms_locked() {
+    _sa_device=$(_sa_get_sms_device)
+    [ -e "$_SA_LOCK_FILE" ] || : > "$_SA_LOCK_FILE"
+
+    (
+        _sa_flock_wait 9 10 || exit 2
+        "$_SA_SMS_TOOL" -d "$_sa_device" "$@" 2>/dev/null
+    ) 9<"$_SA_LOCK_FILE"
+}
 
 # =============================================================================
 # _sa_read_config - Read settings from config JSON
@@ -59,7 +108,21 @@ _sa_read_config() {
         _sa_enabled="false"
         return 1
     fi
+
     return 0
+}
+
+# =============================================================================
+# _sa_is_registered - Is modem currently able to send SMS?
+# =============================================================================
+_sa_is_registered() {
+    [ "$modem_reachable" = "true" ] || return 1
+
+    if [ "$lte_state" = "connected" ] || [ "$nr_state" = "connected" ]; then
+        return 0
+    fi
+
+    return 1
 }
 
 # =============================================================================
@@ -75,212 +138,216 @@ sms_alerts_init() {
 }
 
 # =============================================================================
-# _sa_format_duration - Convert seconds to human-readable "Xh Ym Zs"
-# =============================================================================
-_sa_format_duration() {
-    _sa_fd_secs="$1"
-    _sa_fd_hours=$((_sa_fd_secs / 3600))
-    _sa_fd_rem=$((_sa_fd_secs % 3600))
-    _sa_fd_mins=$((_sa_fd_rem / 60))
-    _sa_fd_rem=$((_sa_fd_rem % 60))
-
-    if [ "$_sa_fd_hours" -gt 0 ]; then
-        printf "%dh %dm %ds" "$_sa_fd_hours" "$_sa_fd_mins" "$_sa_fd_rem"
-    elif [ "$_sa_fd_mins" -gt 0 ]; then
-        printf "%dm %ds" "$_sa_fd_mins" "$_sa_fd_rem"
-    else
-        printf "%ds" "$_sa_fd_rem"
-    fi
-}
-
-# =============================================================================
-# _sa_build_downtime_message - Plain-text SMS body (<=160 chars target)
-# =============================================================================
-# Args: $1 = start epoch, $2 = elapsed seconds, $3 = threshold minutes
-# Output example:
-#   "QManager: Internet down 5m 12s (started 14:03). Threshold 5m exceeded."
-# =============================================================================
-_sa_build_downtime_message() {
-    _sa_bm_start="$1"
-    _sa_bm_dur="$2"
-    _sa_bm_thresh="$3"
-
-    _sa_bm_time=$(date -d "@$_sa_bm_start" "+%H:%M" 2>/dev/null) || \
-        _sa_bm_time=$(awk "BEGIN{print strftime(\"%H:%M\",$_sa_bm_start)}" 2>/dev/null) || \
-        _sa_bm_time="?"
-
-    _sa_bm_durtxt=$(_sa_format_duration "$_sa_bm_dur")
-
-    printf "QManager: Internet down %s (started %s). Threshold %dm exceeded." \
-        "$_sa_bm_durtxt" "$_sa_bm_time" "$_sa_bm_thresh"
-}
-
-# =============================================================================
-# _sa_build_test_message - Plain-text body for test SMS
-# =============================================================================
-_sa_build_test_message() {
-    printf "QManager: Test SMS alert - your configuration is working."
-}
-
-# =============================================================================
-# _sa_do_send - Send an SMS via sms_tool
-# =============================================================================
-# Args: $1 = recipient (E.164, with or without leading +)
-#       $2 = message body (plain text)
-# Returns: 0 on success, non-zero on failure
-# =============================================================================
-_sa_do_send() {
-    _sa_ds_to="$1"
-    _sa_ds_body="$2"
-
-    if ! command -v sms_tool >/dev/null 2>&1; then
-        qlog_error "SMS alerts: sms_tool not installed"
-        return 1
-    fi
-
-    # Strip leading + - sms_tool expects bare digits
-    _sa_ds_to_clean=$(printf '%s' "$_sa_ds_to" | sed 's/^+//')
-
-    # Optional device override via UCI (matches cellular/sms.sh pattern)
-    _sa_ds_dev=$(uci -q get quecmanager.settings.sms_tool_device 2>/dev/null)
-    if [ -n "$_sa_ds_dev" ]; then
-        _sa_ds_result=$(sms_tool -d "$_sa_ds_dev" send "$_sa_ds_to_clean" "$_sa_ds_body" 2>&1)
-    else
-        _sa_ds_result=$(sms_tool send "$_sa_ds_to_clean" "$_sa_ds_body" 2>&1)
-    fi
-    _sa_ds_rc=$?
-
-    # Strip sms_tool tty diagnostics (same as cellular/sms.sh)
-    _sa_ds_result=$(printf '%s\n' "$_sa_ds_result" | grep -v -e '^tcgetattr(' -e '^tcsetattr(' -e '^Failed tcsetattr(')
-
-    if [ "$_sa_ds_rc" -eq 0 ]; then
-        qlog_info "SMS alerts: sent to $_sa_ds_to_clean"
-        return 0
-    fi
-
-    qlog_error "SMS alerts: sms_tool send failed (rc=$_sa_ds_rc): $_sa_ds_result"
-    # Stash last error detail so the CGI test-send path can surface it
-    printf '%s' "$_sa_ds_result" > /tmp/qmanager_sms_last_err 2>/dev/null
-    return "$_sa_ds_rc"
-}
-
-# =============================================================================
-# _sa_log_event - Append entry to NDJSON log file, trim to max
-# =============================================================================
-# Args: $1 = trigger text, $2 = "sent"|"failed", $3 = recipient
-# =============================================================================
-_sa_log_event() {
-    _sa_le_trigger="$1"
-    _sa_le_status="$2"
-    _sa_le_recipient="$3"
-    _sa_le_ts=$(date "+%Y-%m-%d %H:%M:%S")
-
-    jq -n -c \
-        --arg ts "$_sa_le_ts" \
-        --arg trigger "$_sa_le_trigger" \
-        --arg status "$_sa_le_status" \
-        --arg recipient "$_sa_le_recipient" \
-        '{timestamp: $ts, trigger: $trigger, status: $status, recipient: $recipient}' \
-        >> "$_SA_LOG_FILE"
-
-    # Trim to max entries
-    _sa_le_count=$(wc -l < "$_SA_LOG_FILE" 2>/dev/null || echo 0)
-    if [ "$_sa_le_count" -gt "$_SA_MAX_LOG" ]; then
-        _sa_le_tmp="${_SA_LOG_FILE}.tmp"
-        if tail -n "$_SA_MAX_LOG" "$_SA_LOG_FILE" > "$_sa_le_tmp" 2>/dev/null; then
-            mv "$_sa_le_tmp" "$_SA_LOG_FILE" 2>/dev/null || rm -f "$_sa_le_tmp"
-        else
-            rm -f "$_sa_le_tmp"
-        fi
-    fi
-}
-
-# =============================================================================
-# check_sms_alert - Called every poll cycle by qmanager_poller
-# =============================================================================
-# Semantics:
-#   * On entering downtime: record start time.
-#   * While still down AND elapsed >= threshold AND not yet sent this outage:
-#       send SMS, set single-shot guard.
-#   * On recovery: reset tracking + guard (no recovery SMS).
-#
-# Unlike email_alerts which fires on recovery, SMS fires DURING the outage
-# because the cellular control channel is independent of the data connection.
+# check_sms_alert - Called every poll cycle after detect_events
 # =============================================================================
 check_sms_alert() {
     # No alerts during scheduled low power mode
     [ -f "/tmp/qmanager_low_power_active" ] && return 0
 
-    # Reload on CGI signal
+    # Reload config on CGI signal
     if [ -f "$_SA_RELOAD_FLAG" ]; then
         rm -f "$_SA_RELOAD_FLAG"
         _sa_read_config
         qlog_info "SMS alerts config reloaded: enabled=$_sa_enabled"
     fi
 
+    # Disabled / not configured
     [ "$_sa_enabled" != "true" ] && return 0
 
-    # Stale/unknown ping state: keep existing downtime timer running if any,
-    # otherwise do nothing (same guard as email_alerts).
+    # Null/stale ping state: skip only if not tracking.
     if [ "$conn_internet_available" = "null" ] || [ -z "$conn_internet_available" ]; then
-        return 0
+        [ "$_sa_was_down" != "true" ] && return 0
+        # Already tracking downtime - continue for threshold/pending checks.
     fi
 
     if [ "$conn_internet_available" = "false" ]; then
-        # Start tracking on first down cycle
+        # Enter downtime
         if [ "$_sa_was_down" != "true" ]; then
             _sa_downtime_start=$(date +%s)
             _sa_was_down="true"
-            _sa_alert_sent="false"
+            _sa_downtime_sms_status="none"
             qlog_debug "SMS alerts: downtime tracking started at $_sa_downtime_start"
-            return 0
-        fi
-
-        # Already tracking - check threshold if we haven't fired yet
-        if [ "$_sa_alert_sent" = "true" ]; then
-            return 0
-        fi
-
-        _sa_now=$(date +%s)
-        _sa_elapsed=$((_sa_now - _sa_downtime_start))
-        _sa_threshold_secs=$((_sa_threshold_minutes * 60))
-
-        if [ "$_sa_elapsed" -ge "$_sa_threshold_secs" ]; then
-            qlog_info "SMS alerts: threshold exceeded (elapsed=${_sa_elapsed}s, threshold=${_sa_threshold_secs}s), sending SMS"
-            _sa_body=$(_sa_build_downtime_message "$_sa_downtime_start" "$_sa_elapsed" "$_sa_threshold_minutes")
-            _sa_trigger="Connection down $(_sa_format_duration "$_sa_elapsed")"
-
-            if _sa_do_send "$_sa_recipient" "$_sa_body"; then
-                _sa_log_event "$_sa_trigger" "sent" "$_sa_recipient"
-            else
-                _sa_log_event "$_sa_trigger" "failed" "$_sa_recipient"
-            fi
-            # Single-shot for this outage regardless of send outcome - we
-            # don't want to retry-spam the modem/cellular network every 2s.
-            _sa_alert_sent="true"
         fi
 
     elif [ "$conn_internet_available" = "true" ] && [ "$_sa_was_down" = "true" ]; then
-        # Recovery - reset state, no SMS sent
-        qlog_debug "SMS alerts: recovery detected, resetting tracking"
+        # Recovery path
+        now=$(date +%s)
+        duration=$((now - _sa_downtime_start))
+        dur_text=$(_sa_format_duration "$duration")
+        threshold_secs=$((_sa_threshold_minutes * 60))
+
+        qlog_info "SMS alerts: recovery detected - duration=${duration}s status=$_sa_downtime_sms_status"
+
+        if [ "$_sa_downtime_sms_status" = "sent" ]; then
+            # Separate recovery SMS
+            body="[QManager] Connection recovered (down ${dur_text})"
+            trigger="Connection recovered (down ${dur_text})"
+            if _sa_do_send "$body"; then
+                _sa_log_event "$trigger" "sent" "$_sa_recipient"
+            else
+                _sa_log_event "$trigger" "failed" "$_sa_recipient"
+            fi
+        elif [ "$duration" -ge "$threshold_secs" ]; then
+            # Dedup path only when outage actually exceeded threshold.
+            body="[QManager] Connection was down for ${dur_text}, now restored"
+            trigger="Connection was down for ${dur_text}, now restored"
+            if _sa_do_send "$body"; then
+                _sa_log_event "$trigger" "sent" "$_sa_recipient"
+            else
+                _sa_log_event "$trigger" "failed" "$_sa_recipient"
+            fi
+        else
+            qlog_info "SMS alerts: recovery below threshold (${duration}s < ${threshold_secs}s) - skipped"
+        fi
+
+        # Reset tracking
         _sa_was_down="false"
         _sa_downtime_start=0
-        _sa_alert_sent="false"
+        _sa_downtime_sms_status="none"
+        return 0
+    fi
+
+    # Promote "none" -> "pending" when threshold exceeded
+    if [ "$_sa_was_down" = "true" ] && [ "$_sa_downtime_sms_status" = "none" ]; then
+        now=$(date +%s)
+        elapsed=$((now - _sa_downtime_start))
+        threshold_secs=$((_sa_threshold_minutes * 60))
+
+        if [ "$elapsed" -ge "$threshold_secs" ]; then
+            _sa_downtime_sms_status="pending"
+            qlog_info "SMS alerts: threshold exceeded (${elapsed}s >= ${threshold_secs}s), marking pending"
+        fi
+    fi
+
+    # Pending path: attempt downtime-start send only when registered
+    if [ "$_sa_was_down" = "true" ] && [ "$_sa_downtime_sms_status" = "pending" ]; then
+        if _sa_is_registered; then
+            now=$(date +%s)
+            duration=$((now - _sa_downtime_start))
+            dur_text=$(_sa_format_duration "$duration")
+            body="[QManager] Connection down ${dur_text}"
+            trigger="Connection down ${dur_text}"
+
+            qlog_info "SMS alerts: attempting downtime-start send (registered)"
+            if _sa_do_send "$body"; then
+                _sa_downtime_sms_status="sent"
+                _sa_log_event "$trigger" "sent" "$_sa_recipient"
+            else
+                _sa_downtime_sms_status="failed"
+                _sa_log_event "$trigger" "failed" "$_sa_recipient"
+            fi
+        else
+            qlog_debug "SMS alerts: pending downtime send, modem not registered - waiting"
+        fi
     fi
 }
 
 # =============================================================================
-# _sa_send_test_sms - Called by CGI send_test action
+# _sa_do_send - Send SMS with retries, re-checking registration each attempt
 # =============================================================================
-# Returns 0 on success, non-zero on failure. Assumes _sa_read_config was
-# already called by the caller.
+_sa_do_send() {
+    body="$1"
+    phone="${_sa_recipient#+}"
+    attempt=0
+    max_attempts=3
+    retry_delay=5
+
+    if [ ! -x "$_SA_SMS_TOOL" ]; then
+        qlog_error "SMS alerts: sms_tool not found at $_SA_SMS_TOOL"
+        printf '%s' "sms_tool not found" > /tmp/qmanager_sms_last_err 2>/dev/null
+        return 1
+    fi
+
+    while [ "$attempt" -lt "$max_attempts" ]; do
+        attempt=$((attempt + 1))
+
+        if [ "$attempt" -gt 1 ]; then
+            sleep "$retry_delay"
+        fi
+
+        # In CGI test-send context, this is overridden to always pass.
+        if ! _sa_is_registered; then
+            qlog_warn "SMS alerts: attempt $attempt/$max_attempts skipped - not registered"
+            continue
+        fi
+
+        send_out=$(_sa_sms_locked send "$phone" "$body" 2>&1)
+        rc=$?
+
+        if [ "$rc" -eq 0 ]; then
+            qlog_info "SMS alerts: sms_tool send succeeded on attempt $attempt"
+            rm -f /tmp/qmanager_sms_last_err 2>/dev/null
+            return 0
+        fi
+
+        # Keep only actionable error text for CGI detail.
+        send_out=$(printf '%s\n' "$send_out" | grep -v -e '^tcgetattr(' -e '^tcsetattr(' -e '^Failed tcsetattr(')
+        [ -z "$send_out" ] && send_out="sms_tool send failed (rc=$rc)"
+        printf '%s' "$send_out" > /tmp/qmanager_sms_last_err 2>/dev/null
+        qlog_warn "SMS alerts: sms_tool send failed on attempt $attempt/$max_attempts (rc=$rc)"
+    done
+
+    return 1
+}
+
+# =============================================================================
+# _sa_send_test_sms - Called by CGI to send a test SMS
 # =============================================================================
 _sa_send_test_sms() {
-    _sa_st_body=$(_sa_build_test_message)
-    if _sa_do_send "$_sa_recipient" "$_sa_st_body"; then
+    body="[QManager] Test SMS from your modem"
+
+    if _sa_do_send "$body"; then
         _sa_log_event "Test SMS" "sent" "$_sa_recipient"
         return 0
     fi
+
     _sa_log_event "Test SMS" "failed" "$_sa_recipient"
     return 1
+}
+
+# =============================================================================
+# _sa_log_event - Append entry to NDJSON log file
+# =============================================================================
+_sa_log_event() {
+    trigger="$1"
+    status="$2"
+    recipient="$3"
+    ts=$(date "+%Y-%m-%d %H:%M:%S")
+
+    jq -n -c \
+        --arg ts "$ts" \
+        --arg trigger "$trigger" \
+        --arg status "$status" \
+        --arg recipient "$recipient" \
+        '{timestamp: $ts, trigger: $trigger, status: $status, recipient: $recipient}' \
+        >> "$_SA_LOG_FILE"
+
+    count=$(wc -l < "$_SA_LOG_FILE" 2>/dev/null || echo 0)
+    if [ "$count" -gt "$_SA_MAX_LOG" ]; then
+        tmp="${_SA_LOG_FILE}.tmp"
+        if tail -n "$_SA_MAX_LOG" "$_SA_LOG_FILE" > "$tmp" 2>/dev/null; then
+            mv "$tmp" "$_SA_LOG_FILE" 2>/dev/null || rm -f "$tmp"
+        else
+            rm -f "$tmp"
+        fi
+    fi
+}
+
+# =============================================================================
+# _sa_format_duration - Convert seconds to human-readable string
+# =============================================================================
+_sa_format_duration() {
+    secs="$1"
+    hours=$((secs / 3600))
+    remaining=$((secs % 3600))
+    mins=$((remaining / 60))
+    remaining=$((remaining % 60))
+
+    if [ "$hours" -gt 0 ]; then
+        printf "%dh %dm %ds" "$hours" "$mins" "$remaining"
+    elif [ "$mins" -gt 0 ]; then
+        printf "%dm %ds" "$mins" "$remaining"
+    else
+        printf "%ds" "$remaining"
+    fi
 }
