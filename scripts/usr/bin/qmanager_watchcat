@@ -410,6 +410,21 @@ sim_failover_fallback() {
 
     wait_for_modem
 
+    # Auto-apply profile matching reverted SIM (watchdog_revert)
+    local _rv_iccid_raw _rv_iccid _try
+    _rv_iccid=""
+    for _try in 1 2 3; do
+        _rv_iccid_raw=$(qcmd 'AT+QCCID' 2>/dev/null)
+        _rv_iccid=$(printf '%s' "$_rv_iccid_raw" | grep '+QCCID:' | sed 's/+QCCID: //g' | tr -d '\r ')
+        [ -n "$_rv_iccid" ] && break
+        sleep 1
+    done
+    if [ -n "$_rv_iccid" ]; then
+        ( . /usr/lib/qmanager/profile_mgr.sh && auto_apply_profile "$_rv_iccid" "watchdog_revert" )
+    else
+        qlog_info "[watchdog_revert] ICCID query failed after revert, skipping auto-apply"
+    fi
+
     # Restart tower failover daemon
     /etc/init.d/qmanager_tower_failover start 2>/dev/null
 
@@ -558,6 +573,11 @@ finish_cooldown() {
                 > "$SIM_FAILOVER_FILE"
 
             qlog_info "SIM failover state saved: slot $original_sim_slot → $current_sim_slot"
+
+            # Auto-apply profile matching new SIM (watchdog)
+            if [ -n "$curr_iccid" ]; then
+                ( . /usr/lib/qmanager/profile_mgr.sh && auto_apply_profile "$curr_iccid" "watchdog" )
+            fi
         fi
 
         # Reset — connectivity recovered
