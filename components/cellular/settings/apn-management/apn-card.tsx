@@ -20,7 +20,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { RotateCcwIcon } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { InfoIcon, RotateCcwIcon } from "lucide-react";
 import { SaveButton, useSaveFlash } from "@/components/ui/save-button";
 import {
   MNO_PRESETS,
@@ -35,6 +36,8 @@ interface APNSettingsCardProps {
   isLoading: boolean;
   isSaving: boolean;
   onSave: (request: ApnSaveRequest) => Promise<boolean>;
+  isProfileControlled?: boolean;
+  profileName?: string | null;
 }
 
 const APNSettingsCard = ({
@@ -43,6 +46,8 @@ const APNSettingsCard = ({
   isLoading,
   isSaving,
   onSave,
+  isProfileControlled = false,
+  profileName = null,
 }: APNSettingsCardProps) => {
   // Form state
   const { saved, markSaved } = useSaveFlash();
@@ -107,7 +112,7 @@ const APNSettingsCard = ({
 
   const handleSave = async (e: FormEvent) => {
     e.preventDefault();
-    if (!profiles) return;
+    if (!profiles || isProfileControlled) return;
 
     const request: ApnSaveRequest = {
       cid: Number(selectedCid),
@@ -191,9 +196,23 @@ const APNSettingsCard = ({
         </CardDescription>
       </CardHeader>
       <CardContent>
+        {isProfileControlled && (
+          <Alert className="mb-4">
+            <InfoIcon className="size-4" />
+            <AlertDescription>
+              <p>
+                APN settings are managed by the{" "}
+                <span className="font-semibold">
+                  {profileName ?? "active Custom SIM Profile"}
+                </span>
+                .
+              </p>
+            </AlertDescription>
+          </Alert>
+        )}
         <form className="grid gap-4" onSubmit={handleSave}>
           <div className="w-full">
-            <FieldSet>
+            <FieldSet disabled={isProfileControlled}>
               <FieldGroup>
                 <div className="grid @md/card:grid-cols-2 grid-cols-1 grid-flow-row gap-4">
                   <Field>
@@ -203,7 +222,7 @@ const APNSettingsCard = ({
                       placeholder="Enter Active APN"
                       value={activeApn}
                       onChange={(e) => setActiveApn(e.target.value)}
-                      disabled={isSaving}
+                      disabled={isSaving || isProfileControlled}
                       required
                       aria-required="true"
                     />
@@ -217,7 +236,7 @@ const APNSettingsCard = ({
                         "none"
                       }
                       onValueChange={handleAutoApnChange}
-                      disabled={isSaving}
+                      disabled={isSaving || isProfileControlled}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Choose Carrier Preset" />
@@ -243,7 +262,7 @@ const APNSettingsCard = ({
                         (activeCid !== null ? String(activeCid) : "")
                       }
                       onValueChange={handleCidChange}
-                      disabled={isSaving}
+                      disabled={isSaving || isProfileControlled}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Choose Connection Profile" />
@@ -270,7 +289,7 @@ const APNSettingsCard = ({
                           : "")
                       }
                       onValueChange={setPdpType}
-                      disabled={isSaving}
+                      disabled={isSaving || isProfileControlled}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Choose IP Protocol" />
@@ -289,12 +308,17 @@ const APNSettingsCard = ({
             </FieldSet>
           </div>
           <div className="flex items-center gap-x-2">
-            <SaveButton type="submit" isSaving={isSaving} saved={saved} />
+            <SaveButton
+              type="submit"
+              isSaving={isSaving}
+              saved={saved}
+              disabled={isProfileControlled}
+            />
             <Button
               type="button"
               variant="outline"
               onClick={handleReset}
-              disabled={isSaving}
+              disabled={isSaving || isProfileControlled}
               aria-label="Reset to saved values"
             >
               <RotateCcwIcon />
