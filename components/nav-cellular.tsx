@@ -41,13 +41,31 @@ export function NavCellular({
   const pathname = rawPathname.endsWith('/') && rawPathname !== '/' ? rawPathname.slice(0, -1) : rawPathname
   const [openItems, setOpenItems] = React.useState<Record<string, boolean>>({})
 
+  const isPathActive = React.useCallback(
+    (url: string) => pathname === url || pathname.startsWith(url + "/"),
+    [pathname],
+  )
+
+  const isItemActive = React.useCallback(
+    (item: { url: string; items?: { url: string }[] }) => {
+      if (pathname === item.url) return true
+
+      if (item.items?.length) {
+        return item.items.some((subItem) => isPathActive(subItem.url))
+      }
+
+      return pathname.startsWith(item.url + "/")
+    },
+    [isPathActive, pathname],
+  )
+
   React.useEffect(() => {
     const states: Record<string, boolean> = {}
     cellular.forEach((item) => {
-      states[item.title] = pathname === item.url || (!!item.items?.length && pathname.startsWith(item.url + "/"))
+      states[item.title] = isItemActive(item)
     })
     setOpenItems(states)
-  }, [pathname, cellular])
+  }, [cellular, isItemActive])
 
   return (
     <SidebarGroup>
@@ -56,7 +74,7 @@ export function NavCellular({
       </SidebarGroupLabel>
       <SidebarMenu>
         {cellular.map((item) => {
-          const isParentOrChildActive = pathname === item.url || (!!item.items?.length && pathname.startsWith(item.url + "/"))
+          const isParentOrChildActive = isItemActive(item)
 
           return (
           <Collapsible
@@ -83,7 +101,7 @@ export function NavCellular({
                   <CollapsibleContent>
                     <SidebarMenuSub>
                       {item.items?.map((subItem) => {
-                        const isSubItemActive = pathname === subItem.url || pathname.startsWith(subItem.url + "/")
+                        const isSubItemActive = isPathActive(subItem.url)
                         return (
                         <SidebarMenuSubItem key={subItem.title}>
                           <SidebarMenuSubButton asChild isActive={isSubItemActive}>

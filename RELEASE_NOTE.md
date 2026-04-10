@@ -1,21 +1,6 @@
 # 🚀 QManager BETA v0.1.14
 
-**SMS Alerts launch — get downtime notifications even when the data path is offline. Plus: Custom SIM Profiles now auto-apply when the matching SIM is inserted.**
-
----
-
-## 🐛 Bug Fixes
-
-### Custom SIM Profiles — Auto-Apply on Matching SIM
-
-- **Profiles didn't auto-apply even when the ICCID matched** — The poller detected a matching profile at boot and the watchdog performed SIM failovers, but nothing actually spawned the apply worker. The only way to apply a profile was the manual "Activate" button.
-- **Fix** — New `auto_apply_profile()` helper in `profile_mgr.sh` looks up a profile by current ICCID and spawns `qmanager_profile_apply` detached. Wired into 4 trigger points:
-  - **Boot** — poller runs it in `collect_boot_data()` with the ICCID it already captured.
-  - **Manual SIM slot switch** — `cellular/settings.sh` re-queries the new ICCID after the Golden Rule sequence (`CFUN=0 → QUIMSLOT → CFUN=1`) and auto-applies.
-  - **Watchdog Tier 3 SIM failover** — `qmanager_watchcat` auto-applies for the new SIM once Tier 3 connectivity recovers.
-  - **Watchdog SIM revert** — auto-applies for the restored SIM after `sim_failover_fallback()`.
-- **Idempotent** — the apply worker's per-step skip logic (APN/TTL/IMEI) handles the "only apply what differs" requirement, so repeated triggers are cheap. If all three steps already match, the apply completes instantly with no modem changes.
-- **Safe against concurrent manual Activate** — the helper respects the existing apply lock and won't race a user's manual click.
+**SMS Alerts are here, so you can receive downtime notifications even when the data path is offline. Plus, Custom SIM Profiles now auto-apply when a matching SIM is inserted.**
 
 ---
 
@@ -43,10 +28,22 @@ Path: Cellular -> Settings -> IMEI Settings (`/cellular/settings/imei-settings`)
 
 ## 🐛 Bug Fixes
 
+### Custom SIM Profiles — Auto-Apply on Matching SIM
+
+- **Profiles did not auto-apply on matching ICCID in key flows** — A matching profile could be detected, but auto-apply was not consistently triggered across boot and SIM transition paths.
+- **Fix** — Auto-apply now runs on boot, manual SIM slot switch, watchdog Tier 3 SIM failover, and watchdog SIM revert.
+- **Idempotent behavior** — Existing per-step skip logic (APN/TTL/IMEI) ensures repeated triggers only apply differences and complete quickly when nothing changed.
+- **Concurrency-safe** — Auto-apply respects the existing apply lock to avoid races with manual activation.
+
 ### SMS Test Send Error Visibility
 
 - **Generic test-send failures in UI** — Test SMS failures previously surfaced as a generic toast even when backend details were available.
 - **Fix** — The frontend now propagates backend `detail`/`error` from `send_test` responses so the toast shows actionable failure reasons.
+
+### Sidebar Active-State in Cellular Navigation
+
+- **Cellular Information was highlighted on unrelated pages** — The parent item stayed active across other Cellular routes, which also kept its sub-items expanded even when viewing a different section.
+- **Fix** — Sidebar route matching now activates Cellular Information only for its own route and declared sub-routes, preventing false highlighting and incorrect submenu expansion.
 
 ---
 
