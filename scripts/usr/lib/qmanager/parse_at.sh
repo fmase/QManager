@@ -267,7 +267,7 @@ parse_serving_cell() {
 }
 
 # -----------------------------------------------------------------------------
-# Parse AT+QTEMP — Average temperature (excluding -273 unavailable sensors)
+# Parse AT+QTEMP — Average temperature (excluding non-positive/unavailable sensors)
 # Populates: t2_temperature
 # -----------------------------------------------------------------------------
 parse_temperature() {
@@ -276,7 +276,7 @@ parse_temperature() {
     local result
     result=$(printf '%s\n' "$raw" | grep '+QTEMP:' | \
         sed -n 's/.*,"\(-\{0,1\}[0-9]*\)".*/\1/p' | \
-        grep -v '^\-273$' | \
+        awk '$1 > 0' | \
         awk '{ sum += $1; count++ } END { if (count > 0) printf "%.0f", sum/count; }')
 
     if [ -n "$result" ]; then

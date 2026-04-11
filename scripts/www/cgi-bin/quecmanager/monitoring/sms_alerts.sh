@@ -112,6 +112,11 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
             fi
         fi
 
+        # Normalize: strip leading + exactly once so storage holds raw digits.
+        # The send path passes $_sa_recipient verbatim to sms_tool, which does
+        # not accept a leading +. Doing it here means the library never has to.
+        new_phone=$(printf '%s' "$new_phone" | sed 's/^+//')
+
         mkdir -p /etc/qmanager
 
         jq -n \
@@ -154,14 +159,12 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
         # Test sends are user-initiated and should still attempt delivery.
         _sa_is_registered() { return 0; }
 
-        rm -f /tmp/qmanager_sms_last_err
-
         if _sa_send_test_sms; then
             cgi_success
         else
-            _detail=$(cat /tmp/qmanager_sms_last_err 2>/dev/null)
-            [ -z "$_detail" ] && _detail="sms_tool send failed - check modem status and recipient number"
-            cgi_error "send_failed" "$_detail"
+            # Detailed failure reason is in logread via qlog_error —
+            # check_sms_alert no longer writes a breadcrumb file.
+            cgi_error "send_failed" "sms_tool send failed — check logread for details"
         fi
         exit 0
     fi

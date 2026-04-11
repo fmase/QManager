@@ -15,7 +15,7 @@
 # Config:  /etc/qmanager/sms_alerts.json
 # Log:     /tmp/qmanager_sms_log.json (NDJSON, max 100 entries)
 # Reload:  /tmp/qmanager_sms_reload
-# Lock:    /tmp/qmanager_at.lock
+# Lock:    /var/lock/qmanager.lock (shared with qcmd/atcli_smd11)
 # =============================================================================
 
 [ -n "$_SMS_ALERTS_LOADED" ] && return 0
@@ -25,7 +25,9 @@ _SMS_ALERTS_LOADED=1
 _SA_CONFIG="/etc/qmanager/sms_alerts.json"
 _SA_LOG_FILE="/tmp/qmanager_sms_log.json"
 _SA_RELOAD_FLAG="/tmp/qmanager_sms_reload"
-_SA_LOCK_FILE="/tmp/qmanager_at.lock"
+# Shared with qcmd/atcli_smd11 so sms_tool send/recv/delete/status
+# serializes against every other process touching /dev/smd11.
+_SA_LOCK_FILE="/var/lock/qmanager.lock"
 _SA_SMS_TOOL="/usr/bin/sms_tool"
 _SA_AT_DEVICE="/dev/smd11"
 _SA_MAX_LOG=100
@@ -134,7 +136,15 @@ _sa_read_config() {
 # =============================================================================
 # _sa_is_registered - Is modem currently able to send SMS?
 # =============================================================================
+# If the ping daemon reports the internet reachable, the modem is by
+# definition registered and attached to a PDN — trust that over the
+# serving-cell fields, which are populated by poll_serving_cell AFTER
+# check_sms_alert runs and are therefore stale by one cycle. Without this
+# shortcut, the recovery-path SMS gets skipped whenever ping recovers before
+# the next serving-cell poll refreshes lte_state/nr_state.
 _sa_is_registered() {
+    [ "$conn_internet_available" = "true" ] && return 0
+
     [ "$modem_reachable" = "true" ] || return 1
 
     if [ "$lte_state" = "connected" ] || [ "$nr_state" = "connected" ]; then
@@ -149,6 +159,14 @@ _sa_is_registered() {
 # =============================================================================
 sms_alerts_init() {
     _sa_read_config
+    # One-time in-memory migration: strip a legacy leading + from the stored
+    # recipient. New saves go through the CGI's normalize step, but existing
+    # installs may still have "+14155551234" in sms_alerts.json from before
+    # the migration. No silent file rewrite — it gets re-saved next time the
+    # user touches the settings form.
+    case "$_sa_recipient" in
+        +*) _sa_recipient="${_sa_recipient#+}" ;;
+    esac
     if [ "$_sa_enabled" = "true" ]; then
         qlog_info "SMS alerts enabled: recipient=$_sa_recipient threshold=${_sa_threshold_minutes}m"
     else
@@ -162,6 +180,14 @@ sms_alerts_init() {
 check_sms_alert() {
     # No alerts during scheduled low power mode
     [ -f "/tmp/qmanager_low_power_active" ] && return 0
+
+    # No alerts while watchcat is actively recovering — prevents racing on
+    # stale lte_state/nr_state during AT+COPS / AT+CFUN churn. Downtime
+    # tracking state (_sa_was_down, _sa_downtime_start) persists across this
+    # guard, so the recovery-branch SMS still fires on the first cycle after
+    # watchcat exits COOLDOWN if the outage exceeded the threshold. Mirrors
+    # the same guard in events.sh::detect_data_connection_events().
+    [ "$conn_during_recovery" = "true" ] && return 0
 
     # Reload config on CGI signal
     if [ -f "$_SA_RELOAD_FLAG" ]; then
@@ -266,14 +292,13 @@ check_sms_alert() {
 # =============================================================================
 _sa_do_send() {
     body="$1"
-    phone="${_sa_recipient#+}"
     attempt=0
     max_attempts=3
     retry_delay=5
+    _last_err=""
 
     if [ ! -x "$_SA_SMS_TOOL" ]; then
         qlog_error "SMS alerts: sms_tool not found at $_SA_SMS_TOOL"
-        printf '%s' "sms_tool not found" > /tmp/qmanager_sms_last_err 2>/dev/null
         return 1
     fi
 
@@ -286,26 +311,28 @@ _sa_do_send() {
 
         # In CGI test-send context, this is overridden to always pass.
         if ! _sa_is_registered; then
-            qlog_warn "SMS alerts: attempt $attempt/$max_attempts skipped - not registered"
+            qlog_warn "SMS alerts: attempt $attempt/$max_attempts skipped (not registered) — modem_reachable=$modem_reachable lte_state=$lte_state nr_state=$nr_state conn=$conn_internet_available"
             continue
         fi
 
-        send_out=$(_sa_sms_locked send "$phone" "$body" 2>&1)
+        # $_sa_recipient is already normalized (no leading +) by the CGI
+        # save_settings handler and by sms_alerts_init's boot migration.
+        send_out=$(_sa_sms_locked send "$_sa_recipient" "$body" 2>&1)
         rc=$?
 
         if [ "$rc" -eq 0 ]; then
             qlog_info "SMS alerts: sms_tool send succeeded on attempt $attempt"
-            rm -f /tmp/qmanager_sms_last_err 2>/dev/null
             return 0
         fi
 
         # _sa_sms_locked already strips tcgetattr noise; just fall back to a
         # generic message if the stripped output is empty.
         [ -z "$send_out" ] && send_out="sms_tool send failed (rc=$rc)"
-        printf '%s' "$send_out" > /tmp/qmanager_sms_last_err 2>/dev/null
-        qlog_warn "SMS alerts: sms_tool send failed on attempt $attempt/$max_attempts (rc=$rc)"
+        _last_err="$send_out"
+        qlog_warn "SMS alerts: sms_tool send failed on attempt $attempt/$max_attempts (rc=$rc) — $send_out"
     done
 
+    qlog_error "SMS alerts: all ${max_attempts} send attempts failed for $_sa_recipient — last_err: ${_last_err:-<no output>}"
     return 1
 }
 

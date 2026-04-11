@@ -108,6 +108,12 @@ const DeviceMetricsComponent = ({
   const isTempHigh = temp !== null && temp >= TEMP_WARN;
   const isCpuHigh = cpu !== null && cpu >= CPU_WARN;
   const memPct = memTotal > 0 ? (memUsed / memTotal) * 100 : 0;
+  const lteTa = lteData?.ta ?? null;
+  const nrTa = nrData?.ta ?? null;
+  const lteDistance =
+    lteTa !== null && lteTa > 0 ? calculateLteDistance(lteTa) : null;
+  const nrDistance =
+    nrTa !== null && nrTa > 0 ? calculateNrDistance(nrTa) : null;
 
   if (isLoading) {
     return (
@@ -256,11 +262,11 @@ const DeviceMetricsComponent = ({
                 </TooltipTrigger>
                 <TooltipContent>
                   {/* Will show in Hexadecimal form */}
-                  {lteData?.ta !== null && lteData?.ta !== undefined ? (
+                  {lteTa !== null && lteTa > 0 ? (
                     <p>
                       This is only an approximation based <br /> on the LTE
                       Timing Advance value of{" "}
-                      <span className="font-semibold">{lteData.ta}</span>.
+                      <span className="font-semibold">{lteTa}</span>.
                     </p>
                   ) : (
                     <p>Timing Advance value is not available.</p>
@@ -268,7 +274,7 @@ const DeviceMetricsComponent = ({
                 </TooltipContent>
               </Tooltip>
               <p className="font-semibold text-sm tabular-nums">
-                {formatDistance(calculateLteDistance(lteData?.ta ?? null), unitPrefs?.distanceUnit)}
+                {formatDistance(lteDistance, unitPrefs?.distanceUnit)}
               </p>
             </div>
           </div>
@@ -288,11 +294,11 @@ const DeviceMetricsComponent = ({
                 </TooltipTrigger>
                 <TooltipContent>
                   {/* Will show in Hexadecimal form */}
-                  {nrData?.ta !== null && nrData?.ta !== undefined ? (
+                  {nrTa !== null && nrTa > 0 ? (
                     <p>
                       This is only an approximation based <br /> on the NR
                       Timing Advance value of{" "}
-                      <span className="font-semibold">{nrData.ta}</span>.
+                      <span className="font-semibold">{nrTa}</span>.
                     </p>
                   ) : (
                     <p>Timing Advance value is not available.</p>
@@ -300,7 +306,7 @@ const DeviceMetricsComponent = ({
                 </TooltipContent>
               </Tooltip>
               <p className="font-semibold text-sm tabular-nums">
-                {formatDistance(calculateNrDistance(nrData?.ta ?? null), unitPrefs?.distanceUnit)}
+                {formatDistance(nrDistance, unitPrefs?.distanceUnit)}
               </p>
             </div>
           </div>

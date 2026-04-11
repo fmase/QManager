@@ -375,8 +375,7 @@ remove_runtime_state() {
     rm -f /tmp/qmanager_*.lock \
           /tmp/qmanager_*.pid \
           /tmp/qmanager_email_reload \
-                    /tmp/qmanager_sms_reload \
-                    /tmp/qmanager_sms_last_err \
+          /tmp/qmanager_sms_reload \
           /tmp/qmanager_imei_check_done \
           /tmp/qmanager_long_running \
           /tmp/qmanager_low_power_active \
