@@ -17,7 +17,7 @@
 #   - Frontend files from /www/ (restores original index.html if backed up)
 #   - CGI endpoints from /www/cgi-bin/quecmanager/
 #   - Shared libraries from /usr/lib/qmanager/
-#   - Daemons from /usr/bin/qmanager_*, /usr/bin/qcmd, nfqws, bridge_traffic_monitor
+#   - Daemons from /usr/bin/qmanager_*, qcmd, atcli_smd11, sms_tool, nfqws, bridge_traffic_monitor
 #   - Init.d services from /etc/init.d/qmanager* (dynamic scan)
 #   - Runtime state from /tmp (JSON, logs, sessions, lock files, staged updates)
 #   - UCI config namespace (quecmanager.*)
@@ -243,7 +243,7 @@ remove_backend() {
         bin_count=$(( bin_count + 1 ))
     done
     # Non-qmanager-prefixed binaries
-    for extra in bridge_traffic_monitor_rm551 nfqws; do
+    for extra in bridge_traffic_monitor_rm551 nfqws atcli_smd11 sms_tool; do
         if [ -f "$BIN_DIR/$extra" ]; then
             rm -f "$BIN_DIR/$extra"
             bin_count=$(( bin_count + 1 ))

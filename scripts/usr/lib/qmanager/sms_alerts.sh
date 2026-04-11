@@ -27,8 +27,18 @@ _SA_LOG_FILE="/tmp/qmanager_sms_log.json"
 _SA_RELOAD_FLAG="/tmp/qmanager_sms_reload"
 _SA_LOCK_FILE="/tmp/qmanager_at.lock"
 _SA_SMS_TOOL="/usr/bin/sms_tool"
-_SA_DEFAULT_AT_DEVICE="/dev/smd11"
+_SA_AT_DEVICE="/dev/smd11"
 _SA_MAX_LOG=100
+
+# =============================================================================
+# _sa_strip_noise - Filter tcgetattr/tcsetattr diagnostic lines from sms_tool
+# =============================================================================
+# sms_tool prints these to stdout/stderr whenever /dev/smd11 is a char device
+# rather than a real TTY. They are harmless but pollute JSON parsing and
+# user-visible output. Always apply to any sms_tool output before use.
+_sa_strip_noise() {
+    grep -v -e '^tcgetattr(' -e '^tcsetattr(' -e 'Inappropriate ioctl for device$'
+}
 
 # --- State (populated by sms_alerts_init / _sa_read_config) ------------------
 _sa_enabled="false"
@@ -63,27 +73,19 @@ _sa_flock_wait() {
 }
 
 # =============================================================================
-# _sa_get_sms_device - Resolve sms_tool device (UCI override, fallback default)
-# =============================================================================
-_sa_get_sms_device() {
-    _sa_dev=$(uci -q get quecmanager.settings.sms_tool_device 2>/dev/null)
-    if [ -n "$_sa_dev" ]; then
-        printf '%s' "$_sa_dev"
-    else
-        printf '%s' "$_SA_DEFAULT_AT_DEVICE"
-    fi
-}
-
-# =============================================================================
 # _sa_sms_locked - Run sms_tool under shared AT lock
 # =============================================================================
+# Always targets /dev/smd11 and always strips tcgetattr/tcsetattr noise from
+# the returned output, regardless of success/failure.
 _sa_sms_locked() {
-    _sa_device=$(_sa_get_sms_device)
     [ -e "$_SA_LOCK_FILE" ] || : > "$_SA_LOCK_FILE"
 
     (
         _sa_flock_wait 9 10 || exit 2
-        "$_SA_SMS_TOOL" -d "$_sa_device" "$@" 2>/dev/null
+        _sa_raw=$("$_SA_SMS_TOOL" -d "$_SA_AT_DEVICE" "$@" 2>&1)
+        _sa_rc=$?
+        printf '%s\n' "$_sa_raw" | _sa_strip_noise
+        exit "$_sa_rc"
     ) 9<"$_SA_LOCK_FILE"
 }
 
@@ -280,8 +282,8 @@ _sa_do_send() {
             return 0
         fi
 
-        # Keep only actionable error text for CGI detail.
-        send_out=$(printf '%s\n' "$send_out" | grep -v -e '^tcgetattr(' -e '^tcsetattr(' -e '^Failed tcsetattr(')
+        # _sa_sms_locked already strips tcgetattr noise; just fall back to a
+        # generic message if the stripped output is empty.
         [ -z "$send_out" ] && send_out="sms_tool send failed (rc=$rc)"
         printf '%s' "$send_out" > /tmp/qmanager_sms_last_err 2>/dev/null
         qlog_warn "SMS alerts: sms_tool send failed on attempt $attempt/$max_attempts (rc=$rc)"

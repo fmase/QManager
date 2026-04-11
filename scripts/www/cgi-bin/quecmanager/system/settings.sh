@@ -66,9 +66,6 @@ if [ "$REQUEST_METHOD" = "GET" ]; then
         fi
     fi
 
-    # --- SMS tool device override ---
-    sms_tool_device=$(uci_get sms_tool_device "")
-
     # --- Unit preferences ---
     temp_unit=$(uci_get temp_unit "celsius")
     distance_unit=$(uci_get distance_unit "km")
@@ -105,7 +102,6 @@ if [ "$REQUEST_METHOD" = "GET" ]; then
         --arg distance_unit "$distance_unit" \
         --arg timezone "$timezone" \
         --arg zonename "$zonename" \
-        --arg sms_tool_device "$sms_tool_device" \
         --argjson sched_enabled "$sched_enabled" \
         --arg sched_time "$sched_time" \
         --argjson sched_days "$sched_days_json" \
@@ -121,8 +117,7 @@ if [ "$REQUEST_METHOD" = "GET" ]; then
                 temp_unit: $temp_unit,
                 distance_unit: $distance_unit,
                 timezone: $timezone,
-                zonename: $zonename,
-                sms_tool_device: $sms_tool_device
+                zonename: $zonename
             },
             scheduled_reboot: {
                 enabled: ($sched_enabled == 1),
@@ -212,22 +207,6 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
         val=$(printf '%s' "$POST_DATA" | jq -r '.zonename // empty')
         if [ -n "$val" ]; then
             uci set system.@system[0].zonename="$val"
-        fi
-
-        # --- SMS tool device override ---
-        # Two-step: check if field exists, then read value.
-        # Empty string is a valid "disable" value, so [ -n ] would skip it.
-        _has_sms_dev=$(printf '%s' "$POST_DATA" | jq -r 'if has("sms_tool_device") then "yes" else "no" end')
-        if [ "$_has_sms_dev" = "yes" ]; then
-            val=$(printf '%s' "$POST_DATA" | jq -r '.sms_tool_device')
-            case "$val" in
-                /dev/smd7) uci set quecmanager.settings.sms_tool_device="$val" ;;
-                ""|null)   uci -q delete quecmanager.settings.sms_tool_device 2>/dev/null ;;
-                *)
-                    cgi_error "invalid_sms_tool_device" "sms_tool_device must be '/dev/smd7' or empty"
-                    exit 0
-                    ;;
-            esac
         fi
 
         # Commit changes

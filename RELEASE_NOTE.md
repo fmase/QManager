@@ -26,6 +26,16 @@ For educational purposes only. Use at your own risk.
 
 Path: Cellular -> Settings -> IMEI Settings (`/cellular/settings/imei-settings`)
 
+## 🔧 Backend / Infrastructure
+
+### AT Command Backend — Migrated to `atcli_smd11`
+
+- **New AT backend** — All AT command execution now goes through `atcli_smd11` instead of `sms_tool`. The new binary talks directly to `/dev/smd11`, is self-aware of long-command timeouts (e.g. `AT+QSCAN=3,1`, `AT+QFOTADL`), and produces clean output without the `tcgetattr(...)`/`tcsetattr(...)` diagnostics that `sms_tool` emits on char devices.
+- **Simpler `qcmd`** — The gatekeeper script no longer needs dual timeout wrappers, the `-t 240` native-timeout flag, or per-command warm-up gymnastics. A single outer safety cap (`timeout 300`) guards against a wedged process; `atcli_smd11` handles the real timing.
+- **`sms_tool` is now SMS-only** — The `sms_tool` binary still ships, but is reserved for SMS Center (recv/send/delete/status) and SMS Alerts. Every invocation now passes `-d /dev/smd11` explicitly and strips the tcgetattr/tcsetattr noise from its output before parsing, so the SMS inbox JSON, storage status, and test-SMS error messages are always clean.
+- **Retired `sms_tool_device` setting** — The System Settings toggle to switch between `/dev/smd11` and `/dev/smd7` has been removed (both binaries are now device-locked).
+- **Installer improvements** — `install.sh` now removes conflicting opkg packages (`socat-at-bridge`, `socat`, `sms-tool`) before installing, then copies both `atcli_smd11` and `sms_tool` from the bundled `dependencies/` folder with 755 permissions. The `sms-tool` opkg package is no longer a required dependency.
+
 ## 🐛 Bug Fixes
 
 ### Custom SIM Profiles — Auto-Apply on Matching SIM

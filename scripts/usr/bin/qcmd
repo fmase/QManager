@@ -2,15 +2,21 @@
 # =============================================================================
 # qcmd — QManager Gatekeeper
 # =============================================================================
-# The SINGLE entry point for ALL modem communication.
-# Uses flock to serialize access to the modem's serial port.
+# The SINGLE entry point for ALL AT command execution.
+# Uses flock to serialize access to the modem and atcli_smd11 to talk to
+# /dev/smd11 directly.
 #
 # Usage:
 #   qcmd "AT+COMMAND"          → Execute AT command, return raw result
 #   qcmd -j "AT+COMMAND"       → Execute AT command, return JSON-wrapped result
 #
 # Install location: /usr/bin/qcmd
-# Dependencies: sms_tool, flock (busybox), timeout (busybox)
+# Dependencies: atcli_smd11, flock (busybox), timeout (busybox)
+#
+# atcli_smd11 is self-aware of AT command timeouts and waits correctly for
+# long-running commands (AT+QSCAN=3,1, AT+QFOTADL, etc.). qcmd does NOT
+# wrap it with an inner timeout; it only applies an outer safety cap so a
+# wedged process cannot hang the lock forever.
 # =============================================================================
 
 # --- Logging -----------------------------------------------------------------
@@ -30,19 +36,12 @@ LOCK_FILE="/var/lock/qmanager.lock"
 LONG_FLAG="/tmp/qmanager_long_running"
 PID_FILE="/var/lock/qmanager.pid"
 
-SHORT_TIMEOUT=3        # seconds for normal AT commands
-LONG_TIMEOUT=240       # seconds for AT+QSCAN and similar (passed to sms_tool -t)
-LONG_SAFETY_TIMEOUT=260 # outer timeout safety net (20s beyond LONG_TIMEOUT)
-LOCK_WAIT_SHORT=5      # seconds to wait for lock (normal commands)
-LOCK_WAIT_LONG=10      # seconds to wait for lock (long commands)
+SAFETY_TIMEOUT=300      # outer last-ditch cap (seconds) — only fires if atcli_smd11 wedges
+LOCK_WAIT_SHORT=5       # seconds to wait for lock (normal commands)
+LOCK_WAIT_LONG=10       # seconds to wait for lock (long commands)
 
 # Ensure lock directory exists
 mkdir -p /var/lock 2>/dev/null
-
-# --- SMS tool device override (e.g. "-d /dev/smd7") -------------------------
-SMS_TOOL_ARGS=""
-_sms_dev=$(uci -q get quecmanager.settings.sms_tool_device 2>/dev/null)
-[ -n "$_sms_dev" ] && SMS_TOOL_ARGS="-d $_sms_dev"
 
 # --- Parse Arguments ---------------------------------------------------------
 JSON_MODE=0
@@ -61,26 +60,10 @@ fi
 
 qlog_debug "Command received: ${COMMAND}"
 
-# --- Helper: Strip sms_tool tty noise ----------------------------------------
-# sms_tool prints tcgetattr/tcsetattr diagnostics to stdout when the device
-# (e.g. /dev/smd7) is not a real tty. Filter them so parsers see clean output.
-_strip_tty_noise() {
-    if [ -n "$SMS_TOOL_ARGS" ]; then
-        printf '%s\n' "$1" | grep -v -e '^tcgetattr(' -e '^tcsetattr(' -e '^Failed tcsetattr('
-    else
-        printf '%s' "$1"
-    fi
-}
-
 # --- Helper: JSON Output -----------------------------------------------------
 output_result() {
     local raw="$1"
     local err="$2"
-
-    # Clean tty warnings from successful responses
-    if [ -z "$err" ] && [ -n "$raw" ]; then
-        raw=$(_strip_tty_noise "$raw")
-    fi
 
     if [ "$JSON_MODE" -eq 1 ]; then
         if [ -n "$err" ]; then
@@ -101,6 +84,8 @@ output_result() {
 }
 
 # --- Helper: Command Classification -----------------------------------------
+# Used only for the LONG_FLAG fast-reject path (blocks short commands while a
+# scan is in progress). Timeout handling is internal to atcli_smd11.
 is_long_command() {
     local cmd="$1"
 
@@ -181,12 +166,12 @@ if is_long_command "$COMMAND"; then
             fi
             echo $$ > "$PID_FILE"
 
-            # Warm-up: flush residual serial buffer data + confirm modem responsive
-            sms_tool $SMS_TOOL_ARGS at "AT" > /dev/null 2>&1 || { rm -f "$PID_FILE"; exit 3; }
+            # Warm-up: flush residual buffer + confirm modem responsive
+            atcli_smd11 'AT' > /dev/null 2>&1 || { rm -f "$PID_FILE"; exit 3; }
 
-            # Real command with explicit native timeout (sms_tool -t)
-            # Outer timeout is a safety net in case sms_tool hangs
-            timeout "$LONG_SAFETY_TIMEOUT" sms_tool $SMS_TOOL_ARGS -t "$LONG_TIMEOUT" at "$COMMAND" 2>/dev/null
+            # Real command — atcli_smd11 self-times. Outer timeout is a last
+            # resort in case the binary itself wedges.
+            timeout "$SAFETY_TIMEOUT" atcli_smd11 "$COMMAND" 2>/dev/null
             cmd_rc=$?
             rm -f "$PID_FILE"
             exit $cmd_rc
@@ -212,13 +197,13 @@ if is_long_command "$COMMAND"; then
             output_result "" "modem_not_ready"
             exit 1
             ;;
-        143)
+        124|143)
             qlog_error "Long command killed by safety timeout: ${COMMAND}"
             output_result "" "command_timeout"
             exit 1
             ;;
         *)
-            qlog_error "Long command failed: ${COMMAND} (sms_tool exit=${exit_code})"
+            qlog_error "Long command failed: ${COMMAND} (atcli_smd11 exit=${exit_code})"
             output_result "" "command_failed"
             exit 1
             ;;
@@ -242,7 +227,7 @@ else
                 exit 2
             fi
             echo $$ > "$PID_FILE"
-            timeout "$SHORT_TIMEOUT" sms_tool $SMS_TOOL_ARGS at "$COMMAND" 2>/dev/null
+            timeout "$SAFETY_TIMEOUT" atcli_smd11 "$COMMAND" 2>/dev/null
             cmd_rc=$?
             rm -f "$PID_FILE"
             exit $cmd_rc
@@ -261,7 +246,7 @@ else
                         exit 2
                     fi
                     echo $$ > "$PID_FILE"
-                    timeout "$SHORT_TIMEOUT" sms_tool $SMS_TOOL_ARGS at "$COMMAND" 2>/dev/null
+                    timeout "$SAFETY_TIMEOUT" atcli_smd11 "$COMMAND" 2>/dev/null
                     cmd_rc=$?
                     rm -f "$PID_FILE"
                     exit $cmd_rc
@@ -279,11 +264,19 @@ else
 
     qlog_at_cmd "$COMMAND" "$result" "$exit_code"
 
-    if [ $exit_code -ne 0 ]; then
-        qlog_error "Short command timeout: ${COMMAND} (exit=${exit_code})"
-        output_result "" "command_timeout"
-        exit 1
-    fi
-
-    output_result "$result" ""
+    case $exit_code in
+        0)
+            output_result "$result" ""
+            ;;
+        124|143)
+            qlog_error "Short command killed by safety timeout: ${COMMAND}"
+            output_result "" "command_timeout"
+            exit 1
+            ;;
+        *)
+            qlog_error "Short command failed: ${COMMAND} (atcli_smd11 exit=${exit_code})"
+            output_result "" "command_failed"
+            exit 1
+            ;;
+    esac
 fi

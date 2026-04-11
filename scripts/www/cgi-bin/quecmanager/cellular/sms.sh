@@ -6,12 +6,12 @@
 # GET:  Returns all received SMS messages and storage status via sms_tool.
 # POST: Sends, deletes individual, or deletes all SMS messages.
 #
-# External tool (pre-installed; port overridable via UCI sms_tool_device):
-#   sms_tool recv -j              -> JSON: {"msg":[{index,sender,timestamp,content,...}]}
-#   sms_tool send <phone> <msg>   -> Send an SMS
-#   sms_tool delete <index>       -> Delete one message
-#   sms_tool delete all           -> Delete all messages
-#   sms_tool status               -> Storage status (plain text)
+# External tool (bundled; hard-wired to /dev/smd11):
+#   sms_tool -d /dev/smd11 recv -j             -> JSON: {"msg":[...]}
+#   sms_tool -d /dev/smd11 send <phone> <msg>  -> Send an SMS
+#   sms_tool -d /dev/smd11 delete <index>      -> Delete one message
+#   sms_tool -d /dev/smd11 delete all          -> Delete all messages
+#   sms_tool -d /dev/smd11 status              -> Storage status (plain text)
 #
 # POST body: { "action": "send"|"delete"|"delete_all", ... }
 #   action=send:       { "action":"send", "phone":"...", "message":"..." }
@@ -27,18 +27,15 @@ qlog_init "cgi_sms"
 cgi_headers
 cgi_handle_options
 
-# --- SMS tool device override (e.g. "-d /dev/smd7") -------------------------
-SMS_TOOL_ARGS=""
-_sms_dev=$(uci -q get quecmanager.settings.sms_tool_device 2>/dev/null)
-[ -n "$_sms_dev" ] && SMS_TOOL_ARGS="-d $_sms_dev"
-
-# Strip sms_tool tty diagnostics (stdout noise when device is not a real tty)
-_strip_tty_noise() {
-    if [ -n "$SMS_TOOL_ARGS" ]; then
-        printf '%s\n' "$1" | grep -v -e '^tcgetattr(' -e '^tcsetattr(' -e '^Failed tcsetattr('
-    else
-        printf '%s' "$1"
-    fi
+# --- sms_tool wrapper --------------------------------------------------------
+# Always talks to /dev/smd11 and always strips tcgetattr/tcsetattr diagnostics
+# (sms_tool emits these because /dev/smd11 is a char device, not a real TTY).
+# Caller captures stdout; exit status reflects sms_tool's real rc.
+_sms_run() {
+    _sms_raw=$(sms_tool -d /dev/smd11 "$@" 2>&1)
+    _sms_rc=$?
+    printf '%s\n' "$_sms_raw" | grep -v -e '^tcgetattr(' -e '^tcsetattr(' -e 'Inappropriate ioctl for device$'
+    return "$_sms_rc"
 }
 
 # --- MCC to country calling code lookup --------------------------------------
@@ -291,7 +288,7 @@ if [ "$REQUEST_METHOD" = "GET" ]; then
     qlog_info "Fetching SMS inbox and status"
 
     # 1. Get messages via sms_tool recv -j (JSON output: {"msg":[...]})
-    raw_json=$(sms_tool $SMS_TOOL_ARGS recv -j 2>/dev/null)
+    raw_json=$(_sms_run recv -j)
     if [ -n "$raw_json" ]; then
         raw_msgs=$(printf '%s' "$raw_json" | jq '.msg // []' 2>/dev/null)
         [ -z "$raw_msgs" ] && raw_msgs="[]"
@@ -325,7 +322,7 @@ if [ "$REQUEST_METHOD" = "GET" ]; then
     printf '%s' "$messages" | jq empty 2>/dev/null || messages="[]"
 
     # 2. Get storage status via sms_tool status (plain text, needs parsing)
-    status_raw=$(sms_tool $SMS_TOOL_ARGS status 2>/dev/null)
+    status_raw=$(_sms_run status)
     # Parse "used" and "total" from output — expected pattern: N/M somewhere in output
     storage_used=$(printf '%s' "$status_raw" | grep -o '[0-9]*/[0-9]*' | head -1 | cut -d'/' -f1)
     storage_total=$(printf '%s' "$status_raw" | grep -o '[0-9]*/[0-9]*' | head -1 | cut -d'/' -f2)
@@ -379,9 +376,8 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
         PHONE=$(normalize_phone "$RAW_PHONE")
 
         qlog_info "Sending SMS to $PHONE (raw: $RAW_PHONE)"
-        result=$(sms_tool $SMS_TOOL_ARGS send "$PHONE" "$MESSAGE" 2>&1)
+        result=$(_sms_run send "$PHONE" "$MESSAGE")
         rc=$?
-        result=$(_strip_tty_noise "$result")
 
         if [ $rc -ne 0 ]; then
             qlog_error "sms_tool send failed (rc=$rc): $result"
@@ -411,9 +407,8 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
         idx_tmp="/tmp/qmanager_sms_idx.tmp"
         printf '%s' "$INDEXES_JSON" | jq -r '.[]' > "$idx_tmp"
         while read -r idx; do
-            result=$(sms_tool $SMS_TOOL_ARGS delete "$idx" 2>&1)
+            result=$(_sms_run delete "$idx")
             rc=$?
-            result=$(_strip_tty_noise "$result")
             if [ $rc -ne 0 ]; then
                 qlog_warn "Failed to delete index $idx: $result"
                 fail_count=$((fail_count + 1))
@@ -435,9 +430,8 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
     # --- action: delete_all --------------------------------------------------
     if [ "$ACTION" = "delete_all" ]; then
         qlog_info "Deleting all SMS messages"
-        result=$(sms_tool $SMS_TOOL_ARGS delete all 2>&1)
+        result=$(_sms_run delete all)
         rc=$?
-        result=$(_strip_tty_noise "$result")
 
         if [ $rc -ne 0 ]; then
             qlog_error "sms_tool delete all failed (rc=$rc): $result"

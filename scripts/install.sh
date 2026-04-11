@@ -50,11 +50,16 @@ BACKUP_DIR="/etc/qmanager/backups"
 # Source directories (relative to INSTALL_DIR)
 SRC_FRONTEND="$INSTALL_DIR/out"
 SRC_SCRIPTS="$INSTALL_DIR/scripts"
+SRC_DEPS="$INSTALL_DIR/dependencies"
 
 # Required packages
-REQUIRED_PACKAGES="jq sms-tool coreutils-timeout websocat"
+REQUIRED_PACKAGES="jq coreutils-timeout websocat"
 # Optional packages (installed if available, non-fatal if missing)
 OPTIONAL_PACKAGES="msmtp ethtool ookla-speedtest"
+# Conflict packages — removed before install. They would either occupy
+# /dev/smd11 (socat-at-bridge, socat) or overwrite /usr/bin/sms_tool with
+# an older build that does not accept the strict -d flag.
+CONFLICT_PACKAGES="socat-at-bridge socat sms-tool"
 
 # --- Colors & Icons ----------------------------------------------------------
 
@@ -98,7 +103,6 @@ die() {
 pkg_binary() {
     case "$1" in
         ookla-speedtest) echo "speedtest" ;;
-        sms-tool)        echo "sms_tool" ;;
         *)               echo "$1" ;;
     esac
 }
@@ -198,6 +202,28 @@ preflight() {
     fi
 
     info "Pre-flight checks passed"
+}
+
+# --- Remove Conflicting Packages ---------------------------------------------
+# socat-at-bridge / socat can occupy /dev/smd11 and block atcli_smd11.
+# The opkg `sms-tool` package would collide with the bundled build and does
+# not accept the strict `-d /dev/smd11` flag we now rely on.
+remove_conflicts() {
+    step "Removing conflicting packages"
+
+    local any=0
+    for pkg in $CONFLICT_PACKAGES; do
+        if opkg list-installed 2>/dev/null | awk '{print $1}' | grep -qx "$pkg"; then
+            if opkg remove "$pkg" >/dev/null 2>&1; then
+                info "Removed conflict package: $pkg"
+                any=1
+            else
+                warn "Could not remove $pkg (continuing anyway)"
+            fi
+        fi
+    done
+
+    [ "$any" = "0" ] && info "No conflicting packages found"
 }
 
 # --- Install Required Packages -----------------------------------------------
@@ -446,6 +472,40 @@ install_backend() {
     info "Backend installed"
 }
 
+# --- Install Bundled Binaries ------------------------------------------------
+# atcli_smd11 — AT command backend used by qcmd. Self-aware of timeouts.
+# sms_tool   — SMS-only binary (SMS Center and SMS Alerts). Not used for AT.
+# Both are shipped in the archive at dependencies/ rather than installed via
+# opkg, because the opkg sms-tool build is older and does not accept the
+# strict -d flag, and atcli_smd11 is not distributed via opkg at all.
+install_bundled_binaries() {
+    step "Installing bundled binaries (atcli_smd11, sms_tool)"
+
+    [ -d "$SRC_DEPS" ] || die "Bundled dependencies not found at $SRC_DEPS"
+
+    for bin in atcli_smd11 sms_tool; do
+        src="$SRC_DEPS/$bin"
+        dst="$BIN_DIR/$bin"
+
+        [ -f "$src" ] || die "Missing required binary: dependencies/$bin"
+
+        # Remove existing (tolerate "Text file busy" if running)
+        rm -f "$dst" 2>/dev/null || true
+        if ! cp "$src" "$dst" 2>/dev/null; then
+            die "Failed to install $bin to $dst (file busy?)"
+        fi
+        chmod 755 "$dst"
+        info "Installed $bin → $dst"
+    done
+
+    # Smoke test (warn-only — do not fail install if modem is not ready)
+    if ! timeout 5 atcli_smd11 'AT' 2>/dev/null | grep -q OK; then
+        warn "atcli_smd11 smoke test did not return OK — check /dev/smd11"
+    else
+        info "atcli_smd11 smoke test passed"
+    fi
+}
+
 # --- Clean Up Legacy Scripts -------------------------------------------------
 # Compares scripts on the device against the current package. Anything on
 # the device that is NOT in the package is a leftover from a previous version
@@ -691,6 +751,8 @@ uninstall() {
 
     # Remove daemons
     rm -f "$BIN_DIR/qcmd"
+    rm -f "$BIN_DIR/atcli_smd11"
+    rm -f "$BIN_DIR/sms_tool"
     rm -f "$BIN_DIR"/qmanager_*
     rm -f "$BIN_DIR/bridge_traffic_monitor_rm551"
     rm -f "$BIN_DIR/nfqws"
@@ -938,13 +1000,13 @@ main() {
 
     # Calculate total steps for the selected install mode
     TOTAL_STEPS=1                                    # preflight always
-    [ "$DO_PACKAGES" = "1" ]  && TOTAL_STEPS=$(( TOTAL_STEPS + 1 ))  # install_packages
+    [ "$DO_PACKAGES" = "1" ]  && TOTAL_STEPS=$(( TOTAL_STEPS + 2 ))  # remove_conflicts + install_packages
     TOTAL_STEPS=$(( TOTAL_STEPS + 1 ))               # stop_services always
     if [ "$DO_FRONTEND" = "1" ]; then
         TOTAL_STEPS=$(( TOTAL_STEPS + 2 ))           # backup_originals + install_frontend
     fi
     if [ "$DO_BACKEND" = "1" ]; then
-        TOTAL_STEPS=$(( TOTAL_STEPS + 4 ))           # install_backend + cleanup_legacy + fix_line_endings + fix_permissions
+        TOTAL_STEPS=$(( TOTAL_STEPS + 5 ))           # install_backend + install_bundled_binaries + cleanup_legacy + fix_line_endings + fix_permissions
         [ "$DO_ENABLE" = "1" ] && TOTAL_STEPS=$(( TOTAL_STEPS + 1 ))  # enable_services
         [ "$DO_START"  = "1" ] && TOTAL_STEPS=$(( TOTAL_STEPS + 1 ))  # start_services
     fi
@@ -954,6 +1016,7 @@ main() {
     check_existing
 
     if [ "$DO_PACKAGES" = "1" ]; then
+        remove_conflicts
         install_packages
     fi
 
@@ -966,6 +1029,7 @@ main() {
 
     if [ "$DO_BACKEND" = "1" ]; then
         install_backend
+        install_bundled_binaries
         cleanup_legacy_scripts
         fix_line_endings
         fix_permissions

@@ -33,6 +33,29 @@ UPDATER="/usr/bin/qmanager_update"
 
 # --- Helpers -----------------------------------------------------------------
 
+ensure_updater_executable() {
+    if [ -x "$UPDATER" ]; then
+        return 0
+    fi
+
+    if [ ! -f "$UPDATER" ]; then
+        cgi_error "updater_missing" "Update worker not found at $UPDATER"
+        return 1
+    fi
+
+    if [ -L "$UPDATER" ]; then
+        cgi_error "updater_invalid_target" "Update worker path must not be a symlink"
+        return 1
+    fi
+
+    chmod 755 "$UPDATER" 2>/dev/null || {
+        cgi_error "updater_not_executable" "Cannot make update worker executable"
+        return 1
+    }
+
+    return 0
+}
+
 get_current_version() {
     if [ -f "$VERSION_FILE" ]; then
         tr -d '[:space:]' < "$VERSION_FILE"
@@ -405,6 +428,7 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
     # --- Download update (stage without installing) ---
     if [ "$ACTION" = "download" ]; then
         check_lock
+        ensure_updater_executable || exit 0
 
         version=$(printf '%s' "$POST_DATA" | jq -r '.version // empty')
         if [ -z "$version" ]; then
@@ -422,6 +446,7 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
     # --- Install staged tarball ---
     if [ "$ACTION" = "install_staged" ]; then
         check_lock
+        ensure_updater_executable || exit 0
 
         if [ ! -f "/tmp/qmanager_staged.tar.gz" ]; then
             cgi_error "no_staged" "No staged download found. Download first."
@@ -436,6 +461,7 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
     # --- Install update ---
     if [ "$ACTION" = "install" ]; then
         check_lock
+        ensure_updater_executable || exit 0
 
         download_url=$(printf '%s' "$POST_DATA" | jq -r '.download_url // empty')
         version=$(printf '%s' "$POST_DATA" | jq -r '.version // empty')
@@ -454,6 +480,7 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
     # --- Rollback ---
     if [ "$ACTION" = "rollback" ]; then
         check_lock
+        ensure_updater_executable || exit 0
 
         if [ ! -f "$UPDATES_DIR/previous_version" ]; then
             cgi_error "no_rollback" "No previous version available for rollback"

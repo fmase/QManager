@@ -263,7 +263,8 @@ do_uninstall() {
     printf "     - Frontend files in %s/\n" "$WWW_ROOT"
     printf "     - CGI endpoints in %s/\n" "$CGI_DIR"
     printf "     - Libraries in %s/\n" "$LIB_DIR"
-    printf "     - Daemons: %s/qcmd, %s/qmanager_*\n" "$BIN_DIR" "$BIN_DIR"
+    printf "     - Daemons: %s/qcmd, %s/atcli_smd11, %s/sms_tool, %s/qmanager_*\n" \
+        "$BIN_DIR" "$BIN_DIR" "$BIN_DIR" "$BIN_DIR"
     printf "     - Init.d services in %s/\n" "$INITD_DIR"
     printf "     - Runtime state in /tmp/\n"
     printf "     - UCI config (quecmanager.*)\n"
@@ -288,13 +289,10 @@ do_uninstall() {
 
     # --- 1. Stop services ---
     step "Stopping services..."
-    if [ -x "$INITD_DIR/qmanager" ]; then
-        "$INITD_DIR/qmanager" stop 2>/dev/null || true
-    fi
-    for svc in qmanager_eth_link qmanager_mtu qmanager_imei_check \
-               qmanager_wan_guard qmanager_watchcat qmanager_tower_failover \
-               qmanager_ttl qmanager_low_power_check qmanager_bandwidth; do
-        [ -x "$INITD_DIR/$svc" ] && "$INITD_DIR/$svc" stop 2>/dev/null || true
+    # Dynamic stop — catches any qmanager service from any version
+    for f in "$INITD_DIR"/qmanager*; do
+        [ -x "$f" ] || continue
+        "$f" stop 2>/dev/null || true
     done
 
     for proc in qmanager_poller qmanager_ping qmanager_watchcat \
@@ -305,7 +303,8 @@ do_uninstall() {
                 qmanager_wan_guard qmanager_low_power \
                 qmanager_low_power_check qmanager_scheduled_reboot \
                 qmanager_update qmanager_auto_update \
-                bridge_traffic_monitor_rm551 websocat; do
+                qmanager_dpi_install qmanager_dpi_verify \
+                bridge_traffic_monitor_rm551 websocat nfqws; do
         killall "$proc" 2>/dev/null || true
     done
     sleep 1
@@ -313,25 +312,26 @@ do_uninstall() {
 
     # --- 2. Disable & remove init.d scripts ---
     step "Removing init.d services..."
-    for svc in qmanager qmanager_eth_link qmanager_ttl qmanager_mtu \
-               qmanager_wan_guard qmanager_imei_check \
-               qmanager_tower_failover qmanager_low_power_check \
-               qmanager_watchcat qmanager_bandwidth; do
-        if [ -f "$INITD_DIR/$svc" ]; then
-            "$INITD_DIR/$svc" disable 2>/dev/null || true
-            rm -f "$INITD_DIR/$svc"
-        fi
+    local removed=0
+    for f in "$INITD_DIR"/qmanager*; do
+        [ -f "$f" ] || continue
+        "$f" disable 2>/dev/null || true
+        rm -f "$f"
+        removed=$(( removed + 1 ))
     done
     # Clean up rc.d symlinks
     for _link in /etc/rc.d/*qmanager*; do
         [ -e "$_link" ] && rm -f "$_link" 2>/dev/null || true
     done
-    info "Init.d services removed"
+    info "Init.d services removed ($removed)"
 
     # --- 3. Remove backend ---
     step "Removing backend files..."
     rm -f "$BIN_DIR/qcmd"
+    rm -f "$BIN_DIR/atcli_smd11"
+    rm -f "$BIN_DIR/sms_tool"
     rm -f "$BIN_DIR/bridge_traffic_monitor_rm551"
+    rm -f "$BIN_DIR/nfqws"
     for f in "$BIN_DIR"/qmanager_*; do
         [ -f "$f" ] && rm -f "$f"
     done
@@ -341,19 +341,22 @@ do_uninstall() {
 
     # --- 4. Remove frontend ---
     step "Removing frontend files..."
-    for dir in _next dashboard cellular monitoring local-network \
-               login about-device support system-settings setup reboot; do
-        [ -d "$WWW_ROOT/$dir" ] && rm -rf "$WWW_ROOT/$dir"
+    # Clean /www/ — remove everything except preserved items
+    for item in "$WWW_ROOT"/*; do
+        name=$(basename "$item")
+        case "$name" in
+            cgi-bin|luci-static|index.html.old) continue ;;
+            *) rm -rf "$item" ;;
+        esac
     done
-    rm -f "$WWW_ROOT/index.html" "$WWW_ROOT/404.html" "$WWW_ROOT/favicon.ico"
-    rm -f "$WWW_ROOT/qmanager-logo.svg" "$WWW_ROOT/device-icon.svg" \
-          "$WWW_ROOT/device-icon-1.svg" "$WWW_ROOT/discord-qr.svg" \
-          "$WWW_ROOT/file.svg" "$WWW_ROOT/globe.svg" "$WWW_ROOT/window.svg"
 
-    # Restore original index.html from backup
-    if [ -f "$BACKUP_DIR/index.html.orig" ]; then
+    # Restore original index.html from current and legacy backup locations
+    if [ -f "$WWW_ROOT/index.html.old" ]; then
+        mv "$WWW_ROOT/index.html.old" "$WWW_ROOT/index.html"
+        info "Original index.html restored from $WWW_ROOT/index.html.old"
+    elif [ -f "$BACKUP_DIR/index.html.orig" ]; then
         cp "$BACKUP_DIR/index.html.orig" "$WWW_ROOT/index.html"
-        info "Original index.html restored from backup"
+        info "Original index.html restored from legacy backup"
     else
         warn "No backup found — original index.html not restored"
         warn "Reinstall LuCI if needed: opkg install luci"
@@ -361,26 +364,20 @@ do_uninstall() {
 
     # --- 5. Remove runtime state ---
     step "Cleaning up runtime state..."
-    rm -f /tmp/qmanager_status.json \
-          /tmp/qmanager_ping.json \
-          /tmp/qmanager_ping_history.json \
-          /tmp/qmanager_signal_history.json \
-          /tmp/qmanager_events.json \
-          /tmp/qmanager_email_log.json \
-          /tmp/qmanager_profile_state.json \
-          /tmp/qmanager_watchcat.json \
-          /tmp/qmanager_band_failover_state.json \
-          /tmp/qmanager_tower_failover_state.json \
-          /tmp/qmanager_update.json
+    rm -f /tmp/qmanager_*.json
     rm -f /tmp/qmanager.log /tmp/qmanager.log.1 /tmp/qmanager_update.log
     rm -f /tmp/qmanager_*.lock \
+          /tmp/qmanager_*.pid \
           /tmp/qmanager_email_reload \
+          /tmp/qmanager_sms_reload \
+          /tmp/qmanager_sms_last_err \
           /tmp/qmanager_imei_check_done \
-          /tmp/qmanager_update.pid \
           /tmp/qmanager_long_running \
           /tmp/qmanager_low_power_active \
           /tmp/qmanager_recovery_active \
-          /tmp/qmanager_watchcat.pid \
+          /tmp/qmanager_staged.tar.gz \
+          /tmp/qmanager_staged_version \
+          /tmp/qmanager_staged_sha256.txt \
           /tmp/qm_spin_out 2>/dev/null || true
     rm -rf /tmp/quecmanager 2>/dev/null || true
     rm -rf "$SESSION_DIR"
@@ -388,6 +385,12 @@ do_uninstall() {
 
     # --- 6. Remove firewall rules ---
     rm -f /etc/firewall.user.ttl /etc/firewall.user.mtu
+
+    # Remove nftables DPI rules
+    nft list ruleset 2>/dev/null | grep -q "qmanager_dpi" && {
+        nft delete table inet qmanager_dpi 2>/dev/null || true
+        info "Removed nftables DPI rules"
+    }
 
     # --- 7. Remove UCI config ---
     if uci -q get quecmanager >/dev/null 2>&1; then
