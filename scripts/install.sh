@@ -69,8 +69,8 @@ SRC_SCRIPTS="$INSTALL_DIR/scripts"
 SRC_DEPS="$INSTALL_DIR/dependencies"
 
 # Packages
-REQUIRED_PACKAGES="jq curl coreutils-timeout websocat"
-OPTIONAL_PACKAGES="msmtp ethtool ookla-speedtest"
+REQUIRED_PACKAGES="jq curl coreutils-timeout websocat ethtool"
+OPTIONAL_PACKAGES="msmtp ookla-speedtest"
 # Removed before install to avoid /dev/smd11 conflicts and sms_tool collision
 CONFLICT_PACKAGES="sms-tool socat-at-bridge socat"
 
@@ -863,6 +863,46 @@ health_check() {
     warn "Service may still be initializing — check /tmp/qmanager.log"
 }
 
+# --- AT Stack Verification ---------------------------------------------------
+# Runs at the very end of install, before reboot, to confirm that the full AT
+# command pipeline (qcmd → atcli_smd11 → /dev/smd11) is working. This catches
+# the scenario where install "succeeds" but AT commands are silently broken
+# (e.g., leftover conflicting process holding /dev/smd11, wrong binary, perms).
+# Warn-only with retries — fresh hardware may need a few seconds after services
+# start before the modem accepts AT traffic on /dev/smd11.
+
+at_stack_check() {
+    step "Verifying AT command stack (qcmd ATI)"
+
+    if ! command -v qcmd >/dev/null 2>&1; then
+        warn "qcmd not found on PATH — skipping AT stack check"
+        return 0
+    fi
+
+    local out="" i=0
+    while [ "$i" -lt 3 ]; do
+        out=$(run_capture_timeout 8 qcmd 'ATI' 2>/dev/null || true)
+        if printf '%s\n' "$out" | grep -q '^OK'; then
+            info "qcmd ATI → OK (AT stack verified)"
+            local model
+            model=$(printf '%s\n' "$out" | grep -iE 'quectel|RM[0-9]+|EG[0-9]+' | head -n1 | tr -d '\r')
+            [ -n "$model" ] && info "Modem reports: $model"
+            return 0
+        fi
+        i=$(( i + 1 ))
+        [ "$i" -lt 3 ] && sleep 2
+    done
+
+    warn "qcmd ATI did not return OK after 3 attempts"
+    warn "  Troubleshooting:"
+    warn "    1. Check /dev/smd11 exists: ls -la /dev/smd11"
+    warn "    2. Test directly:           atcli_smd11 'AT'"
+    warn "    3. Check for conflicts:     opkg list-installed | grep -E 'sms-tool|socat'"
+    warn "    4. Review install log:      $LOG_FILE"
+    warn "  AT commands may start working once the modem finishes initializing."
+    return 1
+}
+
 # --- Summary -----------------------------------------------------------------
 
 print_summary() {
@@ -990,7 +1030,8 @@ main() {
 
     # Compute total step count for the progress bar
     TOTAL_STEPS=1  # preflight
-    [ "$DO_PACKAGES" = "1" ] && TOTAL_STEPS=$(( TOTAL_STEPS + 2 ))   # conflicts + packages
+    TOTAL_STEPS=$(( TOTAL_STEPS + 1 ))                                # remove_conflicts (always)
+    [ "$DO_PACKAGES" = "1" ] && TOTAL_STEPS=$(( TOTAL_STEPS + 1 ))    # install_packages
     TOTAL_STEPS=$(( TOTAL_STEPS + 1 ))                                # stop_services
     if [ "$DO_FRONTEND" = "1" ]; then
         TOTAL_STEPS=$(( TOTAL_STEPS + 2 ))                            # backup + frontend
@@ -999,7 +1040,7 @@ main() {
         TOTAL_STEPS=$(( TOTAL_STEPS + 3 ))                            # backend + bundled + cleanup
         [ "$DO_ENABLE" = "1" ] && TOTAL_STEPS=$(( TOTAL_STEPS + 1 ))  # enable
         if [ "$DO_START" = "1" ]; then
-            TOTAL_STEPS=$(( TOTAL_STEPS + 2 ))                        # start + health
+            TOTAL_STEPS=$(( TOTAL_STEPS + 3 ))                        # start + health + at_stack_check
         fi
     fi
 
@@ -1014,8 +1055,13 @@ main() {
 
     mark_version_pending
 
+    # Always run conflict removal — the conflicting opkg packages (sms-tool,
+    # socat-at-bridge, socat) clobber /dev/smd11 and collide with our bundled
+    # sms_tool binary regardless of whether we're installing opkg packages.
+    # --skip-packages must not leave conflicts in place.
+    remove_conflicts
+
     if [ "$DO_PACKAGES" = "1" ]; then
-        remove_conflicts
         install_packages
     fi
 
@@ -1036,6 +1082,7 @@ main() {
         if [ "$DO_START" = "1" ]; then
             start_services
             health_check
+            at_stack_check || true
         fi
     fi
 
