@@ -48,10 +48,18 @@ if is_setup_required; then
         exit 0
     fi
 
+    # Validation rules (must match frontend and auth/password.sh exactly):
+    #   - length >= 5
+    #   - at least one uppercase letter
+    #   - at least one lowercase letter
+    #   - at least one digit
     _pw_len=$(printf '%s' "$_password" | wc -c)
-    if [ "$_pw_len" -lt 6 ]; then
+    if [ "$_pw_len" -lt 5 ] \
+       || ! printf '%s' "$_password" | grep -q '[A-Z]' \
+       || ! printf '%s' "$_password" | grep -q '[a-z]' \
+       || ! printf '%s' "$_password" | grep -q '[0-9]'; then
         cgi_headers
-        cgi_error "password_too_short" "Password must be at least 6 characters"
+        cgi_error "password_weak" "Password must be at least 5 characters and include uppercase, lowercase, and a number"
         exit 0
     fi
 

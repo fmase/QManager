@@ -21,7 +21,7 @@ import { cn } from "@/lib/utils";
 function getStrength(pw: string): 0 | 1 | 2 | 3 | 4 {
   if (pw.length === 0) return 0;
   let score = 0;
-  if (pw.length >= 6) score++;
+  if (pw.length >= 5) score++;
   if (pw.length >= 12) score++;
   if (/[0-9]/.test(pw)) score++;
   if (/[^a-zA-Z0-9]/.test(pw)) score++;
@@ -66,8 +66,17 @@ export function StepPassword({ onSuccess, onLoadingChange, onSubmitRef }: StepPa
   const handleSubmit = useCallback(async () => {
     setError("");
 
-    if (password.length < 6) {
-      setError("Password must be at least 6 characters.");
+    // Validation rules (must match backend auth/login.sh exactly):
+    //   length >= 5 + uppercase + lowercase + digit
+    if (
+      password.length < 5 ||
+      !/[A-Z]/.test(password) ||
+      !/[a-z]/.test(password) ||
+      !/[0-9]/.test(password)
+    ) {
+      setError(
+        "Password must be at least 5 characters and include uppercase, lowercase, and a number."
+      );
       return;
     }
     if (password !== confirm) {
@@ -203,7 +212,7 @@ export function StepPassword({ onSuccess, onLoadingChange, onSubmitRef }: StepPa
               )}
             </AnimatePresence>
 
-            <FieldDescription>Minimum 6 characters</FieldDescription>
+            <FieldDescription>Minimum 5 characters with uppercase, lowercase, and a number</FieldDescription>
           </Field>
 
           <Field>

@@ -58,8 +58,17 @@ export function ChangePasswordDialog({
       e.preventDefault();
       setError("");
 
-      if (newPassword.length < 6) {
-        setError("New password must be at least 6 characters.");
+      // Validation rules (must match backend auth/password.sh exactly):
+      //   length >= 5 + uppercase + lowercase + digit
+      if (
+        newPassword.length < 5 ||
+        !/[A-Z]/.test(newPassword) ||
+        !/[a-z]/.test(newPassword) ||
+        !/[0-9]/.test(newPassword)
+      ) {
+        setError(
+          "New password must be at least 5 characters and include uppercase, lowercase, and a number."
+        );
         return;
       }
 

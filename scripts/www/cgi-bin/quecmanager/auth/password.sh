@@ -28,10 +28,18 @@ if [ -z "$_current" ] || [ -z "$_new" ]; then
     exit 0
 fi
 
+# Validation rules (must match frontend and auth/login.sh exactly):
+#   - length >= 5
+#   - at least one uppercase letter
+#   - at least one lowercase letter
+#   - at least one digit
 _pw_len=$(printf '%s' "$_new" | wc -c)
-if [ "$_pw_len" -lt 6 ]; then
+if [ "$_pw_len" -lt 5 ] \
+   || ! printf '%s' "$_new" | grep -q '[A-Z]' \
+   || ! printf '%s' "$_new" | grep -q '[a-z]' \
+   || ! printf '%s' "$_new" | grep -q '[0-9]'; then
     cgi_headers
-    cgi_error "password_too_short" "New password must be at least 6 characters"
+    cgi_error "password_weak" "New password must be at least 5 characters and include uppercase, lowercase, and a number"
     exit 0
 fi
 
