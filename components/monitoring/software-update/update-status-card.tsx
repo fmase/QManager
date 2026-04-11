@@ -280,7 +280,11 @@ export function UpdateStatusCard({
             })()}
 
             {/* ── Download progress / verified badge ──────────────── */}
-            {updateAvailable && downloadState && (
+            {/* Rendered whenever a download is in-flight or staged, so that
+                Version Management reinstall/downgrade flows surface progress
+                and the staged-ready prompt, not just the "update available"
+                forward-update path. */}
+            {downloadState && (
               <>
                 <Separator />
                 <motion.div variants={itemVariants}>
@@ -333,38 +337,41 @@ export function UpdateStatusCard({
                   ? `Last checked ${formatRelativeTime(lastChecked)}`
                   : "Never checked"}
               </span>
-              {updateAvailable ? (
-                downloadState?.status === "ready" ? (
-                  <Button
-                    onClick={() => setShowInstallDialog(true)}
-                    disabled={isUpdating}
-                  >
-                    <DownloadIcon className="size-4" />
-                    Install Update
-                  </Button>
-                ) : (
-                  <Button
-                    onClick={handleDownload}
-                    disabled={isDownloading || isUpdating}
-                  >
-                    {isDownloading ? (
-                      <>
-                        <LoaderCircle className="size-4 animate-spin" />
-                        Downloading...
-                      </>
-                    ) : downloadState?.status === "error" ? (
-                      <>
-                        <RefreshCwIcon className="size-4" />
-                        Retry Download
-                      </>
-                    ) : (
-                      <>
-                        <DownloadIcon className="size-4" />
-                        Download Update
-                      </>
-                    )}
-                  </Button>
-                )
+              {downloadState?.status === "ready" ? (
+                // Staged download (any version — forward, reinstall, downgrade)
+                <Button
+                  onClick={() => setShowInstallDialog(true)}
+                  disabled={isUpdating}
+                >
+                  <DownloadIcon className="size-4" />
+                  Install {downloadState.version ?? "Update"}
+                </Button>
+              ) : isDownloading ||
+                downloadState?.status === "downloading" ||
+                downloadState?.status === "verifying" ? (
+                <Button disabled>
+                  <LoaderCircle className="size-4 animate-spin" />
+                  {downloadState?.status === "verifying"
+                    ? "Verifying..."
+                    : "Downloading..."}
+                </Button>
+              ) : updateAvailable ? (
+                <Button
+                  onClick={handleDownload}
+                  disabled={isUpdating}
+                >
+                  {downloadState?.status === "error" ? (
+                    <>
+                      <RefreshCwIcon className="size-4" />
+                      Retry Download
+                    </>
+                  ) : (
+                    <>
+                      <DownloadIcon className="size-4" />
+                      Download Update
+                    </>
+                  )}
+                </Button>
               ) : (
                 <Button
                   variant="outline"
@@ -412,37 +419,62 @@ export function UpdateStatusCard({
       </Dialog>
 
       {/* ── Install confirmation dialog ──────────────────────────────── */}
-      <AlertDialog
-        open={showInstallDialog}
-        onOpenChange={setShowInstallDialog}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Install Update</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will update QManager from{" "}
-              <strong>{updateInfo?.current_version}</strong> to{" "}
-              <strong>{updateInfo?.latest_version}</strong>.
-              {updateInfo?.download_size && (
-                <>
-                  {" "}
-                  Download size:{" "}
-                  <strong>{updateInfo.download_size}</strong>.
-                </>
-              )}{" "}
-              The device will reboot automatically after installation. Do not
-              power off the device during the update.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleInstall}>
-              <DownloadIcon className="size-4" />
-              Install Now
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {(() => {
+        // Prefer the staged version from downloadState so reinstall / downgrade
+        // flows show the actual tarball that will be installed, not whatever
+        // latest_version the update check returned.
+        const stagedVersion =
+          downloadState?.version ?? updateInfo?.latest_version ?? "";
+        const currentVersion = updateInfo?.current_version ?? "";
+        const isReinstall =
+          !!stagedVersion && stagedVersion === currentVersion;
+        const dialogTitle = isReinstall
+          ? "Reinstall Current Version"
+          : `Install ${stagedVersion}`;
+        return (
+          <AlertDialog
+            open={showInstallDialog}
+            onOpenChange={setShowInstallDialog}
+          >
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>{dialogTitle}</AlertDialogTitle>
+                <AlertDialogDescription>
+                  {isReinstall ? (
+                    <>
+                      This will reinstall{" "}
+                      <strong>{stagedVersion}</strong> to repair the current
+                      installation.
+                    </>
+                  ) : (
+                    <>
+                      This will install{" "}
+                      <strong>{stagedVersion}</strong>, replacing the current
+                      version (<strong>{currentVersion}</strong>).
+                    </>
+                  )}
+                  {downloadState?.size && (
+                    <>
+                      {" "}
+                      Package size:{" "}
+                      <strong>{downloadState.size}</strong>.
+                    </>
+                  )}{" "}
+                  The device will reboot automatically after installation. Do
+                  not power off the device during the update.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleInstall}>
+                  <DownloadIcon className="size-4" />
+                  {isReinstall ? "Reinstall Now" : "Install Now"}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        );
+      })()}
     </>
   );
 }

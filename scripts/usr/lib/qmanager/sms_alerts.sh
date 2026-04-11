@@ -75,16 +75,33 @@ _sa_flock_wait() {
 # =============================================================================
 # _sa_sms_locked - Run sms_tool under shared AT lock
 # =============================================================================
-# Always targets /dev/smd11 and always strips tcgetattr/tcsetattr noise from
-# the returned output, regardless of success/failure.
+# Always targets /dev/smd11.
+#
+# NOTE: stderr is captured to a temp file, NOT merged with stdout via 2>&1.
+# Merging is unsafe because sms_tool's cleanup `failed tcsetattr(...):
+# Inappropriate ioctl for device` error can land mid-stdout when the payload
+# exceeds the ~4 KB block buffer (typical for `recv -j`), gluing itself onto
+# a JSON chunk and defeating line-based noise filtering. On success we
+# return pure stdout; on failure we return stderr with known noise stripped.
 _sa_sms_locked() {
     [ -e "$_SA_LOCK_FILE" ] || : > "$_SA_LOCK_FILE"
+    _sa_err="/tmp/qmanager_sa_err.$$"
 
     (
         _sa_flock_wait 9 10 || exit 2
-        _sa_raw=$("$_SA_SMS_TOOL" -d "$_SA_AT_DEVICE" "$@" 2>&1)
+        _sa_out=$("$_SA_SMS_TOOL" -d "$_SA_AT_DEVICE" "$@" 2>"$_sa_err")
         _sa_rc=$?
-        printf '%s\n' "$_sa_raw" | _sa_strip_noise
+        if [ "$_sa_rc" -eq 0 ]; then
+            printf '%s' "$_sa_out"
+        else
+            _sa_err_clean=$(_sa_strip_noise < "$_sa_err" 2>/dev/null)
+            if [ -n "$_sa_err_clean" ]; then
+                printf '%s' "$_sa_err_clean"
+            else
+                printf '%s' "$_sa_out"
+            fi
+        fi
+        rm -f "$_sa_err"
         exit "$_sa_rc"
     ) 9<"$_SA_LOCK_FILE"
 }

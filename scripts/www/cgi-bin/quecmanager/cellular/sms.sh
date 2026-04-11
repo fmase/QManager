@@ -28,13 +28,36 @@ cgi_headers
 cgi_handle_options
 
 # --- sms_tool wrapper --------------------------------------------------------
-# Always talks to /dev/smd11 and always strips tcgetattr/tcsetattr diagnostics
-# (sms_tool emits these because /dev/smd11 is a char device, not a real TTY).
-# Caller captures stdout; exit status reflects sms_tool's real rc.
+# Always talks to /dev/smd11.
+#
+# sms_tool writes harmless tcgetattr/tcsetattr diagnostics to stderr because
+# /dev/smd11 is a char device, not a real TTY. We MUST NOT merge stderr into
+# stdout with 2>&1, because when the JSON payload is larger than the stdout
+# block buffer (~4 KB), partial flushes interleave the cleanup error line
+# INTO the middle of the JSON stream. Line-based filtering then sees the
+# JSON bytes glued onto `...Inappropriate ioctl for device` and drops the
+# whole chunk (see sms_alerts.sh for the same fix).
+#
+# Instead: capture stderr to a temp file and stdout into a variable. On
+# success return pure stdout (JSON is intact). On failure return stderr
+# with the known noise lines stripped so the UI sees a meaningful message.
 _sms_run() {
-    _sms_raw=$(sms_tool -d /dev/smd11 "$@" 2>&1)
+    _sms_err="/tmp/qmanager_sms_err.$$"
+    _sms_out=$(sms_tool -d /dev/smd11 "$@" 2>"$_sms_err")
     _sms_rc=$?
-    printf '%s\n' "$_sms_raw" | grep -v -e '^tcgetattr(' -e '^tcsetattr(' -e 'Inappropriate ioctl for device$'
+
+    if [ "$_sms_rc" -eq 0 ]; then
+        printf '%s' "$_sms_out"
+    else
+        _sms_err_clean=$(grep -v -e '^tcgetattr(' -e '^tcsetattr(' -e 'Inappropriate ioctl for device$' < "$_sms_err" 2>/dev/null)
+        if [ -n "$_sms_err_clean" ]; then
+            printf '%s' "$_sms_err_clean"
+        else
+            printf '%s' "$_sms_out"
+        fi
+    fi
+
+    rm -f "$_sms_err"
     return "$_sms_rc"
 }
 
