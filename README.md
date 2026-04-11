@@ -99,6 +99,16 @@ tar xzf qmanager.tar.gz
 sh /tmp/qmanager_install/install.sh
 ```
 
+One-liner convenience (same verified flow):
+
+```sh
+curl -fsSL -o /tmp/qmanager-installer.sh \
+  https://github.com/dr-dolomite/QManager/raw/refs/heads/development-home/qmanager-installer.sh && \
+  sh /tmp/qmanager-installer.sh
+```
+
+The one-liner wrapper still downloads the latest pre-release tarball, verifies `sha256sum.txt`, and then executes `install.sh`.
+
 To pin a specific release instead of latest pre-release, set `TAG` manually (for example `TAG="v0.1.13"`) and skip the API lookup block.
 
 ### Upgrading
@@ -128,7 +138,15 @@ tar xzf qmanager.tar.gz
 sh /tmp/qmanager_install/uninstall.sh
 ```
 
-The legacy bootstrap script has been removed; use the direct pre-release tarball flow above.
+One-liner uninstall:
+
+```sh
+curl -fsSL -o /tmp/qmanager-installer.sh \
+  https://github.com/dr-dolomite/QManager/raw/refs/heads/development-home/qmanager-installer.sh && \
+  sh /tmp/qmanager-installer.sh --uninstall
+```
+
+Use `QMANAGER_TAG="v0.1.14" sh /tmp/qmanager-installer.sh` to pin a specific version with the one-liner wrapper.
 
 ---
 

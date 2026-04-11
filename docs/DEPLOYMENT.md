@@ -8,6 +8,16 @@ This document covers building, installing, and deploying QManager to an OpenWRT 
 
 Install directly from the latest GitHub pre-release on the OpenWRT device:
 
+One-liner convenience (same verified flow):
+
+```sh
+curl -fsSL -o /tmp/qmanager-installer.sh \
+  https://github.com/dr-dolomite/QManager/raw/refs/heads/development-home/qmanager-installer.sh && \
+  sh /tmp/qmanager-installer.sh
+```
+
+Expanded direct flow:
+
 ```sh
 set -e
 REPO="dr-dolomite/QManager"
@@ -43,6 +53,16 @@ The installer will:
 See `sh install.sh --help` for all options (`--frontend-only`, `--backend-only`, `--skip-packages`, `--uninstall`, etc.)
 
 ### Quick Uninstall
+
+One-liner:
+
+```sh
+curl -fsSL -o /tmp/qmanager-installer.sh \
+  https://github.com/dr-dolomite/QManager/raw/refs/heads/development-home/qmanager-installer.sh && \
+  sh /tmp/qmanager-installer.sh --uninstall
+```
+
+Expanded direct flow:
 
 ```sh
 set -e

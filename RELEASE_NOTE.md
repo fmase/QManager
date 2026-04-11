@@ -42,7 +42,7 @@ Path: Cellular -> Settings -> IMEI Settings (`/cellular/settings/imei-settings`)
 - **Safer conflict removal order** — Conflict package removal now prioritizes `sms-tool` before `socat-at-bridge` and `socat`, reducing opkg dependency-chain removal failures.
 - **SSH-drop mitigation during upgrades** — The install stop phase no longer stops `qmanager_eth_link`, preventing an early `ethtool` renegotiation that could briefly drop the management link/SSH session.
 - **Direct release workflow adopted** — Fresh install/uninstall docs now use direct latest pre-release tarball download + checksum verification + `install.sh`/`uninstall.sh` execution.
-- **Legacy bootstrap removed** — `qmanager-installer.sh` has been removed from the repo to standardize on the direct tarball flow.
+- **One-liner wrapper restored** — `qmanager-installer.sh` is now a thin bootstrap helper that runs the same direct tarball + checksum flow, but in a single command.
 
 ## 🐛 Bug Fixes
 
@@ -74,6 +74,16 @@ Path: Cellular -> Settings -> IMEI Settings (`/cellular/settings/imei-settings`)
 ## 📥 Installation
 
 ### Fresh Install
+
+One-liner convenience:
+
+```sh
+curl -fsSL -o /tmp/qmanager-installer.sh \
+  https://github.com/dr-dolomite/QManager/raw/refs/heads/development-home/qmanager-installer.sh && \
+  sh /tmp/qmanager-installer.sh
+```
+
+Expanded direct flow:
 
 ```sh
 set -e
