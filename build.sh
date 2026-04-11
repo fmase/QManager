@@ -44,6 +44,18 @@ step "Copying install & uninstall scripts..."
 cp "$SCRIPTS_DIR/install.sh" "$STAGING_DIR/install.sh"
 cp "$SCRIPTS_DIR/uninstall.sh" "$STAGING_DIR/uninstall.sh"
 
+step "Stamping version from package.json..."
+PKG_VERSION=$(sed -n 's/.*"version":[[:space:]]*"\([^"]*\)".*/\1/p' "$ROOT_DIR/package.json" | head -n1)
+[ -n "$PKG_VERSION" ] || fail "Could not read version from package.json"
+for script in "$STAGING_DIR/install.sh" "$STAGING_DIR/uninstall.sh"; do
+  tmp="$script.tmp"
+  sed "s|^VERSION=\"[^\"]*\"|VERSION=\"$PKG_VERSION\"|" "$script" > "$tmp" && mv "$tmp" "$script"
+  chmod +x "$script"
+done
+grep -q "^VERSION=\"$PKG_VERSION\"" "$STAGING_DIR/install.sh" || fail "Failed to stamp install.sh with version $PKG_VERSION"
+grep -q "^VERSION=\"$PKG_VERSION\"" "$STAGING_DIR/uninstall.sh" || fail "Failed to stamp uninstall.sh with version $PKG_VERSION"
+step "Stamped install.sh + uninstall.sh with version: $PKG_VERSION"
+
 step "Copying bundled binaries (dependencies/)..."
 mkdir -p "$STAGING_DIR/dependencies"
 cp "$DEPS_DIR/atcli_smd11" "$STAGING_DIR/dependencies/atcli_smd11"
