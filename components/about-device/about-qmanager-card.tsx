@@ -26,7 +26,7 @@ interface AboutQManagerCardProps {
 const AboutQManagerCard = ({ data, isLoading }: AboutQManagerCardProps) => {
   const networkRows = [
     { label: "Device IP", value: data?.network.device_ip },
-    { label: "LAN Gateway", value: data?.network.lan_gateway },
+    { label: "LAN Subnet", value: data?.network.lan_subnet },
     { label: "WWAN IPv4", value: data?.network.wan_ipv4 },
     { label: "WWAN IPv6", value: data?.network.wan_ipv6 },
     { label: "Public IPv4", value: data?.network.public_ipv4 },

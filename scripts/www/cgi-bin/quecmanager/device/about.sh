@@ -10,7 +10,8 @@
 # Data sources:
 #   /tmp/qmanager_status.json       -> Poller cache (firmware, IMEI, WAN IPs)
 #   AT+QNWCFG="3gpp_rel"           -> 3GPP release versions (LTE, NR5G)
-#   AT+QMAP="LANIP"                -> Device LAN IP and gateway
+#   uci get network.lan.ipaddr      -> OpenWRT br-lan IP (device IP)
+#   uci get network.lan.netmask     -> OpenWRT br-lan netmask (for CIDR subnet)
 #   https://api.ipify.org           -> Public IPv4 (3s timeout, non-blocking)
 #   https://api6.ipify.org          -> Public IPv6 (3s timeout, non-blocking)
 #   /etc/openwrt_release            -> OpenWRT version
@@ -90,24 +91,41 @@ fi
 # =============================================================================
 rel_lte=""
 rel_nr5g=""
-lan_ip=""
-lan_gateway=""
-
-# Compound AT: 3GPP release + LAN IP in one call
-raw=$(qcmd 'AT+QNWCFG="3gpp_rel";+QMAP="LANIP"' 2>/dev/null)
 
 # 3GPP release versions -- +QNWCFG: "3gpp_rel",R17,R17
+raw=$(qcmd 'AT+QNWCFG="3gpp_rel"' 2>/dev/null)
 line=$(printf '%s\n' "$raw" | grep '+QNWCFG:.*"3gpp_rel"' | head -1 | tr -d '\r ')
 if [ -n "$line" ]; then
     rel_lte=$(printf '%s' "$line" | cut -d',' -f2)
     rel_nr5g=$(printf '%s' "$line" | cut -d',' -f3)
 fi
 
-# LAN IP and gateway -- +QMAP: "LANIP",192.168.224.100,192.168.227.99,192.168.224.1
-line=$(printf '%s\n' "$raw" | grep '+QMAP:.*"LANIP"' | head -1 | tr -d '\r ')
-if [ -n "$line" ]; then
-    lan_ip=$(printf '%s' "$line" | cut -d',' -f2 | tr -d '"')
-    lan_gateway=$(printf '%s' "$line" | cut -d',' -f4 | tr -d '"')
+# OpenWRT LAN info (br-lan) -- NOT the modem's internal RNDIS/ECM subnet.
+# AT+QMAP="LANIP" would report the modem-host USB link (default 192.168.224.x),
+# which is not what users think of as their LAN. UCI is authoritative.
+lan_ip=$(uci get network.lan.ipaddr 2>/dev/null | cut -d'/' -f1)
+lan_netmask=$(uci get network.lan.netmask 2>/dev/null)
+lan_subnet=""
+
+if [ -n "$lan_ip" ] && [ -n "$lan_netmask" ]; then
+    OLDIFS=$IFS
+    IFS=.
+    set -- $lan_ip
+    i1=${1:-0}; i2=${2:-0}; i3=${3:-0}; i4=${4:-0}
+    set -- $lan_netmask
+    m1=${1:-0}; m2=${2:-0}; m3=${3:-0}; m4=${4:-0}
+    IFS=$OLDIFS
+
+    prefix=0
+    for octet in $m1 $m2 $m3 $m4; do
+        while [ "$octet" -gt 0 ]; do
+            prefix=$((prefix + (octet & 1)))
+            octet=$((octet >> 1))
+        done
+    done
+
+    lan_subnet=$(printf '%d.%d.%d.%d/%d' \
+        "$((i1 & m1))" "$((i2 & m2))" "$((i3 & m3))" "$((i4 & m4))" "$prefix")
 fi
 
 # =============================================================================
@@ -157,7 +175,7 @@ jq -n \
     --arg rel_lte "$rel_lte" \
     --arg rel_nr5g "$rel_nr5g" \
     --arg device_ip "$lan_ip" \
-    --arg lan_gw "$lan_gateway" \
+    --arg lan_sn "$lan_subnet" \
     --arg wan4 "$c_wan_ipv4" \
     --arg wan6 "$c_wan_ipv6" \
     --arg pub4 "$public_ipv4" \
@@ -180,7 +198,7 @@ jq -n \
         },
         network: {
             device_ip: $device_ip,
-            lan_gateway: $lan_gw,
+            lan_subnet: $lan_sn,
             wan_ipv4: $wan4,
             wan_ipv6: $wan6,
             public_ipv4: $pub4,
