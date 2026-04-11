@@ -239,6 +239,7 @@ detect_modem_firmware() {
     local atcli=""
     local raw=""
     local detected=""
+    local cache_file=""
 
     # Prefer already-installed binary, otherwise use bundled copy from archive.
     if [ -x "$BIN_DIR/atcli_smd11" ]; then
@@ -248,30 +249,46 @@ detect_modem_firmware() {
         [ -x "$SRC_DEPS/atcli_smd11" ] && atcli="$SRC_DEPS/atcli_smd11"
     fi
 
-    [ -n "$atcli" ] || return 1
-
-    raw=$(run_capture_timeout 8 "$atcli" 'ATI' || true)
-
-    detected=$(printf '%s\n' "$raw" \
-        | tr -d '\r' \
-        | sed -n 's/^VERSION:[[:space:]]*//p' \
-        | head -n 1)
-
-    # Fallback for firmware layouts that do not prefix with VERSION:
-    if [ -z "$detected" ]; then
-        detected=$(printf '%s\n' "$raw" \
-            | tr -d '\r' \
-            | grep -E 'RM[0-9]{3,}' \
-            | head -n 1)
+    if [ -z "$atcli" ]; then
+        atcli=""
     fi
 
-    # Secondary probe for firmware variants where ATI output is sparse.
-    if [ -z "$detected" ]; then
-        raw=$(run_capture_timeout 8 "$atcli" 'AT+GMR' || true)
+    if [ -n "$atcli" ]; then
+        raw=$(run_capture_timeout 8 "$atcli" 'ATI' || true)
+
         detected=$(printf '%s\n' "$raw" \
             | tr -d '\r' \
-            | grep -E 'RM[0-9]{3,}' \
+            | sed -n 's/^VERSION:[[:space:]]*//p' \
             | head -n 1)
+
+        # Fallback for firmware layouts that do not prefix with VERSION:
+        if [ -z "$detected" ]; then
+            detected=$(printf '%s\n' "$raw" \
+                | tr -d '\r' \
+                | grep -E 'RM[0-9]{3,}' \
+                | head -n 1)
+        fi
+
+        # Secondary probe for firmware variants where ATI output is sparse.
+        if [ -z "$detected" ]; then
+            raw=$(run_capture_timeout 8 "$atcli" 'AT+GMR' || true)
+            detected=$(printf '%s\n' "$raw" \
+                | tr -d '\r' \
+                | grep -E 'RM[0-9]{3,}' \
+                | head -n 1)
+        fi
+    fi
+
+    # Cache fallback for upgrade/repair paths where AT port is temporarily busy.
+    # This does not help a true first install with no prior cache, which remains
+    # intentionally fail-closed.
+    if [ -z "$detected" ]; then
+        for cache_file in /tmp/qmanager_status.json /etc/qmanager/status.json; do
+            [ -f "$cache_file" ] || continue
+            detected=$(tr -d '\r\n' < "$cache_file" \
+                | sed -n 's/.*"device"[[:space:]]*:[[:space:]]*{[^}]*"firmware"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
+            [ -n "$detected" ] && break
+        done
     fi
 
     [ -n "$detected" ] || return 1
@@ -302,7 +319,7 @@ preflight() {
     # Uninstall should remain possible even on non-target hardware.
     if [ "$DO_UNINSTALL" != "1" ]; then
         fw=$(detect_modem_firmware || true)
-        [ -n "$fw" ] || die "Could not detect modem firmware via ATI (/dev/smd11)."
+        [ -n "$fw" ] || die "Could not detect modem firmware (tried ATI/AT+GMR and firmware cache). Ensure /dev/smd11 is available and modem is responsive."
 
         fw_norm=$(printf '%s' "$fw" | tr '[:lower:]' '[:upper:]' | tr -cd 'A-Z0-9')
         printf '%s' "$fw_norm" | grep -q 'RM551EGL' || {
