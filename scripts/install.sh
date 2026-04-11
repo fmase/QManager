@@ -69,6 +69,11 @@ SRC_SCRIPTS="$INSTALL_DIR/scripts"
 SRC_DEPS="$INSTALL_DIR/dependencies"
 
 # Packages
+# Note: coreutils-timeout is required even though BusyBox ships a `timeout`
+# applet — barebone OpenWRT builds (like OEM modem firmware) often strip
+# applets at compile time, so we can't assume BusyBox `timeout` is present.
+# qcmd wraps atcli_smd11 with `timeout` as a last-ditch safety net, and the
+# installer's run_capture_timeout helper uses it too. Cheap guarantee.
 REQUIRED_PACKAGES="jq curl coreutils-timeout websocat ethtool"
 OPTIONAL_PACKAGES="msmtp ookla-speedtest"
 # Removed before install to avoid /dev/smd11 conflicts and sms_tool collision
@@ -254,7 +259,8 @@ run_capture_timeout() {
 
 pkg_binary() {
     case "$1" in
-        ookla-speedtest) echo "speedtest" ;;
+        ookla-speedtest)    echo "speedtest" ;;
+        coreutils-timeout)  echo "timeout" ;;
         *) echo "$1" ;;
     esac
 }
