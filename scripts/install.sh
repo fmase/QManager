@@ -99,6 +99,25 @@ die() {
     exit 1
 }
 
+reboot_system() {
+    if command -v reboot >/dev/null 2>&1; then
+        reboot
+        return $?
+    fi
+
+    if [ -x /sbin/reboot ]; then
+        /sbin/reboot
+        return $?
+    fi
+
+    if command -v busybox >/dev/null 2>&1; then
+        busybox reboot
+        return $?
+    fi
+
+    die "Reboot command not found in PATH; reboot manually"
+}
+
 # Get the binary name for a package (handles pkg name != binary name)
 pkg_binary() {
     case "$1" in
@@ -367,8 +386,13 @@ install_packages() {
             *)               printf "    %-18s\n" "$pkg" ;;
         esac
     done
-    printf "\n  Install optional packages? [Y/n] "
-    read -r answer
+    if [ -t 0 ]; then
+        printf "\n  Install optional packages? [Y/n] "
+        read -r answer || answer=""
+    else
+        answer=""
+        info "Non-interactive shell detected — installing optional packages by default"
+    fi
     case "$answer" in
         n|N|no|NO)
             info "Skipping optional packages"
@@ -944,7 +968,7 @@ uninstall() {
 
     printf "  Rebooting in 5 seconds — press Ctrl+C to cancel...\n\n"
     sleep 5
-    reboot
+    reboot_system
 }
 
 # --- Version Check -----------------------------------------------------------
@@ -1158,7 +1182,7 @@ main() {
     if [ "$DO_REBOOT" = "1" ]; then
         printf "  Rebooting in 5 seconds — press Ctrl+C to cancel...\n\n"
         sleep 5
-        reboot
+        reboot_system
     fi
 }
 
