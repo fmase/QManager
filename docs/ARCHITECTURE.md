@@ -293,5 +293,5 @@ The apply process runs asynchronously via `qmanager_profile_apply` daemon. The f
 | Ethernet link speed | UCI `quecmanager.eth_link.speed_limit` | UCI |
 | System settings | UCI `quecmanager.settings.*` | UCI |
 | Timezone | UCI `system.@system[0].timezone/zonename` | UCI |
-| Auth password | `/etc/qmanager/shadow` | SHA-256 hash |
+| Auth password | `/etc/qmanager/auth.json` | SHA-256 hash + salt |
 | Sessions | `/tmp/qmanager_sessions/<token>` | One file per session |

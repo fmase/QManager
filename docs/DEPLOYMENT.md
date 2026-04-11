@@ -419,8 +419,8 @@ grep "poller" /tmp/qmanager.log
 # Check session directory
 ls /tmp/qmanager_sessions/
 
-# Check shadow file
-ls -la /etc/qmanager/shadow
+# Check auth file
+ls -la /etc/qmanager/auth.json
 ```
 
 ### Service Won't Start

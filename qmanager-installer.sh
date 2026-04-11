@@ -1,11 +1,34 @@
 #!/bin/sh
-# Thin bootstrap wrapper for one-liner installs.
-# It downloads the latest pre-release tarball, verifies sha256, then runs install/uninstall.
+# =============================================================================
+# QManager Bootstrap Installer
+# =============================================================================
+# Thin wrapper for one-liner installs. Downloads the selected release tarball
+# from GitHub, verifies sha256, extracts it, and runs install.sh (or
+# uninstall.sh). curl-only — no wget/uclient-fetch fallbacks.
+#
+# Supports both stable and pre-release channels.
+#
+# Usage:
+#   sh qmanager-installer.sh [OPTIONS]
+#
+# Options:
+#   --uninstall             Run uninstall.sh instead of install.sh
+#   --tag <tag>             Use an explicit release tag (e.g., v0.1.14)
+#   --channel <ch>          Release channel: stable|prerelease|any (default: any)
+#   --repo <owner/repo>     Override GitHub repo (default: dr-dolomite/QManager)
+#   -h, --help              Show this help
+#
+# Environment overrides:
+#   QMANAGER_TAG            Same as --tag
+#   QMANAGER_CHANNEL        Same as --channel
+#   QMANAGER_REPO           Same as --repo
+# =============================================================================
 
 set -e
 
 REPO="${QMANAGER_REPO:-dr-dolomite/QManager}"
 TAG="${QMANAGER_TAG:-}"
+CHANNEL="${QMANAGER_CHANNEL:-any}"
 ACTION="install"
 
 usage() {
@@ -13,19 +36,39 @@ usage() {
 QManager bootstrap installer
 
 Usage:
-  sh qmanager-installer.sh [--uninstall] [--tag <tag>] [--repo <owner/repo>]
+  sh qmanager-installer.sh [OPTIONS]
 
 Options:
-  --uninstall      Run uninstall.sh instead of install.sh
-  --tag <tag>      Use an explicit release tag (for example: v0.1.14)
-  --repo <repo>    Override repository (default: dr-dolomite/QManager)
-  -h, --help       Show this help
+  --uninstall           Run uninstall.sh instead of install.sh
+  --tag <tag>           Use an explicit release tag (e.g., v0.1.14)
+  --channel <ch>        Release channel: stable | prerelease | any (default: any)
+                        - stable:     only releases marked prerelease=false
+                        - prerelease: only releases marked prerelease=true
+                        - any:        newest release regardless of flag
+  --repo <owner/repo>   Override repository (default: dr-dolomite/QManager)
+  -h, --help            Show this help
 
 Environment overrides:
-  QMANAGER_TAG     Same as --tag
-  QMANAGER_REPO    Same as --repo
+  QMANAGER_TAG          Same as --tag
+  QMANAGER_CHANNEL      Same as --channel
+  QMANAGER_REPO         Same as --repo
+
+Examples:
+  # Install newest release (any channel)
+  curl -sL https://raw.githubusercontent.com/dr-dolomite/QManager/main/qmanager-installer.sh | sh
+
+  # Install newest stable only
+  curl -sL .../qmanager-installer.sh | sh -s -- --channel stable
+
+  # Install a specific tag
+  curl -sL .../qmanager-installer.sh | sh -s -- --tag v0.1.14
+
+  # Uninstall
+  curl -sL .../qmanager-installer.sh | sh -s -- --uninstall
 EOF
 }
+
+# --- Arg parsing -------------------------------------------------------------
 
 while [ "$#" -gt 0 ]; do
     case "$1" in
@@ -36,6 +79,11 @@ while [ "$#" -gt 0 ]; do
             shift
             [ "$#" -gt 0 ] || { echo "Missing value for --tag" >&2; exit 1; }
             TAG="$1"
+            ;;
+        --channel)
+            shift
+            [ "$#" -gt 0 ] || { echo "Missing value for --channel" >&2; exit 1; }
+            CHANNEL="$1"
             ;;
         --repo)
             shift
@@ -55,63 +103,102 @@ while [ "$#" -gt 0 ]; do
     shift
 done
 
+# --- Dependency checks -------------------------------------------------------
+
+if ! command -v curl >/dev/null 2>&1; then
+    echo "curl is required but not installed." >&2
+    echo "Install it first:  opkg update && opkg install curl ca-bundle" >&2
+    exit 1
+fi
+
+if ! command -v sha256sum >/dev/null 2>&1; then
+    echo "sha256sum is required but not available" >&2
+    exit 1
+fi
+
+if ! command -v tar >/dev/null 2>&1; then
+    echo "tar is required but not available" >&2
+    exit 1
+fi
+
+# --- HTTP helpers (curl-only) ------------------------------------------------
+
 fetch_text() {
-    url="$1"
-
-    if command -v uclient-fetch >/dev/null 2>&1; then
-        uclient-fetch -qO- "$url" 2>/dev/null && return 0
-    fi
-
-    if command -v wget >/dev/null 2>&1; then
-        wget -qO- "$url" 2>/dev/null && return 0
-    fi
-
-    if command -v curl >/dev/null 2>&1; then
-        curl -fsSL "$url" 2>/dev/null && return 0
-    fi
-
-    return 1
+    curl -fsSL --max-time 30 --connect-timeout 10 "$1" 2>/dev/null
 }
 
 download_file() {
-    url="$1"
-    out="$2"
-
-    if command -v wget >/dev/null 2>&1; then
-        wget -q -O "$out" "$url" && return 0
-    fi
-
-    if command -v uclient-fetch >/dev/null 2>&1; then
-        uclient-fetch -qO "$out" "$url" && return 0
-    fi
-
-    if command -v curl >/dev/null 2>&1; then
-        curl -fsSL -o "$out" "$url" && return 0
-    fi
-
-    return 1
+    local url="$1" out="$2"
+    curl -fsSL --max-time 600 --connect-timeout 15 -o "$out" "$url"
 }
 
+# --- Channel selection -------------------------------------------------------
+
+case "$CHANNEL" in
+    stable|prerelease|any) ;;
+    *)
+        echo "Invalid --channel: $CHANNEL (expected: stable, prerelease, any)" >&2
+        exit 1
+        ;;
+esac
+
+# --- Tag resolution ----------------------------------------------------------
+
 if [ -z "$TAG" ]; then
+    echo "Resolving latest $CHANNEL release from $REPO..."
+
     API="https://api.github.com/repos/${REPO}/releases?per_page=20"
     JSON="$(fetch_text "$API" || true)"
 
-    [ -n "$JSON" ] || {
-        echo "Failed to fetch release metadata from ${API}" >&2
+    if [ -z "$JSON" ]; then
+        echo "Failed to fetch release metadata from $API" >&2
+        echo "Check internet connectivity and GitHub API availability." >&2
         exit 1
-    }
+    fi
 
-    TAG="$(printf '%s' "$JSON" \
-        | tr -d '\n' \
-        | sed 's/},{/}\
+    # Parse the releases JSON without jq. GitHub returns a top-level array;
+    # we split on "},{" and then for each object check the prerelease flag
+    # against our channel, emitting the first tag_name that matches.
+    #
+    # This is POSIX-only to keep the bootstrap dependency-free. It doesn't
+    # handle the edge case of "},{" appearing inside a string literal, but
+    # GitHub's API format is consistent enough that this works in practice.
+    case "$CHANNEL" in
+        any)
+            TAG="$(printf '%s' "$JSON" \
+                | tr -d '\n' \
+                | sed 's/},{/}\
 {/g' \
-        | sed -n '/"prerelease":[[:space:]]*true/{s/.*"tag_name":[[:space:]]*"\([^"]*\)".*/\1/p;q}')"
+                | sed -n '/"tag_name":/{s/.*"tag_name":[[:space:]]*"\([^"]*\)".*/\1/p;q}')"
+            ;;
+        stable)
+            TAG="$(printf '%s' "$JSON" \
+                | tr -d '\n' \
+                | sed 's/},{/}\
+{/g' \
+                | sed -n '/"prerelease":[[:space:]]*false/{s/.*"tag_name":[[:space:]]*"\([^"]*\)".*/\1/p;q}')"
+            ;;
+        prerelease)
+            TAG="$(printf '%s' "$JSON" \
+                | tr -d '\n' \
+                | sed 's/},{/}\
+{/g' \
+                | sed -n '/"prerelease":[[:space:]]*true/{s/.*"tag_name":[[:space:]]*"\([^"]*\)".*/\1/p;q}')"
+            ;;
+    esac
 fi
 
-[ -n "$TAG" ] || {
-    echo "Failed to resolve latest pre-release tag" >&2
+if [ -z "$TAG" ]; then
+    echo "Failed to resolve a release tag from channel '$CHANNEL'" >&2
+    if [ "$CHANNEL" = "stable" ]; then
+        echo "There may be no stable releases published yet — try --channel prerelease or --channel any" >&2
+    fi
     exit 1
-}
+fi
+
+echo "Using release: $TAG"
+
+# --- Download and verify -----------------------------------------------------
 
 BASE="https://github.com/${REPO}/releases/download/${TAG}"
 WORK_DIR="/tmp/qmanager-bootstrap"
@@ -122,44 +209,46 @@ mkdir -p "$WORK_DIR"
 cleanup() {
     rm -rf "$WORK_DIR"
 }
-
 trap cleanup EXIT INT TERM
 
 cd "$WORK_DIR"
 
-download_file "$BASE/qmanager.tar.gz" qmanager.tar.gz || {
-    echo "Failed to download qmanager.tar.gz from ${BASE}" >&2
+echo "Downloading qmanager.tar.gz..."
+if ! download_file "$BASE/qmanager.tar.gz" qmanager.tar.gz; then
+    echo "Failed to download qmanager.tar.gz from $BASE" >&2
     exit 1
-}
+fi
 
-download_file "$BASE/sha256sum.txt" sha256sum.txt || {
-    echo "Failed to download sha256sum.txt from ${BASE}" >&2
+echo "Downloading sha256sum.txt..."
+if ! download_file "$BASE/sha256sum.txt" sha256sum.txt; then
+    echo "Failed to download sha256sum.txt from $BASE" >&2
     exit 1
-}
+fi
 
-command -v sha256sum >/dev/null 2>&1 || {
-    echo "sha256sum is required but not available" >&2
-    exit 1
-}
-
-command -v tar >/dev/null 2>&1 || {
-    echo "tar is required but not available" >&2
-    exit 1
-}
-
+echo "Verifying SHA-256..."
 sha256sum -c sha256sum.txt
 
+# --- Extract -----------------------------------------------------------------
+
+echo "Extracting..."
 if tar xzf qmanager.tar.gz 2>/dev/null; then
     :
 elif command -v gzip >/dev/null 2>&1; then
     gzip -dc qmanager.tar.gz | tar xf -
 else
-    echo "Unable to extract qmanager.tar.gz (tar -z/gzip missing)" >&2
+    echo "Unable to extract qmanager.tar.gz (tar -z and gzip both missing)" >&2
     exit 1
 fi
 
+[ -d "$WORK_DIR/qmanager_install" ] || {
+    echo "Extraction produced no qmanager_install directory — archive layout invalid" >&2
+    exit 1
+}
+
+# --- Hand off to install.sh / uninstall.sh -----------------------------------
+
 if [ "$ACTION" = "uninstall" ]; then
-    sh "$WORK_DIR/qmanager_install/uninstall.sh"
+    exec sh "$WORK_DIR/qmanager_install/uninstall.sh"
 else
-    sh "$WORK_DIR/qmanager_install/install.sh"
+    exec sh "$WORK_DIR/qmanager_install/install.sh"
 fi

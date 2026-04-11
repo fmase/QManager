@@ -56,6 +56,47 @@ grep -q "^VERSION=\"$PKG_VERSION\"" "$STAGING_DIR/install.sh" || fail "Failed to
 grep -q "^VERSION=\"$PKG_VERSION\"" "$STAGING_DIR/uninstall.sh" || fail "Failed to stamp uninstall.sh with version $PKG_VERSION"
 step "Stamped install.sh + uninstall.sh with version: $PKG_VERSION"
 
+step "Linting install.sh (filesystem-driven design)..."
+# install.sh v2 is filesystem-driven: it iterates $INITD_DIR/qmanager* instead
+# of hardcoding service names. The only hardcoded list is UCI_GATED_SERVICES.
+# This lint ensures:
+#   1. The filesystem iteration pattern is present (not replaced by hardcoding)
+#   2. Every service listed in UCI_GATED_SERVICES actually exists in the tarball
+#   3. The main 'qmanager' init.d service exists (required for start_services)
+LINT_ERRORS=0
+
+# Check 1: filesystem iteration pattern must be present
+if ! grep -q 'for svc in "\$INITD_DIR"/qmanager\*' "$STAGING_DIR/install.sh"; then
+  printf "  ${RED}BROKEN:${NC} install.sh is missing the filesystem-driven service iteration pattern\n"
+  LINT_ERRORS=$((LINT_ERRORS + 1))
+fi
+
+# Check 2: the main qmanager init.d service must exist
+if [ ! -f "$SCRIPTS_DIR/etc/init.d/qmanager" ]; then
+  printf "  ${RED}MISSING:${NC} scripts/etc/init.d/qmanager (main service) does not exist\n"
+  LINT_ERRORS=$((LINT_ERRORS + 1))
+fi
+
+# Check 3: every service in UCI_GATED_SERVICES must exist as a real init.d file
+UCI_GATED_LINE=$(grep '^UCI_GATED_SERVICES=' "$STAGING_DIR/install.sh" || true)
+if [ -z "$UCI_GATED_LINE" ]; then
+  printf "  ${RED}MISSING:${NC} UCI_GATED_SERVICES constant not found in install.sh\n"
+  LINT_ERRORS=$((LINT_ERRORS + 1))
+else
+  UCI_GATED_VALUE=$(printf '%s' "$UCI_GATED_LINE" | sed 's/^UCI_GATED_SERVICES="\(.*\)"$/\1/')
+  for svc in $UCI_GATED_VALUE; do
+    if [ ! -f "$SCRIPTS_DIR/etc/init.d/$svc" ]; then
+      printf "  ${RED}STALE:${NC} UCI_GATED_SERVICES references '%s' but scripts/etc/init.d/%s does not exist\n" "$svc" "$svc"
+      LINT_ERRORS=$((LINT_ERRORS + 1))
+    fi
+  done
+fi
+
+if [ "$LINT_ERRORS" -gt 0 ]; then
+  fail "install.sh lint failed with $LINT_ERRORS error(s)"
+fi
+step "install.sh lint passed (filesystem iteration + UCI_GATED_SERVICES valid)"
+
 step "Copying bundled binaries (dependencies/)..."
 mkdir -p "$STAGING_DIR/dependencies"
 cp "$DEPS_DIR/atcli_smd11" "$STAGING_DIR/dependencies/atcli_smd11"
