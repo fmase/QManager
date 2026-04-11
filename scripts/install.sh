@@ -175,8 +175,50 @@ run_with_spinner() {
 
 # --- Pre-flight Checks -------------------------------------------------------
 
+detect_modem_firmware() {
+    local atcli=""
+    local raw=""
+    local detected=""
+
+    # Prefer already-installed binary, otherwise use bundled copy from archive.
+    if [ -x "$BIN_DIR/atcli_smd11" ]; then
+        atcli="$BIN_DIR/atcli_smd11"
+    elif [ -f "$SRC_DEPS/atcli_smd11" ]; then
+        chmod 755 "$SRC_DEPS/atcli_smd11" 2>/dev/null || true
+        [ -x "$SRC_DEPS/atcli_smd11" ] && atcli="$SRC_DEPS/atcli_smd11"
+    fi
+
+    [ -n "$atcli" ] || return 1
+
+    if command -v timeout >/dev/null 2>&1; then
+        raw=$(timeout 8 "$atcli" 'ATI' 2>/dev/null || true)
+    else
+        raw=$("$atcli" 'ATI' 2>/dev/null || true)
+    fi
+
+    detected=$(printf '%s\n' "$raw" \
+        | tr -d '\r' \
+        | sed -n 's/^VERSION:[[:space:]]*//p' \
+        | head -n 1)
+
+    # Fallback for firmware layouts that do not prefix with VERSION:
+    if [ -z "$detected" ]; then
+        detected=$(printf '%s\n' "$raw" \
+            | tr -d '\r' \
+            | grep -E 'RM[0-9]{3,}' \
+            | head -n 1)
+    fi
+
+    [ -n "$detected" ] || return 1
+    printf '%s' "$detected"
+    return 0
+}
+
 preflight() {
     step "Running pre-flight checks"
+
+    local fw=""
+    local fw_norm=""
 
     # Must run as root
     if [ "$(id -u)" -ne 0 ]; then
@@ -189,7 +231,21 @@ preflight() {
     else
         local distro
         distro=$(. /etc/openwrt_release && echo "$DISTRIB_DESCRIPTION")
-        info "Detected: $distro"
+        info "Detected OpenWRT: $distro"
+    fi
+
+    # Uninstall should remain possible even on non-target hardware.
+    if [ "$DO_UNINSTALL" != "1" ]; then
+        fw=$(detect_modem_firmware || true)
+        [ -n "$fw" ] || die "Could not detect modem firmware via ATI (/dev/smd11)."
+
+        fw_norm=$(printf '%s' "$fw" | tr '[:lower:]' '[:upper:]' | tr -cd 'A-Z0-9')
+        printf '%s' "$fw_norm" | grep -q 'RM551EGL' || {
+            die "Unsupported modem firmware string. Detected: $fw (expected token: RM551EGL)"
+        }
+
+        info "Detected: $fw"
+        info "Modem signature check passed (RM551EGL)"
     fi
 
     # Check source directories exist

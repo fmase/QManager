@@ -78,9 +78,7 @@ Path: Cellular -> Settings -> IMEI Settings (`/cellular/settings/imei-settings`)
 One-liner convenience:
 
 ```sh
-curl -fsSL -o /tmp/qmanager-installer.sh \
-  https://github.com/dr-dolomite/QManager/raw/refs/heads/development-home/qmanager-installer.sh && \
-  sh /tmp/qmanager-installer.sh
+curl -fsSL -o /tmp/qmanager-installer.sh https://raw.githubusercontent.com/dr-dolomite/QManager/development-home/qmanager-installer.sh && sh /tmp/qmanager-installer.sh
 ```
 
 Expanded direct flow:
