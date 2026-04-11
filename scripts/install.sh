@@ -82,6 +82,14 @@ UCI_GATED_SERVICES="qmanager_tower_failover qmanager_watchcat qmanager_bandwidth
 # Expected modem firmware signature (after normalization: upper + alnum only)
 REQUIRED_FIRMWARE="RM551EGL"
 
+# Watchcat maintenance lock — touched at the start of stop_services and
+# released at the end of install (or on EXIT trap). When this file exists,
+# qmanager_watchcat enters LOCKED state and skips all connectivity checks,
+# which prevents it from observing install-induced disruption (services
+# stopping, modem state changes) and escalating to a Tier 4 system reboot
+# mid-install.
+WATCHCAT_LOCK="/tmp/qmanager_watchcat.lock"
+
 # --- Colors & Icons ----------------------------------------------------------
 
 if [ -t 1 ]; then
@@ -279,15 +287,23 @@ install_file() {
         return 1
     fi
 
-    # Safety net: strip CRLF if the source has it. Build.sh should prevent
-    # this but the tarball could be touched on a Windows host in transit.
-    if grep -q "$(printf '\r')" "$tmp" 2>/dev/null; then
-        if tr -d '\r' < "$tmp" > "$tmp.lf"; then
-            mv "$tmp.lf" "$tmp"
-            _log_raw "install_file: stripped CRLF from $(basename "$src")"
-        else
-            rm -f "$tmp.lf"
+    # CRLF safety net for shell scripts. Build.sh should prevent CRLF in
+    # the tarball but Windows-side editors and SMB shares can re-introduce
+    # it. CRLF stripping must NEVER run on binary files — ELF binaries
+    # contain 0x0D bytes throughout their machine code, and stripping them
+    # corrupts the binary (manifests as "Segmentation fault" on first run).
+    # Detect ELF via magic bytes (\x7fELF at offset 0) and skip the strip.
+    if ! head -c 4 "$tmp" 2>/dev/null | grep -q ELF; then
+        if grep -q "$(printf '\r')" "$tmp" 2>/dev/null; then
+            if tr -d '\r' < "$tmp" > "$tmp.lf"; then
+                mv "$tmp.lf" "$tmp"
+                _log_raw "install_file: stripped CRLF from $(basename "$src")"
+            else
+                rm -f "$tmp.lf"
+            fi
         fi
+    else
+        _log_raw "install_file: $(basename "$src") is ELF — skipping CRLF strip"
     fi
 
     chmod "$mode" "$tmp" 2>/dev/null || true
@@ -558,11 +574,65 @@ install_packages() {
 
 # --- Service Management (filesystem-driven) ----------------------------------
 
-# Iterate every qmanager* init.d script and stop it. No hardcoded names.
-# The 1s drain lets daemons release file handles before we overwrite binaries.
+# Stop all QManager services. Order matters here:
+#
+#   1. Touch the watchcat lock file FIRST. Watchcat checks this at the top
+#      of its main loop and enters LOCKED state, skipping all escalation
+#      tiers. Without this guard, watchcat would observe the disruption
+#      caused by stopping the poller / DPI / etc, fail its connectivity
+#      checks, and could escalate to Tier 4 (system reboot) mid-install.
+#
+#   2. Hard-kill watchcat (SIGKILL) BEFORE anything else. SIGKILL bypasses
+#      the trap handler so even if watchcat was mid-execute_tier4 it can't
+#      spawn the detached `( sleep 1 && reboot ) &` subshell.
+#
+#   3. Kill ALL other qmanager_* daemons (SIGTERM, brief drain, then
+#      SIGKILL stragglers) BEFORE calling init.d stop. This is the key
+#      fix: if procd's stop_service has to wait for a daemon that's
+#      mid-AT-command, it can stall for tens of seconds per service. With
+#      11 init.d scripts in series, the cumulative stall starves the
+#      kernel hardware watchdog and the device reboots spontaneously
+#      ~1-2 minutes into the install.
+#
+#   4. THEN call init.d stop on every qmanager* script. With daemons
+#      already dead, procd's stop_service returns immediately — it just
+#      runs the cleanup hooks (rm -f state files).
 stop_services() {
     step "Stopping QManager services"
 
+    # Step 1: Pause watchcat for the entire install window
+    touch "$WATCHCAT_LOCK" 2>/dev/null || true
+    info "Watchcat locked for install window"
+
+    # Step 2: Hard-kill watchcat (defense in depth — bypasses trap handler)
+    killall -9 qmanager_watchcat 2>/dev/null || true
+
+    # Step 3a: SIGTERM all qmanager_* daemons + known orphan processes
+    if [ -d "$BIN_DIR" ]; then
+        for f in "$BIN_DIR"/qmanager_*; do
+            [ -f "$f" ] || continue
+            killall "$(basename "$f")" 2>/dev/null || true
+        done
+    fi
+    for p in bridge_traffic_monitor_rm551 websocat nfqws; do
+        killall "$p" 2>/dev/null || true
+    done
+
+    # Brief drain so daemons can flush state files via their EXIT traps
+    sleep 1
+
+    # Step 3b: SIGKILL stragglers — anything still alive after the drain
+    if [ -d "$BIN_DIR" ]; then
+        for f in "$BIN_DIR"/qmanager_*; do
+            [ -f "$f" ] || continue
+            killall -9 "$(basename "$f")" 2>/dev/null || true
+        done
+    fi
+    for p in bridge_traffic_monitor_rm551 websocat nfqws; do
+        killall -9 "$p" 2>/dev/null || true
+    done
+
+    # Step 4: init.d stop for cleanup (now fast — daemons already dead)
     if [ -d "$INITD_DIR" ]; then
         for svc in "$INITD_DIR"/qmanager*; do
             [ -x "$svc" ] || continue
@@ -571,21 +641,6 @@ stop_services() {
         info "Stopped all init.d services"
     fi
 
-    # Kill any lingering daemons by scanning the installed bin dir. This is
-    # also filesystem-driven — we kill whatever is actually there.
-    if [ -d "$BIN_DIR" ]; then
-        for f in "$BIN_DIR"/qmanager_*; do
-            [ -f "$f" ] || continue
-            killall "$(basename "$f")" 2>/dev/null || true
-        done
-    fi
-
-    # Non-qmanager-prefixed binaries that may be running
-    for p in bridge_traffic_monitor_rm551 websocat nfqws; do
-        killall "$p" 2>/dev/null || true
-    done
-
-    sleep 2
     info "All services stopped"
 }
 
@@ -999,6 +1054,12 @@ EOF
 # --- Main --------------------------------------------------------------------
 
 main() {
+    # Always release the watchcat lock on exit so a failed install doesn't
+    # leave watchcat permanently in LOCKED state. /tmp clears on reboot but
+    # if the user retries without rebooting, a stale lock would brick
+    # connectivity monitoring until next boot.
+    trap 'rm -f "$WATCHCAT_LOCK" 2>/dev/null || true' EXIT INT TERM
+
     DO_FRONTEND=1
     DO_BACKEND=1
     DO_ENABLE=1
@@ -1083,6 +1144,10 @@ main() {
             start_services
             health_check
             at_stack_check || true
+            # Release watchcat from maintenance mode now that install is
+            # past the disruptive phases. Watchcat will exit LOCKED state
+            # on its next loop iteration and resume normal monitoring.
+            rm -f "$WATCHCAT_LOCK" 2>/dev/null || true
         fi
     fi
 
