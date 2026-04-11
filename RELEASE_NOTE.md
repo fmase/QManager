@@ -34,7 +34,15 @@ Path: Cellular -> Settings -> IMEI Settings (`/cellular/settings/imei-settings`)
 - **Simpler `qcmd`** — The gatekeeper script no longer needs dual timeout wrappers, the `-t 240` native-timeout flag, or per-command warm-up gymnastics. A single outer safety cap (`timeout 300`) guards against a wedged process; `atcli_smd11` handles the real timing.
 - **`sms_tool` is now SMS-only** — The `sms_tool` binary still ships, but is reserved for SMS Center (recv/send/delete/status) and SMS Alerts. Every invocation now passes `-d /dev/smd11` explicitly and strips the tcgetattr/tcsetattr noise from its output before parsing, so the SMS inbox JSON, storage status, and test-SMS error messages are always clean.
 - **Retired `sms_tool_device` setting** — The System Settings toggle to switch between `/dev/smd11` and `/dev/smd7` has been removed (both binaries are now device-locked).
-- **Installer improvements** — `install.sh` now removes conflicting opkg packages (`socat-at-bridge`, `socat`, `sms-tool`) before installing, then copies both `atcli_smd11` and `sms_tool` from the bundled `dependencies/` folder with 755 permissions. The `sms-tool` opkg package is no longer a required dependency.
+- **Installer improvements** — `install.sh` now removes conflicting opkg packages (`sms-tool`, `socat-at-bridge`, `socat`) before installing, then copies both `atcli_smd11` and `sms_tool` from the bundled `dependencies/` folder with 755 permissions. The `sms-tool` opkg package is no longer a required dependency.
+
+### Installation / Update Pipeline (So Far)
+
+- **Build staging auto-cleanup** — `bun run package` now removes `qmanager-build/qmanager_install` after both `qmanager.tar.gz` and `sha256sum.txt` are successfully generated, leaving only release artifacts.
+- **Safer conflict removal order** — Conflict package removal now prioritizes `sms-tool` before `socat-at-bridge` and `socat`, reducing opkg dependency-chain removal failures.
+- **SSH-drop mitigation during upgrades** — The install stop phase no longer stops `qmanager_eth_link`, preventing an early `ethtool` renegotiation that could briefly drop the management link/SSH session.
+- **Direct release workflow adopted** — Fresh install/uninstall docs now use direct latest pre-release tarball download + checksum verification + `install.sh`/`uninstall.sh` execution.
+- **Legacy bootstrap removed** — `qmanager-installer.sh` has been removed from the repo to standardize on the direct tarball flow.
 
 ## 🐛 Bug Fixes
 
@@ -68,9 +76,26 @@ Path: Cellular -> Settings -> IMEI Settings (`/cellular/settings/imei-settings`)
 ### Fresh Install
 
 ```sh
-wget -O /tmp/qmanager-installer.sh \
-  https://github.com/dr-dolomite/QManager/raw/refs/heads/development-home/qmanager-installer.sh && \
-  sh /tmp/qmanager-installer.sh
+set -e
+REPO="dr-dolomite/QManager"
+API="https://api.github.com/repos/${REPO}/releases?per_page=20"
+
+JSON=$(uclient-fetch -qO- "$API" 2>/dev/null || wget -qO- "$API" 2>/dev/null || curl -fsSL "$API")
+TAG=$(printf '%s' "$JSON" \
+  | tr -d '\n' \
+  | sed 's/},{/}\
+{/g' \
+  | sed -n '/"prerelease":[[:space:]]*true/{s/.*"tag_name":[[:space:]]*"\([^"]*\)".*/\1/p;q}')
+
+[ -n "$TAG" ] || { echo "Failed to resolve latest pre-release tag"; exit 1; }
+
+BASE="https://github.com/${REPO}/releases/download/${TAG}"
+cd /tmp
+wget -O qmanager.tar.gz "$BASE/qmanager.tar.gz"
+wget -O sha256sum.txt "$BASE/sha256sum.txt"
+sha256sum -c sha256sum.txt
+tar xzf qmanager.tar.gz
+sh /tmp/qmanager_install/install.sh
 ```
 
 ### Upgrading from v0.1.13
@@ -119,9 +144,26 @@ Head to **System Settings → Software Update** and hit "Check for Updates" — 
 ### Fresh Install
 
 ```sh
-wget -O /tmp/qmanager-installer.sh \
-  https://github.com/dr-dolomite/QManager/raw/refs/heads/development-home/qmanager-installer.sh && \
-  sh /tmp/qmanager-installer.sh
+set -e
+REPO="dr-dolomite/QManager"
+API="https://api.github.com/repos/${REPO}/releases?per_page=20"
+
+JSON=$(uclient-fetch -qO- "$API" 2>/dev/null || wget -qO- "$API" 2>/dev/null || curl -fsSL "$API")
+TAG=$(printf '%s' "$JSON" \
+  | tr -d '\n' \
+  | sed 's/},{/}\
+{/g' \
+  | sed -n '/"prerelease":[[:space:]]*true/{s/.*"tag_name":[[:space:]]*"\([^"]*\)".*/\1/p;q}')
+
+[ -n "$TAG" ] || { echo "Failed to resolve latest pre-release tag"; exit 1; }
+
+BASE="https://github.com/${REPO}/releases/download/${TAG}"
+cd /tmp
+wget -O qmanager.tar.gz "$BASE/qmanager.tar.gz"
+wget -O sha256sum.txt "$BASE/sha256sum.txt"
+sha256sum -c sha256sum.txt
+tar xzf qmanager.tar.gz
+sh /tmp/qmanager_install/install.sh
 ```
 
 ### Upgrading from v0.1.12

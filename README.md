@@ -77,12 +77,29 @@
 SSH into your OpenWRT device and run:
 
 ```sh
-wget -O /tmp/qmanager-installer.sh \
-  https://github.com/dr-dolomite/QManager/raw/refs/heads/main/qmanager-installer.sh && \
-  sh /tmp/qmanager-installer.sh
+set -e
+REPO="dr-dolomite/QManager"
+API="https://api.github.com/repos/${REPO}/releases?per_page=20"
+
+JSON=$(uclient-fetch -qO- "$API" 2>/dev/null || wget -qO- "$API" 2>/dev/null || curl -fsSL "$API")
+TAG=$(printf '%s' "$JSON" \
+  | tr -d '\n' \
+  | sed 's/},{/}\
+{/g' \
+  | sed -n '/"prerelease":[[:space:]]*true/{s/.*"tag_name":[[:space:]]*"\([^"]*\)".*/\1/p;q}')
+
+[ -n "$TAG" ] || { echo "Failed to resolve latest pre-release tag"; exit 1; }
+
+BASE="https://github.com/${REPO}/releases/download/${TAG}"
+cd /tmp
+wget -O qmanager.tar.gz "$BASE/qmanager.tar.gz"
+wget -O sha256sum.txt "$BASE/sha256sum.txt"
+sha256sum -c sha256sum.txt
+tar xzf qmanager.tar.gz
+sh /tmp/qmanager_install/install.sh
 ```
 
-The installer automatically detects your architecture, downloads the latest release, verifies the checksum, and runs the install script. You can pin a specific version with `QMANAGER_VERSION=v0.1.8`.
+To pin a specific release instead of latest pre-release, set `TAG` manually (for example `TAG="v0.1.13"`) and skip the API lookup block.
 
 ### Upgrading
 
@@ -91,10 +108,27 @@ From v0.1.7+, go to **Monitoring → Software Update** and use the built-in upda
 ### Uninstalling
 
 ```sh
-wget -O /tmp/qmanager-installer.sh \
-  https://github.com/dr-dolomite/QManager/raw/refs/heads/main/qmanager-installer.sh && \
-  sh /tmp/qmanager-installer.sh --uninstall
+set -e
+REPO="dr-dolomite/QManager"
+API="https://api.github.com/repos/${REPO}/releases?per_page=20"
+
+JSON=$(uclient-fetch -qO- "$API" 2>/dev/null || wget -qO- "$API" 2>/dev/null || curl -fsSL "$API")
+TAG=$(printf '%s' "$JSON" \
+  | tr -d '\n' \
+  | sed 's/},{/}\
+{/g' \
+  | sed -n '/"prerelease":[[:space:]]*true/{s/.*"tag_name":[[:space:]]*"\([^"]*\)".*/\1/p;q}')
+
+[ -n "$TAG" ] || { echo "Failed to resolve latest pre-release tag"; exit 1; }
+
+BASE="https://github.com/${REPO}/releases/download/${TAG}"
+cd /tmp
+wget -O qmanager.tar.gz "$BASE/qmanager.tar.gz"
+tar xzf qmanager.tar.gz
+sh /tmp/qmanager_install/uninstall.sh
 ```
+
+The legacy bootstrap script has been removed; use the direct pre-release tarball flow above.
 
 ---
 
@@ -217,8 +251,7 @@ QManager/
 │   ├── www/cgi-bin/            # CGI endpoints (58 scripts)
 │   ├── install.sh              # Device installation script
 │   └── uninstall.sh            # Clean removal script
-├── docs/                       # Documentation
-└── qmanager-installer.sh       # One-liner installer (fetches release + runs install.sh)
+└── docs/                       # Documentation
 ```
 
 ---

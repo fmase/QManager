@@ -56,6 +56,12 @@ tar czf "$ARCHIVE" -C "$BUILD_DIR" qmanager_install
 step "Generating sha256sum.txt..."
 (cd "$BUILD_DIR" && sha256sum qmanager.tar.gz > sha256sum.txt)
 
+# Cleanup staging only after both release artifacts exist.
+if [ -f "$ARCHIVE" ] && [ -f "$BUILD_DIR/sha256sum.txt" ]; then
+  step "Cleaning up staging directory..."
+  rm -rf "$STAGING_DIR"
+fi
+
 ARCHIVE_SIZE=$(du -h "$ARCHIVE" | cut -f1)
 FILE_COUNT=$(tar tzf "$ARCHIVE" | wc -l)
 SHA_VALUE=$(awk '{print $1}' "$BUILD_DIR/sha256sum.txt")

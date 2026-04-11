@@ -59,7 +59,7 @@ OPTIONAL_PACKAGES="msmtp ethtool ookla-speedtest"
 # Conflict packages — removed before install. They would either occupy
 # /dev/smd11 (socat-at-bridge, socat) or overwrite /usr/bin/sms_tool with
 # an older build that does not accept the strict -d flag.
-CONFLICT_PACKAGES="socat-at-bridge socat sms-tool"
+CONFLICT_PACKAGES="sms-tool socat-at-bridge socat"
 
 # --- Colors & Icons ----------------------------------------------------------
 
@@ -218,12 +218,16 @@ remove_conflicts() {
                 info "Removed conflict package: $pkg"
                 any=1
             else
-                warn "Could not remove $pkg (continuing anyway)"
+                warn "Could not remove $pkg (dependency lock or in use; continuing)"
             fi
         fi
     done
 
-    [ "$any" = "0" ] && info "No conflicting packages found"
+    if [ "$any" = "0" ]; then
+        info "No conflicting packages found"
+    fi
+
+    return 0
 }
 
 # --- Install Required Packages -----------------------------------------------
@@ -297,7 +301,7 @@ stop_services() {
     fi
 
     # Stop auxiliary services
-    for svc in qmanager_eth_link qmanager_mtu qmanager_imei_check \
+    for svc in qmanager_mtu qmanager_imei_check \
                qmanager_wan_guard qmanager_watchcat qmanager_tower_failover \
                qmanager_ttl qmanager_low_power_check qmanager_bandwidth \
                qmanager_dpi; do
