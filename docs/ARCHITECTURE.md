@@ -151,7 +151,6 @@ Auth endpoints use `_SKIP_AUTH=1` to bypass the automatic auth check in `cgi_bas
 | `/tmp/qmanager_email_log.json` | poller (email) | NDJSON | Email alert log (max 100) |
 | `/tmp/qmanager_sms_log.json` | poller (sms) | NDJSON | SMS alert log (max 100) |
 | `/tmp/qmanager_sms_reload` | CGI | Empty | Trigger poller SMS alert config reload |
-| `/tmp/qmanager_sms_last_err` | sms alerts CGI/library | Text | Last `sms_tool` send error detail |
 | `/tmp/qmanager_low_power_active` | low_power | Timestamp | Low power mode flag (suppresses events + alerts) |
 | `/tmp/qmanager_watchcat.lock` | low_power | Empty | Watchdog pause lock (forces LOCKED state) |
 | `/etc/qmanager/` | CGI scripts | Various | Persistent configuration |

@@ -194,10 +194,14 @@ Downtime email alert logic (sourced by poller):
 ### sms_alerts.sh
 
 Downtime SMS alert logic (sourced by poller):
-- Config management (`/etc/qmanager/sms_alerts.json`)
-- Alert triggering during active downtime after threshold
+- Config management (`/etc/qmanager/sms_alerts.json`; recipient stored as raw digits, no leading `+`)
+- Alert triggering during active downtime after threshold (pending path) and on recovery
+- `_sa_is_registered()` short-circuits on `conn_internet_available=true` so the recovery branch is never blocked by stale `lte_state`/`nr_state`
+- `check_sms_alert` skips entirely while `/tmp/qmanager_recovery_active` is set (mirrors `events.sh` recovery guard); downtime tracking state persists across the guard
+- `sms_tool send` runs under the shared `/var/lock/qmanager.lock` so it serializes against `qcmd`/`atcli_smd11`
 - Test-send helper for CGI (`send_test` action)
 - Log writing to `/tmp/qmanager_sms_log.json`
+- Failures are logged via `qlog_error` (full context: `modem_reachable`, `lte_state`, `nr_state`, `conn`, and the cleaned `sms_tool` stderr). No breadcrumb file.
 
 ### ethtool_helper.sh
 
@@ -652,7 +656,6 @@ All auth endpoints set `_SKIP_AUTH=1`.
 | `qmanager_email_reload` | CGI | Trigger file for config reload |
 | `qmanager_sms_log.json` | poller (sms) | SMS log NDJSON |
 | `qmanager_sms_reload` | CGI | Trigger file for SMS config reload |
-| `qmanager_sms_last_err` | sms alerts CGI/library | Last sms_tool error detail |
 | `qmanager_low_power_active` | low_power | Low power mode flag (timestamp; suppresses events + alerts) |
 | `qmanager_watchcat.lock` | low_power | Watchdog pause lock (forces LOCKED state) |
 | `qmanager_dpi_install.json` | dpi_install | nfqws installer progress/result |
@@ -672,7 +675,7 @@ All auth endpoints set `_SKIP_AUTH=1`.
 | `tower_lock.json` | Tower lock configuration |
 | `band_lock.json` | Band lock configuration |
 | `imei_backup.json` | IMEI backup config (`{ enabled, imei }`) |
-| `sms_alerts.json` | SMS alert settings (`{ enabled, recipient_phone, threshold_minutes }`) |
+| `sms_alerts.json` | SMS alert settings (`{ enabled, recipient_phone, threshold_minutes }`). `recipient_phone` is stored as raw digits with no leading `+` — the CGI save handler normalizes input before writing. |
 | `last_iccid` | Last seen SIM ICCID (for swap detection) |
 | `msmtprc` | Gmail SMTP config (chmod 600) |
 | `imei_check_pending` | Flag for boot-time IMEI check |

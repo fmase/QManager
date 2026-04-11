@@ -449,7 +449,49 @@ Start speed test, check results, and check if speedtest binary is available.
 
 ### GET/POST `/cellular/sms.sh`
 
-SMS inbox and send functionality.
+SMS inbox and send functionality. Backed by `sms_tool -d /dev/smd11`, serialized against `qcmd`/`atcli_smd11` via the shared `/var/lock/qmanager.lock`.
+
+**GET Response:**
+```json
+{
+  "success": true,
+  "messages": [
+    {
+      "indexes": [0, 1],
+      "sender": "+14155550100",
+      "content": "Concatenated multi-part message body",
+      "timestamp": "25/03/14,15:27:04+08"
+    }
+  ],
+  "storage": {
+    "used": 3,
+    "total": 25
+  }
+}
+```
+
+Multi-part messages (same sender + reference) are merged into a single entry; `indexes` lists every storage slot so `delete` can clear them all at once.
+
+**POST (send):**
+```json
+{
+  "action": "send",
+  "phone": "+14155551234",
+  "message": "Hello from QManager"
+}
+```
+
+Phone-number handling: the endpoint strips a leading `+` before calling `sms_tool` and does nothing else. There is no IMSI lookup, no MCC-to-country-code table, and no local-number rewriting — users are responsible for providing the full international number (with or without a leading `+`).
+
+**POST (delete one or more storage slots):**
+```json
+{ "action": "delete", "indexes": [0, 1] }
+```
+
+**POST (delete everything):**
+```json
+{ "action": "delete_all" }
+```
 
 ---
 
@@ -745,7 +787,7 @@ Get the currently active scenario.
   "success": true,
   "settings": {
     "enabled": true,
-    "recipient_phone": "+14155551234",
+    "recipient_phone": "14155551234",
     "threshold_minutes": 5
   }
 }
@@ -768,7 +810,9 @@ Get the currently active scenario.
 
 Validation notes:
 - `recipient_phone` is required when `enabled=true`
+- Accepts E.164 format with **or** without a leading `+` on input. The CGI strips a leading `+` exactly once before writing `sms_alerts.json`, so **storage and GET responses always return raw digits**. The send path passes the value verbatim to `sms_tool`.
 - `threshold_minutes` range is `1..60`
+- Test-send failures return `"error":"send_failed"` with a static `"detail":"sms_tool send failed — check logread for details"`. Full context (modem state, `sms_tool` stderr) is logged via `qlog_error`.
 
 ### GET `/monitoring/sms_alert_log.sh`
 
@@ -780,12 +824,14 @@ Validation notes:
       "timestamp": "2026-04-10 15:27:04",
       "trigger": "Connection down 5m 2s",
       "status": "sent",
-      "recipient": "+14155551234"
+      "recipient": "14155551234"
     }
   ],
   "total": 3
 }
 ```
+
+Note: `recipient` mirrors the stored form in `sms_alerts.json` — raw digits, no leading `+`.
 
 ### GET/POST `/monitoring/watchdog.sh`
 

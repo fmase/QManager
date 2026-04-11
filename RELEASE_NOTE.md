@@ -35,6 +35,13 @@ Path: Cellular -> Settings -> IMEI Settings (`/cellular/settings/imei-settings`)
 - **`sms_tool` is now SMS-only** — The `sms_tool` binary still ships, but is reserved for SMS Center (recv/send/delete/status) and SMS Alerts. Every invocation now passes `-d /dev/smd11` explicitly and strips the tcgetattr/tcsetattr noise from its output before parsing, so the SMS inbox JSON, storage status, and test-SMS error messages are always clean.
 - **Retired `sms_tool_device` setting** — The System Settings toggle to switch between `/dev/smd11` and `/dev/smd7` has been removed (both binaries are now device-locked).
 - **Installer improvements** — `install.sh` now removes conflicting opkg packages (`sms-tool`, `socat-at-bridge`, `socat`) before installing, then copies both `atcli_smd11` and `sms_tool` from the bundled `dependencies/` folder with 755 permissions. The `sms-tool` opkg package is no longer a required dependency.
+- **Shared `/dev/smd11` lock** — SMS Alerts and SMS Center now take the same `/var/lock/qmanager.lock` that `qcmd`/`atcli_smd11` use, so `sms_tool send`/`recv`/`delete`/`status` no longer race concurrent AT commands from the poller or watchdog on the char device.
+
+### Phone Number Normalization — Simplified
+
+- **One rule everywhere: omit the `+`** — SMS Alerts and SMS Center now share a single normalization rule: strip a leading `+` before handing the number to `sms_tool`. Nothing else. Inputs with or without `+` are accepted in the UI; storage in `sms_alerts.json` is always raw digits.
+- **Removed MCC-based local-number rewriting** — `cellular/sms.sh` previously read the SIM's IMSI via `AT+CIMI` and rewrote numbers starting with `0` to an international form using a 270-line MCC-to-country-code lookup table. That lookup, the IMSI read, and the auto-prefixing are all gone — users are responsible for providing the full international number. This cuts `cellular/sms.sh` from 478 lines to 266 and removes a per-send AT round-trip.
+- **Migration-safe for existing installs** — Legacy `sms_alerts.json` files containing `"recipient_phone": "+14155551234"` still work. `sms_alerts_init` does an in-memory `+` strip at boot; the file is rewritten the next time you save settings.
 
 ### Installation / Update Pipeline (So Far)
 
@@ -53,11 +60,6 @@ Path: Cellular -> Settings -> IMEI Settings (`/cellular/settings/imei-settings`)
 - **Idempotent behavior** — Existing per-step skip logic (APN/TTL/IMEI) ensures repeated triggers only apply differences and complete quickly when nothing changed.
 - **Concurrency-safe** — Auto-apply respects the existing apply lock to avoid races with manual activation.
 
-### SMS Test Send Error Visibility
-
-- **Generic test-send failures in UI** — Test SMS failures previously surfaced as a generic toast even when backend details were available.
-- **Fix** — The frontend now propagates backend `detail`/`error` from `send_test` responses so the toast shows actionable failure reasons.
-
 ### Sidebar Active-State in Cellular Navigation
 
 - **Cellular Information was highlighted on unrelated pages** — The parent item stayed active across other Cellular routes, which also kept its sub-items expanded even when viewing a different section.
@@ -69,112 +71,26 @@ Path: Cellular -> Settings -> IMEI Settings (`/cellular/settings/imei-settings`)
 - **Fix** — APN form controls are now disabled whenever an active Custom SIM Profile is present, with an in-card notice showing profile ownership.
 - **Carrier Profile remains configurable** — The Carrier Profile card stays editable so MBN selection and related carrier firmware controls are unchanged.
 
+### Device Metrics + Onboarding Band Source Hardening
+
+- **TA=0 showed misleading distance estimates** — LTE/NR Cell Distance in Device Metrics could display very small estimated values (e.g. `< 10 m`) when Timing Advance was `0`, even when that radio wasn't actively serving.
+- **Fix** — Device Metrics now treats LTE/NR TA value `0` as unavailable and displays `-` instead of an estimated distance.
+- **Temperature averaging included zero sensors** — In edge cases, `AT+QTEMP` sensor readings of `0` were included in the average, lowering the displayed modem temperature.
+- **Fix** — Temperature parsing now excludes all non-positive sensor values (`<= 0`) before averaging.
+- **Onboarding used hardcoded band catalogs** — Band preference options in onboarding were based on static LTE/NR lists rather than modem capabilities.
+- **Fix** — Onboarding now reads supported LTE/NSA/SA bands from the poller status JSON (`device.supported_*_bands`) and uses those as the available selection set.
+
 ---
 
 ## 📥 Installation
 
 ### Fresh Install
-
-One-liner convenience:
 
 ```sh
 curl -fsSL -o /tmp/qmanager-installer.sh https://raw.githubusercontent.com/dr-dolomite/QManager/development-home/qmanager-installer.sh && sh /tmp/qmanager-installer.sh
 ```
 
-Expanded direct flow:
-
-```sh
-set -e
-REPO="dr-dolomite/QManager"
-API="https://api.github.com/repos/${REPO}/releases?per_page=20"
-
-JSON=$(uclient-fetch -qO- "$API" 2>/dev/null || wget -qO- "$API" 2>/dev/null || curl -fsSL "$API")
-TAG=$(printf '%s' "$JSON" \
-  | tr -d '\n' \
-  | sed 's/},{/}\
-{/g' \
-  | sed -n '/"prerelease":[[:space:]]*true/{s/.*"tag_name":[[:space:]]*"\([^"]*\)".*/\1/p;q}')
-
-[ -n "$TAG" ] || { echo "Failed to resolve latest pre-release tag"; exit 1; }
-
-BASE="https://github.com/${REPO}/releases/download/${TAG}"
-cd /tmp
-wget -O qmanager.tar.gz "$BASE/qmanager.tar.gz"
-wget -O sha256sum.txt "$BASE/sha256sum.txt"
-sha256sum -c sha256sum.txt
-tar xzf qmanager.tar.gz
-sh /tmp/qmanager_install/install.sh
-```
-
 ### Upgrading from v0.1.13
-
-Head to **System Settings → Software Update** and hit "Check for Updates" — download, verify, then install with the two-step flow.
-
----
-
-# 🚀 QManager BETA v0.1.13
-
-**Custom SIM Profile reliability improvements — SIM mismatch detection, profile lifecycle events, and DPI boot persistence.**
-
----
-
-## 🐛 Bug Fixes
-
-### Custom SIM Profiles — IMEI Apply Persistence
-
-- **Profile showed "Inactive" after IMEI change + reboot** — When a profile applied a new IMEI, the modem reboot (`AT+CFUN=1,1`) could trigger a full system reboot on some USB configurations, killing the apply script before it could mark the profile as active.
-- **Fix** — The active profile marker is now written to flash immediately after a successful IMEI write (`AT+EGMR`), before the modem reboot command is issued. If the system reboots during the modem reset, the profile is already marked active. Finalization still re-sets on success or clears on total failure.
-
-### DPI Services Not Surviving Reboot
-
-- **Video Optimizer and Traffic Masquerade settings didn't persist across reboots** — The CGI save handlers set UCI config and restarted the service, but never called `/etc/init.d/qmanager_dpi enable` to register for boot startup.
-- **Fix** — Enabling either DPI feature now also enables the init.d service for boot. Disabling only removes boot persistence when both features are off. Uninstall always cleans up the boot symlink.
-
----
-
-## ✨ New Features
-
-### Custom Profile SIM Mismatch Detection
-
-- **Auto-deactivation on SIM swap** — When the device boots with a different SIM card, the poller now checks if the active profile's ICCID matches the current SIM. If there's a mismatch, the profile is automatically deactivated and a warning event is emitted. Profiles without a stored ICCID are left alone.
-- **SIM Mismatch badge** — The profile table now shows a warning badge ("SIM Mismatch") instead of the blue "Active" badge when the active profile was created for a different SIM than the one currently inserted.
-
-### Custom Profile Network Events
-
-- **Profile lifecycle events** — Profile apply, failure, and deactivation are now tracked in the Network Events system:
-  - `Profile Applied` (info / warning for partial) — when a profile is successfully applied
-  - `Profile Failed` (error) — when all apply steps fail
-  - `Profile Deactivated` (info / warning for SIM mismatch) — when a profile is manually or automatically deactivated
-- Events appear in the **Data Connection** tab of the Network Events card
-
-## 📥 Installation
-
-### Fresh Install
-
-```sh
-set -e
-REPO="dr-dolomite/QManager"
-API="https://api.github.com/repos/${REPO}/releases?per_page=20"
-
-JSON=$(uclient-fetch -qO- "$API" 2>/dev/null || wget -qO- "$API" 2>/dev/null || curl -fsSL "$API")
-TAG=$(printf '%s' "$JSON" \
-  | tr -d '\n' \
-  | sed 's/},{/}\
-{/g' \
-  | sed -n '/"prerelease":[[:space:]]*true/{s/.*"tag_name":[[:space:]]*"\([^"]*\)".*/\1/p;q}')
-
-[ -n "$TAG" ] || { echo "Failed to resolve latest pre-release tag"; exit 1; }
-
-BASE="https://github.com/${REPO}/releases/download/${TAG}"
-cd /tmp
-wget -O qmanager.tar.gz "$BASE/qmanager.tar.gz"
-wget -O sha256sum.txt "$BASE/sha256sum.txt"
-sha256sum -c sha256sum.txt
-tar xzf qmanager.tar.gz
-sh /tmp/qmanager_install/install.sh
-```
-
-### Upgrading from v0.1.12
 
 Head to **System Settings → Software Update** and hit "Check for Updates" — download, verify, then install with the two-step flow.
 
