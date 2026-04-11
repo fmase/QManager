@@ -173,6 +173,47 @@ run_with_spinner() {
     return "$rc"
 }
 
+# Run a command and capture stdout with timeout semantics.
+# Uses `timeout` when available; otherwise falls back to a simple watchdog.
+# Usage: run_capture_timeout <seconds> cmd [args...]
+run_capture_timeout() {
+    local seconds="$1"; shift
+    local rc=0
+    local i=0
+    local pid=""
+    local out_file="/tmp/qm_tmo_out.$$"
+
+    rm -f "$out_file"
+
+    if command -v timeout >/dev/null 2>&1; then
+        timeout "$seconds" "$@" >"$out_file" 2>/dev/null
+        rc=$?
+    else
+        "$@" >"$out_file" 2>/dev/null &
+        pid=$!
+
+        while kill -0 "$pid" 2>/dev/null; do
+            if [ "$i" -ge "$seconds" ]; then
+                kill "$pid" 2>/dev/null || true
+                wait "$pid" 2>/dev/null || true
+                rc=124
+                break
+            fi
+            i=$(( i + 1 ))
+            sleep 1
+        done
+
+        if [ "$rc" -ne 124 ]; then
+            wait "$pid"
+            rc=$?
+        fi
+    fi
+
+    [ -f "$out_file" ] && cat "$out_file"
+    rm -f "$out_file"
+    return "$rc"
+}
+
 # --- Pre-flight Checks -------------------------------------------------------
 
 detect_modem_firmware() {
@@ -190,11 +231,7 @@ detect_modem_firmware() {
 
     [ -n "$atcli" ] || return 1
 
-    if command -v timeout >/dev/null 2>&1; then
-        raw=$(timeout 8 "$atcli" 'ATI' 2>/dev/null || true)
-    else
-        raw=$("$atcli" 'ATI' 2>/dev/null || true)
-    fi
+    raw=$(run_capture_timeout 8 "$atcli" 'ATI' || true)
 
     detected=$(printf '%s\n' "$raw" \
         | tr -d '\r' \
@@ -203,6 +240,15 @@ detect_modem_firmware() {
 
     # Fallback for firmware layouts that do not prefix with VERSION:
     if [ -z "$detected" ]; then
+        detected=$(printf '%s\n' "$raw" \
+            | tr -d '\r' \
+            | grep -E 'RM[0-9]{3,}' \
+            | head -n 1)
+    fi
+
+    # Secondary probe for firmware variants where ATI output is sparse.
+    if [ -z "$detected" ]; then
+        raw=$(run_capture_timeout 8 "$atcli" 'AT+GMR' || true)
         detected=$(printf '%s\n' "$raw" \
             | tr -d '\r' \
             | grep -E 'RM[0-9]{3,}' \
@@ -559,7 +605,9 @@ install_bundled_binaries() {
     done
 
     # Smoke test (warn-only — do not fail install if modem is not ready)
-    if ! timeout 5 atcli_smd11 'AT' 2>/dev/null | grep -q OK; then
+    local at_smoke=""
+    at_smoke=$(run_capture_timeout 5 atcli_smd11 'AT' || true)
+    if ! printf '%s\n' "$at_smoke" | grep -q OK; then
         warn "atcli_smd11 smoke test did not return OK — check /dev/smd11"
     else
         info "atcli_smd11 smoke test passed"
