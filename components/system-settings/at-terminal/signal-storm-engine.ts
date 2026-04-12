@@ -17,11 +17,41 @@ import type {
   SpriteAtlas,
 } from "./signal-storm-types";
 
+import { preRenderAllSprites } from "./signal-storm-sprites";
+
 import {
+  // Size constants needed for spawn clamping / beam positioning
+  ENEMY_W,
+  ENEMY_H,
+  JAMMER_W,
+  JAMMER_H,
   SWERVER_W,
   SWERVER_H,
-  preRenderAllSprites,
-} from "./signal-storm-sprites";
+  SPLITTER_W,
+  SPLITTER_H,
+  SNIPER_W,
+  SNIPER_H,
+  ORBITER_W,
+  ORBITER_H,
+  DRONE_W,
+  DRONE_H,
+  // Spawn functions
+  spawnInterference,
+  spawnJammer,
+  spawnSwerver,
+  spawnSplitter,
+  spawnSniper,
+  spawnOrbiter,
+  spawnDroneSwarm,
+  spawnSplitterShards,
+  // Update / draw / score
+  updateEnemy,
+  drawEnemy,
+  enemyScore,
+  pickEnemyType,
+  // Chain-kill bonus
+  SCORE_DRONE_CHAIN_BONUS,
+} from "./signal-storm-enemies";
 
 import { GameAudio } from "./signal-storm-audio";
 
@@ -31,34 +61,16 @@ const PLAYER_SPEED = 200;
 const PLAYER_SHOOT_COOLDOWN = 300;
 const RAPID_FIRE_COOLDOWN = 150;
 const BEAM_SPEED = -350;
-const ENEMY_BASE_FALL_SPEED = 60;
-const JAMMER_FALL_SPEED = 40;
-const JAMMER_SHOOT_INTERVAL = 2000;
-const ENEMY_BEAM_SPEED = 150;
 const POWERUP_FALL_SPEED = 50;
 const SPAWN_BASE_INTERVAL = 2000;
 const SPAWN_INTERVAL_DECREASE = 150;
 const SPAWN_MIN_INTERVAL = 500;
-const JAMMER_WAVE_THRESHOLD = 3;
-const JAMMER_SPAWN_CHANCE = 0.2;
-const SWERVER_WAVE_THRESHOLD = 2;
-const SWERVER_SPAWN_CHANCE = 0.25;
-const SWERVER_FALL_SPEED = 50;
-const SWERVER_AMPLITUDE = 60;
-const SWERVER_FREQUENCY = 3;
-const SCORE_SWERVER = 15;
 const POWERUP_DROP_RATE = 0.1;
 const WAVE_DURATION = 30;
-const SCORE_INTERFERENCE = 10;
-const SCORE_JAMMER = 25;
 const SCORE_SURVIVAL = 1;
 
 const PLAYER_W = 24;
 const PLAYER_H = 28;
-const ENEMY_W = 20;
-const ENEMY_H = 16;
-const JAMMER_W = 28;
-const JAMMER_H = 20;
 const BEAM_W = 3;
 const BEAM_H = 10;
 const POWERUP_W = 14;
@@ -279,22 +291,12 @@ export class SignalStormEngine {
       this.spawnEnemy(timestamp);
     }
 
-    // ── Move enemies + jammer shooting ──
+    // ── Move enemies + per-type logic ──
     for (const e of this.enemies) {
-      e.y += e.dy * dt;
-      if (e.y > this.height) e.active = false;
-
-      if (e.type === "swerver") {
-        // Weave left-right using sine wave
-        e.swerveTimer += dt * SWERVER_FREQUENCY;
-        e.x += Math.cos(e.swerveTimer) * SWERVER_AMPLITUDE * dt * SWERVER_FREQUENCY;
-        // Clamp to canvas
-        e.x = Math.max(0, Math.min(e.x, this.width - e.width));
-      }
-
-      if (e.type === "jammer" && timestamp - e.lastShot >= JAMMER_SHOOT_INTERVAL) {
-        e.lastShot = timestamp;
-        this.fireEnemyBeam(e);
+      const result = updateEnemy(e, dt, timestamp, this.player, this.width, this.height);
+      if (result.fireBeam) {
+        const fb = result.fireBeam;
+        this.pushEnemyBeam(fb.x, fb.y, fb.dx, fb.dy);
       }
     }
 
@@ -317,16 +319,29 @@ export class SignalStormEngine {
           if (e.hp <= 0) {
             e.active = false;
             this.audio.playExplode();
-            this.score +=
-              e.type === "jammer" ? SCORE_JAMMER
-                : e.type === "swerver" ? SCORE_SWERVER
-                : SCORE_INTERFERENCE;
+            this.score += enemyScore(e.type);
+            // Splitter: spawn shards on death
+            if (e.type === "splitter") {
+              for (const shard of spawnSplitterShards(e)) {
+                this.enemies.push(shard);
+              }
+            }
+            // Drone: check for full-swarm chain bonus
+            if (e.type === "drone") {
+              this.tryAwardSwarmBonus(e.swarmId);
+            }
+            const particleColor =
+              e.type === "jammer" || e.type === "sniper"
+                ? this.palette.jammer
+                : e.type === "swerver" || e.type === "orbiter"
+                  ? this.palette.shield
+                  : e.type === "drone"
+                    ? this.palette.spread
+                    : this.palette.enemy;
             this.spawnParticles(
               e.x + e.width / 2,
               e.y + e.height / 2,
-              e.type === "jammer" ? this.palette.jammer
-                : e.type === "swerver" ? this.palette.shield
-                : this.palette.enemy
+              particleColor
             );
             if (Math.random() < POWERUP_DROP_RATE) {
               this.spawnPowerUp(e.x + e.width / 2, e.y + e.height / 2);
@@ -487,92 +502,47 @@ export class SignalStormEngine {
   }
 
   private spawnEnemy(timestamp: number): void {
-    const roll = Math.random();
-    const isSwerver =
-      this.wave >= SWERVER_WAVE_THRESHOLD && roll < SWERVER_SPAWN_CHANCE;
-    const isJammer =
-      !isSwerver &&
-      this.wave >= JAMMER_WAVE_THRESHOLD &&
-      roll < SWERVER_SPAWN_CHANCE + JAMMER_SPAWN_CHANCE;
+    const token = pickEnemyType(this.wave, this.countAlive("sniper"));
 
-    if (isSwerver) {
-      const x = Math.random() * (this.width - SWERVER_W);
-      const fallSpeed = SWERVER_FALL_SPEED + (this.wave - 1) * 5;
-      this.enemies.push({
-        x,
-        y: -SWERVER_H,
-        width: SWERVER_W,
-        height: SWERVER_H,
-        active: true,
-        dy: fallSpeed,
-        dx: 0,
-        hp: 1,
-        type: "swerver",
-        lastShot: 0,
-        swerveTimer: Math.random() * Math.PI * 2,
-        parkedAt: 0,
-        telegraphUntil: 0,
-        telegraphAimX: 0,
-        telegraphAimY: 0,
-        swarmId: 0,
-        swarmSurvived: true,
-      });
-    } else if (isJammer) {
-      const x = Math.random() * (this.width - JAMMER_W);
-      const fallSpeed = JAMMER_FALL_SPEED + (this.wave - 1) * 4;
-      this.enemies.push({
-        x,
-        y: -JAMMER_H,
-        width: JAMMER_W,
-        height: JAMMER_H,
-        active: true,
-        dy: fallSpeed,
-        dx: 0,
-        hp: 2,
-        type: "jammer",
-        lastShot: timestamp,
-        swerveTimer: 0,
-        parkedAt: 0,
-        telegraphUntil: 0,
-        telegraphAimX: 0,
-        telegraphAimY: 0,
-        swarmId: 0,
-        swarmSurvived: true,
-      });
-    } else {
+    if (token === "drone_swarm") {
+      const drones = spawnDroneSwarm(this.width);
+      for (const d of drones) this.enemies.push(d);
+      return;
+    }
+
+    if (token === "interference") {
       const x = Math.random() * (this.width - ENEMY_W);
-      const fallSpeed = ENEMY_BASE_FALL_SPEED + (this.wave - 1) * 8;
-      this.enemies.push({
-        x,
-        y: -ENEMY_H,
-        width: ENEMY_W,
-        height: ENEMY_H,
-        active: true,
-        dy: fallSpeed,
-        dx: 0,
-        hp: 1,
-        type: "interference",
-        lastShot: 0,
-        swerveTimer: 0,
-        parkedAt: 0,
-        telegraphUntil: 0,
-        telegraphAimX: 0,
-        telegraphAimY: 0,
-        swarmId: 0,
-        swarmSurvived: true,
-      });
+      this.enemies.push(spawnInterference(x, this.wave));
+    } else if (token === "jammer") {
+      const x = Math.random() * (this.width - JAMMER_W);
+      this.enemies.push(spawnJammer(x, this.wave, timestamp));
+    } else if (token === "swerver") {
+      const x = Math.random() * (this.width - SWERVER_W);
+      this.enemies.push(spawnSwerver(x, this.wave));
+    } else if (token === "splitter") {
+      const x = Math.random() * (this.width - SPLITTER_W);
+      this.enemies.push(spawnSplitter(x, this.wave));
+    } else if (token === "sniper") {
+      const x = Math.random() * (this.width - SNIPER_W);
+      this.enemies.push(spawnSniper(x));
+    } else if (token === "orbiter") {
+      this.enemies.push(spawnOrbiter(this.width, this.height, timestamp));
     }
   }
 
-  private fireEnemyBeam(e: Enemy): void {
+  private countAlive(type: string): number {
+    return this.enemies.filter((e) => e.active && e.type === type).length;
+  }
+
+  private pushEnemyBeam(x: number, y: number, dx: number, dy: number): void {
     this.enemyBeams.push({
-      x: e.x + e.width / 2 - BEAM_W / 2,
-      y: e.y + e.height,
+      x: x - BEAM_W / 2,
+      y,
       width: BEAM_W,
       height: BEAM_H,
       active: true,
-      dy: ENEMY_BEAM_SPEED,
-      dx: 0,
+      dy,
+      dx,
     });
   }
 
@@ -979,7 +949,7 @@ export class SignalStormEngine {
 
       // 6. Enemies
       for (const e of this.enemies) {
-        this.drawEnemy(e);
+        drawEnemy(e, this.ctx, this.sprites);
       }
 
       // 6b. Boss
@@ -1057,20 +1027,13 @@ export class SignalStormEngine {
     ctx.drawImage(flame, flameX, flameY);
   }
 
-  private drawEnemy(e: Enemy): void {
-    const { ctx } = this;
-    const sprite =
-      e.type === "jammer"   ? this.sprites.jammer
-        : e.type === "swerver" ? this.sprites.swerver
-        : this.sprites.meteor;
-    ctx.drawImage(sprite, e.x, e.y);
-
-    // Damage flash: if jammer has taken 1 hit (hp=1 of 2), flash briefly
-    if (e.type === "jammer" && e.hp === 1) {
-      ctx.globalAlpha = 0.3;
-      ctx.fillStyle = "#ffffff";
-      ctx.fillRect(e.x, e.y, e.width, e.height);
-      ctx.globalAlpha = 1;
+  private tryAwardSwarmBonus(swarmId: number): void {
+    // Award bonus only if every drone in the swarm is dead AND none escaped
+    const swarmDrones = this.enemies.filter((e) => e.swarmId === swarmId);
+    const anyAlive = swarmDrones.some((e) => e.active);
+    const anyEscaped = swarmDrones.some((e) => !e.swarmSurvived);
+    if (!anyAlive && !anyEscaped) {
+      this.score += SCORE_DRONE_CHAIN_BONUS;
     }
   }
 
