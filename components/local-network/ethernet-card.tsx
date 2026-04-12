@@ -4,7 +4,6 @@ import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import Image from "next/image";
 import { toast } from "sonner";
 import { authFetch } from "@/lib/auth-fetch";
-import deviceIcon from "@/public/device-icon.svg";
 
 import {
   Card,
@@ -25,7 +24,14 @@ import {
 } from "@/components/ui/select";
 
 import { CgEthernet } from "react-icons/cg";
-import { RefreshCcwIcon, Loader2, AlertCircle, CheckIcon, CheckCircle2Icon, XCircleIcon } from "lucide-react";
+import {
+  RefreshCcwIcon,
+  Loader2,
+  AlertCircle,
+  CheckIcon,
+  CheckCircle2Icon,
+  XCircleIcon,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useSaveFlash } from "@/components/ui/save-button";
 import { Badge } from "@/components/ui/badge";
@@ -307,11 +313,11 @@ const EthernetStatusCard = () => {
               ref={deviceRef}
               className="size-16 @xs/card:size-24 bg-primary/15 rounded-full p-3 @xs/card:p-4 flex items-center justify-center"
             >
-              <Image
-                src={deviceIcon}
+              <img
+                src="/device-icon.png"
                 alt="Device Icon"
                 className="size-full drop-shadow-md object-contain"
-                priority
+                loading="lazy"
               />
             </div>
 
@@ -383,12 +389,18 @@ const EthernetStatusCard = () => {
                 Link Status
               </p>
               {isConnected ? (
-                <Badge variant="outline" className="bg-success/15 text-success hover:bg-success/20 border-success/30">
+                <Badge
+                  variant="outline"
+                  className="bg-success/15 text-success hover:bg-success/20 border-success/30"
+                >
                   <CheckCircle2Icon className="h-3 w-3" />
                   Connected
                 </Badge>
               ) : (
-                <Badge variant="outline" className="bg-destructive/15 text-destructive hover:bg-destructive/20 border-destructive/30">
+                <Badge
+                  variant="outline"
+                  className="bg-destructive/15 text-destructive hover:bg-destructive/20 border-destructive/30"
+                >
                   <XCircleIcon className="h-3 w-3" />
                   Disconnected
                 </Badge>
@@ -431,7 +443,10 @@ const EthernetStatusCard = () => {
                 onValueChange={handleSpeedChange}
                 disabled={isSaving}
               >
-                <SelectTrigger aria-label="Set Link Speed" className="w-full max-w-[50%] font-semibold text-muted-foreground @sm/card:text-base text-sm">
+                <SelectTrigger
+                  aria-label="Set Link Speed"
+                  className="w-full max-w-[50%] font-semibold text-muted-foreground @sm/card:text-base text-sm"
+                >
                   {isSaving ? (
                     <span className="flex items-center gap-2">
                       <Loader2 className="h-3 w-3 animate-spin" />

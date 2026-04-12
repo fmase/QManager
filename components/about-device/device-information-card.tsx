@@ -152,7 +152,7 @@ const DeviceInformationCard = ({
             >
               <div className="size-44 bg-primary/15 rounded-full p-4 flex items-center justify-center">
                 <img
-                  src="/device-icon.svg"
+                  src="/device-icon.png"
                   alt={data.device.model ? `${data.device.model} modem` : "Modem"}
                   className="size-full drop-shadow-md object-contain"
                 />

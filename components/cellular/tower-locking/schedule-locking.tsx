@@ -214,7 +214,7 @@ const ScheduleTowerLockingComponent = ({
             <legend className="font-semibold text-muted-foreground text-sm">
               Repeat On
             </legend>
-            <div className="flex flex-wrap gap-2" role="group" aria-label="Days of the week">
+            <div className="flex flex-wrap gap-2 mt-2" role="group" aria-label="Days of the week">
               {DAY_LABELS.map((day, index) => (
                 <Toggle
                   aria-label={day}

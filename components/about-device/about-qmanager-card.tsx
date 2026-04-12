@@ -62,9 +62,11 @@ const AboutQManagerCard = ({ data, isLoading }: AboutQManagerCardProps) => {
               technical settings for advanced users with a simplified UI for
               those just getting started. QManager promises to deliver the same
               features QuecManager had, only better, more reliable, and more
-              user-friendly. Special thanks to iamromulan, clndwhr, and Wutang
-              Clan! If you like this project, any kind of support is much
-              appreciated. Thanks!
+              user-friendly. Special thanks to{" "}
+              <span className="text-blue-500">iamromulan</span>,{" "}
+              <span className="text-blue-500">clndwhr</span>, and{" "}
+              <span className="text-blue-500">Wutang Clan</span>! If you like
+              this project, any kind of support is much appreciated. Thanks! 💙
             </p>
 
             {/* All rights reserved */}

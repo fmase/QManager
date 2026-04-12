@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import { useState } from "react";
 import { motion } from "motion/react";
 import { containerVariants, itemVariants } from "@/lib/motion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,7 +10,6 @@ import { Button } from "@/components/ui/button";
 import { Eye, EyeOff } from "lucide-react";
 
 import type { DeviceStatus } from "@/types/modem-status";
-
 
 interface DeviceStatusComponentProps {
   data: DeviceStatus | null;
@@ -24,7 +23,6 @@ const DeviceStatusComponent = ({
   const [hidePrivate, setHidePrivate] = useState(false);
 
   const rows = [
-    { label: "Manufacturer", value: data?.manufacturer || "-" },
     { label: "Firmware Version", value: data?.firmware || "-" },
     { label: "Build Date", value: data?.build_date || "-" },
     {
@@ -47,6 +45,11 @@ const DeviceStatusComponent = ({
       mono: true,
     },
     { label: "Active MIMO", value: data?.mimo || "-", mono: true },
+    {
+      label: "QManager Version",
+      value: data?.qmanager_version || "-",
+      mono: true,
+    },
   ];
 
   if (isLoading) {
@@ -91,7 +94,7 @@ const DeviceStatusComponent = ({
           <div className="flex items-center justify-center mb-8">
             <div className="size-44 bg-primary/15 rounded-full p-4 flex items-center justify-center">
               <img
-                src="/device-icon.svg"
+                src="/device-icon.png"
                 alt="Device Icon"
                 className="size-full drop-shadow-md object-contain"
               />
@@ -122,7 +125,11 @@ const DeviceStatusComponent = ({
               animate="visible"
             >
               {rows.map((row) => (
-                <motion.div key={row.label} variants={itemVariants} className="flex items-center justify-between py-2">
+                <motion.div
+                  key={row.label}
+                  variants={itemVariants}
+                  className="flex items-center justify-between py-2"
+                >
                   <dt className="font-semibold text-muted-foreground xl:text-base text-sm">
                     {row.label}
                   </dt>

@@ -385,7 +385,7 @@ const ScheduledOperationsCard = ({
               Repeat On
             </legend>
             <div
-              className="flex flex-wrap gap-2"
+              className="flex flex-wrap gap-2 mt-2"
               role="group"
               aria-label="Reboot days of the week"
             >
@@ -486,7 +486,7 @@ const ScheduledOperationsCard = ({
               Repeat On
             </legend>
             <div
-              className="flex flex-wrap gap-2"
+              className="flex flex-wrap gap-2 mt-2"
               role="group"
               aria-label="Low power mode days of the week"
             >
