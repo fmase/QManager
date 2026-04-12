@@ -607,14 +607,44 @@ install_packages() {
 stop_services() {
     step "Stopping QManager services"
 
-    # Step 1: Pause watchcat for the entire install window
+    # Step 1: Pause watchcat for the entire install window.
+    # Note: the lock file mechanism was added in v0.1.15 — any pre-v0.1.15
+    # watchcat binary on disk will ignore this file. That's why step 2 uses
+    # init.d stop (to disable procd respawn) instead of relying on the lock.
     touch "$WATCHCAT_LOCK" 2>/dev/null || true
     info "Watchcat locked for install window"
 
-    # Step 2: Hard-kill watchcat (defense in depth — bypasses trap handler)
+    # Step 2: Stop watchcat FIRST via init.d so procd marks it stopped and
+    # won't respawn it mid-install. Critical on upgrade paths where the
+    # currently-running watchcat may be an older version that doesn't honour
+    # the maintenance lock file — a respawned old-version instance can
+    # observe the install disruption, fail its connectivity checks, and
+    # escalate to Tier 4 (system reboot) before we've finished installing.
+    if [ -x "$INITD_DIR/qmanager_watchcat" ]; then
+        "$INITD_DIR/qmanager_watchcat" stop 2>>"$LOG_FILE" || true
+    fi
     killall -9 qmanager_watchcat 2>/dev/null || true
+    # Re-assert the lock in case an older init.d stop_service() hook
+    # (pre-v0.1.15) removed /tmp/qmanager_watchcat.lock on the way out.
+    touch "$WATCHCAT_LOCK" 2>/dev/null || true
 
-    # Step 3a: SIGTERM all qmanager_* daemons + known orphan processes
+    # Step 3: Stop every other qmanager* init.d service BEFORE killall'ing
+    # daemons. procd-managed services (poller, ping, dpi, tower_failover,
+    # bandwidth, etc.) would otherwise be respawned by procd after we kill
+    # them, opening the same race window as watchcat. Running init.d stop
+    # first tells procd the service should be stopped — it won't respawn.
+    if [ -d "$INITD_DIR" ]; then
+        for svc in "$INITD_DIR"/qmanager*; do
+            [ -x "$svc" ] || continue
+            # Watchcat was already stopped in step 2
+            [ "$(basename "$svc")" = "qmanager_watchcat" ] && continue
+            "$svc" stop 2>>"$LOG_FILE" || true
+        done
+        info "Stopped all init.d services"
+    fi
+
+    # Step 4: SIGTERM any qmanager_* daemons that slipped past init.d stop
+    # (e.g. non-procd one-shot scripts, or processes that ignored SIGTERM).
     if [ -d "$BIN_DIR" ]; then
         for f in "$BIN_DIR"/qmanager_*; do
             [ -f "$f" ] || continue
@@ -628,7 +658,7 @@ stop_services() {
     # Brief drain so daemons can flush state files via their EXIT traps
     sleep 1
 
-    # Step 3b: SIGKILL stragglers — anything still alive after the drain
+    # Step 5: SIGKILL stragglers — anything still alive after the drain
     if [ -d "$BIN_DIR" ]; then
         for f in "$BIN_DIR"/qmanager_*; do
             [ -f "$f" ] || continue
@@ -638,15 +668,6 @@ stop_services() {
     for p in bridge_traffic_monitor_rm551 websocat nfqws; do
         killall -9 "$p" 2>/dev/null || true
     done
-
-    # Step 4: init.d stop for cleanup (now fast — daemons already dead)
-    if [ -d "$INITD_DIR" ]; then
-        for svc in "$INITD_DIR"/qmanager*; do
-            [ -x "$svc" ] || continue
-            "$svc" stop 2>>"$LOG_FILE" || true
-        done
-        info "Stopped all init.d services"
-    fi
 
     info "All services stopped"
 }

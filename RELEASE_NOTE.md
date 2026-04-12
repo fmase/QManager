@@ -6,6 +6,13 @@
 
 ## ✨ Improvements
 
+### Typography — Switched to Manrope
+
+- **Euclid Circular B replaced with Manrope** across the entire frontend. The app now ships a single Google Fonts–sourced typeface (self-hosted at build time by `next/font/google`, so the device still needs zero internet at runtime) instead of six local `.woff2` weights for Euclid.
+- **~200 KB smaller frontend tarball** — the `qmanager-build` output dropped from **~6.5 MB → ~6.3 MB**. Manrope's variable-font pipeline is more aggressively subsetted and compressed than the fixed Euclid weights we were shipping, and we're no longer bundling the italic cut we barely used.
+- **Visual parity** — Manrope is still a clean geometric sans in the same family as the previous design language (Vercel/Linear-adjacent), so no UI component needed tuning. Line heights, weights, and tracking all carry over.
+- **Reversible** — the Euclid local-font block is left commented out in `app/layout.tsx` so we can flip back without re-adding the imports if we decide to revisit the decision.
+
 ### About Device — Correct LAN Info
 
 - **"LAN Gateway" replaced with "LAN Subnet"** — The About page previously read LAN info from the modem via `AT+QMAP="LANIP"`, which reports the modem's internal USB/RNDIS pass-through subnet (default 192.168.224.x), not your actual OpenWRT LAN. Changing your LuCI LAN IP never updated the About page because those are two completely different networks.
@@ -21,6 +28,7 @@ Path: About Device (`/about-device`)
 - **Single source of truth** — new `components/auth/password-requirements.tsx` exports both the `PasswordRequirements` component and an `isPasswordValid()` helper. Both frontend call sites use `isPasswordValid()` for their submit validators instead of duplicating regex checks inline. Future rule tweaks (e.g., adding a symbol requirement) change one file.
 - **Backend parity** — `auth/login.sh` and `auth/password.sh` enforce the same rules server-side using POSIX `grep` character classes as defense-in-depth. Error code renamed from `password_too_short` to `password_weak` with the consolidated message `"Password must be at least 5 characters and include uppercase, lowercase, and a number"`.
 - **Existing passwords still work** — the new rules only gate password *creation* (setup + change). Users with longer but weaker existing passwords (e.g., all lowercase) can still log in; they just can't pick one like that going forward.
+- **Onboarding Continue button is now gated on validity** — during first-time setup, the "Continue" button on the password step stays disabled until every requirement in the live checklist is green *and* the confirmation field matches. No more clicking Continue only to hit a toast error; the button itself tells you you're not ready yet. The step reports its validity up to the wizard via an `onValidityChange` callback, which flows into the shell's existing `continueDisabled` prop.
 
 Paths: Onboarding (first-time setup), System Settings → Change Password dialog
 
@@ -61,6 +69,12 @@ All three scripts have been redesigned from the ground up to be filesystem-drive
 - **Environment-variable control** — `QMANAGER_CHANNEL` environment variable is respected as a default, matching the existing `QMANAGER_TAG` and `QMANAGER_REPO` overrides.
 
 ## 🐛 Bug Fixes
+
+### `install.sh` Silently Exited After Removing Conflicts (Critical)
+
+- **Root cause** — `remove_conflicts()` ended with `[ "$any" = "0" ] && info "No conflicting packages found"`. When a conflict *was* removed (`any=1`), that trailing expression evaluated to false, making the function return 1. Combined with `set -e` at the top of `install.sh`, the installer exited silently the moment any conflict was successfully removed — right after printing "Removed: socat". No error, no hang, no log line. Upgrades from v0.1.13 (which had `sms-tool`/`socat-at-bridge`/`socat` installed) hit this every single time.
+- **Symptom** — Terminal installs died at step 2 with no error. OTA installs failed the same way but the UI could only say "check update.log" — and update.log just contained the same truncated output pointing back at itself.
+- **Fix** — Added an explicit `return 0` at the end of `remove_conflicts()`. Audited every other function in `install.sh` for the same `&&`-at-end pattern; none found.
 
 ### Install Corrupted `atcli_smd11` / `sms_tool` Binaries (Critical)
 
