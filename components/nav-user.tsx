@@ -17,11 +17,7 @@ import { useTheme } from "next-themes";
 import { logout } from "@/hooks/use-auth";
 import { authFetch } from "@/lib/auth-fetch";
 
-import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-} from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -57,6 +53,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { ChangePasswordDialog } from "@/components/auth/change-password-dialog";
+import { AnimatedThemeToggler } from "./ui/animated-theme-toggler";
 
 export function NavUser({
   user,
@@ -161,7 +158,7 @@ export function NavUser({
 
     // Fire-and-forget: send the reboot POST, don't await the response.
     fetch("/cgi-bin/quecmanager/system/reboot.sh", { method: "POST" }).catch(
-      () => {}
+      () => {},
     );
 
     // Clear session and redirect to countdown page.
@@ -251,20 +248,12 @@ export function NavUser({
                   <Pencil />
                   Change Display Name
                 </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => setPasswordDialogOpen(true)}
-                >
+                <DropdownMenuItem onClick={() => setPasswordDialogOpen(true)}>
                   <KeyRound />
                   Change Password
                 </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() =>
-                    setTheme(theme === "dark" ? "light" : "dark")
-                  }
-                >
-                  <Sun className="dark:hidden" />
-                  <Moon className="hidden dark:block" />
-                  Toggle Theme
+                <DropdownMenuItem>
+                  <AnimatedThemeToggler />
                 </DropdownMenuItem>
               </DropdownMenuGroup>
               <DropdownMenuSeparator />
@@ -308,15 +297,16 @@ export function NavUser({
             />
           </div>
           <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setNameDialogOpen(false)}
-            >
+            <Button variant="outline" onClick={() => setNameDialogOpen(false)}>
               Cancel
             </Button>
             <Button
               onClick={handleNameSave}
-              disabled={!nameInput.trim() || nameInput.trim() === displayName || savingName}
+              disabled={
+                !nameInput.trim() ||
+                nameInput.trim() === displayName ||
+                savingName
+              }
             >
               {savingName ? (
                 <>
@@ -336,9 +326,12 @@ export function NavUser({
         onOpenChange={setPasswordDialogOpen}
       />
 
-      <AlertDialog open={rebootDialogOpen} onOpenChange={(open) => {
-        if (!rebooting) setRebootDialogOpen(open);
-      }}>
+      <AlertDialog
+        open={rebootDialogOpen}
+        onOpenChange={(open) => {
+          if (!rebooting) setRebootDialogOpen(open);
+        }}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Reboot Device</AlertDialogTitle>
@@ -349,9 +342,7 @@ export function NavUser({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={rebooting}>
-              Not Now
-            </AlertDialogCancel>
+            <AlertDialogCancel disabled={rebooting}>Not Now</AlertDialogCancel>
             <AlertDialogAction
               variant="destructive"
               disabled={rebooting}

@@ -21,6 +21,7 @@ cgi_read_post
 
 _current=$(printf '%s' "$POST_DATA" | jq -r '.current_password // empty')
 _new=$(printf '%s' "$POST_DATA" | jq -r '.new_password // empty')
+_enforce_strong=$(printf '%s' "$POST_DATA" | jq -r '.enforce_strong // true')
 
 if [ -z "$_current" ] || [ -z "$_new" ]; then
     cgi_headers
@@ -30,17 +31,23 @@ fi
 
 # Validation rules (must match frontend and auth/login.sh exactly):
 #   - length >= 5
-#   - at least one uppercase letter
-#   - at least one lowercase letter
-#   - at least one digit
+#   - If strong password enforced: at least one uppercase, lowercase, digit
 _pw_len=$(printf '%s' "$_new" | wc -c)
-if [ "$_pw_len" -lt 5 ] \
-   || ! printf '%s' "$_new" | grep -q '[A-Z]' \
-   || ! printf '%s' "$_new" | grep -q '[a-z]' \
-   || ! printf '%s' "$_new" | grep -q '[0-9]'; then
-    cgi_headers
-    cgi_error "password_weak" "New password must be at least 5 characters and include uppercase, lowercase, and a number"
-    exit 0
+if [ "$_enforce_strong" = "false" ]; then
+    if [ "$_pw_len" -lt 5 ]; then
+        cgi_headers
+        cgi_error "password_weak" "New password must be at least 5 characters"
+        exit 0
+    fi
+else
+    if [ "$_pw_len" -lt 5 ] \
+       || ! printf '%s' "$_new" | grep -q '[A-Z]' \
+       || ! printf '%s' "$_new" | grep -q '[a-z]' \
+       || ! printf '%s' "$_new" | grep -q '[0-9]'; then
+        cgi_headers
+        cgi_error "password_weak" "New password must be at least 5 characters and include uppercase, lowercase, and a number"
+        exit 0
+    fi
 fi
 
 if ! qm_verify_password "$_current"; then

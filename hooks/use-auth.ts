@@ -83,13 +83,14 @@ export function useLogin() {
   const setup = useCallback(
     async (
       password: string,
-      confirm: string
+      confirm: string,
+      enforceStrong: boolean = true
     ): Promise<{ success: boolean; error?: string }> => {
       try {
         const resp = await fetch(LOGIN_ENDPOINT, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ password, confirm }),
+          body: JSON.stringify({ password, confirm, enforce_strong: enforceStrong }),
         });
         const data = await resp.json();
 
@@ -123,13 +124,14 @@ export function useLogin() {
  */
 export async function setupPassword(
   password: string,
-  confirm: string
+  confirm: string,
+  enforceStrong: boolean = true
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const resp = await fetch(LOGIN_ENDPOINT, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ password, confirm }),
+      body: JSON.stringify({ password, confirm, enforce_strong: enforceStrong }),
     });
     const data = await resp.json();
 
@@ -163,7 +165,8 @@ export async function logout(): Promise<void> {
 
 export async function changePassword(
   current: string,
-  newPassword: string
+  newPassword: string,
+  enforceStrong: boolean = true
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const resp = await fetch(PASSWORD_ENDPOINT, {
@@ -172,6 +175,7 @@ export async function changePassword(
       body: JSON.stringify({
         current_password: current,
         new_password: newPassword,
+        enforce_strong: enforceStrong,
       }),
     });
     const data = await resp.json();

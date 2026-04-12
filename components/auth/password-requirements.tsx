@@ -27,26 +27,31 @@ const RULES: Rule[] = [
 ];
 
 /** Returns true when the password satisfies every rule shown in the checklist. */
-export function isPasswordValid(pw: string): boolean {
+export function isPasswordValid(pw: string, enforceStrong: boolean = true): boolean {
+  if (!enforceStrong) return pw.length >= 5;
   return RULES.every((r) => r.test(pw));
 }
 
 export function PasswordRequirements({
   password,
+  enforceStrong = true,
   className,
   id,
 }: {
   password: string;
+  enforceStrong?: boolean;
   className?: string;
   id?: string;
 }) {
+  const activeRules = enforceStrong ? RULES : RULES.filter((r) => r.key === "length");
+
   return (
     <ul
       id={id}
       className={cn("flex flex-col gap-1 text-xs", className)}
       aria-label="Password requirements"
     >
-      {RULES.map((rule) => {
+      {activeRules.map((rule) => {
         const met = rule.test(password);
         return (
           <li key={rule.key} className="flex items-center gap-2">

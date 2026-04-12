@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Field, FieldDescription, FieldGroup, FieldLabel, FieldError } from "@/components/ui/field";
 import { PasswordRequirements, isPasswordValid } from "@/components/auth/password-requirements";
+import { StrongPasswordToggle } from "@/components/auth/strong-password-toggle";
 import { cn } from "@/lib/utils";
 
 // =============================================================================
@@ -58,11 +59,12 @@ export function StepPassword({ onSuccess, onLoadingChange, onSubmitRef, onValidi
   const [confirm, setConfirm] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [useStrongPassword, setUseStrongPassword] = useState(true);
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const strength = getStrength(password);
-  const canContinue = isPasswordValid(password) && confirm.length > 0 && password === confirm;
+  const canContinue = isPasswordValid(password, useStrongPassword) && confirm.length > 0 && password === confirm;
 
   useEffect(() => {
     onValidityChange(canContinue);
@@ -73,9 +75,11 @@ export function StepPassword({ onSuccess, onLoadingChange, onSubmitRef, onValidi
 
     // Single source of truth for rules: components/auth/password-requirements.tsx.
     // Server-side copy lives in scripts/www/cgi-bin/quecmanager/auth/login.sh.
-    if (!isPasswordValid(password)) {
+    if (!isPasswordValid(password, useStrongPassword)) {
       setError(
-        "Password must be at least 5 characters and include uppercase, lowercase, and a number."
+        useStrongPassword
+          ? "Password must be at least 5 characters and include uppercase, lowercase, and a number."
+          : "Password must be at least 5 characters."
       );
       return;
     }
@@ -87,7 +91,7 @@ export function StepPassword({ onSuccess, onLoadingChange, onSubmitRef, onValidi
     setIsSubmitting(true);
     onLoadingChange(true);
     try {
-      const result = await setupPassword(password, confirm);
+      const result = await setupPassword(password, confirm, useStrongPassword);
       if (result.success) {
         const name = displayName.trim();
         if (name) {
@@ -110,7 +114,7 @@ export function StepPassword({ onSuccess, onLoadingChange, onSubmitRef, onValidi
       setIsSubmitting(false);
       onLoadingChange(false);
     }
-  }, [displayName, password, confirm, onSuccess, onLoadingChange]);
+  }, [displayName, password, confirm, useStrongPassword, onSuccess, onLoadingChange]);
 
   useEffect(() => {
     onSubmitRef(handleSubmit);
@@ -215,7 +219,7 @@ export function StepPassword({ onSuccess, onLoadingChange, onSubmitRef, onValidi
               )}
             </AnimatePresence>
 
-            <PasswordRequirements password={password} id="onboard-password-reqs" className="pt-1" />
+            <PasswordRequirements password={password} enforceStrong={useStrongPassword} id="onboard-password-reqs" className="pt-1" />
           </Field>
 
           <Field>
@@ -257,6 +261,13 @@ export function StepPassword({ onSuccess, onLoadingChange, onSubmitRef, onValidi
               </p>
             )}
           </Field>
+
+          <StrongPasswordToggle
+            id="onboard-strong-password"
+            checked={useStrongPassword}
+            onCheckedChange={setUseStrongPassword}
+            disabled={isSubmitting}
+          />
 
           {error && <FieldError>{error}</FieldError>}
         </FieldGroup>
