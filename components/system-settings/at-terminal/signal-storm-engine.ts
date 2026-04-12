@@ -126,6 +126,14 @@ export class SignalStormEngine {
   private bossDefeatFlash = 0;
   private shakeUntil = 0;
   private shakeMagnitude = 0;
+  private pauseOverlayStartTime = 0;
+
+  private onWindowBlur = () => {
+    if (this.gameState === "PLAYING") {
+      this.gameState = "PAUSED";
+      this.pauseOverlayStartTime = performance.now();
+    }
+  };
 
   private score = 0;
   private highScore = 0;
@@ -162,6 +170,8 @@ export class SignalStormEngine {
     this.initStars();
     this.initPlayer();
     this.sprites = preRenderAllSprites(this.palette);
+
+    window.addEventListener("blur", this.onWindowBlur);
   }
 
   // ─── Public API ─────────────────────────────────────────────────────────────
@@ -177,6 +187,17 @@ export class SignalStormEngine {
     // Mute toggle
     if (key === "m" || key === "M") {
       this.audio.toggleMute();
+      return;
+    }
+
+    // Pause toggle
+    if (key === "p" || key === "P") {
+      if (this.gameState === "PLAYING") {
+        this.gameState = "PAUSED";
+        this.pauseOverlayStartTime = performance.now();
+      } else if (this.gameState === "PAUSED") {
+        this.gameState = "PLAYING";
+      }
       return;
     }
 
@@ -246,6 +267,10 @@ export class SignalStormEngine {
   // ─── Update ──────────────────────────────────────────────────────────────────
 
   private update(timestamp: number): void {
+    if (this.gameState === "PAUSED") {
+      return;
+    }
+
     if (this.lastTime === 0) {
       this.lastTime = timestamp;
     }
@@ -261,25 +286,28 @@ export class SignalStormEngine {
     }
 
     // ── Player movement ──
+    const frozen = timestamp < this.player.respawnFreezeUntil;
     const isRapid = timestamp < this.player.rapidFireUntil;
     const isSpread = timestamp < this.player.spreadShotUntil;
 
-    if (this.keys.has("ArrowLeft") || this.keys.has("a")) {
-      this.player.x -= this.player.speed * dt;
-    }
-    if (this.keys.has("ArrowRight") || this.keys.has("d")) {
-      this.player.x += this.player.speed * dt;
-    }
-    this.player.x = Math.max(0, Math.min(this.player.x, this.width - PLAYER_W));
+    if (!frozen) {
+      if (this.keys.has("ArrowLeft") || this.keys.has("a")) {
+        this.player.x -= this.player.speed * dt;
+      }
+      if (this.keys.has("ArrowRight") || this.keys.has("d")) {
+        this.player.x += this.player.speed * dt;
+      }
+      this.player.x = Math.max(0, Math.min(this.player.x, this.width - PLAYER_W));
 
-    // ── Shooting ──
-    const cooldown = isRapid ? RAPID_FIRE_COOLDOWN : PLAYER_SHOOT_COOLDOWN;
-    if (
-      this.keys.has(" ") &&
-      timestamp - this.player.lastShot >= cooldown
-    ) {
-      this.player.lastShot = timestamp;
-      this.firePlayerBeams(isSpread);
+      // ── Shooting ──
+      const cooldown = isRapid ? RAPID_FIRE_COOLDOWN : PLAYER_SHOOT_COOLDOWN;
+      if (
+        this.keys.has(" ") &&
+        timestamp - this.player.lastShot >= cooldown
+      ) {
+        this.player.lastShot = timestamp;
+        this.firePlayerBeams(isSpread);
+      }
     }
 
     // ── Move player beams ──
@@ -365,40 +393,22 @@ export class SignalStormEngine {
     // ── Collision: enemies vs player ──
     for (const e of this.enemies) {
       if (!e.active) continue;
+      if (timestamp < this.player.invincibleUntil) continue;
       if (this.collides(e, this.player)) {
-        if (this.player.hasShield) {
-          this.player.hasShield = false;
-          this.audio.playShieldBreak();
-          e.active = false;
-          this.spawnParticles(
-            e.x + e.width / 2,
-            e.y + e.height / 2,
-            this.palette.shield
-          );
-        } else {
-          this.triggerGameOver();
-          return;
-        }
+        // Enemy is destroyed on contact (shield or not)
+        e.active = false;
+        this.spawnParticles(e.x + e.width / 2, e.y + e.height / 2, this.palette.shield);
+        if (!this.handlePlayerHit(timestamp)) return;
       }
     }
 
     // ── Collision: enemy beams vs player ──
     for (const eb of this.enemyBeams) {
       if (!eb.active) continue;
+      if (timestamp < this.player.invincibleUntil) continue;
       if (this.collides(eb, this.player)) {
         eb.active = false;
-        if (this.player.hasShield) {
-          this.player.hasShield = false;
-          this.audio.playShieldBreak();
-          this.spawnParticles(
-            this.player.x + PLAYER_W / 2,
-            this.player.y + PLAYER_H / 2,
-            this.palette.shield
-          );
-        } else {
-          this.triggerGameOver();
-          return;
-        }
+        if (!this.handlePlayerHit(timestamp)) return;
       }
     }
 
@@ -485,18 +495,8 @@ export class SignalStormEngine {
       }
 
       // ── Boss body vs player ──
-      if (this.boss && this.collides(this.boss, this.player)) {
-        if (this.player.hasShield) {
-          this.player.hasShield = false;
-          this.spawnParticles(
-            this.player.x + PLAYER_W / 2,
-            this.player.y + PLAYER_H / 2,
-            this.palette.shield
-          );
-        } else {
-          this.triggerGameOver();
-          return;
-        }
+      if (this.boss && timestamp >= this.player.invincibleUntil && this.collides(this.boss, this.player)) {
+        if (!this.handlePlayerHit(timestamp)) return;
       }
     }
 
@@ -705,6 +705,8 @@ export class SignalStormEngine {
     // Flash text
     this.bossDefeatFlash = 2.5;
 
+    this.triggerShake(6, 400, performance.now());
+
     this.boss = null;
     this.audio.startMusic("normal");
   }
@@ -727,6 +729,40 @@ export class SignalStormEngine {
     }
   }
 
+  private handlePlayerHit(timestamp: number): boolean {
+    // Check shield first
+    if (this.player.hasShield) {
+      this.player.hasShield = false;
+      this.audio.playShieldBreak();
+      this.spawnParticles(
+        this.player.x + PLAYER_W / 2,
+        this.player.y + PLAYER_H / 2,
+        this.palette.shield,
+      );
+      return true;
+    }
+
+    // Check i-frames
+    if (timestamp < this.player.invincibleUntil) {
+      return true;
+    }
+
+    this.player.lives -= 1;
+
+    if (this.player.lives <= 0) {
+      this.triggerGameOver();
+      return false;
+    }
+
+    // Respawn
+    this.audio.playPlayerHit();
+    this.spawnParticles(this.player.x + PLAYER_W / 2, this.player.y + PLAYER_H / 2, this.palette.enemy);
+    this.triggerShake(3, 150, timestamp);
+    this.player.respawnFreezeUntil = timestamp + 800;
+    this.player.invincibleUntil = timestamp + 2800; // 800ms freeze + 2000ms active i-frames
+    return true;
+  }
+
   private triggerGameOver(): void {
     this.gameState = "GAME_OVER";
     this.audio.stopMusic();
@@ -746,10 +782,21 @@ export class SignalStormEngine {
 
   private render(): void {
     const { ctx, width, height } = this;
+    const now = performance.now();
 
     // 1. Background
     ctx.fillStyle = this.palette.background;
     ctx.fillRect(0, 0, width, height);
+
+    // ── Shake transform: wraps all playfield content (not HUD) ──
+    ctx.save();
+    if (now < this.shakeUntil) {
+      const sx = (Math.random() - 0.5) * 2 * this.shakeMagnitude;
+      const sy = (Math.random() - 0.5) * 2 * this.shakeMagnitude;
+      ctx.translate(sx, sy);
+    } else {
+      this.shakeMagnitude = 0;
+    }
 
     // 2. Stars
     for (const s of this.stars) {
@@ -759,7 +806,7 @@ export class SignalStormEngine {
     }
     ctx.globalAlpha = 1;
 
-    if (this.gameState === "PLAYING") {
+    if (this.gameState === "PLAYING" || this.gameState === "PAUSED") {
       // 3. Shield glow around player
       if (this.player.hasShield) {
         ctx.globalAlpha = 0.35;
@@ -834,9 +881,16 @@ export class SignalStormEngine {
     }
     ctx.globalAlpha = 1;
 
-    if (this.gameState === "PLAYING") {
+    // ── End shake transform ──
+    ctx.restore();
+
+    // HUD and overlays are outside shake so they never jitter
+    if (this.gameState === "PLAYING" || this.gameState === "PAUSED") {
       // 10. HUD
       this.drawHUD();
+
+      // 10b. Lives HUD
+      this.drawLivesHud();
 
       // 11. Power-up indicators
       this.drawPowerUpIndicators();
@@ -859,17 +913,58 @@ export class SignalStormEngine {
         ctx.fillText("BOSS DEFEATED", width / 2, height / 2 - 40);
         ctx.globalAlpha = 1;
       }
+
+      // 14. Mute indicator
+      if (this.audio.isMuted()) {
+        ctx.save();
+        ctx.fillStyle = this.palette.textMuted;
+        ctx.font = "10px monospace";
+        ctx.textAlign = "right";
+        ctx.textBaseline = "top";
+        ctx.fillText("MUTED", width - 12, 12);
+        ctx.restore();
+      }
     }
 
-    // 14. Game over overlay
+    // 15. Game over overlay
     if (this.gameState === "GAME_OVER") {
       this.drawGameOver();
+    }
+
+    // 16. Pause overlay
+    if (this.gameState === "PAUSED") {
+      const fadeT = Math.min(1, (now - this.pauseOverlayStartTime) / 1000);
+      ctx.save();
+      ctx.globalAlpha = 0.6 * fadeT;
+      ctx.fillStyle = "#000000";
+      ctx.fillRect(0, 0, width, height);
+      ctx.globalAlpha = fadeT;
+      ctx.fillStyle = this.palette.text;
+      ctx.font = "bold 32px monospace";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText("PAUSED", width / 2, height / 2 - 10);
+      ctx.fillStyle = this.palette.textMuted;
+      ctx.font = "14px monospace";
+      ctx.fillText("Press P to resume", width / 2, height / 2 + 24);
+      ctx.restore();
     }
   }
 
   private drawPlayer(): void {
     const { ctx } = this;
     const { x, y } = this.player;
+    const timestamp = this.lastTime;
+
+    let playerAlpha = 1;
+    if (timestamp < this.player.respawnFreezeUntil) {
+      playerAlpha = 0.5;
+    } else if (timestamp < this.player.invincibleUntil) {
+      playerAlpha = Math.floor(timestamp / 100) % 2 === 0 ? 1.0 : 0.6;
+    }
+
+    ctx.save();
+    ctx.globalAlpha = playerAlpha;
 
     // Draw pre-rendered ship sprite
     ctx.drawImage(this.sprites.player, x, y);
@@ -879,6 +974,15 @@ export class SignalStormEngine {
     const flameX = x + PLAYER_W / 2 - flame.width / 2;
     const flameY = y + PLAYER_H - 2;
     ctx.drawImage(flame, flameX, flameY);
+
+    ctx.restore();
+  }
+
+  private drawLivesHud(): void {
+    for (let i = 0; i < 3; i++) {
+      const heart = i < this.player.lives ? this.sprites.heartFull : this.sprites.heartEmpty;
+      this.ctx.drawImage(heart, 16 + i * 22, 40);
+    }
   }
 
   private tryAwardSwarmBonus(swarmId: number): void {
@@ -1074,5 +1178,6 @@ export class SignalStormEngine {
 
   public dispose(): void {
     this.audio.dispose();
+    window.removeEventListener("blur", this.onWindowBlur);
   }
 }
