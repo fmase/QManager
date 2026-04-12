@@ -23,6 +23,8 @@ import {
   preRenderAllSprites,
 } from "./signal-storm-sprites";
 
+import { GameAudio } from "./signal-storm-audio";
+
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const PLAYER_SPEED = 200;
@@ -80,6 +82,9 @@ export class SignalStormEngine {
   private height: number;
   private palette: GamePalette;
   private callbacks: GameCallbacks;
+
+  private audio: GameAudio = new GameAudio();
+  private audioStarted = false;
 
   private keys: Set<string> = new Set();
   private gameState: GameState = "PLAYING";
@@ -140,6 +145,19 @@ export class SignalStormEngine {
   // ─── Public API ─────────────────────────────────────────────────────────────
 
   public handleKeyDown(key: string): void {
+    // Lazy audio init on first key press (requires user gesture)
+    if (!this.audioStarted) {
+      this.audioStarted = true;
+      this.audio.ensureContext();
+      this.audio.startMusic("normal");
+    }
+
+    // Mute toggle
+    if (key === "m" || key === "M") {
+      this.audio.toggleMute();
+      return;
+    }
+
     this.keys.add(key);
 
     if (this.gameState === "GAME_OVER") {
@@ -295,8 +313,10 @@ export class SignalStormEngine {
         if (this.collides(b, e)) {
           b.active = false;
           e.hp -= 1;
+          this.audio.playHit();
           if (e.hp <= 0) {
             e.active = false;
+            this.audio.playExplode();
             this.score +=
               e.type === "jammer" ? SCORE_JAMMER
                 : e.type === "swerver" ? SCORE_SWERVER
@@ -323,6 +343,7 @@ export class SignalStormEngine {
       if (this.collides(e, this.player)) {
         if (this.player.hasShield) {
           this.player.hasShield = false;
+          this.audio.playShieldBreak();
           e.active = false;
           this.spawnParticles(
             e.x + e.width / 2,
@@ -343,6 +364,7 @@ export class SignalStormEngine {
         eb.active = false;
         if (this.player.hasShield) {
           this.player.hasShield = false;
+          this.audio.playShieldBreak();
           this.spawnParticles(
             this.player.x + PLAYER_W / 2,
             this.player.y + PLAYER_H / 2,
@@ -461,6 +483,7 @@ export class SignalStormEngine {
         dy: BEAM_SPEED,
       });
     }
+    this.audio.playShoot();
   }
 
   private spawnEnemy(timestamp: number): void {
@@ -597,6 +620,7 @@ export class SignalStormEngine {
     } else if (p.type === "spread") {
       this.player.spreadShotUntil = timestamp + SPREAD_SHOT_DURATION;
     }
+    this.audio.playPowerUp();
     this.spawnParticles(
       p.x + POWERUP_W / 2,
       p.y + POWERUP_H / 2,
@@ -650,6 +674,8 @@ export class SignalStormEngine {
       flashUntil: 0,
       introBanner: null,
     };
+    this.audio.playBossIntro();
+    this.audio.startMusic("boss");
   }
 
   private updateBoss(dt: number, timestamp: number): void {
@@ -749,6 +775,7 @@ export class SignalStormEngine {
       if (this.collides(b, boss)) {
         b.active = false;
         boss.hp -= 1;
+        this.audio.playBossHit();
         // Small hit particle
         this.spawnParticles(b.x + BEAM_W / 2, b.y, this.palette.text);
         if (boss.hp <= 0) {
@@ -859,6 +886,7 @@ export class SignalStormEngine {
     this.bossDefeatFlash = 2.5;
 
     this.boss = null;
+    this.audio.startMusic("normal");
   }
 
   private updateParticles(dt: number): void {
@@ -881,6 +909,7 @@ export class SignalStormEngine {
 
   private triggerGameOver(): void {
     this.gameState = "GAME_OVER";
+    this.audio.stopMusic();
     this.isNewHighScore = false;
     if (this.score > this.highScore) {
       this.highScore = this.score;
@@ -1270,5 +1299,12 @@ export class SignalStormEngine {
     this.initPlayer();
     // Re-scatter stars
     this.initStars();
+    this.audio.startMusic("normal");
+  }
+
+  // ─── Dispose ─────────────────────────────────────────────────────────────────
+
+  public dispose(): void {
+    this.audio.dispose();
   }
 }
