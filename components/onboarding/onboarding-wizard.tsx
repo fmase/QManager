@@ -28,6 +28,7 @@ type SyncVoidFn = () => void;
 export function OnboardingWizard() {
   const [currentStep, setCurrentStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
+  const [passwordValid, setPasswordValid] = useState(false);
 
   // Each step can register a submit fn. The shell's Continue button calls it.
   const submitFnRef = useRef<AsyncVoidFn | SyncVoidFn | null>(null);
@@ -65,6 +66,7 @@ export function OnboardingWizard() {
       onBack={goBack}
       onSkip={currentStep >= 3 && currentStep <= 5 ? advance : undefined}
       isLoading={isLoading}
+      continueDisabled={currentStep === 2 && !passwordValid}
     >
       {currentStep === 1 && <StepWelcome />}
 
@@ -75,6 +77,7 @@ export function OnboardingWizard() {
           onSubmitRef={(fn) => {
             submitFnRef.current = fn;
           }}
+          onValidityChange={setPasswordValid}
         />
       )}
 

@@ -51,9 +51,10 @@ interface StepPasswordProps {
   onSuccess: () => void;
   onLoadingChange: (loading: boolean) => void;
   onSubmitRef: (fn: () => Promise<void>) => void;
+  onValidityChange: (valid: boolean) => void;
 }
 
-export function StepPassword({ onSuccess, onLoadingChange, onSubmitRef }: StepPasswordProps) {
+export function StepPassword({ onSuccess, onLoadingChange, onSubmitRef, onValidityChange }: StepPasswordProps) {
   const [displayName, setDisplayName] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -63,6 +64,11 @@ export function StepPassword({ onSuccess, onLoadingChange, onSubmitRef }: StepPa
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const strength = getStrength(password);
+  const canContinue = isPasswordValid(password) && confirm.length > 0 && password === confirm;
+
+  useEffect(() => {
+    onValidityChange(canContinue);
+  }, [canContinue, onValidityChange]);
 
   const handleSubmit = useCallback(async () => {
     setError("");
