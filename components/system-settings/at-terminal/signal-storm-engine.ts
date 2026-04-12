@@ -1,92 +1,27 @@
-export interface GamePalette {
-  player: string;
-  beam: string;
-  enemy: string;
-  jammer: string;
-  powerUp: string;
-  shield: string;
-  spread: string;
-  text: string;
-  textMuted: string;
-  background: string;
-}
+// Re-export public types so signal-storm-game.tsx import still resolves from here
+export type { GamePalette, GameCallbacks } from "./signal-storm-types";
 
-export interface GameCallbacks {
-  onExit: () => void;
-}
+import type {
+  GamePalette,
+  GameCallbacks,
+  Entity,
+  Player,
+  Beam,
+  Enemy,
+  EnemyBeam,
+  Boss,
+  PowerUp,
+  Particle,
+  Star,
+  GameState,
+  SpriteAtlas,
+} from "./signal-storm-types";
 
-// ─── Internal interfaces ──────────────────────────────────────────────────────
-
-interface Entity {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  active: boolean;
-}
-
-interface Player extends Entity {
-  speed: number;
-  shootCooldown: number;
-  lastShot: number;
-  hasShield: boolean;
-  spreadShotUntil: number;
-  rapidFireUntil: number;
-}
-
-interface Beam extends Entity {
-  dy: number;
-}
-
-interface Enemy extends Entity {
-  dy: number;
-  dx: number;
-  hp: number;
-  type: "interference" | "jammer" | "swerver";
-  lastShot: number;
-  swerveTimer: number;
-}
-
-interface EnemyBeam extends Entity {
-  dy: number;
-}
-
-interface Boss extends Entity {
-  hp: number;
-  maxHp: number;
-  tier: 1 | 2 | 3 | 4 | 5;
-  entered: boolean;
-  moveTimer: number;
-  shootTimer: number;
-  patternPhase: number;
-  targetX: number;
-  dx: number;
-}
-
-interface PowerUp extends Entity {
-  dy: number;
-  type: "rapid" | "shield" | "spread";
-}
-
-interface Particle {
-  x: number;
-  y: number;
-  dx: number;
-  dy: number;
-  life: number;
-  maxLife: number;
-  color: string;
-  size: number;
-}
-
-interface Star {
-  x: number;
-  y: number;
-  speed: number;
-  brightness: number;
-}
-
-type GameState = "PLAYING" | "GAME_OVER";
+import {
+  SWERVER_W,
+  SWERVER_H,
+  preRenderAllSprites,
+} from "./signal-storm-sprites";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -136,248 +71,6 @@ const BOSS_WAVE_INTERVAL = 5;
 const BOSS_ENTER_Y = 60; // px from top where boss stops and attacks
 
 const LS_KEY = "qm_game_highscore";
-const PIXEL_SCALE = 2; // Each sprite pixel = 2x2 canvas pixels
-
-// ─── Sprite definitions (designed at half-res, rendered at 2x) ───────────────
-// 0=transparent, 1=primary, 2=dark(0.55 opacity), 3=highlight(white overlay)
-
-// Player ship — 12x14 → 24x28 rendered
-// A sleek top-down fighter with cockpit and engine ports
-const SPRITE_PLAYER: number[][] = [
-  [0,0,0,0,0,1,1,0,0,0,0,0],
-  [0,0,0,0,1,1,1,1,0,0,0,0],
-  [0,0,0,1,1,3,3,1,1,0,0,0],
-  [0,0,0,1,1,1,1,1,1,0,0,0],
-  [0,0,1,1,1,1,1,1,1,1,0,0],
-  [0,1,1,2,1,1,1,1,2,1,1,0],
-  [1,1,2,1,1,1,1,1,1,2,1,1],
-  [1,1,1,1,1,1,1,1,1,1,1,1],
-  [1,0,1,1,1,1,1,1,1,1,0,1],
-  [1,0,0,1,1,0,0,1,1,0,0,1],
-  [0,0,0,1,1,0,0,1,1,0,0,0],
-  [0,0,0,0,1,0,0,1,0,0,0,0],
-  [0,0,0,0,1,0,0,1,0,0,0,0],
-  [0,0,0,0,3,0,0,3,0,0,0,0],
-];
-
-// Meteor / interference enemy — 10x8 → 20x16 rendered
-// An irregular rocky asteroid shape
-const SPRITE_METEOR: number[][] = [
-  [0,0,0,1,1,1,1,0,0,0],
-  [0,0,1,1,1,2,1,1,0,0],
-  [0,1,1,2,1,1,1,1,1,0],
-  [1,1,1,1,1,1,2,1,1,1],
-  [1,1,2,1,1,1,1,1,1,1],
-  [1,1,1,1,2,1,1,2,1,0],
-  [0,1,1,1,1,1,1,1,0,0],
-  [0,0,0,1,1,1,0,0,0,0],
-];
-
-// Jammer / alien ship — 14x10 → 28x20 rendered
-// A wider alien craft with angular wings and a central eye
-const SPRITE_JAMMER: number[][] = [
-  [0,0,0,0,0,1,1,1,1,0,0,0,0,0],
-  [0,0,0,0,1,1,1,1,1,1,0,0,0,0],
-  [0,0,0,1,1,1,3,3,1,1,1,0,0,0],
-  [0,0,1,1,1,1,1,1,1,1,1,1,0,0],
-  [0,1,1,2,1,1,1,1,1,1,2,1,1,0],
-  [1,1,2,1,1,1,1,1,1,1,1,2,1,1],
-  [1,1,1,1,1,1,1,1,1,1,1,1,1,1],
-  [1,0,0,1,1,0,0,0,0,1,1,0,0,1],
-  [0,0,0,0,1,0,0,0,0,1,0,0,0,0],
-  [0,0,0,0,0,1,0,0,1,0,0,0,0,0],
-];
-
-// Swerver enemy — 10x10 → 20x20 rendered
-// A diamond/dart shape that looks agile and evasive
-const SPRITE_SWERVER: number[][] = [
-  [0,0,0,0,1,1,0,0,0,0],
-  [0,0,0,1,1,1,1,0,0,0],
-  [0,0,1,1,3,3,1,1,0,0],
-  [0,1,1,1,1,1,1,1,1,0],
-  [1,1,2,1,1,1,1,2,1,1],
-  [1,1,2,1,1,1,1,2,1,1],
-  [0,1,1,1,1,1,1,1,1,0],
-  [0,0,1,1,0,0,1,1,0,0],
-  [0,0,0,1,0,0,1,0,0,0],
-  [0,0,0,0,1,1,0,0,0,0],
-];
-
-const SWERVER_W = 20;
-const SWERVER_H = 20;
-
-// Rapid-fire power-up icon — 7x7 → 14x14 rendered (lightning bolt)
-const SPRITE_PU_RAPID: number[][] = [
-  [0,0,0,1,1,0,0],
-  [0,0,1,1,0,0,0],
-  [0,1,1,1,1,0,0],
-  [0,0,0,1,1,0,0],
-  [0,0,1,1,0,0,0],
-  [0,1,1,0,0,0,0],
-  [0,0,0,0,0,0,0],
-];
-
-// Shield power-up icon — 7x7 → 14x14 rendered (shield/diamond)
-const SPRITE_PU_SHIELD: number[][] = [
-  [0,0,0,1,0,0,0],
-  [0,0,1,1,1,0,0],
-  [0,1,1,3,1,1,0],
-  [0,1,1,1,1,1,0],
-  [0,0,1,1,1,0,0],
-  [0,0,0,1,0,0,0],
-  [0,0,0,0,0,0,0],
-];
-
-// Spread-shot power-up icon — 7x7 → 14x14 rendered (triple arrows up)
-const SPRITE_PU_SPREAD: number[][] = [
-  [0,1,0,1,0,1,0],
-  [1,1,0,1,0,1,1],
-  [0,0,0,1,0,0,0],
-  [0,1,0,1,0,1,0],
-  [1,1,0,1,0,1,1],
-  [0,0,0,1,0,0,0],
-  [0,0,0,0,0,0,0],
-];
-
-// Player engine flame animation — 2 frames, 4x3 → 8x6 rendered
-const SPRITE_ENGINE_FLAME: number[][][] = [
-  [
-    [0,1,1,0],
-    [0,3,3,0],
-    [0,0,0,0],
-  ],
-  [
-    [0,3,3,0],
-    [0,1,1,0],
-    [1,3,3,1],
-  ],
-];
-
-// Boss 1 — Signal Disruptor: 20x12 → 40x24. Amber jammer color.
-// A wide dish-shaped cruiser with a central cannon and flanking antenna pods.
-const SPRITE_BOSS1: number[][] = [
-  [0,0,0,0,0,0,0,0,1,1,1,1,0,0,0,0,0,0,0,0],
-  [0,0,0,0,0,0,0,1,1,1,1,1,1,0,0,0,0,0,0,0],
-  [0,0,0,0,0,0,1,1,1,3,3,1,1,1,0,0,0,0,0,0],
-  [0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0],
-  [0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0],
-  [0,0,0,1,1,2,1,1,1,1,1,1,1,1,2,1,1,0,0,0],
-  [0,0,1,1,2,1,1,1,1,1,1,1,1,1,1,2,1,1,0,0],
-  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
-  [1,1,2,1,1,1,1,1,2,1,1,2,1,1,1,1,1,2,1,1],
-  [1,0,0,1,1,1,1,0,0,1,1,0,0,1,1,1,1,0,0,1],
-  [0,0,0,0,1,1,0,0,0,1,1,0,0,0,1,1,0,0,0,0],
-  [0,0,0,0,0,0,0,0,0,3,3,0,0,0,0,0,0,0,0,0],
-];
-
-// Boss 2 — Frequency Jammer: 18x14 → 36x28. Red enemy color.
-// Aggressive wedge ship with swept wings and multi-barrel nose.
-const SPRITE_BOSS2: number[][] = [
-  [0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0],
-  [0,0,0,0,0,0,0,1,1,1,1,0,0,0,0,0,0,0],
-  [0,0,0,0,0,0,1,1,3,3,1,1,0,0,0,0,0,0],
-  [0,0,0,0,0,1,1,1,1,1,1,1,1,0,0,0,0,0],
-  [0,0,0,0,1,1,1,1,1,1,1,1,1,1,0,0,0,0],
-  [0,0,0,1,1,1,2,1,1,1,1,1,2,1,1,1,0,0],
-  [0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0],
-  [0,1,1,2,1,1,1,1,1,1,1,1,1,1,1,2,1,1],
-  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
-  [1,1,2,1,1,1,1,2,1,1,1,1,2,1,1,1,2,1],
-  [1,0,0,1,1,1,0,0,1,1,1,1,0,0,1,1,0,1],
-  [0,0,0,0,1,1,0,0,1,1,1,1,0,0,1,1,0,0],
-  [0,0,0,0,0,0,0,0,3,0,0,3,0,0,0,0,0,0],
-  [0,0,0,0,0,0,0,0,3,0,0,3,0,0,0,0,0,0],
-];
-
-// Boss 3 — Band Blocker: 24x10 → 48x20. Purple powerUp color.
-// Ultra-wide blockade station with heavy armor and multiple emitter ports.
-const SPRITE_BOSS3: number[][] = [
-  [0,0,0,0,0,0,0,0,0,0,1,1,1,1,0,0,0,0,0,0,0,0,0,0],
-  [0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0],
-  [0,0,0,0,0,0,0,0,1,1,3,1,1,3,1,1,0,0,0,0,0,0,0,0],
-  [0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0],
-  [0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0],
-  [0,1,1,1,2,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,2,1,1,0],
-  [1,1,1,1,1,1,2,1,1,1,1,1,1,1,1,1,1,1,2,1,1,1,1,1],
-  [1,1,2,1,1,1,1,1,1,2,1,1,1,1,2,1,1,1,1,1,1,1,2,1],
-  [1,0,0,1,1,0,0,1,1,0,0,1,1,0,0,1,1,0,0,1,1,0,0,1],
-  [0,0,0,0,0,0,0,0,0,0,0,3,3,0,0,0,0,0,0,0,0,0,0,0],
-];
-
-// Boss 4 — Network Nullifier: 16x14 → 32x28. Orange spread color.
-// Fast angular interceptor with a sharp nose and precision targeting array.
-const SPRITE_BOSS4: number[][] = [
-  [0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0],
-  [0,0,0,0,0,0,1,1,1,1,0,0,0,0,0,0],
-  [0,0,0,0,0,1,1,3,3,1,1,0,0,0,0,0],
-  [0,0,0,0,1,1,1,1,1,1,1,1,0,0,0,0],
-  [0,0,0,1,1,1,1,1,1,1,1,1,1,0,0,0],
-  [0,0,1,1,2,1,1,1,1,1,1,2,1,1,0,0],
-  [0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0],
-  [1,1,2,1,1,1,1,1,1,1,1,1,1,2,1,1],
-  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
-  [1,1,2,1,1,2,1,1,1,1,2,1,1,2,1,1],
-  [1,0,0,1,0,0,1,1,1,1,0,0,1,0,0,1],
-  [0,0,0,0,0,0,1,1,1,1,0,0,0,0,0,0],
-  [0,0,0,0,0,0,0,3,3,0,0,0,0,0,0,0],
-  [0,0,0,0,0,0,0,3,3,0,0,0,0,0,0,0],
-];
-
-// Boss 5 — Core Corruptor: 22x16 → 44x32. Red enemy color, complex multi-part.
-// The ultimate threat: a massive capital ship with a rotating core and heavy weapons.
-const SPRITE_BOSS5: number[][] = [
-  [0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0],
-  [0,0,0,0,0,0,0,0,0,1,1,1,1,0,0,0,0,0,0,0,0,0],
-  [0,0,0,0,0,0,0,0,1,1,3,3,1,1,0,0,0,0,0,0,0,0],
-  [0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0],
-  [0,0,0,0,0,0,1,1,1,3,1,1,3,1,1,1,0,0,0,0,0,0],
-  [0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0],
-  [0,0,0,0,1,1,2,1,1,1,1,1,1,1,1,2,1,1,0,0,0,0],
-  [0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0],
-  [0,0,1,1,1,1,1,1,2,1,1,1,1,2,1,1,1,1,1,1,0,0],
-  [0,1,1,2,1,1,1,1,1,1,3,3,1,1,1,1,1,1,2,1,1,0],
-  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
-  [1,1,2,1,1,1,2,1,1,1,1,1,1,1,1,1,2,1,1,1,2,1],
-  [1,1,1,1,1,0,0,1,1,1,2,2,1,1,1,0,0,1,1,1,1,1],
-  [1,0,0,1,1,0,0,1,1,0,0,0,0,1,1,0,0,1,1,0,0,1],
-  [0,0,0,0,1,0,0,0,1,0,0,0,0,1,0,0,0,1,0,0,0,0],
-  [0,0,0,0,0,0,0,0,3,0,0,0,0,3,0,0,0,0,0,0,0,0],
-];
-
-// ─── Sprite pre-rendering helper ─────────────────────────────────────────────
-
-function preRenderSprite(
-  pixels: number[][],
-  primaryColor: string,
-  scale: number,
-): OffscreenCanvas {
-  const h = pixels.length;
-  const w = pixels[0].length;
-  const canvas = new OffscreenCanvas(w * scale, h * scale);
-  const ctx = canvas.getContext("2d")!;
-
-  for (let row = 0; row < h; row++) {
-    for (let col = 0; col < w; col++) {
-      const val = pixels[row][col];
-      if (val === 0) continue;
-
-      if (val === 1) {
-        ctx.fillStyle = primaryColor;
-        ctx.globalAlpha = 1;
-      } else if (val === 2) {
-        ctx.fillStyle = primaryColor;
-        ctx.globalAlpha = 0.55;
-      } else if (val === 3) {
-        ctx.fillStyle = "#ffffff";
-        ctx.globalAlpha = 0.45;
-      }
-
-      ctx.fillRect(col * scale, row * scale, scale, scale);
-    }
-  }
-  ctx.globalAlpha = 1;
-  return canvas;
-}
 
 // ─── Engine ───────────────────────────────────────────────────────────────────
 
@@ -399,22 +92,10 @@ export class SignalStormEngine {
   private particles: Particle[] = [];
   private stars: Star[] = [];
 
-  // Pre-rendered sprite canvases
-  private spritePlayer!: OffscreenCanvas;
-  private spriteMeteor!: OffscreenCanvas;
-  private spriteJammer!: OffscreenCanvas;
-  private spriteSwerver!: OffscreenCanvas;
-  private spritePuRapid!: OffscreenCanvas;
-  private spritePuShield!: OffscreenCanvas;
-  private spritePuSpread!: OffscreenCanvas;
-  private spriteFlames!: OffscreenCanvas[];
+  // Pre-rendered sprite atlas
+  private sprites!: SpriteAtlas;
   private flameFrame = 0;
   private flameTimer = 0;
-  private spriteBoss1!: OffscreenCanvas;
-  private spriteBoss2!: OffscreenCanvas;
-  private spriteBoss3!: OffscreenCanvas;
-  private spriteBoss4!: OffscreenCanvas;
-  private spriteBoss5!: OffscreenCanvas;
 
   private boss: Boss | null = null;
   private bossDefeatFlash = 0;
@@ -453,7 +134,7 @@ export class SignalStormEngine {
 
     this.initStars();
     this.initPlayer();
-    this.preRenderSprites();
+    this.sprites = preRenderAllSprites(this.palette);
   }
 
   // ─── Public API ─────────────────────────────────────────────────────────────
@@ -504,6 +185,9 @@ export class SignalStormEngine {
       hasShield: false,
       spreadShotUntil: 0,
       rapidFireUntil: 0,
+      lives: 3,
+      invincibleUntil: 0,
+      respawnFreezeUntil: 0,
     };
   }
 
@@ -517,25 +201,6 @@ export class SignalStormEngine {
         brightness: 0.2 + Math.random() * 0.8,
       });
     }
-  }
-
-  private preRenderSprites(): void {
-    const s = PIXEL_SCALE;
-    this.spritePlayer = preRenderSprite(SPRITE_PLAYER, this.palette.player, s);
-    this.spriteMeteor = preRenderSprite(SPRITE_METEOR, this.palette.enemy, s);
-    this.spriteJammer = preRenderSprite(SPRITE_JAMMER, this.palette.jammer, s);
-    this.spriteSwerver = preRenderSprite(SPRITE_SWERVER, this.palette.shield, s);
-    this.spritePuRapid = preRenderSprite(SPRITE_PU_RAPID, this.palette.powerUp, s);
-    this.spritePuShield = preRenderSprite(SPRITE_PU_SHIELD, this.palette.shield, s);
-    this.spritePuSpread = preRenderSprite(SPRITE_PU_SPREAD, this.palette.spread, s);
-    this.spriteFlames = SPRITE_ENGINE_FLAME.map((frame) =>
-      preRenderSprite(frame, this.palette.spread, s),
-    );
-    this.spriteBoss1 = preRenderSprite(SPRITE_BOSS1, this.palette.jammer, s);
-    this.spriteBoss2 = preRenderSprite(SPRITE_BOSS2, this.palette.enemy, s);
-    this.spriteBoss3 = preRenderSprite(SPRITE_BOSS3, this.palette.powerUp, s);
-    this.spriteBoss4 = preRenderSprite(SPRITE_BOSS4, this.palette.spread, s);
-    this.spriteBoss5 = preRenderSprite(SPRITE_BOSS5, this.palette.enemy, s);
   }
 
   // ─── Update ──────────────────────────────────────────────────────────────────
@@ -618,7 +283,8 @@ export class SignalStormEngine {
     // ── Move enemy beams ──
     for (const eb of this.enemyBeams) {
       eb.y += eb.dy * dt;
-      if (eb.y > this.height) eb.active = false;
+      eb.x += eb.dx * dt;
+      if (eb.y > this.height || eb.x + eb.width < 0 || eb.x > this.width) eb.active = false;
     }
 
     // ── Collision: player beams vs enemies ──
@@ -712,7 +378,7 @@ export class SignalStormEngine {
     this.flameTimer += dt;
     if (this.flameTimer >= 0.1) {
       this.flameTimer = 0;
-      this.flameFrame = (this.flameFrame + 1) % this.spriteFlames.length;
+      this.flameFrame = (this.flameFrame + 1) % this.sprites.flames.length;
     }
 
     // ── Wave timer ──
@@ -821,6 +487,12 @@ export class SignalStormEngine {
         type: "swerver",
         lastShot: 0,
         swerveTimer: Math.random() * Math.PI * 2,
+        parkedAt: 0,
+        telegraphUntil: 0,
+        telegraphAimX: 0,
+        telegraphAimY: 0,
+        swarmId: 0,
+        swarmSurvived: true,
       });
     } else if (isJammer) {
       const x = Math.random() * (this.width - JAMMER_W);
@@ -837,6 +509,12 @@ export class SignalStormEngine {
         type: "jammer",
         lastShot: timestamp,
         swerveTimer: 0,
+        parkedAt: 0,
+        telegraphUntil: 0,
+        telegraphAimX: 0,
+        telegraphAimY: 0,
+        swarmId: 0,
+        swarmSurvived: true,
       });
     } else {
       const x = Math.random() * (this.width - ENEMY_W);
@@ -853,6 +531,12 @@ export class SignalStormEngine {
         type: "interference",
         lastShot: 0,
         swerveTimer: 0,
+        parkedAt: 0,
+        telegraphUntil: 0,
+        telegraphAimX: 0,
+        telegraphAimY: 0,
+        swarmId: 0,
+        swarmSurvived: true,
       });
     }
   }
@@ -865,6 +549,7 @@ export class SignalStormEngine {
       height: BEAM_H,
       active: true,
       dy: ENEMY_BEAM_SPEED,
+      dx: 0,
     });
   }
 
@@ -935,6 +620,8 @@ export class SignalStormEngine {
     const w = spriteWidths[tier];
     const h = spriteHeights[tier];
 
+    const bossNames = ["", "SIGNAL DISRUPTOR", "FREQUENCY JAMMER", "BAND BLOCKER", "NETWORK NULLIFIER", "CORE CORRUPTOR"];
+
     this.boss = {
       x: this.width / 2 - w / 2,
       y: -h,
@@ -950,6 +637,18 @@ export class SignalStormEngine {
       patternPhase: 0,
       targetX: this.width / 2 - w / 2,
       dx: tier === 4 ? 140 : (tier === 3 ? 25 : 0),
+      name: bossNames[tier],
+      phase: 1,
+      phaseJustChanged: false,
+      phaseFreezeUntil: 0,
+      amplitude: 0,
+      period: 0,
+      telegraphUntil: 0,
+      telegraphOrigin: null,
+      telegraphType: "dot",
+      telegraphAimX: 0,
+      flashUntil: 0,
+      introBanner: null,
     };
   }
 
@@ -1086,10 +785,8 @@ export class SignalStormEngine {
         height: BEAM_H,
         active: true,
         dy,
+        dx,
       });
-      // For angled beams we'd need dx support — store dx in the beam concept;
-      // since EnemyBeam only has dy, we approximate angled beams with x offset
-      void dx; // dx handled via x offset already encoded at spawn time
     };
 
     const effectiveTier = boss.tier === 5
@@ -1322,10 +1019,10 @@ export class SignalStormEngine {
     const { x, y } = this.player;
 
     // Draw pre-rendered ship sprite
-    ctx.drawImage(this.spritePlayer, x, y);
+    ctx.drawImage(this.sprites.player, x, y);
 
     // Draw animated engine flame below the ship
-    const flame = this.spriteFlames[this.flameFrame];
+    const flame = this.sprites.flames[this.flameFrame];
     const flameX = x + PLAYER_W / 2 - flame.width / 2;
     const flameY = y + PLAYER_H - 2;
     ctx.drawImage(flame, flameX, flameY);
@@ -1334,9 +1031,9 @@ export class SignalStormEngine {
   private drawEnemy(e: Enemy): void {
     const { ctx } = this;
     const sprite =
-      e.type === "jammer" ? this.spriteJammer
-        : e.type === "swerver" ? this.spriteSwerver
-        : this.spriteMeteor;
+      e.type === "jammer"   ? this.sprites.jammer
+        : e.type === "swerver" ? this.sprites.swerver
+        : this.sprites.meteor;
     ctx.drawImage(sprite, e.x, e.y);
 
     // Damage flash: if jammer has taken 1 hit (hp=1 of 2), flash briefly
@@ -1352,10 +1049,10 @@ export class SignalStormEngine {
     const { ctx } = this;
     const sprite =
       p.type === "rapid"
-        ? this.spritePuRapid
+        ? this.sprites.puRapid
         : p.type === "shield"
-          ? this.spritePuShield
-          : this.spritePuSpread;
+          ? this.sprites.puShield
+          : this.sprites.puSpread;
 
     // Pulsing glow behind the sprite
     const pulse = 0.2 + Math.sin(this.lastTime / 200) * 0.1;
@@ -1384,15 +1081,14 @@ export class SignalStormEngine {
 
   private drawBoss(boss: Boss): void {
     const { ctx } = this;
-    const sprites: OffscreenCanvas[] = [
-      this.spriteBoss1, // index 0 unused via [tier] indexing
-      this.spriteBoss1,
-      this.spriteBoss2,
-      this.spriteBoss3,
-      this.spriteBoss4,
-      this.spriteBoss5,
-    ];
-    const sprite = sprites[boss.tier];
+    const spriteMap: Record<number, OffscreenCanvas> = {
+      1: this.sprites.boss1,
+      2: this.sprites.boss2,
+      3: this.sprites.boss3,
+      4: this.sprites.boss4,
+      5: this.sprites.boss5,
+    };
+    const sprite = spriteMap[boss.tier];
     ctx.drawImage(sprite, Math.round(boss.x), Math.round(boss.y));
 
     // Damage flash when hp < 30% of max
@@ -1424,13 +1120,12 @@ export class SignalStormEngine {
     ctx.fillStyle = fillColor;
     ctx.fillRect(margin, barY, fillW, barH);
 
-    // Boss name label
-    const bossNames = ["", "SIGNAL DISRUPTOR", "FREQUENCY JAMMER", "BAND BLOCKER", "NETWORK NULLIFIER", "CORE CORRUPTOR"];
+    // Boss name label — use name field from boss object
     ctx.textAlign = "center";
     ctx.textBaseline = "bottom";
     ctx.fillStyle = fillColor;
     ctx.font = "bold 10px monospace";
-    ctx.fillText(`⚠ ${bossNames[boss.tier]}  ${boss.hp}/${boss.maxHp}`, width / 2, barY - 2);
+    ctx.fillText(`⚠ ${boss.name}  ${boss.hp}/${boss.maxHp}`, width / 2, barY - 2);
   }
 
   private drawHUD(): void {
