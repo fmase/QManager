@@ -15,6 +15,7 @@ import {
 import { Field, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
+import { PasswordRequirements, isPasswordValid } from "@/components/auth/password-requirements";
 
 interface ChangePasswordDialogProps {
   open: boolean;
@@ -58,14 +59,9 @@ export function ChangePasswordDialog({
       e.preventDefault();
       setError("");
 
-      // Validation rules (must match backend auth/password.sh exactly):
-      //   length >= 5 + uppercase + lowercase + digit
-      if (
-        newPassword.length < 5 ||
-        !/[A-Z]/.test(newPassword) ||
-        !/[a-z]/.test(newPassword) ||
-        !/[0-9]/.test(newPassword)
-      ) {
+      // Single source of truth for rules: components/auth/password-requirements.tsx.
+      // Server-side copy lives in scripts/www/cgi-bin/quecmanager/auth/password.sh.
+      if (!isPasswordValid(newPassword)) {
         setError(
           "New password must be at least 5 characters and include uppercase, lowercase, and a number."
         );
@@ -155,6 +151,7 @@ export function ChangePasswordDialog({
                   {showNewPassword ? <EyeOffIcon className="size-4" /> : <EyeIcon className="size-4" />}
                 </Button>
               </div>
+              <PasswordRequirements password={newPassword} className="pt-1" />
             </Field>
             <Field>
               <FieldLabel htmlFor="confirm-new-password">

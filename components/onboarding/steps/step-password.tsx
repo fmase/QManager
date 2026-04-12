@@ -8,6 +8,7 @@ import { authFetch } from "@/lib/auth-fetch";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Field, FieldDescription, FieldGroup, FieldLabel, FieldError } from "@/components/ui/field";
+import { PasswordRequirements, isPasswordValid } from "@/components/auth/password-requirements";
 import { cn } from "@/lib/utils";
 
 // =============================================================================
@@ -66,14 +67,9 @@ export function StepPassword({ onSuccess, onLoadingChange, onSubmitRef }: StepPa
   const handleSubmit = useCallback(async () => {
     setError("");
 
-    // Validation rules (must match backend auth/login.sh exactly):
-    //   length >= 5 + uppercase + lowercase + digit
-    if (
-      password.length < 5 ||
-      !/[A-Z]/.test(password) ||
-      !/[a-z]/.test(password) ||
-      !/[0-9]/.test(password)
-    ) {
+    // Single source of truth for rules: components/auth/password-requirements.tsx.
+    // Server-side copy lives in scripts/www/cgi-bin/quecmanager/auth/login.sh.
+    if (!isPasswordValid(password)) {
       setError(
         "Password must be at least 5 characters and include uppercase, lowercase, and a number."
       );
@@ -212,7 +208,7 @@ export function StepPassword({ onSuccess, onLoadingChange, onSubmitRef }: StepPa
               )}
             </AnimatePresence>
 
-            <FieldDescription>Minimum 5 characters with uppercase, lowercase, and a number</FieldDescription>
+            <PasswordRequirements password={password} className="pt-1" />
           </Field>
 
           <Field>
