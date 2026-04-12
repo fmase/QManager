@@ -365,6 +365,24 @@ export class GameAudio {
     }
   }
 
+  // ── Pause / Resume (separate from user-facing mute) ────────────────────────
+
+  pauseAudio(): void {
+    if (!this.actx || !this.masterGain || this.muted) return;
+    const now = this.actx.currentTime;
+    this.masterGain.gain.cancelScheduledValues(now);
+    this.masterGain.gain.setValueAtTime(this.masterGain.gain.value, now);
+    this.masterGain.gain.linearRampToValueAtTime(0, now + 0.1);
+  }
+
+  resumeAudio(): void {
+    if (!this.actx || !this.masterGain || this.muted) return;
+    const now = this.actx.currentTime;
+    this.masterGain.gain.cancelScheduledValues(now);
+    this.masterGain.gain.setValueAtTime(this.masterGain.gain.value, now);
+    this.masterGain.gain.linearRampToValueAtTime(MASTER_GAIN, now + 0.1);
+  }
+
   // ── Mute ──────────────────────────────────────────────────────────────────
 
   toggleMute(): boolean {

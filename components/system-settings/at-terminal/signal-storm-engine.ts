@@ -123,6 +123,7 @@ export class SignalStormEngine {
     if (this.gameState === "PLAYING") {
       this.gameState = "PAUSED";
       this.pauseOverlayStartTime = performance.now();
+      this.audio.pauseAudio();
     }
   };
 
@@ -186,8 +187,10 @@ export class SignalStormEngine {
       if (this.gameState === "PLAYING") {
         this.gameState = "PAUSED";
         this.pauseOverlayStartTime = performance.now();
+        this.audio.pauseAudio();
       } else if (this.gameState === "PAUSED") {
         this.gameState = "PLAYING";
+        this.audio.resumeAudio();
       }
       return;
     }
@@ -470,6 +473,7 @@ export class SignalStormEngine {
           b.active = false;
           this.boss.hp -= 1;
           this.boss.flashUntil = timestamp + 80;
+          this.triggerShake(2, 80, timestamp);
           this.audio.playBossHit();
           this.spawnParticles(b.x + BEAM_W / 2, b.y, this.palette.text);
           const phaseEvent = checkPhaseTransition(this.boss, timestamp);

@@ -139,16 +139,19 @@ export function spawnOrbiter(
 export function spawnDroneSwarm(canvasWidth: number): Enemy[] {
   const swarmId = nextSwarmId();
   const cx = canvasWidth / 2;
-  // V-formation: center drone + 2 on each side
-  const offsets = [0, -30, 30, -55, 55];
-  const yOffsets = [0, -15, -15, -30, -30];
+  // V-formation: 4 drones — lead, two flanks, center back
+  const offsets = [
+    { dx: 0, dy: 10 },    // lead (front)
+    { dx: -25, dy: 0 },   // left flank
+    { dx: 25, dy: 0 },    // right flank
+    { dx: 0, dy: -10 },   // center back
+  ];
   const drones: Enemy[] = [];
-  for (let i = 0; i < 4; i++) {
-    const ox = offsets[i] ?? 0;
-    const oy = yOffsets[i] ?? 0;
-    const x = Math.max(0, Math.min(cx + ox - DRONE_W / 2, canvasWidth - DRONE_W));
+  for (let i = 0; i < offsets.length; i++) {
+    const { dx, dy } = offsets[i];
+    const x = Math.max(0, Math.min(cx + dx - DRONE_W / 2, canvasWidth - DRONE_W));
     drones.push(
-      makeBaseEnemy("drone", x, -DRONE_H + oy, DRONE_W, DRONE_H, 90, 1, {
+      makeBaseEnemy("drone", x, -DRONE_H + dy, DRONE_W, DRONE_H, 90, 1, {
         swarmId,
         swarmSurvived: true,
       })

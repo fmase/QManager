@@ -98,9 +98,12 @@ export interface Boss extends Entity {
   amplitude: number;
   period: number;
   telegraphUntil: number;
+  telegraphDuration: number;
   telegraphOrigin: { x: number; y: number } | null;
   telegraphType: "dot" | "line" | "ring";
   telegraphAimX: number;
+  /** Distance traveled since last trail-fire beam (T2 P3) */
+  trailDistAccum: number;
   flashUntil: number;
   introBanner: BossIntroBanner | null;
 }

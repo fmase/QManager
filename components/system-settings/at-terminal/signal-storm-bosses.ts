@@ -103,9 +103,11 @@ export function spawnBoss(
     amplitude: 0,
     period: 0,
     telegraphUntil: 0,
+    telegraphDuration: 0,
     telegraphOrigin: null,
     telegraphType: "dot",
     telegraphAimX: 0,
+    trailDistAccum: 0,
     flashUntil: 0,
     introBanner: {
       phase: 1,
@@ -240,6 +242,7 @@ function setTelegraph(
   aimX?: number,
 ): void {
   boss.telegraphUntil = timestamp + durationMs;
+  boss.telegraphDuration = durationMs;
   boss.telegraphOrigin = {
     x: boss.x + boss.width / 2,
     y: boss.y + boss.height,
@@ -248,6 +251,13 @@ function setTelegraph(
   if (aimX !== undefined) {
     boss.telegraphAimX = aimX;
   }
+}
+
+/** Clear telegraph state after beams have fired. */
+function clearTelegraph(boss: Boss): void {
+  boss.telegraphUntil = 0;
+  boss.telegraphDuration = 0;
+  boss.telegraphOrigin = null;
 }
 
 // ── T1 — Signal Disruptor ───────────────────────────────────────────────────
@@ -264,33 +274,35 @@ function updateTier1(
   boss.moveTimer += dt;
 
   if (boss.phase === 1) {
-    // Sine sweep. Period=8s, peak velocity=50 px/s
     const period = 8;
-    const amplitude = 50 / (2 * Math.PI / period); // ~63.66
+    const amplitude = 50 / (2 * Math.PI / period);
     boss.x = centerX + Math.sin(boss.moveTimer * (2 * Math.PI / period)) * amplitude;
 
-    // Fire 1 straight beam every 2.5s with 300ms telegraph dot
     boss.shootTimer += dt;
-    if (boss.shootTimer >= 2.5) {
+    // Fire phase — telegraph expired
+    if (boss.telegraphUntil > 0 && timestamp >= boss.telegraphUntil) {
+      clearTelegraph(boss);
       boss.shootTimer = 0;
-      setTelegraph(boss, timestamp, 300, "dot");
       result.beamsToFire.push(beamFromBoss(boss, 0, 120));
+    } else if (boss.shootTimer >= 2.5 && boss.telegraphUntil === 0) {
+      // Telegraph phase
+      setTelegraph(boss, timestamp, 300, "dot");
     }
   } else if (boss.phase === 2) {
-    // Period=5s, peak velocity=90 px/s
     const period = 5;
-    const amplitude = 90 / (2 * Math.PI / period); // ~71.62
+    const amplitude = 90 / (2 * Math.PI / period);
     boss.x = centerX + Math.sin(boss.moveTimer * (2 * Math.PI / period)) * amplitude;
 
-    // Fire 3-beam spread every 2.2s
     boss.shootTimer += dt;
-    if (boss.shootTimer >= 2.2) {
+    if (boss.telegraphUntil > 0 && timestamp >= boss.telegraphUntil) {
+      clearTelegraph(boss);
       boss.shootTimer = 0;
-      setTelegraph(boss, timestamp, 300, "dot");
       const speed = 130;
       result.beamsToFire.push(beamFromBoss(boss, 0, speed));
       result.beamsToFire.push(beamFromBoss(boss, Math.sin(-0.3) * speed, Math.cos(-0.3) * speed));
       result.beamsToFire.push(beamFromBoss(boss, Math.sin(0.3) * speed, Math.cos(0.3) * speed));
+    } else if (boss.shootTimer >= 2.2 && boss.telegraphUntil === 0) {
+      setTelegraph(boss, timestamp, 300, "dot");
     }
   } else {
     // Phase 3: Hunt player at 110 px/s
@@ -304,26 +316,32 @@ function updateTier1(
       boss.x += diff;
     }
 
-    // Fire 3-beam cone every 1.5s
     boss.shootTimer += dt;
-    if (boss.shootTimer >= 1.5) {
+    if (boss.telegraphUntil > 0 && timestamp >= boss.telegraphUntil) {
+      clearTelegraph(boss);
       boss.shootTimer = 0;
-      setTelegraph(boss, timestamp, 300, "dot");
       const speed = 140;
       result.beamsToFire.push(beamFromBoss(boss, 0, speed));
       result.beamsToFire.push(beamFromBoss(boss, Math.sin(-0.3) * speed, Math.cos(-0.3) * speed));
       result.beamsToFire.push(beamFromBoss(boss, Math.sin(0.3) * speed, Math.cos(0.3) * speed));
+    } else if (boss.shootTimer >= 1.5 && boss.telegraphUntil === 0) {
+      setTelegraph(boss, timestamp, 300, "dot");
     }
   }
 }
 
 // ── T2 — Frequency Jammer ───────────────────────────────────────────────────
 
+/** Max trail beams per dash in T2 P3 */
+const T2_TRAIL_MAX = 3;
+/** Distance (px) between trail beams in T2 P3 */
+const T2_TRAIL_DIST = 100;
+
 function updateTier2(
   boss: Boss,
   dt: number,
   timestamp: number,
-  player: { x: number; y: number; width: number; height: number },
+  _player: { x: number; y: number; width: number; height: number },
   canvasWidth: number,
   result: BossUpdateResult,
 ): void {
@@ -333,6 +351,7 @@ function updateTier2(
   const diff = boss.targetX - boss.x;
   const step = dashSpeed * dt;
   let arrived = false;
+  const prevX = boss.x;
 
   if (Math.abs(diff) <= step) {
     boss.x = boss.targetX;
@@ -341,37 +360,37 @@ function updateTier2(
     boss.x += Math.sign(diff) * step;
   }
 
-  // Phase 3: drop beams mid-dash every 0.3s while moving
+  // Phase 3: drop beams based on distance traveled (1 per 100px, max 3 per dash)
   if (boss.phase === 3 && !arrived) {
-    boss.shootTimer += dt;
-    if (boss.shootTimer >= 0.3) {
-      boss.shootTimer = 0;
+    boss.trailDistAccum += Math.abs(boss.x - prevX);
+    if (boss.trailDistAccum >= T2_TRAIL_DIST && boss.patternPhase < T2_TRAIL_MAX) {
+      boss.trailDistAccum -= T2_TRAIL_DIST;
+      boss.patternPhase++;
       result.beamsToFire.push(beamFromBoss(boss, 0, 120));
     }
   }
 
   if (arrived) {
-    // Pause briefly before picking a new target
-    // patternPhase tracks if we've paused (0=moving, 1=pausing)
-    if (boss.patternPhase === 0) {
-      boss.patternPhase = 1;
-      boss.shootTimer = 0;
-    }
-
-    const pauseTime = boss.phase === 2 ? 0.4 : 0.5;
-    boss.shootTimer += dt;
-
-    if (boss.shootTimer >= pauseTime) {
-      // Fire on arrival
+    // Telegraph phase — set telegraph on arrival, don't fire yet
+    if (boss.telegraphUntil === 0) {
       if (boss.phase === 1) {
         setTelegraph(boss, timestamp, 300, "dot");
+      } else {
+        setTelegraph(boss, timestamp, 300, "dot");
+      }
+    }
+
+    // Fire phase — telegraph expired
+    if (boss.telegraphUntil > 0 && timestamp >= boss.telegraphUntil) {
+      clearTelegraph(boss);
+
+      if (boss.phase === 1) {
         const speed = 120;
         result.beamsToFire.push(beamFromBoss(boss, 0, speed));
         result.beamsToFire.push(beamFromBoss(boss, Math.sin(-0.3) * speed, Math.cos(-0.3) * speed));
         result.beamsToFire.push(beamFromBoss(boss, Math.sin(0.3) * speed, Math.cos(0.3) * speed));
       } else {
         // Phase 2 and 3: 5-beam fan
-        setTelegraph(boss, timestamp, 300, "dot");
         const angles = [-0.5, -0.25, 0, 0.25, 0.5];
         const speed = 130;
         for (const a of angles) {
@@ -379,10 +398,10 @@ function updateTier2(
         }
       }
 
-      // Phase 3: also fire fan on wall hit
-      // Pick new target
+      // Pick new target and reset trail counters
       boss.targetX = Math.random() * (canvasWidth - boss.width);
       boss.patternPhase = 0;
+      boss.trailDistAccum = 0;
       boss.shootTimer = 0;
     }
   }
@@ -402,7 +421,6 @@ function updateTier3(
   // Horizontal bounce
   const speed = boss.phase === 1 ? 25 : 45;
   if (boss.dx === 0) boss.dx = speed;
-  // Ensure dx magnitude matches current speed
   boss.dx = Math.sign(boss.dx) * speed;
   boss.x += boss.dx * dt;
 
@@ -416,11 +434,14 @@ function updateTier3(
 
   boss.shootTimer += dt;
 
-  if (boss.phase === 1) {
-    // 5 parallel beams every 3s
-    if (boss.shootTimer >= 3) {
-      boss.shootTimer = 0;
-      setTelegraph(boss, timestamp, 300, "dot");
+  // ── Fire phase (all phases): telegraph expired → fire beams ──
+  if (boss.telegraphUntil > 0 && timestamp >= boss.telegraphUntil) {
+    // For P3, patternPhase was incremented at telegraph time, so current attack = (patternPhase - 1) % 3
+    const attack = (boss.patternPhase - 1) % 3;
+    clearTelegraph(boss);
+    boss.shootTimer = 0;
+
+    if (boss.phase === 1) {
       const spacing = boss.width / 4;
       for (let i = 0; i <= 4; i++) {
         result.beamsToFire.push({
@@ -430,15 +451,10 @@ function updateTier3(
           dy: 90,
         });
       }
-    }
-  } else if (boss.phase === 2) {
-    // 7-beam wall with 2 gaps (skip indices 2 and 5) every 2.8s
-    if (boss.shootTimer >= 2.8) {
-      boss.shootTimer = 0;
-      setTelegraph(boss, timestamp, 300, "dot");
+    } else if (boss.phase === 2) {
       const spacing = boss.width / 6;
       for (let i = 0; i <= 6; i++) {
-        if (i === 2 || i === 5) continue; // gaps
+        if (i === 2 || i === 5) continue;
         result.beamsToFire.push({
           x: boss.x + spacing * i,
           y: boss.y + boss.height,
@@ -446,17 +462,10 @@ function updateTier3(
           dy: 100,
         });
       }
-    }
-  } else {
-    // Phase 3: Rotate 3 attacks on 2.2s cycle
-    if (boss.shootTimer >= 2.2) {
-      boss.shootTimer = 0;
-      const attack = boss.patternPhase % 3;
-      boss.patternPhase++;
-
-      if (attack === 0) {
-        // (A) 7-beam gap wall
-        setTelegraph(boss, timestamp, 300, "dot");
+    } else {
+      // Phase 3: fire the attack that was chosen at telegraph time
+      const atk = attack % 3;
+      if (atk === 0) {
         const spacing = boss.width / 6;
         for (let i = 0; i <= 6; i++) {
           if (i === 2 || i === 5) continue;
@@ -467,26 +476,45 @@ function updateTier3(
             dy: 100,
           });
         }
-      } else if (attack === 1) {
-        // (B) Aimed beam at player
-        const px = player.x + player.width / 2;
-        const py = player.y + player.height / 2;
+      } else if (atk === 1) {
+        // (B) Aimed beam using locked aim from telegraph
         const bx = boss.x + boss.width / 2;
         const by = boss.y + boss.height;
-        const angle = Math.atan2(py - by, px - bx);
+        const py = player.y + player.height / 2;
+        const lockAngle = Math.atan2(py - by, boss.telegraphAimX - bx);
         const bSpeed = 140;
-        setTelegraph(boss, timestamp, 300, "line", px);
-        result.beamsToFire.push(beamFromBoss(boss, Math.cos(angle) * bSpeed, Math.sin(angle) * bSpeed));
+        result.beamsToFire.push(beamFromBoss(boss, Math.cos(lockAngle) * bSpeed, Math.sin(lockAngle) * bSpeed));
       } else {
-        // (C) Wide laser with ring telegraph
-        setTelegraph(boss, timestamp, 500, "ring");
+        // (C) Wide laser — Fix 5: include height: 200
         result.beamsToFire.push({
           x: boss.x + boss.width / 2,
           y: boss.y + boss.height,
           dx: 0,
           dy: 200,
           width: 9,
+          height: 200,
         });
+      }
+    }
+    return;
+  }
+
+  // ── Telegraph phase: timer reached → set telegraph, don't fire ──
+  if (boss.telegraphUntil === 0) {
+    if (boss.phase === 1 && boss.shootTimer >= 3) {
+      setTelegraph(boss, timestamp, 300, "dot");
+    } else if (boss.phase === 2 && boss.shootTimer >= 2.8) {
+      setTelegraph(boss, timestamp, 300, "dot");
+    } else if (boss.phase === 3 && boss.shootTimer >= 2.2) {
+      const attack = boss.patternPhase % 3;
+      boss.patternPhase++;
+      if (attack === 0) {
+        setTelegraph(boss, timestamp, 300, "dot");
+      } else if (attack === 1) {
+        const px = player.x + player.width / 2;
+        setTelegraph(boss, timestamp, 300, "line", px);
+      } else {
+        setTelegraph(boss, timestamp, 500, "ring");
       }
     }
   }
@@ -518,62 +546,71 @@ function updateTier4(
 
   boss.shootTimer += dt;
 
-  // Helper for aimed beam
-  const fireAimedBeam = () => {
-    const px = player.x + player.width / 2;
-    const py = player.y + player.height / 2;
+  // ── Fire phase: telegraph expired → fire beams ──
+  if (boss.telegraphUntil > 0 && timestamp >= boss.telegraphUntil) {
     const bx = boss.x + boss.width / 2;
     const by = boss.y + boss.height;
-    const angle = Math.atan2(py - by, px - bx);
-    const bSpeed = 150;
-    setTelegraph(boss, timestamp, 400, "line", px);
-    result.beamsToFire.push(beamFromBoss(boss, Math.cos(angle) * bSpeed, Math.sin(angle) * bSpeed));
-  };
+    const py = player.y + player.height / 2;
+    clearTelegraph(boss);
+    boss.shootTimer = 0;
 
-  if (boss.phase === 1) {
-    // Aimed beam every 2s
-    if (boss.shootTimer >= 2) {
-      boss.shootTimer = 0;
-      fireAimedBeam();
-    }
-  } else if (boss.phase === 2) {
-    // Every 2s: every 3rd shot = 3-beam aimed fan, others = single aimed
-    if (boss.shootTimer >= 2) {
-      boss.shootTimer = 0;
-      boss.patternPhase++;
+    if (boss.phase === 1) {
+      // Single aimed beam using locked aim
+      const lockAngle = Math.atan2(py - by, boss.telegraphAimX - bx);
+      const bSpeed = 150;
+      result.beamsToFire.push(beamFromBoss(boss, Math.cos(lockAngle) * bSpeed, Math.sin(lockAngle) * bSpeed));
+    } else if (boss.phase === 2) {
       if (boss.patternPhase % 3 === 0) {
         // 3-beam aimed fan
-        const px = player.x + player.width / 2;
-        const py = player.y + player.height / 2;
-        const bx = boss.x + boss.width / 2;
-        const by = boss.y + boss.height;
-        const baseAngle = Math.atan2(py - by, px - bx);
+        const baseAngle = Math.atan2(py - by, boss.telegraphAimX - bx);
         const bSpeed = 150;
-        setTelegraph(boss, timestamp, 400, "line", px);
         for (const offset of [-0.2, 0, 0.2]) {
           const a = baseAngle + offset;
           result.beamsToFire.push(beamFromBoss(boss, Math.cos(a) * bSpeed, Math.sin(a) * bSpeed));
         }
       } else {
-        fireAimedBeam();
+        // Single aimed beam
+        const lockAngle = Math.atan2(py - by, boss.telegraphAimX - bx);
+        const bSpeed = 150;
+        result.beamsToFire.push(beamFromBoss(boss, Math.cos(lockAngle) * bSpeed, Math.sin(lockAngle) * bSpeed));
       }
-    }
-  } else {
-    // Phase 3: alternate every 1.4s: (A) aimed, (B) 4-beam downward radial
-    if (boss.shootTimer >= 1.4) {
-      boss.shootTimer = 0;
-      boss.patternPhase++;
+    } else {
+      // Phase 3
       if (boss.patternPhase % 2 === 0) {
         // (A) Single aimed beam
-        fireAimedBeam();
+        const lockAngle = Math.atan2(py - by, boss.telegraphAimX - bx);
+        const bSpeed = 150;
+        result.beamsToFire.push(beamFromBoss(boss, Math.cos(lockAngle) * bSpeed, Math.sin(lockAngle) * bSpeed));
       } else {
         // (B) 4-beam downward radial burst
-        setTelegraph(boss, timestamp, 300, "dot");
         const bSpeed = 140;
         const angles = [Math.PI / 2, Math.PI / 3, 2 * Math.PI / 3, Math.PI / 2 + 0.3];
         for (const a of angles) {
           result.beamsToFire.push(beamFromBoss(boss, Math.cos(a) * bSpeed, Math.sin(a) * bSpeed));
         }
+      }
+    }
+    return;
+  }
+
+  // ── Telegraph phase: timer reached → set telegraph, don't fire ──
+  if (boss.telegraphUntil === 0) {
+    if (boss.phase === 1 && boss.shootTimer >= 2) {
+      const px = player.x + player.width / 2;
+      setTelegraph(boss, timestamp, 400, "line", px);
+    } else if (boss.phase === 2 && boss.shootTimer >= 2) {
+      boss.patternPhase++;
+      const px = player.x + player.width / 2;
+      setTelegraph(boss, timestamp, 400, "line", px);
+    } else if (boss.phase === 3 && boss.shootTimer >= 1.4) {
+      boss.patternPhase++;
+      if (boss.patternPhase % 2 === 0) {
+        // (A) aimed — telegraph with line
+        const px = player.x + player.width / 2;
+        setTelegraph(boss, timestamp, 400, "line", px);
+      } else {
+        // (B) radial — telegraph with dot
+        setTelegraph(boss, timestamp, 300, "dot");
       }
     }
   }
@@ -585,15 +622,15 @@ function updateTier5(
   boss: Boss,
   dt: number,
   timestamp: number,
-  player: { x: number; y: number; width: number; height: number },
+  _player: { x: number; y: number; width: number; height: number },
   canvasWidth: number,
   canvasHeight: number,
   result: BossUpdateResult,
 ): void {
   boss.moveTimer += dt;
 
+  // ── Movement (all phases) ──
   if (boss.phase === 1) {
-    // Descend to y=30% of canvasHeight, sweep left-right at 40 px/s
     const targetY = canvasHeight * 0.3;
     if (boss.y < targetY) {
       boss.y += 15 * dt;
@@ -602,26 +639,9 @@ function updateTier5(
     if (boss.dx === 0) boss.dx = 40;
     boss.dx = Math.sign(boss.dx) * 40;
     boss.x += boss.dx * dt;
-    if (boss.x <= 0) {
-      boss.x = 0;
-      boss.dx = 40;
-    } else if (boss.x + boss.width >= canvasWidth) {
-      boss.x = canvasWidth - boss.width;
-      boss.dx = -40;
-    }
-
-    // 3-beam spread every 2.5s
-    boss.shootTimer += dt;
-    if (boss.shootTimer >= 2.5) {
-      boss.shootTimer = 0;
-      setTelegraph(boss, timestamp, 300, "dot");
-      const speed = 120;
-      result.beamsToFire.push(beamFromBoss(boss, 0, speed));
-      result.beamsToFire.push(beamFromBoss(boss, Math.sin(-0.3) * speed, Math.cos(-0.3) * speed));
-      result.beamsToFire.push(beamFromBoss(boss, Math.sin(0.3) * speed, Math.cos(0.3) * speed));
-    }
+    if (boss.x <= 0) { boss.x = 0; boss.dx = 40; }
+    else if (boss.x + boss.width >= canvasWidth) { boss.x = canvasWidth - boss.width; boss.dx = -40; }
   } else if (boss.phase === 2) {
-    // Descend to 35%, sweep at 55 px/s
     const targetY = canvasHeight * 0.35;
     if (boss.y < targetY) {
       boss.y += 15 * dt;
@@ -630,52 +650,44 @@ function updateTier5(
     if (boss.dx === 0) boss.dx = 55;
     boss.dx = Math.sign(boss.dx) * 55;
     boss.x += boss.dx * dt;
-    if (boss.x <= 0) {
-      boss.x = 0;
-      boss.dx = 55;
-    } else if (boss.x + boss.width >= canvasWidth) {
-      boss.x = canvasWidth - boss.width;
-      boss.dx = -55;
+    if (boss.x <= 0) { boss.x = 0; boss.dx = 55; }
+    else if (boss.x + boss.width >= canvasWidth) { boss.x = canvasWidth - boss.width; boss.dx = -55; }
+  } else {
+    const targetY = canvasHeight * 0.35;
+    if (boss.y < targetY) {
+      boss.y += 15 * dt;
+      if (boss.y > targetY) boss.y = targetY;
     }
+    boss.dx = 0;
+  }
 
-    // Alternate 5-beam fan / aimed straight-down every 2s
-    boss.shootTimer += dt;
-    if (boss.shootTimer >= 2) {
-      boss.shootTimer = 0;
-      boss.patternPhase++;
+  boss.shootTimer += dt;
+
+  // ── Fire phase: telegraph expired → fire beams ──
+  if (boss.telegraphUntil > 0 && timestamp >= boss.telegraphUntil) {
+    clearTelegraph(boss);
+    boss.shootTimer = 0;
+
+    if (boss.phase === 1) {
+      const speed = 120;
+      result.beamsToFire.push(beamFromBoss(boss, 0, speed));
+      result.beamsToFire.push(beamFromBoss(boss, Math.sin(-0.3) * speed, Math.cos(-0.3) * speed));
+      result.beamsToFire.push(beamFromBoss(boss, Math.sin(0.3) * speed, Math.cos(0.3) * speed));
+    } else if (boss.phase === 2) {
       if (boss.patternPhase % 2 === 0) {
-        // 5-beam fan
-        setTelegraph(boss, timestamp, 300, "dot");
         const angles = [-0.5, -0.25, 0, 0.25, 0.5];
         const speed = 130;
         for (const a of angles) {
           result.beamsToFire.push(beamFromBoss(boss, Math.sin(a) * speed, Math.cos(a) * speed));
         }
       } else {
-        // Aimed straight down
-        setTelegraph(boss, timestamp, 300, "dot");
         result.beamsToFire.push(beamFromBoss(boss, 0, 150));
       }
-    }
-  } else {
-    // Phase 3: Stationary at 35%
-    const targetY = canvasHeight * 0.35;
-    if (boss.y < targetY) {
-      boss.y += 15 * dt;
-      if (boss.y > targetY) boss.y = targetY;
-    }
-    boss.dx = 0; // stationary
-
-    // 4-attack rotation on 1.8s cycle
-    boss.shootTimer += dt;
-    if (boss.shootTimer >= 1.8) {
-      boss.shootTimer = 0;
-      const attack = boss.patternPhase % 4;
-      boss.patternPhase++;
-
+    } else {
+      // Phase 3: fire based on stored attack index
+      const attack = (boss.patternPhase - 1) % 4;
       if (attack === 0) {
-        // (A) 12-beam radial burst at 30-degree intervals
-        setTelegraph(boss, timestamp, 150, "ring");
+        // (A) 12-beam radial burst
         const speed = 180;
         for (let i = 0; i < 12; i++) {
           const a = (i * Math.PI * 2) / 12;
@@ -684,16 +696,34 @@ function updateTier5(
         result.shakeEvents.push({ magnitude: 4, duration: 150 });
       } else if (attack === 1) {
         // (B) Aimed beam straight down
-        setTelegraph(boss, timestamp, 300, "dot");
         result.beamsToFire.push(beamFromBoss(boss, 0, 150));
       } else {
         // (C) and (D): 5-beam fan
-        setTelegraph(boss, timestamp, 300, "dot");
         const angles = [-0.5, -0.25, 0, 0.25, 0.5];
         const speed = 130;
         for (const a of angles) {
           result.beamsToFire.push(beamFromBoss(boss, Math.sin(a) * speed, Math.cos(a) * speed));
         }
+      }
+    }
+    return;
+  }
+
+  // ── Telegraph phase: timer reached → set telegraph, don't fire ──
+  if (boss.telegraphUntil === 0) {
+    if (boss.phase === 1 && boss.shootTimer >= 2.5) {
+      setTelegraph(boss, timestamp, 300, "dot");
+    } else if (boss.phase === 2 && boss.shootTimer >= 2) {
+      boss.patternPhase++;
+      setTelegraph(boss, timestamp, 300, "dot");
+    } else if (boss.phase === 3 && boss.shootTimer >= 1.8) {
+      const attack = boss.patternPhase % 4;
+      boss.patternPhase++;
+      if (attack === 0) {
+        // Fix 6: ring telegraph 400ms (spec), not 150ms
+        setTelegraph(boss, timestamp, 400, "ring");
+      } else {
+        setTelegraph(boss, timestamp, 300, "dot");
       }
     }
   }
@@ -734,8 +764,6 @@ export function drawBossTelegraph(
 ): void {
   if (timestamp >= boss.telegraphUntil || !boss.telegraphOrigin) return;
 
-  const elapsed = boss.telegraphUntil - timestamp;
-  const totalDuration = boss.telegraphUntil - (boss.telegraphUntil - elapsed);
   // Pulsing opacity
   const pulse = 0.4 + 0.4 * Math.sin(timestamp / 60);
 
@@ -757,10 +785,10 @@ export function drawBossTelegraph(
     ctx.stroke();
   } else if (boss.telegraphType === "ring") {
     // Expanding circle: animate radius 0 -> 30 over the telegraph duration
-    void totalDuration;
-    // Use time remaining to compute expansion
     const maxRadius = 30;
-    const progress = 1 - elapsed / (boss.telegraphUntil - timestamp + elapsed);
+    const dur = boss.telegraphDuration || 400;
+    const remaining = boss.telegraphUntil - timestamp;
+    const progress = Math.min(1, 1 - remaining / dur);
     const radius = progress * maxRadius;
     ctx.strokeStyle = "#ff3333";
     ctx.lineWidth = 2;
