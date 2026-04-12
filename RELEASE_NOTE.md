@@ -1,3 +1,59 @@
+# 🚀 QManager BETA v0.1.16 _(Draft)_
+
+**UI polish and quality-of-life improvements: QManager version now shows live on the dashboard, device icon migrated to PNG, Device Information card decluttered, login footer updated, and minor layout fixes across several cards.**
+
+---
+
+## ✨ Improvements
+
+### Device Icon — Migrated from SVG to PNG
+
+- **Replaced `device-icon.svg` with `device-icon.png`** across all three components that referenced it (`device-status.tsx`, `device-information-card.tsx`, `ethernet-card.tsx`). The PNG variant is the authoritative asset going forward.
+- **`ethernet-card.tsx` simplified** — the old implementation used Next.js `<Image>` with a static import (`import deviceIcon from "@/public/device-icon.svg"`) and `priority`. The new implementation uses a plain `<img>` tag with `src="/device-icon.png"` and `loading="lazy"`, removing an unnecessary priority hint for an icon that is never above the fold in the Ethernet card layout.
+- **Removed the redundant `next/image` static import** from `ethernet-card.tsx` — the `Image` component is no longer used in that file, trimming the import block.
+
+Paths: Dashboard, About Device, Local Network → Ethernet card
+
+### Device Information Card — Removed "Manufacturer" Row, Added "QManager Version"
+
+- **"Manufacturer" row removed from the dashboard Device Information card** — the model name (e.g., `RM551E-GL`) already unambiguously identifies the vendor; the separate manufacturer field (`Quectel`) was redundant visual noise on the dashboard. The `manufacturer` field is still present in `DeviceStatus` and continues to be displayed on the **About Device** page.
+- **"QManager Version" row added in its place**, now populated live from the backend (see above).
+- **Skeleton loader count stays consistent** — the loading skeleton renders `Array.from({ length: 9 })` rows, matching the updated 9-row table.
+
+Path: Dashboard → Device Information card
+
+### Scheduled Operations Card — Low-Power Days Row Spacing
+
+- **Added `mt-2` top margin** to the Low Power Mode "days of the week" checkbox group, bringing its spacing in line with the Reboot days group above it.
+
+Path: System Settings → Scheduled Operations
+
+---
+
+## 📥 Installation
+
+### Fresh Install
+
+```sh
+curl -fsSL -o /tmp/qmanager-installer.sh https://raw.githubusercontent.com/dr-dolomite/QManager/development-home/qmanager-installer.sh && sh /tmp/qmanager-installer.sh
+```
+
+### Upgrading from v0.1.15
+
+Head to **System Settings → Software Update** and hit "Check for Updates". The OTA flow handles the upgrade transparently.
+
+---
+
+## Thank You
+
+Thanks for using QManager! If you find it useful, consider [supporting the project](https://paypal.me/iamrusss). Bug reports and feature requests are always welcome on [GitHub Issues](https://github.com/dr-dolomite/QManager/issues).
+
+**License:** MIT + Commons Clause
+
+**Happy connecting!**
+
+---
+
 # 🚀 QManager BETA v0.1.15
 
 **Full rewrite of the install/update/uninstall pipeline — now filesystem-driven, crash-resilient, and curl-only. New password complexity rules with a live requirements checklist. Critical install-stability fixes: binary corruption, SSH drops on LAN installs, and spontaneous device reboots. Plus a security fix for the password reset tool and a correction to the About page's LAN info.**
@@ -27,8 +83,8 @@ Path: About Device (`/about-device`)
 - **Live requirements checklist under the password field** — both the onboarding password step and the change-password dialog now render a 4-item checklist that greys out (unmet) or turns success-green (met) in real time as the user types. No more guessing what "strong enough" means; the user sees every rule transition green before they can submit.
 - **Single source of truth** — new `components/auth/password-requirements.tsx` exports both the `PasswordRequirements` component and an `isPasswordValid()` helper. Both frontend call sites use `isPasswordValid()` for their submit validators instead of duplicating regex checks inline. Future rule tweaks (e.g., adding a symbol requirement) change one file.
 - **Backend parity** — `auth/login.sh` and `auth/password.sh` enforce the same rules server-side using POSIX `grep` character classes as defense-in-depth. Error code renamed from `password_too_short` to `password_weak` with the consolidated message `"Password must be at least 5 characters and include uppercase, lowercase, and a number"`.
-- **Existing passwords still work** — the new rules only gate password *creation* (setup + change). Users with longer but weaker existing passwords (e.g., all lowercase) can still log in; they just can't pick one like that going forward.
-- **Onboarding Continue button is now gated on validity** — during first-time setup, the "Continue" button on the password step stays disabled until every requirement in the live checklist is green *and* the confirmation field matches. No more clicking Continue only to hit a toast error; the button itself tells you you're not ready yet. The step reports its validity up to the wizard via an `onValidityChange` callback, which flows into the shell's existing `continueDisabled` prop.
+- **Existing passwords still work** — the new rules only gate password _creation_ (setup + change). Users with longer but weaker existing passwords (e.g., all lowercase) can still log in; they just can't pick one like that going forward.
+- **Onboarding Continue button is now gated on validity** — during first-time setup, the "Continue" button on the password step stays disabled until every requirement in the live checklist is green _and_ the confirmation field matches. No more clicking Continue only to hit a toast error; the button itself tells you you're not ready yet. The step reports its validity up to the wizard via an `onValidityChange` callback, which flows into the shell's existing `continueDisabled` prop.
 
 Paths: Onboarding (first-time setup), System Settings → Change Password dialog
 
@@ -72,7 +128,7 @@ All three scripts have been redesigned from the ground up to be filesystem-drive
 
 ### `install.sh` Silently Exited After Removing Conflicts (Critical)
 
-- **Root cause** — `remove_conflicts()` ended with `[ "$any" = "0" ] && info "No conflicting packages found"`. When a conflict *was* removed (`any=1`), that trailing expression evaluated to false, making the function return 1. Combined with `set -e` at the top of `install.sh`, the installer exited silently the moment any conflict was successfully removed — right after printing "Removed: socat". No error, no hang, no log line. Upgrades from v0.1.13 (which had `sms-tool`/`socat-at-bridge`/`socat` installed) hit this every single time.
+- **Root cause** — `remove_conflicts()` ended with `[ "$any" = "0" ] && info "No conflicting packages found"`. When a conflict _was_ removed (`any=1`), that trailing expression evaluated to false, making the function return 1. Combined with `set -e` at the top of `install.sh`, the installer exited silently the moment any conflict was successfully removed — right after printing "Removed: socat". No error, no hang, no log line. Upgrades from v0.1.13 (which had `sms-tool`/`socat-at-bridge`/`socat` installed) hit this every single time.
 - **Symptom** — Terminal installs died at step 2 with no error. OTA installs failed the same way but the UI could only say "check update.log" — and update.log just contained the same truncated output pointing back at itself.
 - **Fix** — Added an explicit `return 0` at the end of `remove_conflicts()`. Audited every other function in `install.sh` for the same `&&`-at-end pattern; none found.
 
