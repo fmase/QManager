@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import {
   CheckIcon,
   CheckCircle2Icon,
@@ -46,7 +46,7 @@ export function StatusBadge({
   if (isUpdating && updateStatus.status !== "error") {
     return (
       <Badge variant="outline" className="bg-info/15 text-info hover:bg-info/20 border-info/30">
-        <DownloadIcon className="h-3 w-3" />
+        <DownloadIcon className="size-3" />
         Updating
       </Badge>
     );
@@ -54,7 +54,7 @@ export function StatusBadge({
   if (isDownloading) {
     return (
       <Badge variant="outline" className="bg-info/15 text-info hover:bg-info/20 border-info/30">
-        <DownloadIcon className="h-3 w-3" />
+        <DownloadIcon className="size-3" />
         Downloading
       </Badge>
     );
@@ -62,14 +62,14 @@ export function StatusBadge({
   if (updateAvailable) {
     return (
       <Badge variant="outline" className="bg-warning/15 text-warning hover:bg-warning/20 border-warning/30">
-        <TriangleAlertIcon className="h-3 w-3" />
+        <TriangleAlertIcon className="size-3" />
         Update available
       </Badge>
     );
   }
   return (
     <Badge variant="outline" className="bg-success/15 text-success hover:bg-success/20 border-success/30">
-      <CheckCircle2Icon className="h-3 w-3" />
+      <CheckCircle2Icon className="size-3" />
       Up to date
     </Badge>
   );
@@ -252,7 +252,10 @@ const SoftwareUpdateComponent = () => {
           <CardContent>
             <Alert variant="destructive">
               <AlertTriangleIcon className="size-4" />
-              <AlertDescription>{error}</AlertDescription>
+              <AlertTitle>Failed to check for updates</AlertTitle>
+              <AlertDescription>
+                <p>{error}</p>
+              </AlertDescription>
             </Alert>
             <div className="mt-4 flex justify-end">
               <Button

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { CheckIcon } from "lucide-react";
+import { CircleCheckIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 // =============================================================================
@@ -85,15 +85,13 @@ export function StepDone() {
   return (
     <div className="flex flex-col items-center gap-6 text-center py-2">
       {/* Animated checkmark */}
-      <div
-        className="flex size-16 items-center justify-center rounded-full bg-primary/10 transition-[opacity,transform] duration-500"
+      <CircleCheckIcon
+        className="size-16 text-primary transition-[opacity,transform] duration-500"
         style={{
           opacity: show ? 1 : 0,
           transform: show ? "scale(1)" : "scale(0.6)",
         }}
-      >
-        <CheckIcon className="size-8 text-primary stroke-[2.5]" />
-      </div>
+      />
 
       <div className="flex flex-col gap-2">
         <h2 className="text-2xl font-semibold tracking-tight">You&apos;re all set!</h2>

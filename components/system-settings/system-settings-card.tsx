@@ -46,7 +46,8 @@ import {
   ChevronsUpDown,
 } from "lucide-react";
 import { SaveButton, useSaveFlash } from "@/components/ui/save-button";
-import { motion, type Variants } from "motion/react";
+import { motion } from "motion/react";
+import { containerVariants, itemVariants } from "@/lib/motion";
 import { TbInfoCircleFilled } from "react-icons/tb";
 
 import type {
@@ -55,18 +56,6 @@ import type {
 } from "@/hooks/use-system-settings";
 import { TIMEZONES } from "@/types/system-settings";
 import { cn } from "@/lib/utils";
-
-// ─── Animation variants ────────────────────────────────────────────────────
-
-const containerVariants: Variants = {
-  hidden: {},
-  visible: { transition: { staggerChildren: 0.06 } },
-};
-
-const itemVariants: Variants = {
-  hidden: { opacity: 0, y: 8 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.25, ease: "easeOut" } },
-};
 
 // ─── Component ──────────────────────────────────────────────────────────────
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { motion, type Variants } from "motion/react";
+import { motion } from "motion/react";
 import Markdown from "react-markdown";
 import {
   Card,
@@ -15,7 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -43,8 +43,10 @@ import {
   RefreshCwIcon,
 } from "lucide-react";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 import type { UpdateInfo, UpdateStatus, DownloadState } from "@/hooks/use-software-update";
+import { containerVariants, itemVariants } from "@/lib/motion";
 import { StatusBadge } from "./software-update";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -60,16 +62,6 @@ const PROSE_CLASSES = [
   "prose-a:text-primary prose-a:no-underline hover:prose-a:underline",
   "prose-hr:border-border prose-hr:my-3",
 ].join(" ");
-
-const containerVariants: Variants = {
-  hidden: {},
-  visible: { transition: { staggerChildren: 0.06 } },
-};
-
-const itemVariants: Variants = {
-  hidden: { opacity: 0, y: 8 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.25, ease: "easeOut" } },
-};
 
 function formatRelativeTime(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
@@ -192,7 +184,10 @@ export function UpdateStatusCard({
           {displayError && (
             <Alert variant="destructive" className="mb-4">
               <AlertTriangleIcon className="size-4" />
-              <AlertDescription>{displayError}</AlertDescription>
+              <AlertTitle>Update check failed</AlertTitle>
+              <AlertDescription>
+                <p>{displayError}</p>
+              </AlertDescription>
             </Alert>
           )}
 
@@ -270,7 +265,7 @@ export function UpdateStatusCard({
                       role="region"
                       aria-label="Release notes"
                       tabIndex={0}
-                      className={`max-h-64 overflow-y-auto overflow-x-hidden wrap-break-word rounded-lg border bg-muted/50 p-4 ${PROSE_CLASSES}`}
+                      className={cn("max-h-64 overflow-y-auto overflow-x-hidden wrap-break-word rounded-lg border bg-muted/50 p-4", PROSE_CLASSES)}
                     >
                       <Markdown>{displayChangelog}</Markdown>
                     </div>
@@ -302,10 +297,8 @@ export function UpdateStatusCard({
                         className="h-1.5 rounded-full bg-muted overflow-hidden"
                         role="progressbar"
                         aria-label={downloadState.status === "downloading" ? "Downloading update" : "Verifying integrity"}
-                        aria-valuemin={0}
-                        aria-valuemax={100}
                       >
-                        <div className="h-full rounded-full bg-primary animate-pulse" style={{ width: downloadState.status === "verifying" ? "90%" : "60%" }} />
+                        <div className="h-full w-2/5 rounded-full bg-primary animate-progress-indeterminate" />
                       </div>
                     </div>
                   )}
@@ -408,7 +401,7 @@ export function UpdateStatusCard({
             role="region"
             aria-label="Full release notes"
             tabIndex={0}
-            className={`max-h-[60vh] overflow-y-auto overflow-x-hidden wrap-break-word rounded-lg border bg-muted/50 p-5 ${PROSE_CLASSES}`}
+            className={cn("max-h-[60vh] overflow-y-auto overflow-x-hidden wrap-break-word rounded-lg border bg-muted/50 p-5", PROSE_CLASSES)}
           >
             <Markdown>
               {(updateAvailable ? updateInfo?.changelog : updateInfo?.current_changelog) ?? ""}

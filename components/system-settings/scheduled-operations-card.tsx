@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { motion, type Variants } from "motion/react";
+import { motion } from "motion/react";
+import { containerVariants, itemVariants } from "@/lib/motion";
 import { toast } from "sonner";
 
 import {
@@ -33,18 +34,6 @@ import type {
 } from "@/hooks/use-system-settings";
 import type { ScheduleConfig, LowPowerConfig } from "@/types/system-settings";
 import { DAY_LABELS } from "@/types/system-settings";
-
-// ─── Animation variants ────────────────────────────────────────────────────
-
-const containerVariants: Variants = {
-  hidden: {},
-  visible: { transition: { staggerChildren: 0.06 } },
-};
-
-const itemVariants: Variants = {
-  hidden: { opacity: 0, y: 8 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.25, ease: "easeOut" } },
-};
 
 type ScheduledOperationsCardProps = Pick<
   UseSystemSettingsReturn,

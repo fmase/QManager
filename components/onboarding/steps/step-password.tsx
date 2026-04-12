@@ -134,11 +134,12 @@ export function StepPassword({ onSuccess, onLoadingChange, onSubmitRef, onValidi
               type="text"
               placeholder="e.g. Alex"
               autoComplete="name"
+              aria-describedby="onboard-name-desc"
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
               disabled={isSubmitting}
             />
-            <FieldDescription>Shown in the sidebar. You can change this anytime.</FieldDescription>
+            <FieldDescription id="onboard-name-desc">Shown in the sidebar. You can change this anytime.</FieldDescription>
           </Field>
 
           <Field>
@@ -149,6 +150,8 @@ export function StepPassword({ onSuccess, onLoadingChange, onSubmitRef, onValidi
                 type={showPassword ? "text" : "password"}
                 placeholder="Create a password"
                 autoComplete="new-password"
+                required
+                aria-describedby="onboard-password-reqs"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 disabled={isSubmitting}
@@ -202,7 +205,7 @@ export function StepPassword({ onSuccess, onLoadingChange, onSubmitRef, onValidi
                   {/* Label */}
                   <span
                     className={cn(
-                      "text-xs font-medium w-10 text-right transition-colors duration-300",
+                      "text-xs font-medium shrink-0 text-right transition-colors duration-300",
                       strengthTextClass(strength)
                     )}
                   >
@@ -212,7 +215,7 @@ export function StepPassword({ onSuccess, onLoadingChange, onSubmitRef, onValidi
               )}
             </AnimatePresence>
 
-            <PasswordRequirements password={password} className="pt-1" />
+            <PasswordRequirements password={password} id="onboard-password-reqs" className="pt-1" />
           </Field>
 
           <Field>
@@ -223,6 +226,8 @@ export function StepPassword({ onSuccess, onLoadingChange, onSubmitRef, onValidi
                 type={showConfirm ? "text" : "password"}
                 placeholder="Confirm your password"
                 autoComplete="new-password"
+                required
+                aria-describedby={confirm.length > 0 ? "onboard-confirm-hint" : undefined}
                 value={confirm}
                 onChange={(e) => setConfirm(e.target.value)}
                 disabled={isSubmitting}
@@ -240,6 +245,17 @@ export function StepPassword({ onSuccess, onLoadingChange, onSubmitRef, onValidi
                 {showConfirm ? <EyeOffIcon className="size-4" /> : <EyeIcon className="size-4" />}
               </Button>
             </div>
+            {confirm.length > 0 && (
+              <p
+                id="onboard-confirm-hint"
+                className={cn(
+                  "text-xs transition-colors duration-200",
+                  password === confirm ? "text-success" : "text-destructive"
+                )}
+              >
+                {password === confirm ? "Passwords match" : "Passwords don't match"}
+              </p>
+            )}
           </Field>
 
           {error && <FieldError>{error}</FieldError>}

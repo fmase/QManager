@@ -1,6 +1,7 @@
 "use client";
 
-import { motion, type Variants } from "motion/react";
+import { motion } from "motion/react";
+import { containerVariants, itemVariants } from "@/lib/motion";
 import { toast } from "sonner";
 
 import {
@@ -32,18 +33,6 @@ import { TbInfoCircleFilled } from "react-icons/tb";
 import { AlertTriangleIcon } from "lucide-react";
 
 import { useBandwidthSettings } from "@/hooks/use-bandwidth-settings";
-
-// ─── Animation variants ────────────────────────────────────────────────────
-
-const containerVariants: Variants = {
-  hidden: {},
-  visible: { transition: { staggerChildren: 0.06 } },
-};
-
-const itemVariants: Variants = {
-  hidden: { opacity: 0, y: 8 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.25, ease: "easeOut" } },
-};
 
 const BandwidthMonitorSettings = () => {
   const bandwidth = useBandwidthSettings();

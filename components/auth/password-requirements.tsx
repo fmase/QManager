@@ -34,12 +34,15 @@ export function isPasswordValid(pw: string): boolean {
 export function PasswordRequirements({
   password,
   className,
+  id,
 }: {
   password: string;
   className?: string;
+  id?: string;
 }) {
   return (
     <ul
+      id={id}
       className={cn("flex flex-col gap-1 text-xs", className)}
       aria-label="Password requirements"
     >

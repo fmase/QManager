@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from "react";
-import { motion, type Variants } from "motion/react";
+import { motion } from "motion/react";
+import { containerVariants, itemVariants } from "@/lib/motion";
 import {
   Card,
   CardContent,
@@ -12,7 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
+import { Field, FieldLabel } from "@/components/ui/field";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -52,16 +53,6 @@ interface UpdatePreferencesCardProps {
 // ─── Component ──────────────────────────────────────────────────────────────
 
 const AUTO_UPDATE_DEBOUNCE = 800;
-
-const containerVariants: Variants = {
-  hidden: {},
-  visible: { transition: { staggerChildren: 0.06 } },
-};
-
-const itemVariants: Variants = {
-  hidden: { opacity: 0, y: 8 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.25, ease: "easeOut" } },
-};
 
 export function UpdatePreferencesCard({
   updateInfo,
@@ -207,42 +198,34 @@ export function UpdatePreferencesCard({
           >
             {/* ── Pre-release toggle ──────────────────────────────── */}
             <Separator />
-            <motion.div variants={itemVariants} className="flex items-center justify-between">
-              <p className="font-semibold text-muted-foreground text-sm">
-                Include pre-releases
-              </p>
-              <div className="flex items-center space-x-2">
+            <motion.div variants={itemVariants}>
+              <Field orientation="horizontal">
+                <FieldLabel htmlFor="include-prerelease">
+                  Include pre-releases
+                </FieldLabel>
                 <Switch
                   id="include-prerelease"
                   checked={updateInfo?.include_prerelease ?? false}
                   onCheckedChange={handleTogglePrerelease}
                   disabled={prereleaseToggling || isUpdating}
                 />
-                <Label htmlFor="include-prerelease">
-                  {updateInfo?.include_prerelease ? "Enabled" : "Disabled"}
-                </Label>
-              </div>
+              </Field>
             </motion.div>
 
             {/* ── Automatic updates ─────────────────────────────── */}
             <Separator />
-            <motion.div variants={itemVariants} className="flex flex-col gap-2">
-              <div className="flex items-center justify-between">
-                <p className="font-semibold text-muted-foreground text-sm">
+            <motion.div variants={itemVariants}>
+              <Field orientation="horizontal">
+                <FieldLabel htmlFor="auto-update">
                   Automatic updates
-                </p>
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    id="auto-update"
-                    checked={updateInfo?.auto_update_enabled ?? false}
-                    onCheckedChange={handleAutoUpdateToggle}
-                    disabled={autoUpdateToggling || isUpdating}
-                  />
-                  <Label htmlFor="auto-update">
-                    {updateInfo?.auto_update_enabled ? "Enabled" : "Disabled"}
-                  </Label>
-                </div>
-              </div>
+                </FieldLabel>
+                <Switch
+                  id="auto-update"
+                  checked={updateInfo?.auto_update_enabled ?? false}
+                  onCheckedChange={handleAutoUpdateToggle}
+                  disabled={autoUpdateToggling || isUpdating}
+                />
+              </Field>
             </motion.div>
 
             {/* Time Configuration for Automatic Updates */}
@@ -256,9 +239,9 @@ export function UpdatePreferencesCard({
 
                   <div className="flex flex-col @sm/card:flex-row @sm/card:items-center gap-2 @sm/card:justify-between rounded-lg border bg-muted/50 p-3">
                     <div className="flex flex-col gap-0.5 min-w-0">
-                      <span className="text-xs text-muted-foreground">
+                      <label htmlFor="auto-update-time" className="text-xs font-medium text-muted-foreground">
                         Update at
-                      </span>
+                      </label>
                       <p className="text-xs text-muted-foreground">
                         Checks for updates and installs automatically. The
                         device will reboot if an update is found.
