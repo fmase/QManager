@@ -1,8 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect, useRef } from "react";
-import { toast } from "sonner";
-import { authFetch } from "@/lib/auth-fetch";
+import { useEffect } from "react";
 
 import {
   Card,
@@ -39,103 +37,33 @@ import {
 } from "lucide-react";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { cn } from "@/lib/utils";
+import { useSmsAlertLog } from "@/hooks/use-sms-alert-log";
 
 // =============================================================================
-// SmsAlertsLogCard — Self-contained log of sent/failed SMS alerts
+// SmsAlertsLogCard — Log of sent/failed SMS alerts
 // =============================================================================
-
-const CGI_ENDPOINT = "/cgi-bin/quecmanager/monitoring/sms_alert_log.sh";
-
-interface SmsLogEntry {
-  timestamp: string;
-  trigger: string;
-  status: "sent" | "failed";
-  recipient: string;
-}
-
-interface SmsLogResponse {
-  success: boolean;
-  entries: SmsLogEntry[];
-  total: number;
-  error?: string;
-}
 
 interface SmsAlertsLogCardProps {
   refreshKey?: number;
 }
 
 const SmsAlertsLogCard = ({ refreshKey }: SmsAlertsLogCardProps) => {
-  const [entries, setEntries] = useState<SmsLogEntry[]>([]);
-  const [total, setTotal] = useState(0);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [fetchError, setFetchError] = useState<string | null>(null);
-  const [lastFetched, setLastFetched] = useState<Date | null>(null);
-
-  const abortRef = useRef<AbortController | null>(null);
-
-  useEffect(() => {
-    return () => {
-      abortRef.current?.abort();
-    };
-  }, []);
-
-  // ---------------------------------------------------------------------------
-  // Fetch log entries
-  // ---------------------------------------------------------------------------
-  const fetchLog = useCallback(
-    async (mode: "initial" | "refresh" | "silent" = "initial") => {
-      abortRef.current?.abort();
-      const controller = new AbortController();
-      abortRef.current = controller;
-
-      if (mode === "initial") setIsLoading(true);
-      if (mode === "refresh") setIsRefreshing(true);
-      setFetchError(null);
-
-      try {
-        const resp = await authFetch(CGI_ENDPOINT, {
-          signal: controller.signal,
-        });
-        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-
-        const data: SmsLogResponse = await resp.json();
-        if (controller.signal.aborted) return;
-
-        if (data.success) {
-          setEntries(data.entries);
-          setTotal(data.total);
-          setLastFetched(new Date());
-        } else {
-          const msg = data.error || "Failed to load SMS log";
-          setFetchError(msg);
-          if (mode !== "silent") toast.error(msg);
-        }
-      } catch (err) {
-        if (controller.signal.aborted) return;
-        const msg =
-          err instanceof Error ? err.message : "Failed to load SMS alert log";
-        setFetchError(msg);
-        if (mode !== "silent") toast.error(msg);
-      } finally {
-        if (!controller.signal.aborted) {
-          setIsLoading(false);
-          setIsRefreshing(false);
-        }
-      }
-    },
-    [],
-  );
-
-  useEffect(() => {
-    fetchLog("initial");
-  }, [fetchLog]);
+  const {
+    entries,
+    total,
+    isLoading,
+    isRefreshing,
+    error,
+    lastFetched,
+    refresh,
+    silentRefresh,
+  } = useSmsAlertLog();
 
   useEffect(() => {
     if (refreshKey) {
-      fetchLog("silent");
+      silentRefresh();
     }
-  }, [refreshKey, fetchLog]);
+  }, [refreshKey, silentRefresh]);
 
   // --- Loading skeleton ------------------------------------------------------
   if (isLoading) {
@@ -172,7 +100,7 @@ const SmsAlertsLogCard = ({ refreshKey }: SmsAlertsLogCardProps) => {
   }
 
   // --- Error state (initial fetch failed) ------------------------------------
-  if (!isLoading && fetchError && entries.length === 0) {
+  if (!isLoading && error && entries.length === 0) {
     return (
       <Card className="@container/card">
         <CardHeader>
@@ -186,12 +114,12 @@ const SmsAlertsLogCard = ({ refreshKey }: SmsAlertsLogCardProps) => {
             <AlertCircle className="size-4" />
             <AlertTitle>Failed to load alert log</AlertTitle>
             <AlertDescription>
-              <p>{fetchError}</p>
+              <p>{error}</p>
               <Button
                 variant="outline"
                 size="sm"
                 className="mt-2"
-                onClick={() => fetchLog("initial")}
+                onClick={refresh}
               >
                 <RefreshCcwIcon className="size-3.5" />
                 Retry
@@ -219,7 +147,7 @@ const SmsAlertsLogCard = ({ refreshKey }: SmsAlertsLogCardProps) => {
             size="icon"
             aria-label="Refresh alert log"
             disabled={isRefreshing}
-            onClick={() => fetchLog("refresh")}
+            onClick={refresh}
           >
             <RefreshCcwIcon
               className={cn("size-4", isRefreshing && "animate-spin")}
@@ -282,7 +210,7 @@ const SmsAlertsLogCard = ({ refreshKey }: SmsAlertsLogCardProps) => {
                     </TableCell>
                     <TableCell className="text-sm min-w-0">
                       <span className="block truncate">{entry.trigger}</span>
-                      <span className="block text-xs text-muted-foreground truncate @md/card:hidden">
+                      <span className="block text-xs text-muted-foreground font-mono truncate @md/card:hidden">
                         {entry.recipient}
                       </span>
                     </TableCell>
@@ -292,7 +220,7 @@ const SmsAlertsLogCard = ({ refreshKey }: SmsAlertsLogCardProps) => {
                           variant="outline"
                           className="bg-success/15 text-success hover:bg-success/20 border-success/30"
                         >
-                          <CheckCircle2Icon className="h-3 w-3" />
+                          <CheckCircle2Icon className="size-3" />
                           Sent
                         </Badge>
                       ) : (
@@ -300,7 +228,7 @@ const SmsAlertsLogCard = ({ refreshKey }: SmsAlertsLogCardProps) => {
                           variant="outline"
                           className="bg-destructive/15 text-destructive hover:bg-destructive/20 border-destructive/30"
                         >
-                          <XCircleIcon className="h-3 w-3" />
+                          <XCircleIcon className="size-3" />
                           Failed
                         </Badge>
                       )}

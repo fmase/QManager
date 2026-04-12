@@ -34,14 +34,12 @@ const STRENGTH_LABELS = ["", "Weak", "Fair", "Good", "Strong"] as const;
 function strengthColorClass(strength: number) {
   if (strength === 1) return "bg-destructive";
   if (strength === 2) return "bg-warning";
-  if (strength === 3) return "bg-warning";
   return "bg-success";
 }
 
 function strengthTextClass(strength: number) {
   if (strength === 1) return "text-destructive";
   if (strength === 2) return "text-warning";
-  if (strength === 3) return "text-warning";
   return "text-success";
 }
 

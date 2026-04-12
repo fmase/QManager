@@ -76,30 +76,6 @@ All three scripts have been redesigned from the ground up to be filesystem-drive
 - **Symptom** — Terminal installs died at step 2 with no error. OTA installs failed the same way but the UI could only say "check update.log" — and update.log just contained the same truncated output pointing back at itself.
 - **Fix** — Added an explicit `return 0` at the end of `remove_conflicts()`. Audited every other function in `install.sh` for the same `&&`-at-end pattern; none found.
 
-### Install Corrupted `atcli_smd11` / `sms_tool` Binaries (Critical)
-
-- **Root cause** — The new `install_file()` helper's CRLF safety net was running `tr -d '\r'` on every file that contained a `0x0D` byte, regardless of whether the file was a shell script or a compiled binary. ELF binaries have `0x0D` bytes scattered throughout their machine code (it's just one of 256 possible byte values in compiled instructions). Stripping those bytes rewrites random opcodes — the corrupted binary segfaults on first execution.
-- **Symptom** — On a v0.1.15-test1 install, `atcli_smd11 'AT'` printed `Segmentation fault`. The poller couldn't collect modem data, `qcmd` returned errors on every command, and the entire AT-command surface (signal, APN, profiles, SMS, firmware info) was broken until the binaries were manually restored via SCP/WinSCP.
-- **Affected binaries** — `atcli_smd11`, `sms_tool`, and `bridge_traffic_monitor_rm551`. All three are ELF executables installed via the same helper.
-- **Fix** — `install_file()` now detects ELF files via the `\x7fELF` magic bytes at offset 0 and skips CRLF stripping on them entirely. Shell scripts still get the strip (the original safety net is preserved). Logged as `install_file: <name> is ELF — skipping CRLF strip` so you can verify the protection fired in the install log.
-- **Recovery for users on v0.1.15-test1** — Upgrading to v0.1.15 via the Updates page reinstalls the binaries cleanly; no manual intervention needed.
-
-### SSH Session Died at "Stopping QManager Services" (LAN Users)
-
-- **Root cause** — `qmanager_eth_link`'s `stop()` handler called `ethtool -s eth0 advertise ... autoneg on` followed by `ethtool -r eth0` ("renegotiate"), which drops the eth0 link for 2–5 seconds to force a fresh autonegotiation. Every TCP connection routed through eth0 died mid-install — including the SSH session the installer itself was running over. Wi-Fi and Tailscale users never noticed; anyone SSH'd in over the LAN cable always lost their session right at "Stopping QManager services".
-- **Secondary flap** — `start()` *also* unconditionally called `ethtool -r eth0`, so even a fix to `stop()` would have flapped the link a second time when services came back up at the end of install.
-- **Fix** — `stop()` is now a no-op (hardware state shouldn't change just because a service stops). `start()` is now idempotent: reads the current link speed from `ethtool eth0` and skips the apply entirely when already at the desired speed. The link now flaps only when a user explicitly changes the speed limit from the UI, which is the expected behavior. Idempotent reinstalls cause zero link flapping.
-
-### Device Spontaneously Rebooted ~1–2 Minutes Into Install
-
-- **Two compounding failures** — `stop_services` called `"$svc" stop` on all 11 qmanager init.d scripts in series. Procd-managed services wait for their daemon to die before returning; if a daemon was mid-AT-command on `/dev/smd11`, the trap handler couldn't fire until the foreground command returned. Stacking 11 of those serially could starve the kernel hardware watchdog, which then rebooted the device after 60–120 s. Meanwhile, `qmanager_watchcat` (alphabetically *last* in the stop loop) was still alive while the poller, DPI, and other services were being torn down — it could observe "internet lost", race through Tiers 1–3, and reach Tier 4 (`( sleep 1 && reboot ) &`). The Tier 4 subshell is *detached*, so killing watchcat afterwards doesn't stop the reboot.
-- **Fix — `stop_services` restructured into 4 ordered phases** with two safety nets:
-    1. Touch `/tmp/qmanager_watchcat.lock` first — watchcat enters `LOCKED` state at the top of its next main-loop iteration and skips every escalation tier.
-    2. `killall -9 qmanager_watchcat` — defense in depth. SIGKILL bypasses the trap handler so the Tier 4 reboot subshell can't be spawned even if watchcat is mid-execution.
-    3. SIGTERM all `qmanager_*` daemons, 1-second drain, then SIGKILL stragglers — procd's `stop_service` now sees every daemon already dead and returns instantly, no watchdog starvation.
-    4. Call init.d `stop` on every `qmanager*` script for state-file cleanup (now fast, since every daemon is already gone).
-- **Two lock-file safety nets** — `trap 'rm -f "$WATCHCAT_LOCK"' EXIT INT TERM` at the top of `main()` ensures failed installs don't leave watchcat permanently locked, and an explicit `rm -f "$WATCHCAT_LOCK"` after `at_stack_check` handles the OTA happy path (where `qmanager_update` passes `--no-reboot` and releases watchcat from maintenance mode before its own post-install steps).
-
 ### Summary Screen Falsely Reported `coreutils-timeout` as Missing
 
 - **`pkg_binary()` didn't map `coreutils-timeout` → `timeout`** — the post-install summary runs `command -v "$(pkg_binary "$pkg")"` to verify every package is installed. For `coreutils-timeout`, `pkg_binary` returned the literal string `coreutils-timeout`, so `command -v coreutils-timeout` always failed even when the package was installed. The actual binary is `/usr/bin/timeout`; only the summary check was lying, not the package install itself.
@@ -120,16 +96,6 @@ All three scripts have been redesigned from the ground up to be filesystem-drive
 - **Root cause** — The v0.1.14 tarball's `install.sh` had a hardcoded `VERSION="v0.1.13"` constant at line 37 that nobody bumped during the release. After OTA, the About page correctly showed v0.1.14 (baked into the frontend JS from `package.json`), but the Updates page read `/etc/qmanager/VERSION` which `install.sh` had just stamped back to `v0.1.13`.
 - **Fix** — `build.sh` now automatically stamps the version from `package.json` into both `install.sh` and `uninstall.sh` before packaging, with a hard-fail if the stamp doesn't land. Drift between `package.json` and the shell scripts is now impossible.
 - **Recovery for users on broken v0.1.14** — Upgrading to v0.1.15 via the Updates page will automatically fix the VERSION file as a side-effect of the install. No manual intervention required.
-
-### Documentation Referenced the Wrong Auth File
-
-- **`docs/ARCHITECTURE.md` and `docs/DEPLOYMENT.md` said `/etc/qmanager/shadow`** — Both referenced a legacy placeholder that was never actually created by any script. Anyone following the "Check shadow file" troubleshooting step in the deployment guide would see "No such file or directory".
-- **Fix** — Updated both docs to reference `/etc/qmanager/auth.json`, matching what `cgi_auth.sh` actually uses.
-
-### build.sh Lint Was Fighting the New Design
-
-- **Previous lint expected hardcoded service lists** — The v0.1.14 lint walked every `scripts/etc/init.d/qmanager*` file and grep'd `install.sh` for each by name. The v0.1.15 filesystem-driven rewrite intentionally removes those hardcoded lists, which broke the lint and blocked builds.
-- **Fix** — Lint rewritten to validate the new design: checks that the filesystem-iteration pattern is present, that the main service exists, and that every `UCI_GATED_SERVICES` entry has a real file. Catches design regressions instead of fighting the intended architecture.
 
 ---
 

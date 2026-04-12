@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckIcon } from "lucide-react";
+import { CheckCircle2Icon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // =============================================================================
@@ -47,7 +47,7 @@ export function PasswordRequirements({
         const met = rule.test(password);
         return (
           <li key={rule.key} className="flex items-center gap-2">
-            <CheckIcon
+            <CheckCircle2Icon
               aria-hidden
               className={cn(
                 "size-3.5 shrink-0 transition-colors duration-200",

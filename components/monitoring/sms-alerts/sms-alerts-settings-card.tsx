@@ -177,9 +177,14 @@ const SmsAlertsSettingsCard = ({ onTestSmsSent }: SmsAlertsSettingsCardProps) =>
           <Alert variant="destructive">
             <AlertCircle className="size-4" />
             <AlertTitle>Failed to load settings</AlertTitle>
-            <AlertDescription className="flex items-center justify-between">
-              <span>{error}</span>
-              <Button variant="outline" size="sm" onClick={() => refresh()}>
+            <AlertDescription>
+              <p>{error}</p>
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-2"
+                onClick={() => refresh()}
+              >
                 <RefreshCcwIcon className="size-3.5" />
                 Retry
               </Button>
