@@ -65,6 +65,10 @@ const data = {
       icon: SettingsIcon,
       items: [
         {
+          title: "Configuration Backup",
+          url: "/system-settings/config-backup",
+        },
+        {
           title: "Bandwidth Monitor",
           url: "/system-settings/bandwidth-monitor",
         },
@@ -88,7 +92,7 @@ const data = {
       title: "Luci",
       url: "/cgi-bin/luci",
       icon: PackageOpenIcon,
-    }
+    },
   ],
   navSecondary: [
     {
@@ -120,7 +124,7 @@ const data = {
         {
           title: "Antenna Alignment",
           url: "/cellular/antenna-alignment",
-        }
+        },
       ],
     },
     {
@@ -240,7 +244,7 @@ const data = {
         {
           title: "SMS Alerts",
           url: "/monitoring/sms-alerts",
-        }
+        },
       ],
     },
     {
