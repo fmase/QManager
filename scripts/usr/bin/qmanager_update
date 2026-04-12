@@ -345,11 +345,11 @@ mode_install() {
     # --- Step 6: Cleanup + reboot ---
     rm -rf /tmp/qmanager_install
     write_status "rebooting" "Rebooting device..." "$version" ""
-    log_info "Rebooting in 1 second"
+    log_info "Rebooting in 5 seconds"
 
     rm -f "$PID_FILE"
     trap - EXIT INT TERM
-    sleep 1
+    sleep 5
     reboot
     exit 0
 }
@@ -454,11 +454,11 @@ mode_install_staged() {
     # --- Step 5: Cleanup + reboot ---
     rm -rf /tmp/qmanager_install
     write_status "rebooting" "Rebooting device..." "$VERSION" ""
-    log_info "Rebooting in 1 second"
+    log_info "Rebooting in 5 seconds"
 
     rm -f "$PID_FILE"
     trap - EXIT INT TERM
-    sleep 1
+    sleep 5
     reboot
     exit 0
 }
@@ -529,11 +529,11 @@ mode_rollback() {
     # --- Step 6: Cleanup + reboot ---
     rm -rf /tmp/qmanager_install
     write_status "rebooting" "Rebooting device..." "$version" ""
-    log_info "Rebooting in 1 second"
+    log_info "Rebooting in 5 seconds"
 
     rm -f "$PID_FILE"
     trap - EXIT INT TERM
-    sleep 1
+    sleep 5
     reboot
     exit 0
 }
