@@ -20,21 +20,12 @@ import type {
 import { preRenderAllSprites } from "./signal-storm-sprites";
 
 import {
-  // Size constants needed for spawn clamping / beam positioning
+  // Size constants needed for spawn x-clamping
   ENEMY_W,
-  ENEMY_H,
   JAMMER_W,
-  JAMMER_H,
   SWERVER_W,
-  SWERVER_H,
   SPLITTER_W,
-  SPLITTER_H,
   SNIPER_W,
-  SNIPER_H,
-  ORBITER_W,
-  ORBITER_H,
-  DRONE_W,
-  DRONE_H,
   // Spawn functions
   spawnInterference,
   spawnJammer,
@@ -1167,6 +1158,9 @@ export class SignalStormEngine {
     this.particles = [];
     this.boss = null;
     this.bossDefeatFlash = 0;
+    this.shakeUntil = 0;
+    this.shakeMagnitude = 0;
+    this.pauseOverlayStartTime = 0;
 
     this.initPlayer();
     // Re-scatter stars
