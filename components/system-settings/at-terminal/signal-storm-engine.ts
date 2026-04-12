@@ -55,6 +55,18 @@ import {
 
 import { GameAudio } from "./signal-storm-audio";
 
+import {
+  spawnBoss,
+  updateBoss as updateBossModule,
+  drawBoss as drawBossModule,
+  drawBossTelegraph,
+  drawBossHpBar,
+  drawBossIntroBanner,
+  checkPhaseTransition,
+  BOSS_WAVE_INTERVAL,
+  SCORE_BOSS,
+} from "./signal-storm-bosses";
+
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const PLAYER_SPEED = 200;
@@ -79,10 +91,6 @@ const POWERUP_H = 14;
 const RAPID_FIRE_DURATION = 5000;
 const SPREAD_SHOT_DURATION = 5000;
 const SPREAD_ANGLE = 0.3; // radians off-axis for spread
-
-const SCORE_BOSS = 100; // multiplied by boss tier
-const BOSS_WAVE_INTERVAL = 5;
-const BOSS_ENTER_Y = 60; // px from top where boss stops and attacks
 
 const LS_KEY = "qm_game_highscore";
 
@@ -116,6 +124,8 @@ export class SignalStormEngine {
 
   private boss: Boss | null = null;
   private bossDefeatFlash = 0;
+  private shakeUntil = 0;
+  private shakeMagnitude = 0;
 
   private score = 0;
   private highScore = 0;
@@ -425,7 +435,7 @@ export class SignalStormEngine {
       this.waveTimer = 0;
       // Spawn a boss at the start of every BOSS_WAVE_INTERVAL wave
       if (this.wave % BOSS_WAVE_INTERVAL === 0 && !this.boss) {
-        this.spawnBoss();
+        this.doSpawnBoss();
       }
     }
 
@@ -436,7 +446,58 @@ export class SignalStormEngine {
 
     // ── Boss update ──
     if (this.boss) {
-      this.updateBoss(dt, timestamp);
+      const bossResult = updateBossModule(this.boss, dt, timestamp, this.player, this.width, this.height);
+      for (const beam of bossResult.beamsToFire) {
+        this.enemyBeams.push({
+          x: beam.x - (beam.width ?? BEAM_W) / 2,
+          y: beam.y,
+          width: beam.width ?? BEAM_W,
+          height: beam.height ?? BEAM_H,
+          active: true,
+          dx: beam.dx,
+          dy: beam.dy,
+        });
+      }
+      for (const shake of bossResult.shakeEvents) {
+        this.triggerShake(shake.magnitude, shake.duration, timestamp);
+      }
+
+      // ── Player beam collisions with boss ──
+      for (const b of this.beams) {
+        if (!b.active) continue;
+        if (this.collides(b, this.boss)) {
+          b.active = false;
+          this.boss.hp -= 1;
+          this.boss.flashUntil = timestamp + 80;
+          this.audio.playBossHit();
+          this.spawnParticles(b.x + BEAM_W / 2, b.y, this.palette.text);
+          const phaseEvent = checkPhaseTransition(this.boss, timestamp);
+          if (phaseEvent) {
+            this.audio.playPhaseTransition();
+            this.triggerShake(phaseEvent.shakeMagnitude, phaseEvent.shakeDuration, timestamp);
+            this.spawnParticles(this.boss.x + this.boss.width / 2, this.boss.y + this.boss.height / 2, "#ffffff");
+          }
+          if (this.boss.hp <= 0) {
+            this.defeatBoss(this.boss);
+            break;
+          }
+        }
+      }
+
+      // ── Boss body vs player ──
+      if (this.boss && this.collides(this.boss, this.player)) {
+        if (this.player.hasShield) {
+          this.player.hasShield = false;
+          this.spawnParticles(
+            this.player.x + PLAYER_W / 2,
+            this.player.y + PLAYER_H / 2,
+            this.palette.shield
+          );
+        } else {
+          this.triggerGameOver();
+          return;
+        }
+      }
     }
 
     // ── Survival score ──
@@ -602,227 +663,16 @@ export class SignalStormEngine {
     );
   }
 
-  private spawnBoss(): void {
+  private doSpawnBoss(): void {
     const tier = (((this.wave / BOSS_WAVE_INTERVAL) - 1) % 5 + 1) as 1 | 2 | 3 | 4 | 5;
-    const cycleNumber = Math.floor((this.wave - 1) / 25);
-    const baseHp = [0, 8, 12, 14, 10, 18][tier];
-    const hp = baseHp + cycleNumber * 6;
-
-    // Determine boss dimensions from sprite at full scale
-    const spriteWidths  = [0, 40, 36, 48, 32, 44];
-    const spriteHeights = [0, 24, 28, 20, 28, 32];
-    const w = spriteWidths[tier];
-    const h = spriteHeights[tier];
-
-    const bossNames = ["", "SIGNAL DISRUPTOR", "FREQUENCY JAMMER", "BAND BLOCKER", "NETWORK NULLIFIER", "CORE CORRUPTOR"];
-
-    this.boss = {
-      x: this.width / 2 - w / 2,
-      y: -h,
-      width: w,
-      height: h,
-      active: true,
-      hp,
-      maxHp: hp,
-      tier,
-      entered: false,
-      moveTimer: 0,
-      shootTimer: 0,
-      patternPhase: 0,
-      targetX: this.width / 2 - w / 2,
-      dx: tier === 4 ? 140 : (tier === 3 ? 25 : 0),
-      name: bossNames[tier],
-      phase: 1,
-      phaseJustChanged: false,
-      phaseFreezeUntil: 0,
-      amplitude: 0,
-      period: 0,
-      telegraphUntil: 0,
-      telegraphOrigin: null,
-      telegraphType: "dot",
-      telegraphAimX: 0,
-      flashUntil: 0,
-      introBanner: null,
-    };
+    this.boss = spawnBoss(tier, this.wave, this.width, performance.now());
     this.audio.playBossIntro();
     this.audio.startMusic("boss");
   }
 
-  private updateBoss(dt: number, timestamp: number): void {
-    const boss = this.boss!;
-    const centerX = this.width / 2 - boss.width / 2;
-
-    // ── Entry movement ──
-    if (!boss.entered) {
-      boss.y += 80 * dt;
-      if (boss.y >= BOSS_ENTER_Y) {
-        boss.y = BOSS_ENTER_Y;
-        boss.entered = true;
-        // Give boss 2 an initial random target
-        if (boss.tier === 2) {
-          boss.targetX = Math.random() * (this.width - boss.width);
-        }
-      }
-      return; // don't move/shoot until fully entered
-    }
-
-    // ── Movement patterns ──
-    boss.moveTimer += dt;
-
-    if (boss.tier === 1) {
-      // Smooth sine-wave left-right
-      boss.x = centerX + Math.sin(boss.moveTimer * 0.8) * (this.width * 0.3);
-
-    } else if (boss.tier === 2) {
-      // Dash to random X positions
-      const diff = boss.targetX - boss.x;
-      const step = 100 * dt;
-      if (Math.abs(diff) <= step) {
-        boss.x = boss.targetX;
-        boss.targetX = Math.random() * (this.width - boss.width);
-      } else {
-        boss.x += Math.sign(diff) * step;
-      }
-
-    } else if (boss.tier === 3) {
-      // Slow left-right sweep, bounces off edges
-      boss.x += boss.dx * dt;
-      if (boss.x <= 0) {
-        boss.x = 0;
-        boss.dx = Math.abs(boss.dx);
-      } else if (boss.x + boss.width >= this.width) {
-        boss.x = this.width - boss.width;
-        boss.dx = -Math.abs(boss.dx);
-      }
-
-    } else if (boss.tier === 4) {
-      // Fast zigzag, bounces off walls
-      boss.x += boss.dx * dt;
-      if (boss.x <= 0) {
-        boss.x = 0;
-        boss.dx = Math.abs(boss.dx);
-      } else if (boss.x + boss.width >= this.width) {
-        boss.x = this.width - boss.width;
-        boss.dx = -Math.abs(boss.dx);
-      }
-
-    } else if (boss.tier === 5) {
-      // Slow descent + left-right (like boss 3)
-      boss.x += boss.dx * dt;
-      if (boss.x <= 0) {
-        boss.x = 0;
-        boss.dx = Math.abs(boss.dx || 30);
-      } else if (boss.x + boss.width >= this.width) {
-        boss.x = this.width - boss.width;
-        boss.dx = -Math.abs(boss.dx || 30);
-      }
-      // Slowly descend, capped at 40% of height
-      const maxY = this.height * 0.4;
-      if (boss.y < maxY) {
-        boss.y += 15 * dt;
-        if (boss.y > maxY) boss.y = maxY;
-      }
-    }
-
-    // Clamp x to canvas
-    boss.x = Math.max(0, Math.min(boss.x, this.width - boss.width));
-
-    // ── Shooting ──
-    boss.shootTimer += dt;
-    const shootIntervals = [0, 2.5, 3.0, 3.5, 2.0, 2.5];
-    if (boss.shootTimer >= shootIntervals[boss.tier]) {
-      boss.shootTimer = 0;
-      this.bossShoot(boss);
-      // Boss 5 rotates through pattern phases
-      if (boss.tier === 5) {
-        boss.patternPhase = (boss.patternPhase + 1) % 4;
-      }
-    }
-
-    // ── Player beam collisions ──
-    for (const b of this.beams) {
-      if (!b.active) continue;
-      if (this.collides(b, boss)) {
-        b.active = false;
-        boss.hp -= 1;
-        this.audio.playBossHit();
-        // Small hit particle
-        this.spawnParticles(b.x + BEAM_W / 2, b.y, this.palette.text);
-        if (boss.hp <= 0) {
-          this.defeatBoss(boss);
-          return;
-        }
-      }
-    }
-
-    // ── Boss body vs player ──
-    if (this.collides(boss, this.player)) {
-      if (this.player.hasShield) {
-        this.player.hasShield = false;
-        this.spawnParticles(
-          this.player.x + PLAYER_W / 2,
-          this.player.y + PLAYER_H / 2,
-          this.palette.shield
-        );
-      } else {
-        this.triggerGameOver();
-      }
-    }
-  }
-
-  private bossShoot(boss: Boss): void {
-    const bCx = boss.x + boss.width / 2;
-    const bBottom = boss.y + boss.height;
-
-    const fireBeam = (x: number, dy: number, dx = 0) => {
-      this.enemyBeams.push({
-        x: x - BEAM_W / 2,
-        y: bBottom,
-        width: BEAM_W,
-        height: BEAM_H,
-        active: true,
-        dy,
-        dx,
-      });
-    };
-
-    const effectiveTier = boss.tier === 5
-      ? ((boss.patternPhase % 4) + 1) as 1 | 2 | 3 | 4
-      : boss.tier;
-
-    if (effectiveTier === 1) {
-      // Single beam from center
-      fireBeam(bCx, 120);
-
-    } else if (effectiveTier === 2) {
-      // 3 spread beams — we simulate angle via horizontal x offset at distance
-      fireBeam(bCx, 110);
-      // Left angled: spawn offset left, same dy
-      fireBeam(bCx - 20, 110);
-      // Right angled: spawn offset right
-      fireBeam(bCx + 20, 110);
-
-    } else if (effectiveTier === 3) {
-      // 5 evenly-spaced beams across boss width
-      const step = boss.width / 4;
-      for (let i = 0; i <= 4; i++) {
-        fireBeam(boss.x + step * i, 90);
-      }
-
-    } else if (effectiveTier === 4) {
-      // Aimed beam toward player
-      const px = this.player.x + PLAYER_W / 2;
-      const py = this.player.y + PLAYER_H / 2;
-      const angle = Math.atan2(py - bBottom, px - bCx);
-      // We only have dy on EnemyBeam; spawn at x that approximates the angle
-      // by offsetting x toward the player and using full speed downward
-      const dist = Math.max(1, Math.abs(py - bBottom));
-      const xRatio = (px - bCx) / dist;
-      // Clamp xRatio to avoid extreme offsets
-      const xOff = Math.max(-60, Math.min(60, xRatio * 60));
-      void angle;
-      fireBeam(bCx + xOff, 150);
-    }
+  private triggerShake(magnitude: number, duration: number, timestamp: number): void {
+    this.shakeUntil = Math.max(this.shakeUntil, timestamp + duration);
+    this.shakeMagnitude = Math.max(this.shakeMagnitude, magnitude);
   }
 
   private defeatBoss(boss: Boss): void {
@@ -952,9 +802,11 @@ export class SignalStormEngine {
         drawEnemy(e, this.ctx, this.sprites);
       }
 
-      // 6b. Boss
+      // 6b. Boss + telegraph
       if (this.boss) {
-        this.drawBoss(this.boss);
+        const timestamp = this.lastTime;
+        drawBossModule(this.boss, this.ctx, this.sprites, timestamp);
+        drawBossTelegraph(this.boss, this.ctx, timestamp);
       }
 
       // 7. Enemy beams (red energy bolt)
@@ -989,9 +841,11 @@ export class SignalStormEngine {
       // 11. Power-up indicators
       this.drawPowerUpIndicators();
 
-      // 12. Boss HP bar
+      // 12. Boss HP bar + intro banner
       if (this.boss) {
-        this.drawBossHP(this.boss);
+        const timestamp = this.lastTime;
+        drawBossHpBar(this.boss, this.ctx, this.width, this.palette);
+        drawBossIntroBanner(this.boss, this.ctx, this.width, this.height, this.palette, timestamp);
       }
 
       // 13. Boss defeated flash
@@ -1069,55 +923,6 @@ export class SignalStormEngine {
 
     // Draw the pixel art icon
     ctx.drawImage(sprite, p.x, p.y);
-  }
-
-  private drawBoss(boss: Boss): void {
-    const { ctx } = this;
-    const spriteMap: Record<number, OffscreenCanvas> = {
-      1: this.sprites.boss1,
-      2: this.sprites.boss2,
-      3: this.sprites.boss3,
-      4: this.sprites.boss4,
-      5: this.sprites.boss5,
-    };
-    const sprite = spriteMap[boss.tier];
-    ctx.drawImage(sprite, Math.round(boss.x), Math.round(boss.y));
-
-    // Damage flash when hp < 30% of max
-    if (boss.hp / boss.maxHp < 0.3) {
-      ctx.globalAlpha = 0.25 + Math.sin(this.lastTime / 80) * 0.15;
-      ctx.fillStyle = "#ffffff";
-      ctx.fillRect(boss.x, boss.y, boss.width, boss.height);
-      ctx.globalAlpha = 1;
-    }
-  }
-
-  private drawBossHP(boss: Boss): void {
-    const { ctx, width } = this;
-    const margin = 16;
-    const barY = 48;
-    const barH = 6;
-    const barW = width - margin * 2;
-    const fillW = Math.max(0, (boss.hp / boss.maxHp) * barW);
-
-    // Background track
-    ctx.globalAlpha = 0.5;
-    ctx.fillStyle = this.palette.textMuted;
-    ctx.fillRect(margin, barY, barW, barH);
-    ctx.globalAlpha = 1;
-
-    // HP fill — color shifts red as hp drops
-    const hpRatio = boss.hp / boss.maxHp;
-    const fillColor = hpRatio > 0.5 ? this.palette.jammer : this.palette.enemy;
-    ctx.fillStyle = fillColor;
-    ctx.fillRect(margin, barY, fillW, barH);
-
-    // Boss name label — use name field from boss object
-    ctx.textAlign = "center";
-    ctx.textBaseline = "bottom";
-    ctx.fillStyle = fillColor;
-    ctx.font = "bold 10px monospace";
-    ctx.fillText(`⚠ ${boss.name}  ${boss.hp}/${boss.maxHp}`, width / 2, barY - 2);
   }
 
   private drawHUD(): void {
