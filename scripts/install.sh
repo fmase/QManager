@@ -520,6 +520,7 @@ remove_conflicts() {
         fi
     done
     [ "$any" = "0" ] && info "No conflicting packages found"
+    return 0
 }
 
 install_packages() {
