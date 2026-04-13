@@ -33,7 +33,6 @@ type Action =
   | { type: "reset" }
   | { type: "start_reading" }
   | { type: "envelope_parsed"; envelope: BackupEnvelope }
-  | { type: "need_password" }
   | { type: "password_bad" }
   | { type: "decrypted"; payload: BackupPayload; needsModelWarning: boolean }
   | { type: "model_warning_ack" }
@@ -50,8 +49,6 @@ function reducer(s: State, a: Action): State {
       return { ...s, ui: "reading", error: null };
     case "envelope_parsed":
       return { ...s, envelope: a.envelope, ui: "password_required" };
-    case "need_password":
-      return { ...s, ui: "password_required" };
     case "password_bad":
       return { ...s, ui: "password_incorrect" };
     case "decrypted":
@@ -91,7 +88,6 @@ export function useConfigRestore(currentModel: string) {
   });
 
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const passphraseRef = useRef<string>("");
 
   const stopPolling = useCallback(() => {
     if (pollRef.current) {
@@ -117,7 +113,6 @@ export function useConfigRestore(currentModel: string) {
     async (passphrase: string) => {
       if (!state.envelope) return;
       try {
-        passphraseRef.current = passphrase;
         const salt = base64Decode(state.envelope.kdf.salt);
         const iv = base64Decode(state.envelope.cipher.iv);
         const ct = base64Decode(state.envelope.cipher.ciphertext);
@@ -178,7 +173,6 @@ export function useConfigRestore(currentModel: string) {
 
   const reset = useCallback(() => {
     stopPolling();
-    passphraseRef.current = "";
     dispatch({ type: "reset" });
   }, [stopPolling]);
 
