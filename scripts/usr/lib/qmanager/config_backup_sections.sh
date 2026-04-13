@@ -464,16 +464,19 @@ apply_imei() {
     esac
     [ "${#new_imei}" = "15" ] || { qlog_warn "apply_imei: wrong length"; return 1; }
 
-    # Skip write if already matches live IMEI (avoids pointless reboot)
+    # Skip write if already matches live IMEI (avoids unnecessary NVM write)
     current=$(jq -r '.device.imei // empty' /tmp/qmanager_status.json 2>/dev/null)
     if [ "$current" = "$new_imei" ]; then
         qlog_info "apply_imei: IMEI already matches, skipping"
     else
         qcmd "AT+EGMR=1,7,\"${new_imei}\"" >/dev/null || return 1
-        # Trigger reboot — do NOT wait for reconnect inside this section;
-        # the worker marks the section success and moves on. Frontend shows
-        # "modem reconnecting" during subsequent polls.
-        qcmd 'AT+CFUN=1,1' >/dev/null 2>&1
+        # IMEI is written to NVM but does NOT take effect until the modem
+        # reboots. We deliberately do NOT call AT+CFUN=1,1 here — QManager
+        # runs on the modem itself, so the reboot would kill our CGI
+        # mid-restore. The worker collects this hint and surfaces a
+        # "Reboot required" dialog to the user after restore completes.
+        touch /tmp/qmanager_config_restore.reboot_required
+        qlog_info "apply_imei: IMEI written (reboot required to apply)"
     fi
 
     # Restore imei_backup.json if present
@@ -570,9 +573,15 @@ apply_profiles() {
         return 3
     fi
 
-    # Fire-and-forget activation (worker does not wait for profile apply)
+    # Write the active marker only — do NOT spawn qmanager_profile_apply.
+    # QManager runs on the modem itself, so we cannot afford a CFUN=1,1
+    # reboot mid-restore. On the next user-initiated reboot, the boot-time
+    # auto_apply_profile (via qmanager_poller::collect_boot_data) will pick
+    # up the active marker and run the full APN -> TTL/HL -> IMEI pipeline
+    # naturally. The worker collects the reboot-required hint here so the
+    # frontend can prompt the user.
     echo "$wanted_id" > /etc/qmanager/active_profile
-    ( /usr/bin/qmanager_profile_apply "$wanted_id" </dev/null >/dev/null 2>&1 & )
-    qlog_info "apply_profiles: activation dispatched for $wanted_id"
+    touch /tmp/qmanager_config_restore.reboot_required
+    qlog_info "apply_profiles: active marker written for $wanted_id (reboot required to apply)"
     return 0
 }

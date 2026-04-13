@@ -38,6 +38,9 @@ if [ -f "$PID_FILE" ]; then
 fi
 echo "$$" > "$PID_FILE"
 
+# Clear any stale reboot hint from a previous run
+rm -f /tmp/qmanager_config_restore.reboot_required
+
 cleanup() {
     rm -f "$PID_FILE" "$CANCEL_FILE" "$INPUT_FILE"
 }
@@ -65,6 +68,8 @@ state_write() {
     local sections_json="$2"
     local summary_json="$3"
     local completed_at="${4:-null}"
+    local reboot_required="false"
+    [ -f /tmp/qmanager_config_restore.reboot_required ] && reboot_required="true"
     jq -n \
         --arg job "$JOB_ID" \
         --arg status "$status" \
@@ -72,8 +77,9 @@ state_write() {
         --argjson completed "$completed_at" \
         --argjson sections "$sections_json" \
         --argjson summary "$summary_json" \
+        --argjson reboot "$reboot_required" \
         '{job_id:$job, status:$status, started_at:$started, completed_at:$completed,
-          sections:$sections, summary:$summary}' > "$STATE_FILE"
+          sections:$sections, summary:$summary, reboot_required:$reboot}' > "$STATE_FILE"
 }
 
 # Build initial sections array (all pending)
