@@ -105,9 +105,12 @@ const RestoreConfigBackupCard = () => {
     // not be left with a stale banner. We re-set the flag on failure.
     clearPendingReboot();
     try {
-      await authFetch("/cgi-bin/quecmanager/system/reboot.sh", {
+      const res = await authFetch("/cgi-bin/quecmanager/system/reboot.sh", {
         method: "POST",
       });
+      if (!res.ok) {
+        throw new Error(`reboot_failed: HTTP ${res.status}`);
+      }
       // Page will be unreachable in ~5-30s. Leave the dialog open with
       // a "rebooting" indicator. The browser will eventually fail to reach
       // the device and the user will refresh manually once it comes back.

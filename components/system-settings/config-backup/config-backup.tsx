@@ -21,9 +21,12 @@ const ConfigurationBackupComponent = () => {
     setRebootBusy(true);
     clearPendingReboot();
     try {
-      await authFetch("/cgi-bin/quecmanager/system/reboot.sh", {
+      const res = await authFetch("/cgi-bin/quecmanager/system/reboot.sh", {
         method: "POST",
       });
+      if (!res.ok) {
+        throw new Error(`reboot_failed: HTTP ${res.status}`);
+      }
       // Page will become unreachable shortly.
     } catch {
       setPendingReboot();
