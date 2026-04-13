@@ -7,12 +7,13 @@ import {
   randomBytes,
   base64Encode,
   base64Decode,
+  CRYPTO_PARAMS,
 } from "./crypto";
 
 describe("crypto", () => {
   it("roundtrips a payload", async () => {
-    const salt = randomBytes(16);
-    const iv = randomBytes(12);
+    const salt = randomBytes(CRYPTO_PARAMS.SALT_LEN);
+    const iv = randomBytes(CRYPTO_PARAMS.IV_LEN);
     const key = await deriveKey("correct-horse-battery", salt);
     const plaintext = new TextEncoder().encode('{"hello":"world"}');
     const aad = new TextEncoder().encode('{"magic":"QMBACKUP"}');
@@ -24,8 +25,8 @@ describe("crypto", () => {
   });
 
   it("fails with wrong password", async () => {
-    const salt = randomBytes(16);
-    const iv = randomBytes(12);
+    const salt = randomBytes(CRYPTO_PARAMS.SALT_LEN);
+    const iv = randomBytes(CRYPTO_PARAMS.IV_LEN);
     const goodKey = await deriveKey("correct-password", salt);
     const badKey = await deriveKey("wrong-password", salt);
     const plaintext = new TextEncoder().encode("secret");
@@ -36,8 +37,8 @@ describe("crypto", () => {
   });
 
   it("fails with tampered AAD", async () => {
-    const salt = randomBytes(16);
-    const iv = randomBytes(12);
+    const salt = randomBytes(CRYPTO_PARAMS.SALT_LEN);
+    const iv = randomBytes(CRYPTO_PARAMS.IV_LEN);
     const key = await deriveKey("pw", salt);
     const plaintext = new TextEncoder().encode("secret");
     const aad1 = new TextEncoder().encode("header-v1");
