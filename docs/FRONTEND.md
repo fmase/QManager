@@ -226,6 +226,15 @@ For long-running operations that run in the background:
 | `useCellScanner` | `POST /at_cmd/cell_scan_start.sh` | `GET /at_cmd/cell_scan_status.sh` |
 | `useNeighbourScanner` | `POST /at_cmd/neighbour_scan_start.sh` | `GET /at_cmd/neighbour_scan_status.sh` |
 | `useSpeedtest` | `POST /at_cmd/speedtest_start.sh` | `GET /at_cmd/speedtest_status.sh` |
+| `useConfigBackup` | `GET /system/config-backup/collect.sh` | (none — encrypts and downloads in browser) |
+| `useConfigRestore` | `POST /system/config-backup/apply.sh` | `GET /system/config-backup/apply_status.sh` |
+
+**Configuration Backup specifics:**
+
+- `useConfigBackup` is a 4-stage pipeline: `idle → collecting → encrypting → downloading → done` (or `error`). It calls `collect.sh` for plaintext sections JSON, runs WebCrypto AES-256-GCM in the browser via `lib/config-backup/crypto.ts`, builds the envelope via `lib/config-backup/format.ts`, and triggers a blob download. The passphrase never leaves the browser.
+- `useConfigRestore` is a `useReducer`-driven state machine with 10 UI states (`idle`, `reading`, `password_required`, `password_incorrect`, `model_warning`, `ready`, `applying`, `success`, `partial_success`, `failed`). Polling at 500ms only runs in the `applying` state and stops on `done`/`cancelled`. Wrong passphrase decrypt failures map to `password_incorrect` (not `failed`) so the user can retry without re-uploading.
+- Both hooks share `lib/config-backup/{crypto,format,sections,pending-reboot}.ts` and `types/config-backup.ts`. Pure-TS modules have `*.test.ts` files run via `bun test` (the project's first Bun test setup; `tsconfig.json` excludes `**/*.test.ts` so `bun tsc --noEmit` doesn't choke on `bun:test` imports).
+- `lib/config-backup/pending-reboot.ts` exports `usePendingReboot()` plus `setPendingReboot`/`clearPendingReboot`/`readPendingReboot` helpers, backed by a `qmanager_pending_reboot` localStorage key. Used by both the post-restore AlertDialog and the persistent banner on the Configuration Backup page; both routes survive navigation/reload until the user reboots or dismisses.
 
 ### Utility Hooks
 

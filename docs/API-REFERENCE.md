@@ -965,6 +965,146 @@ Triggers a device reboot. POST-only, no request body required.
 
 The HTTP response is flushed before the device reboots asynchronously. The connection will drop shortly after.
 
+### GET `/system/config-backup/collect.sh`
+
+Collects the plaintext sections selected by the user, ready for browser-side encryption into a `.qmbackup` file. No crypto runs on the server — the response is plaintext JSON over the localhost HTTP boundary.
+
+**Query parameters:**
+
+- `sections` — comma-separated list of section keys. Valid keys: `sms_alerts`, `watchdog`, `network_mode_apn`, `bands`, `tower_lock`, `ttl_hl`, `imei`, `profiles`. Unknown keys return 400.
+
+**Response:**
+
+```json
+{
+  "schema": 1,
+  "header": {
+    "magic": "QMBACKUP",
+    "version": 1,
+    "created_at": "2026-04-13T10:30:00Z",
+    "device": {
+      "model": "RM520N-GL",
+      "firmware": "RM520NGLAAR03A07M4G",
+      "imei": "860000000000000",
+      "qmanager_version": "0.1.16"
+    },
+    "sections_included": ["network_mode_apn", "bands"]
+  },
+  "payload": {
+    "schema": 1,
+    "sections": {
+      "network_mode_apn": { /* section-specific shape */ },
+      "bands": { /* section-specific shape */ }
+    }
+  }
+}
+```
+
+The browser uses the `header` as the canonical Associated Data when encrypting `payload`, then writes the result into a `.qmbackup` envelope. The CGI emits a `config_backup_collected` event on successful return.
+
+**Error responses:**
+
+- `400 {"error":"no_sections_selected"}` — empty or missing `sections` query param
+- `400 {"error":"unknown_section","key":"<key>"}` — unrecognized section key
+- `500 {"error":"collect_fragment_invalid"}` — pre-flight `jq -e` validation of the assembled `SECTIONS_JSON` failed (a section's `collect_*` function emitted invalid JSON)
+- `500 {"error":"collect_failed","key":"<key>"}` — a section's collect function returned non-zero
+
+### POST `/system/config-backup/apply.sh`
+
+Accepts a decrypted backup payload and spawns the detached `qmanager_config_restore` worker. POST-only.
+
+**Request body:** the plaintext `payload` object from a successfully-decrypted `.qmbackup` file:
+
+```json
+{
+  "schema": 1,
+  "sections": {
+    "network_mode_apn": { ... },
+    "bands": { ... }
+  }
+}
+```
+
+- Body size cap: **256 KiB** (enforced via `CONTENT_LENGTH` inspection before reading stdin)
+- `Content-Type` must be `application/json`
+- All section keys must be in the known-keys list
+
+**Success response (202):**
+
+```json
+{ "status": "started", "job_id": "1712990400" }
+```
+
+The worker is spawned via double-fork (no `setsid` on OpenWRT). The frontend should immediately begin polling `apply_status.sh` at 500ms.
+
+**Error responses:**
+
+- `405 {"error":"method_not_allowed"}` — non-POST request
+- `415 {"error":"unsupported_content_type"}` — Content-Type not `application/json`
+- `413 {"error":"payload_too_large"}` — body exceeds 256 KiB
+- `400 {"error":"invalid_json"}` — body is not parseable JSON
+- `400 {"error":"wrong_schema"}` — `schema != 1`
+- `400 {"error":"unknown_section","key":"<key>"}` — unrecognized section key in payload
+- `400 {"error":"no_sections"}` — payload `sections` object is empty
+- `409 {"error":"restore_in_progress","pid":<n>}` — concurrency guard (worker PID file alive)
+
+### GET `/system/config-backup/apply_status.sh`
+
+Returns the current restore progress JSON. Cheap; safe to poll at 500ms.
+
+**Response (idle):**
+
+```json
+{ "status": "idle" }
+```
+
+**Response (running / done / cancelled):**
+
+```json
+{
+  "job_id": "1712990400",
+  "status": "running",
+  "started_at": 1712990400,
+  "completed_at": null,
+  "sections": [
+    { "key": "sms_alerts", "status": "success", "attempts": 1, "message": "" },
+    { "key": "bands", "status": "retrying:2", "attempts": 2, "message": "" },
+    { "key": "imei", "status": "pending", "attempts": 0, "message": "" }
+  ],
+  "summary": null,
+  "reboot_required": false
+}
+```
+
+**Section status values:** `pending`, `running`, `retrying:N` (N is the retry attempt number, 1-3), `success`, `failed`, `skipped:incompatible`, `skipped:not_in_backup`, `skipped:sim_mismatch`.
+
+**Final-state fields:** when `status` becomes `done` or `cancelled`, `completed_at` is set and `summary` is populated:
+
+```json
+{
+  "summary": { "success": 5, "failed": 1, "skipped": 1 },
+  "reboot_required": true
+}
+```
+
+`reboot_required` is `true` if any applied section queued a reboot-pending change (IMEI write or profile activation). The frontend uses this to show the post-restore "Reboot now or later" dialog.
+
+### POST `/system/config-backup/apply_cancel.sh`
+
+Signals the running worker to cancel after the current section completes. POST-only.
+
+**Response:**
+
+```json
+{ "status": "cancel_requested" }
+```
+
+Writes `/tmp/qmanager_config_restore.cancel` as a sentinel. The worker checks this file between sections and exits cleanly with `final_status: "cancelled"`. **Cannot abort mid-section** — AT commands and applier functions run to completion. The cancel is best-effort.
+
+**Error responses:**
+
+- `405 {"error":"method_not_allowed"}` — non-POST request (important: a stray authenticated GET would otherwise silently abort a running restore)
+
 ---
 
 ## DPI Settings
