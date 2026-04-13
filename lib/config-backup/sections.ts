@@ -62,14 +62,23 @@ export const BACKUP_SECTIONS: BackupSectionMeta[] = [
 
 export type SelectionMap = Record<BackupSectionKey, boolean>;
 
+const PROFILE_MEMBERS: BackupSectionKey[] = ["network_mode_apn", "ttl_hl", "imei"];
+
+/**
+ * Returns the set of section keys that should be UI-disabled given the current
+ * selection. Implements the profile overlap rule: checking "profiles" disables
+ * the three sections it covers, and checking any of those disables "profiles".
+ *
+ * Caller contract: the UI is responsible for treating checked + disabled as
+ * effectively unchecked (i.e. render `checked={selection[key] && !disabled.has(key)}`).
+ * This function does not mutate the selection.
+ */
 export function computeDisabledKeys(selection: SelectionMap): Set<BackupSectionKey> {
   const disabled = new Set<BackupSectionKey>();
-  const profileMembers: BackupSectionKey[] = ["network_mode_apn", "ttl_hl", "imei"];
-
   if (selection.profiles) {
-    for (const m of profileMembers) disabled.add(m);
+    for (const m of PROFILE_MEMBERS) disabled.add(m);
   }
-  if (profileMembers.some((m) => selection[m])) {
+  if (PROFILE_MEMBERS.some((m) => selection[m])) {
     disabled.add("profiles");
   }
   return disabled;
