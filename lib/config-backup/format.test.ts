@@ -4,6 +4,7 @@ import {
   buildEnvelope,
   parseEnvelope,
   canonicalHeaderAad,
+  envelopeFilename,
 } from "./format";
 import type { BackupEnvelopeHeader } from "@/types/config-backup";
 
@@ -52,5 +53,21 @@ describe("format", () => {
     const parsed = parseEnvelope(JSON.stringify(env));
     expect(parsed.magic).toBe("QMBACKUP");
     expect(parsed.kdf.salt).toBe("AAAA");
+  });
+
+  it("envelopeFilename uses UTC time", () => {
+    // 2026-04-13T10:30:00Z, regardless of host timezone
+    const d = new Date(Date.UTC(2026, 3, 13, 10, 30, 0));
+    const name = envelopeFilename("RM520N-GL", d);
+    expect(name).toBe("qmanager-RM520N-GL-20260413-103000.qmbackup");
+  });
+
+  it("parseEnvelope rejects missing crypto fields", () => {
+    const blob = JSON.stringify({
+      ...HEADER,
+      kdf: {},
+      cipher: {},
+    });
+    expect(() => parseEnvelope(blob)).toThrow(/missing crypto fields/);
   });
 });

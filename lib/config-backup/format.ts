@@ -47,19 +47,27 @@ export function parseEnvelope(blob: string): BackupEnvelope {
   if (!e.device || !e.kdf || !e.cipher || !Array.isArray(e.sections_included)) {
     throw new Error("invalid_envelope: missing fields");
   }
+  if (
+    typeof e.kdf.salt !== "string" ||
+    typeof e.kdf.iter !== "number" ||
+    typeof e.cipher.iv !== "string" ||
+    typeof e.cipher.ciphertext !== "string"
+  ) {
+    throw new Error("invalid_envelope: missing crypto fields");
+  }
   return e as BackupEnvelope;
 }
 
 export function envelopeFilename(model: string, created: Date): string {
   const pad = (n: number) => String(n).padStart(2, "0");
   const ts =
-    created.getFullYear().toString() +
-    pad(created.getMonth() + 1) +
-    pad(created.getDate()) +
+    created.getUTCFullYear().toString() +
+    pad(created.getUTCMonth() + 1) +
+    pad(created.getUTCDate()) +
     "-" +
-    pad(created.getHours()) +
-    pad(created.getMinutes()) +
-    pad(created.getSeconds());
+    pad(created.getUTCHours()) +
+    pad(created.getUTCMinutes()) +
+    pad(created.getUTCSeconds());
   const safeModel = model.replace(/[^A-Za-z0-9_-]/g, "_");
   return `qmanager-${safeModel}-${ts}.qmbackup`;
 }
