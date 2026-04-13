@@ -80,3 +80,36 @@ cfg_backup_apply() {
 
 # --- Per-section implementations follow below ---
 # Each is a collect_<key>/apply_<key> pair. Keep them grouped.
+
+# =============================================================================
+# SMS Alerts — /etc/qmanager/sms_alerts.json + /tmp/qmanager_sms_reload flag
+# =============================================================================
+collect_sms_alerts() {
+    local cfg="/etc/qmanager/sms_alerts.json"
+    if [ ! -f "$cfg" ]; then
+        echo '{"enabled":false,"recipient_phone":"","threshold_minutes":5}'
+        return 0
+    fi
+    jq -c '{enabled: (.enabled // false),
+            recipient_phone: (.recipient_phone // ""),
+            threshold_minutes: (.threshold_minutes // 5)}' "$cfg"
+}
+
+apply_sms_alerts() {
+    local cfg="/etc/qmanager/sms_alerts.json"
+    local input
+    input=$(cat)
+    # Validate structure
+    echo "$input" | jq -e '.enabled, .recipient_phone, .threshold_minutes' >/dev/null 2>&1 || {
+        qlog_error "apply_sms_alerts: invalid input"
+        return 1
+    }
+    # Atomic write
+    mkdir -p /etc/qmanager
+    local tmp="${cfg}.tmp.$$"
+    echo "$input" | jq '.' > "$tmp" || { rm -f "$tmp"; return 1; }
+    mv "$tmp" "$cfg" || return 1
+    # Signal poller to reload
+    touch /tmp/qmanager_sms_reload
+    return 0
+}
