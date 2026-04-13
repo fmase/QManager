@@ -360,3 +360,54 @@ apply_tower_lock() {
     fi
     return 0
 }
+
+# =============================================================================
+# TTL/HL — parses /etc/firewall.user.ttl for current values; rewrites same file
+# =============================================================================
+collect_ttl_hl() {
+    local file="/etc/firewall.user.ttl"
+    local ttl=0 hl=0
+    if [ -f "$file" ]; then
+        ttl=$(awk '/ttl-set/ {for(i=1;i<=NF;i++) if($i=="--ttl-set") {print $(i+1); exit}}' "$file")
+        hl=$(awk '/hl-set/  {for(i=1;i<=NF;i++) if($i=="--hl-set")  {print $(i+1); exit}}' "$file")
+        [ -z "$ttl" ] && ttl=0
+        [ -z "$hl" ] && hl=0
+    fi
+    local autostart=0
+    /etc/init.d/qmanager_ttl enabled 2>/dev/null && autostart=1
+    jq -n --arg t "$ttl" --arg h "$hl" --arg a "$autostart" \
+        '{ttl: ($t|tonumber), hl: ($h|tonumber), autostart: ($a == "1")}'
+}
+
+apply_ttl_hl() {
+    local input ttl hl autostart file tmp
+    input=$(cat)
+    ttl=$(echo "$input" | jq -r '.ttl // 0')
+    hl=$(echo "$input"  | jq -r '.hl // 0')
+    autostart=$(echo "$input" | jq -r '.autostart // false')
+
+    file="/etc/firewall.user.ttl"
+    tmp="${file}.tmp.$$"
+
+    # Drop existing rules
+    iptables  -t mangle -F POSTROUTING 2>/dev/null
+    ip6tables -t mangle -F POSTROUTING 2>/dev/null
+
+    : > "$tmp"
+    if [ "$ttl" -gt 0 ] 2>/dev/null; then
+        iptables -t mangle -A POSTROUTING -o rmnet+ -j TTL --ttl-set "$ttl" || { rm -f "$tmp"; return 1; }
+        echo "iptables -t mangle -A POSTROUTING -o rmnet+ -j TTL --ttl-set $ttl" >> "$tmp"
+    fi
+    if [ "$hl" -gt 0 ] 2>/dev/null; then
+        ip6tables -t mangle -A POSTROUTING -o rmnet+ -j HL --hl-set "$hl" || { rm -f "$tmp"; return 1; }
+        echo "ip6tables -t mangle -A POSTROUTING -o rmnet+ -j HL --hl-set $hl" >> "$tmp"
+    fi
+    mv "$tmp" "$file" || return 1
+
+    if [ "$autostart" = "true" ]; then
+        /etc/init.d/qmanager_ttl enable >/dev/null 2>&1
+    else
+        /etc/init.d/qmanager_ttl disable >/dev/null 2>&1
+    fi
+    return 0
+}
