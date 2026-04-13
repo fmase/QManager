@@ -113,3 +113,52 @@ apply_sms_alerts() {
     touch /tmp/qmanager_sms_reload
     return 0
 }
+
+# =============================================================================
+# Watchdog / Watchcat — UCI quecmanager.watchcat.*
+# =============================================================================
+_WATCHCAT_KEYS="enabled max_failures check_interval cooldown tier1_enabled tier2_enabled tier3_enabled tier4_enabled backup_sim_slot max_reboots_per_hour"
+
+collect_watchdog() {
+    local out="{"
+    local sep=""
+    local k v
+    for k in $_WATCHCAT_KEYS; do
+        v=$(uci -q get "quecmanager.watchcat.$k")
+        # Encode as string (type handling happens on apply)
+        out="${out}${sep}\"${k}\":$(echo "$v" | jq -R '.')"
+        sep=","
+    done
+    out="${out}}"
+    echo "$out"
+}
+
+apply_watchdog() {
+    local input k v
+    input=$(cat)
+    # Ensure section exists
+    uci -q get quecmanager.watchcat >/dev/null 2>&1 || {
+        uci set quecmanager.watchcat=service
+    }
+    for k in $_WATCHCAT_KEYS; do
+        v=$(echo "$input" | jq -r --arg k "$k" '.[$k] // empty')
+        # Empty string is a valid value for backup_sim_slot
+        if [ "$k" = "backup_sim_slot" ] || [ -n "$v" ]; then
+            uci set "quecmanager.watchcat.${k}=${v}"
+        fi
+    done
+    uci commit quecmanager || return 1
+    touch /tmp/qmanager_watchcat_reload
+
+    local enabled
+    enabled=$(uci -q get quecmanager.watchcat.enabled)
+    if [ "$enabled" = "1" ]; then
+        rm -f /tmp/qmanager_watchcat_disabled
+        /etc/init.d/qmanager_watchcat enable >/dev/null 2>&1
+        ( /etc/init.d/qmanager_watchcat restart >/dev/null 2>&1 & )
+    else
+        ( /etc/init.d/qmanager_watchcat stop >/dev/null 2>&1 & )
+        /etc/init.d/qmanager_watchcat disable >/dev/null 2>&1
+    fi
+    return 0
+}
