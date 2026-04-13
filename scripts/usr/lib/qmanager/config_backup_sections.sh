@@ -13,6 +13,11 @@
 #                            1  = generic failure (retryable)
 #                            2  = unsupported on this modem (skip, no retry)
 #
+# Public functions:
+#   cfg_backup_is_known_section <key>  → returns 0 if key is valid
+#   cfg_backup_collect <key>           → echoes the section's JSON to stdout
+#   cfg_backup_apply <key>             → reads section JSON from stdin and applies
+#
 # Install location: /usr/lib/qmanager/config_backup_sections.sh
 # =============================================================================
 
@@ -22,11 +27,11 @@ _CFG_BACKUP_SECTIONS_LOADED=1
 # --- Logging ---
 . /usr/lib/qmanager/qlog.sh 2>/dev/null || {
     qlog_init() { :; }
+    qlog_debug() { :; }
     qlog_info() { :; }
     qlog_warn() { :; }
     qlog_error() { :; }
 }
-qlog_init "cfg_backup"
 
 # --- Canonical apply order (safe first, IMEI/profiles last) ---
 CFG_BACKUP_APPLY_ORDER="sms_alerts watchdog network_mode_apn bands tower_lock ttl_hl imei profiles"
