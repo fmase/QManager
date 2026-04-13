@@ -23,6 +23,12 @@ export const EVENT_LABELS: Record<NetworkEventType, string> = {
   profile_applied: "Profile Applied",
   profile_failed: "Profile Failed",
   profile_deactivated: "Profile Deactivated",
+  config_backup_collected: "Backup Collected",
+  config_restore_started: "Restore Started",
+  config_restore_section_success: "Section Restored",
+  config_restore_section_failed: "Section Failed",
+  config_restore_section_skipped: "Section Skipped",
+  config_restore_completed: "Restore Completed",
 };
 
 /** Tab categories used by the monitoring Network Events card */
@@ -52,4 +58,10 @@ export const EVENT_TAB_CATEGORIES: Record<NetworkEventType, EventTabCategory> =
     profile_applied: "dataConnection",
     profile_failed: "dataConnection",
     profile_deactivated: "dataConnection",
+    config_backup_collected: "dataConnection",
+    config_restore_started: "dataConnection",
+    config_restore_section_success: "dataConnection",
+    config_restore_section_failed: "dataConnection",
+    config_restore_section_skipped: "dataConnection",
+    config_restore_completed: "dataConnection",
   };
