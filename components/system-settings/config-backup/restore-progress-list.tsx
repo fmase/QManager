@@ -14,6 +14,9 @@ const LABELS: Record<string, string> = Object.fromEntries(
   BACKUP_SECTIONS.map((s) => [s.key, s.label]),
 );
 
+// Shared base so every status badge renders at an identical width
+const BADGE_BASE = "min-w-[7.5rem] justify-center";
+
 function StatusBadge({
   status,
 }: {
@@ -23,7 +26,7 @@ function StatusBadge({
     return (
       <Badge
         variant="outline"
-        className="bg-success/15 text-success hover:bg-success/20 border-success/30"
+        className={`${BADGE_BASE} bg-success/15 text-success hover:bg-success/20 border-success/30`}
       >
         <CheckCircle2Icon className="size-3" />
         Restored
@@ -34,7 +37,7 @@ function StatusBadge({
     return (
       <Badge
         variant="outline"
-        className="bg-info/15 text-info hover:bg-info/20 border-info/30"
+        className={`${BADGE_BASE} bg-info/15 text-info hover:bg-info/20 border-info/30`}
       >
         <Loader2Icon className="size-3 animate-spin" />
         Running
@@ -46,7 +49,7 @@ function StatusBadge({
     return (
       <Badge
         variant="outline"
-        className="bg-warning/15 text-warning hover:bg-warning/20 border-warning/30"
+        className={`${BADGE_BASE} bg-warning/15 text-warning hover:bg-warning/20 border-warning/30`}
       >
         <Loader2Icon className="size-3 animate-spin" />
         Retrying ({n}/3)
@@ -57,7 +60,7 @@ function StatusBadge({
     return (
       <Badge
         variant="outline"
-        className="bg-destructive/15 text-destructive hover:bg-destructive/20 border-destructive/30"
+        className={`${BADGE_BASE} bg-destructive/15 text-destructive hover:bg-destructive/20 border-destructive/30`}
       >
         <XCircleIcon className="size-3" />
         Failed
@@ -68,7 +71,7 @@ function StatusBadge({
     return (
       <Badge
         variant="outline"
-        className="bg-muted/50 text-muted-foreground border-muted-foreground/30"
+        className={`${BADGE_BASE} bg-muted/50 text-muted-foreground border-muted-foreground/30`}
       >
         <MinusCircleIcon className="size-3" />
         Skipped
@@ -78,7 +81,7 @@ function StatusBadge({
   return (
     <Badge
       variant="outline"
-      className="bg-muted/50 text-muted-foreground border-muted-foreground/30"
+      className={`${BADGE_BASE} bg-muted/50 text-muted-foreground border-muted-foreground/30`}
     >
       <MinusCircleIcon className="size-3" />
       Pending

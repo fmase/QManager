@@ -19,8 +19,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Loader2Icon } from "lucide-react";
+import { EyeIcon, EyeOffIcon, Loader2Icon } from "lucide-react";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 import {
   BACKUP_SECTIONS,
   computeDisabledKeys,
@@ -36,6 +37,8 @@ const ConfigBackupCard = () => {
   const [selection, setSelection] = useState(initialSelection());
   const [passphrase, setPassphrase] = useState("");
   const [confirm, setConfirm] = useState("");
+  const [showPassphrase, setShowPassphrase] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const { runBackup, stage, error, reset } = useConfigBackup();
   const modem = useModemStatus();
 
@@ -149,28 +152,66 @@ const ConfigBackupCard = () => {
           <div className="grid gap-y-4">
             <Field>
               <FieldLabel htmlFor="backup-passphrase">Passphrase</FieldLabel>
-              <Input
-                id="backup-passphrase"
-                type="password"
-                value={passphrase}
-                onChange={(e) => setPassphrase(e.target.value)}
-                placeholder="At least 10 characters"
-                className="max-w-sm"
-                autoComplete="new-password"
-              />
+              <div className="relative max-w-sm">
+                <Input
+                  id="backup-passphrase"
+                  type={showPassphrase ? "text" : "password"}
+                  value={passphrase}
+                  onChange={(e) => setPassphrase(e.target.value)}
+                  placeholder="At least 10 characters"
+                  className="pr-10"
+                  autoComplete="new-password"
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  className="absolute right-1 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  onClick={() => setShowPassphrase((v) => !v)}
+                  tabIndex={-1}
+                  aria-label={showPassphrase ? "Hide passphrase" : "Show passphrase"}
+                >
+                  {showPassphrase ? <EyeOffIcon className="size-4" /> : <EyeIcon className="size-4" />}
+                </Button>
+              </div>
             </Field>
             <Field>
               <FieldLabel htmlFor="backup-passphrase-confirm">
                 Confirm passphrase
               </FieldLabel>
-              <Input
-                id="backup-passphrase-confirm"
-                type="password"
-                value={confirm}
-                onChange={(e) => setConfirm(e.target.value)}
-                className="max-w-sm"
-                autoComplete="new-password"
-              />
+              <div className="relative max-w-sm">
+                <Input
+                  id="backup-passphrase-confirm"
+                  type={showConfirm ? "text" : "password"}
+                  value={confirm}
+                  onChange={(e) => setConfirm(e.target.value)}
+                  className="pr-10"
+                  autoComplete="new-password"
+                  aria-describedby={confirm.length > 0 ? "backup-confirm-hint" : undefined}
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  className="absolute right-1 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  onClick={() => setShowConfirm((v) => !v)}
+                  tabIndex={-1}
+                  aria-label={showConfirm ? "Hide passphrase" : "Show passphrase"}
+                >
+                  {showConfirm ? <EyeOffIcon className="size-4" /> : <EyeIcon className="size-4" />}
+                </Button>
+              </div>
+              {confirm.length > 0 && (
+                <p
+                  id="backup-confirm-hint"
+                  className={cn(
+                    "text-xs transition-colors duration-200",
+                    passphrase === confirm ? "text-success" : "text-destructive"
+                  )}
+                >
+                  {passphrase === confirm ? "Passphrases match" : "Passphrases don't match"}
+                </p>
+              )}
             </Field>
             <p className="text-xs text-muted-foreground max-w-sm">
               Store this passphrase somewhere safe. If you lose it, this backup
