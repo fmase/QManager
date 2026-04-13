@@ -411,3 +411,61 @@ apply_ttl_hl() {
     fi
     return 0
 }
+
+# =============================================================================
+# IMEI — AT+CGSN read, AT+EGMR write (triggers modem reboot)
+# =============================================================================
+collect_imei() {
+    local imei status_file="/tmp/qmanager_status.json"
+    if [ -f "$status_file" ]; then
+        imei=$(jq -r '.device.imei // empty' "$status_file")
+    fi
+    if [ -z "$imei" ]; then
+        local resp
+        resp=$(qcmd 'AT+CGSN') || return 1
+        imei=$(echo "$resp" | awk 'NR==2 {gsub(/[^0-9]/,""); print}')
+    fi
+
+    # Also include backup-imei config if present
+    local bk="/etc/qmanager/imei_backup.json"
+    if [ -f "$bk" ]; then
+        jq --arg i "$imei" '{current_imei: $i, backup: .}' "$bk"
+    else
+        jq -n --arg i "$imei" '{current_imei: $i, backup: {enabled: false, imei: ""}}'
+    fi
+}
+
+apply_imei() {
+    local input new_imei current
+    input=$(cat)
+    new_imei=$(echo "$input" | jq -r '.current_imei // empty')
+
+    # Validate: exactly 15 digits
+    case "$new_imei" in
+        ''|*[!0-9]*) qlog_warn "apply_imei: invalid IMEI format"; return 1 ;;
+    esac
+    [ "${#new_imei}" = "15" ] || { qlog_warn "apply_imei: wrong length"; return 1; }
+
+    # Skip write if already matches live IMEI (avoids pointless reboot)
+    current=$(jq -r '.device.imei // empty' /tmp/qmanager_status.json 2>/dev/null)
+    if [ "$current" = "$new_imei" ]; then
+        qlog_info "apply_imei: IMEI already matches, skipping"
+    else
+        qcmd "AT+EGMR=1,7,\"${new_imei}\"" >/dev/null || return 1
+        # Trigger reboot — do NOT wait for reconnect inside this section;
+        # the worker marks the section success and moves on. Frontend shows
+        # "modem reconnecting" during subsequent polls.
+        qcmd 'AT+CFUN=1,1' >/dev/null 2>&1
+    fi
+
+    # Restore imei_backup.json if present
+    local bk_enabled bk_imei
+    bk_enabled=$(echo "$input" | jq -r '.backup.enabled // false')
+    bk_imei=$(echo "$input"    | jq -r '.backup.imei // ""')
+    if [ -n "$bk_imei" ] || [ "$bk_enabled" = "true" ]; then
+        mkdir -p /etc/qmanager
+        jq -n --argjson e "$bk_enabled" --arg i "$bk_imei" \
+            '{enabled: $e, imei: $i}' > /etc/qmanager/imei_backup.json
+    fi
+    return 0
+}
