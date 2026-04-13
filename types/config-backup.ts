@@ -90,6 +90,10 @@ export interface RestoreProgress {
     failed: number;
     skipped: number;
   };
+  /** True if any applied section queued an NVM/state change that requires
+   *  a modem reboot to take effect (IMEI write, profile activation, etc.).
+   *  Surfaced to the user as a "Reboot now or later" dialog post-restore. */
+  reboot_required?: boolean;
 }
 
 /** Restore card state machine states */
