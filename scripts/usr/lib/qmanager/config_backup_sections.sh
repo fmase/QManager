@@ -100,7 +100,7 @@ apply_sms_alerts() {
     local input
     input=$(cat)
     # Validate structure
-    echo "$input" | jq -e '.enabled, .recipient_phone, .threshold_minutes' >/dev/null 2>&1 || {
+    echo "$input" | jq -e 'has("enabled") and has("recipient_phone") and has("threshold_minutes")' >/dev/null 2>&1 || {
         qlog_error "apply_sms_alerts: invalid input"
         return 1
     }
@@ -138,7 +138,7 @@ apply_watchdog() {
     input=$(cat)
     # Ensure section exists
     uci -q get quecmanager.watchcat >/dev/null 2>&1 || {
-        uci set quecmanager.watchcat=service
+        uci set quecmanager.watchcat=watchcat
     }
     for k in $_WATCHCAT_KEYS; do
         v=$(echo "$input" | jq -r --arg k "$k" '.[$k] // empty')
@@ -269,7 +269,9 @@ apply_bands() {
 
     # Kill any running band failover watcher before re-locking
     if [ -f /tmp/qmanager_band_failover.pid ]; then
-        kill "$(cat /tmp/qmanager_band_failover.pid 2>/dev/null)" 2>/dev/null
+        local old_bf_pid
+        old_bf_pid=$(cat /tmp/qmanager_band_failover.pid 2>/dev/null | tr -d ' \n\r')
+        [ -n "$old_bf_pid" ] && kill "$old_bf_pid" 2>/dev/null
         rm -f /tmp/qmanager_band_failover.pid /tmp/qmanager_band_failover
     fi
 
@@ -297,9 +299,9 @@ collect_tower_lock() {
         echo '{"lte":{"cells":[]},"nr_sa":{"cells":[]},"failover":{"enabled":false}}'
         return 0
     fi
-    # Keep only the persistent structure — drop any runtime fields
-    jq -c '{lte: {cells: (.lte.cells // [])},
-            nr_sa: {cells: (.nr_sa.cells // [])},
+    # Keep only the persistent structure — drop any runtime fields; filter nulls
+    jq -c '{lte: {cells: [(.lte.cells // [])[] | select(. != null)]},
+            nr_sa: {cells: [(.nr_sa.cells // [])[] | select(. != null)]},
             failover: {enabled: (.failover.enabled // false)}}' "$cfg"
 }
 
@@ -310,16 +312,18 @@ apply_tower_lock() {
     # Kill failover watcher first to prevent false no-signal detection
     /etc/init.d/qmanager_tower_failover stop >/dev/null 2>&1
 
-    # --- Apply LTE cells ---
-    lte_n=$(echo "$input" | jq '.lte.cells | length')
+    # --- Apply LTE cells (filter null slots) ---
+    local non_null_lte
+    non_null_lte=$(echo "$input" | jq -c '[.lte.cells[]? | select(. != null)]')
+    lte_n=$(echo "$non_null_lte" | jq 'length')
     if [ "$lte_n" = "0" ]; then
         qcmd 'AT+QNWLOCK="common/4g",0' >/dev/null || return 1
     else
         local cmd="AT+QNWLOCK=\"common/4g\",${lte_n}"
         i=0
         while [ "$i" -lt "$lte_n" ] && [ "$i" -lt 3 ]; do
-            earfcn=$(echo "$input" | jq -r ".lte.cells[$i].earfcn")
-            pci=$(echo "$input"    | jq -r ".lte.cells[$i].pci")
+            earfcn=$(echo "$non_null_lte" | jq -r ".[$i].earfcn")
+            pci=$(echo "$non_null_lte"    | jq -r ".[$i].pci")
             cmd="${cmd},${earfcn},${pci}"
             i=$((i+1))
         done
@@ -374,13 +378,13 @@ collect_ttl_hl() {
         [ -z "$hl" ] && hl=0
     fi
     local autostart=0
-    /etc/init.d/qmanager_ttl enabled 2>/dev/null && autostart=1
+    if /etc/init.d/qmanager_ttl enabled 2>/dev/null; then autostart=1; fi
     jq -n --arg t "$ttl" --arg h "$hl" --arg a "$autostart" \
         '{ttl: ($t|tonumber), hl: ($h|tonumber), autostart: ($a == "1")}'
 }
 
 apply_ttl_hl() {
-    local input ttl hl autostart file tmp
+    local input ttl hl autostart file tmp cur_ttl cur_hl
     input=$(cat)
     ttl=$(echo "$input" | jq -r '.ttl // 0')
     hl=$(echo "$input"  | jq -r '.hl // 0')
@@ -389,9 +393,23 @@ apply_ttl_hl() {
     file="/etc/firewall.user.ttl"
     tmp="${file}.tmp.$$"
 
-    # Drop existing rules
-    iptables  -t mangle -F POSTROUTING 2>/dev/null
-    ip6tables -t mangle -F POSTROUTING 2>/dev/null
+    # Read current values (so we can delete only the matching rules, not the whole chain)
+    cur_ttl=0
+    cur_hl=0
+    if [ -f "$file" ]; then
+        cur_ttl=$(awk '/ttl-set/ {for(i=1;i<=NF;i++) if($i=="--ttl-set") {print $(i+1); exit}}' "$file")
+        cur_hl=$(awk '/hl-set/  {for(i=1;i<=NF;i++) if($i=="--hl-set")  {print $(i+1); exit}}' "$file")
+        [ -z "$cur_ttl" ] && cur_ttl=0
+        [ -z "$cur_hl" ] && cur_hl=0
+    fi
+
+    # Delete only the existing TTL/HL rules (not the entire chain)
+    if [ "$cur_ttl" -gt 0 ] 2>/dev/null; then
+        iptables -t mangle -D POSTROUTING -o rmnet+ -j TTL --ttl-set "$cur_ttl" 2>/dev/null
+    fi
+    if [ "$cur_hl" -gt 0 ] 2>/dev/null; then
+        ip6tables -t mangle -D POSTROUTING -o rmnet+ -j HL --hl-set "$cur_hl" 2>/dev/null
+    fi
 
     : > "$tmp"
     if [ "$ttl" -gt 0 ] 2>/dev/null; then
@@ -517,6 +535,9 @@ apply_profiles() {
             p_[0-9]*_[0-9a-f]*) ;;
             *) qlog_warn "apply_profiles: invalid id $id, skipping"; i=$((i+1)); continue ;;
         esac
+        case "$id" in
+            */*|*..*|*\\*) qlog_warn "apply_profiles: id has path chars, skipping"; i=$((i+1)); continue ;;
+        esac
         payload=$(echo "$input" | jq -c ".profiles[$i]")
         echo "$payload" > "${dir}/${id}.json" || return 1
         i=$((i+1))
@@ -529,6 +550,14 @@ apply_profiles() {
         qlog_info "apply_profiles: no active profile in backup"
         return 0
     fi
+
+    case "$wanted_id" in
+        p_[0-9]*_[0-9a-f]*) ;;
+        *) qlog_warn "apply_profiles: invalid active_profile_id, skipping activation"; return 0 ;;
+    esac
+    case "$wanted_id" in
+        */*|*..*|*\\*) qlog_warn "apply_profiles: active_profile_id has path chars, skipping"; return 0 ;;
+    esac
 
     # Check SIM ICCID match
     local profile_iccid current_iccid
