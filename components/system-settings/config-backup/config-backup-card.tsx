@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import {
   Card,
   CardContent,
@@ -7,7 +8,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Field,
@@ -17,130 +17,178 @@ import {
   FieldSet,
 } from "@/components/ui/field";
 import { Button } from "@/components/ui/button";
-import { SaveButton } from "@/components/ui/save-button";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { DownloadIcon } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Loader2Icon } from "lucide-react";
+import { toast } from "sonner";
+import {
+  BACKUP_SECTIONS,
+  computeDisabledKeys,
+  initialSelection,
+  selectedKeys,
+} from "@/lib/config-backup/sections";
+import { useConfigBackup } from "@/hooks/use-config-backup";
+import { useModemStatus } from "@/hooks/use-modem-status";
+
+const MIN_PASSPHRASE_LEN = 10;
 
 const ConfigBackupCard = () => {
+  const [selection, setSelection] = useState(initialSelection());
+  const [passphrase, setPassphrase] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const { runBackup, stage, error, reset } = useConfigBackup();
+  const modem = useModemStatus();
+
+  const disabled = useMemo(() => computeDisabledKeys(selection), [selection]);
+  const chosen = useMemo(() => selectedKeys(selection), [selection]);
+
+  const passphraseOk =
+    passphrase.length >= MIN_PASSPHRASE_LEN && passphrase === confirm;
+  const busy =
+    stage === "collecting" || stage === "encrypting" || stage === "downloading";
+  const canDownload = chosen.length > 0 && passphraseOk && !busy;
+
+  const buttonLabel =
+    stage === "collecting"
+      ? "Collecting…"
+      : stage === "encrypting"
+      ? "Encrypting…"
+      : stage === "downloading"
+      ? "Downloading…"
+      : "Download Backup";
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!canDownload) return;
+    reset();
+    await runBackup(chosen, passphrase);
+  };
+
+  // Side-effect for toast on stage transitions
+  // (uses stage + error from the hook's most recent run)
+  if (stage === "done") {
+    // Defer toast/clear to a microtask so we don't toast inside render
+    queueMicrotask(() => {
+      toast.success("Backup downloaded");
+      reset();
+      setPassphrase("");
+      setConfirm("");
+    });
+  } else if (stage === "error" && error) {
+    queueMicrotask(() => {
+      toast.error(`Backup failed: ${error}`);
+      reset();
+    });
+  }
+
   return (
     <Card className="@container/card">
       <CardHeader>
         <CardTitle>Configuration Backup</CardTitle>
         <CardDescription>
-          Download a backup of your current modem configuration.
+          Download an encrypted backup of your current modem configuration.
         </CardDescription>
+        <div className="mt-2 text-xs text-muted-foreground">
+          {modem.isLoading ? (
+            <Skeleton className="h-4 w-72" />
+          ) : (
+            <>
+              Backing up from{" "}
+              <span className="font-medium">
+                {modem.data?.device.model ?? "Unknown"}
+              </span>
+              {" • "}Firmware{" "}
+              <span className="font-medium">
+                {modem.data?.device.firmware ?? "Unknown"}
+              </span>
+            </>
+          )}
+        </div>
       </CardHeader>
       <CardContent>
-        <form
-          className="grid gap-y-8"
-          onSubmit={(e) => {
-            e.preventDefault();
-            alert("Backup functionality not implemented yet");
-          }}
-        >
+        <form className="grid gap-y-8" onSubmit={handleSubmit}>
           <FieldSet>
             <FieldLegend variant="label">
               Select the items you want to include in the backup.
             </FieldLegend>
             <FieldGroup className="gap-3">
-              <Field orientation="horizontal">
-                <Checkbox
-                  id="finder-pref-9k2-hard-disks-ljj-checkbox"
-                  name="finder-pref-9k2-hard-disks-ljj-checkbox"
-                  defaultChecked
-                />
-                <FieldLabel
-                  htmlFor="finder-pref-9k2-hard-disks-ljj-checkbox"
-                  className="font-normal"
-                >
-                  Network Mode and APN settings
-                </FieldLabel>
-              </Field>
-              <Field orientation="horizontal">
-                <Checkbox
-                  id="finder-pref-9k2-external-disks-1yg-checkbox"
-                  name="finder-pref-9k2-external-disks-1yg-checkbox"
-                  defaultChecked
-                />
-                <FieldLabel
-                  htmlFor="finder-pref-9k2-external-disks-1yg-checkbox"
-                  className="font-normal"
-                >
-                  Preferred LTE and 5G bands
-                </FieldLabel>
-              </Field>
-              <Field orientation="horizontal">
-                <Checkbox
-                  id="finder-pref-9k2-cds-dvds-fzt-checkbox"
-                  name="finder-pref-9k2-cds-dvds-fzt-checkbox"
-                />
-                <FieldLabel
-                  htmlFor="finder-pref-9k2-cds-dvds-fzt-checkbox"
-                  className="font-normal"
-                >
-                  Preferred Tower Locking settings
-                </FieldLabel>
-              </Field>
-              <Field orientation="horizontal">
-                <Checkbox
-                  id="finder-pref-9k2-cds-dvds-fzt-checkbox"
-                  name="finder-pref-9k2-cds-dvds-fzt-checkbox"
-                />
-                <FieldLabel
-                  htmlFor="finder-pref-9k2-cds-dvds-fzt-checkbox"
-                  className="font-normal"
-                >
-                  Preferred TTL/HL settings
-                </FieldLabel>
-              </Field>
-              <Field orientation="horizontal">
-                <Checkbox
-                  id="finder-pref-9k2-connected-servers-6l2-checkbox"
-                  name="finder-pref-9k2-connected-servers-6l2-checkbox"
-                />
-                <FieldLabel
-                  htmlFor="finder-pref-9k2-connected-servers-6l2-checkbox"
-                  className="font-normal"
-                >
-                  Preferred IMEI Settings
-                </FieldLabel>
-              </Field>
+              {BACKUP_SECTIONS.map((s) => {
+                const isDisabled = disabled.has(s.key);
+                const checked = selection[s.key] && !isDisabled;
+                return (
+                  <Field key={s.key} orientation="horizontal">
+                    <Checkbox
+                      id={`backup-section-${s.key}`}
+                      name={`backup-section-${s.key}`}
+                      checked={checked}
+                      disabled={isDisabled}
+                      onCheckedChange={(v) =>
+                        setSelection((prev) => ({
+                          ...prev,
+                          [s.key]: v === true,
+                        }))
+                      }
+                    />
+                    <FieldLabel
+                      htmlFor={`backup-section-${s.key}`}
+                      className="font-normal"
+                    >
+                      {s.label}
+                      {isDisabled && s.overlapGroup === "profile" && (
+                        <span className="ml-2 text-xs text-muted-foreground">
+                          Included via Custom SIM Profiles
+                        </span>
+                      )}
+                      {isDisabled && s.key === "profiles" && (
+                        <span className="ml-2 text-xs text-muted-foreground">
+                          Uncheck overlapping items to include profiles
+                        </span>
+                      )}
+                    </FieldLabel>
+                  </Field>
+                );
+              })}
             </FieldGroup>
           </FieldSet>
-          <div className="grid gap-y-4">
-            <div className="flex items-center space-x-2">
-              <Switch id="config-password" />
-              <Label htmlFor="config-password">Configuration Password</Label>
-            </div>
 
+          <div className="grid gap-y-4">
             <Field>
-              <FieldLabel htmlFor="config-password-input">
-                Enter your configuration password
-              </FieldLabel>
+              <FieldLabel htmlFor="backup-passphrase">Passphrase</FieldLabel>
               <Input
-                id="config-password-input"
+                id="backup-passphrase"
                 type="password"
-                placeholder="rm551e-..."
+                value={passphrase}
+                onChange={(e) => setPassphrase(e.target.value)}
+                placeholder="At least 10 characters"
                 className="max-w-sm"
+                autoComplete="new-password"
               />
             </Field>
+            <Field>
+              <FieldLabel htmlFor="backup-passphrase-confirm">
+                Confirm passphrase
+              </FieldLabel>
+              <Input
+                id="backup-passphrase-confirm"
+                type="password"
+                value={confirm}
+                onChange={(e) => setConfirm(e.target.value)}
+                className="max-w-sm"
+                autoComplete="new-password"
+              />
+            </Field>
+            <p className="text-xs text-muted-foreground max-w-sm">
+              Store this passphrase somewhere safe. If you lose it, this backup
+              cannot be recovered — there is no reset option.
+            </p>
           </div>
 
           <div>
-            <Button type="submit">
-              <DownloadIcon />
-              Download Backup
+            <Button type="submit" disabled={!canDownload}>
+              {busy && <Loader2Icon className="size-4 animate-spin" />}
+              {buttonLabel}
             </Button>
           </div>
-
-          {/* <SaveButton
-            type="submit"
-            isSaving={isSaving}
-            saved={saved}
-            disabled={!canSave}
-          /> */}
         </form>
       </CardContent>
     </Card>
