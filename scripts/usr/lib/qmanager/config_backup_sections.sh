@@ -238,3 +238,52 @@ apply_network_mode_apn() {
     done
     return 0
 }
+
+# =============================================================================
+# LTE/5G Bands — AT+QNWPREFCFG lte_band, nsa_nr5g_band, nr5g_band
+# =============================================================================
+collect_bands() {
+    local resp
+    resp=$(qcmd 'AT+QNWPREFCFG="ue_capability_band"') || return 1
+    # Each line: +QNWPREFCFG: "lte_band",1:3:7:28   (colon-delimited numeric list)
+    local lte nsa sa
+    lte=$(echo "$resp" | awk -F',' '/"lte_band"/         {print $2; exit}')
+    nsa=$(echo "$resp" | awk -F',' '/"nsa_nr5g_band"/    {print $2; exit}')
+    sa=$(echo  "$resp" | awk -F',' '/"nr5g_band"/ && !/nsa_/ && !/nrdc_/ {print $2; exit}')
+
+    # failover flag
+    local failover
+    failover=$(cat /etc/qmanager/band_failover_enabled 2>/dev/null || echo "0")
+
+    jq -n --arg l "$lte" --arg n "$nsa" --arg s "$sa" --arg f "$failover" \
+        '{lte_bands: $l, nsa_bands: $n, sa_bands: $s, failover_enabled: ($f == "1")}'
+}
+
+apply_bands() {
+    local input lte nsa sa failover
+    input=$(cat)
+    lte=$(echo "$input"       | jq -r '.lte_bands // empty')
+    nsa=$(echo "$input"       | jq -r '.nsa_bands // empty')
+    sa=$(echo "$input"        | jq -r '.sa_bands  // empty')
+    failover=$(echo "$input"  | jq -r '.failover_enabled // false')
+
+    # Kill any running band failover watcher before re-locking
+    if [ -f /tmp/qmanager_band_failover.pid ]; then
+        kill "$(cat /tmp/qmanager_band_failover.pid 2>/dev/null)" 2>/dev/null
+        rm -f /tmp/qmanager_band_failover.pid /tmp/qmanager_band_failover
+    fi
+
+    [ -n "$lte" ] && { qcmd "AT+QNWPREFCFG=\"lte_band\",${lte}"        >/dev/null || return 1; sleep 1; }
+    [ -n "$nsa" ] && { qcmd "AT+QNWPREFCFG=\"nsa_nr5g_band\",${nsa}"   >/dev/null || return 1; sleep 1; }
+    [ -n "$sa"  ] && { qcmd "AT+QNWPREFCFG=\"nr5g_band\",${sa}"        >/dev/null || return 1; sleep 1; }
+
+    # Restore failover flag + respawn watcher if enabled
+    mkdir -p /etc/qmanager
+    if [ "$failover" = "true" ]; then
+        echo "1" > /etc/qmanager/band_failover_enabled
+        ( /usr/bin/qmanager_band_failover </dev/null >/dev/null 2>&1 & )
+    else
+        rm -f /etc/qmanager/band_failover_enabled
+    fi
+    return 0
+}
