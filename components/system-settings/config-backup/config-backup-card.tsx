@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Card,
   CardContent,
@@ -64,22 +64,17 @@ const ConfigBackupCard = () => {
     await runBackup(chosen, passphrase);
   };
 
-  // Side-effect for toast on stage transitions
-  // (uses stage + error from the hook's most recent run)
-  if (stage === "done") {
-    // Defer toast/clear to a microtask so we don't toast inside render
-    queueMicrotask(() => {
+  useEffect(() => {
+    if (stage === "done") {
       toast.success("Backup downloaded");
-      reset();
       setPassphrase("");
       setConfirm("");
-    });
-  } else if (stage === "error" && error) {
-    queueMicrotask(() => {
+      reset();
+    } else if (stage === "error" && error) {
       toast.error(`Backup failed: ${error}`);
       reset();
-    });
-  }
+    }
+  }, [stage, error, reset]);
 
   return (
     <Card className="@container/card">

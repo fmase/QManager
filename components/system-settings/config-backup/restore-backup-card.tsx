@@ -58,12 +58,14 @@ const RestoreConfigBackupCard = () => {
     }
   }, [ui, pwDialogOpen]);
 
-  // Open the password dialog automatically when the envelope is parsed
+  // Open the password dialog automatically when the envelope is parsed.
+  // We intentionally do NOT depend on pwDialogOpen so that user-dismissing
+  // the dialog while still in the password_required state does not re-open it.
   useEffect(() => {
-    if (ui === "password_required" && !pwDialogOpen) {
+    if (ui === "password_required") {
       setPwDialogOpen(true);
     }
-  }, [ui, pwDialogOpen]);
+  }, [ui]);
 
   const openFilePicker = () => fileInput.current?.click();
 

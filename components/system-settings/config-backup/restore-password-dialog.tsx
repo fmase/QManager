@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -28,6 +28,13 @@ export function RestorePasswordDialog({
 }: RestorePasswordDialogProps) {
   const [pw, setPw] = useState("");
   const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (!open) {
+      setPw("");
+      setBusy(false);
+    }
+  }, [open]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
