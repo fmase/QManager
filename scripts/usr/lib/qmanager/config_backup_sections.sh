@@ -469,3 +469,81 @@ apply_imei() {
     fi
     return 0
 }
+
+# =============================================================================
+# Custom SIM Profiles — /etc/qmanager/profiles/*.json + /etc/qmanager/active_profile
+# =============================================================================
+collect_profiles() {
+    local dir="/etc/qmanager/profiles" active_file="/etc/qmanager/active_profile"
+    local active_id="" profiles_array="[]"
+
+    if [ -d "$dir" ]; then
+        # Build array of all profile objects
+        profiles_array="["
+        local sep="" f
+        for f in "$dir"/p_*.json; do
+            [ -f "$f" ] || continue
+            profiles_array="${profiles_array}${sep}$(cat "$f")"
+            sep=","
+        done
+        profiles_array="${profiles_array}]"
+    fi
+
+    if [ -f "$active_file" ]; then
+        active_id=$(cat "$active_file")
+    fi
+
+    jq -n \
+        --argjson p "$profiles_array" \
+        --arg a "$active_id" \
+        '{profiles: $p, active_profile_id: $a}'
+}
+
+apply_profiles() {
+    local input
+    input=$(cat)
+
+    local dir="/etc/qmanager/profiles"
+    mkdir -p "$dir"
+
+    # Write each profile file
+    local n i id payload
+    n=$(echo "$input" | jq '.profiles | length')
+    i=0
+    while [ "$i" -lt "$n" ]; do
+        id=$(echo "$input" | jq -r ".profiles[$i].id")
+        # Sanitize: only allow p_<digits>_<hex>
+        case "$id" in
+            p_[0-9]*_[0-9a-f]*) ;;
+            *) qlog_warn "apply_profiles: invalid id $id, skipping"; i=$((i+1)); continue ;;
+        esac
+        payload=$(echo "$input" | jq -c ".profiles[$i]")
+        echo "$payload" > "${dir}/${id}.json" || return 1
+        i=$((i+1))
+    done
+
+    # Handle active profile activation
+    local wanted_id
+    wanted_id=$(echo "$input" | jq -r '.active_profile_id // empty')
+    if [ -z "$wanted_id" ]; then
+        qlog_info "apply_profiles: no active profile in backup"
+        return 0
+    fi
+
+    # Check SIM ICCID match
+    local profile_iccid current_iccid
+    profile_iccid=$(jq -r '.sim_iccid // empty' "${dir}/${wanted_id}.json" 2>/dev/null)
+    current_iccid=$(jq -r '.device.iccid // empty' /tmp/qmanager_status.json 2>/dev/null)
+
+    if [ -n "$profile_iccid" ] && [ -n "$current_iccid" ] && [ "$profile_iccid" != "$current_iccid" ]; then
+        qlog_warn "apply_profiles: SIM ICCID mismatch ($profile_iccid vs $current_iccid), skipping activation"
+        # Signal sim mismatch via specific exit code that the worker translates
+        return 3
+    fi
+
+    # Fire-and-forget activation (worker does not wait for profile apply)
+    echo "$wanted_id" > /etc/qmanager/active_profile
+    ( /usr/bin/qmanager_profile_apply "$wanted_id" </dev/null >/dev/null 2>&1 & )
+    qlog_info "apply_profiles: activation dispatched for $wanted_id"
+    return 0
+}
