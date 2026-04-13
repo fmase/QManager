@@ -1,6 +1,6 @@
 # 🚀 QManager BETA v0.1.16 _(Draft)_
 
-**UI polish and quality-of-life improvements: QManager version now shows live on the dashboard, device icon migrated to PNG, Device Information card decluttered, login footer updated, and minor layout fixes across several cards.**
+**UI polish and quality-of-life improvements: QManager version now shows live on the dashboard, device icon migrated to PNG, Device Information card decluttered, login footer updated, quick modem reconnect added to the user menu, and minor layout fixes across several cards.**
 
 ---
 
@@ -27,6 +27,19 @@ Path: Dashboard → Device Information card
 - **Added `mt-2` top margin** to the Low Power Mode "days of the week" checkbox group, bringing its spacing in line with the Reboot days group above it.
 
 Path: System Settings → Scheduled Operations
+
+### User Menu — Quick Modem Reconnect Action
+
+- **Added a new "Reconnect Modem" action under "Toggle Theme"** in the user dropdown, giving users a fast one-click recovery path without navigating to AT Terminal.
+- **Confirmation-first flow with AlertDialog** — pressing Reconnect opens a warning dialog explaining that the modem will briefly disconnect before reconnecting.
+- **Two-step AT sequence implemented exactly as requested**:
+  - send `AT+COPS=2` (manual detach) and show **"Disconnecting..."** toast
+  - wait 3 seconds
+  - send `AT+COPS=0` (automatic operator reattach) and show **"Reconnecting..."** toast
+- **Safe async UX behavior** — confirm/cancel controls are disabled while the operation is running, with spinner states to prevent duplicate clicks.
+- **Failure handling includes recovery attempt** — if step 1 succeeds but a later step fails, the flow still attempts `AT+COPS=0` to avoid leaving the modem detached.
+
+Path: User menu (`NavUser`) → Reconnect Modem
 
 ---
 

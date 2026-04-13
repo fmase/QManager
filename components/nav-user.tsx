@@ -6,15 +6,14 @@ import {
   KeyRound,
   Loader2,
   LogOut,
-  Moon,
   Power,
-  Sun,
   Camera,
   Pencil,
+  RotateCcw,
 } from "lucide-react";
 import { toast } from "sonner";
-import { useTheme } from "next-themes";
 import { logout } from "@/hooks/use-auth";
+import { useModemReconnect } from "@/hooks/use-modem-reconnect";
 import { authFetch } from "@/lib/auth-fetch";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -64,7 +63,6 @@ export function NavUser({
   };
 }) {
   const { isMobile } = useSidebar();
-  const { theme, setTheme } = useTheme();
 
   // --- Display name from device hostname ---
   const [displayName, setDisplayName] = useState<string>(user.name);
@@ -88,8 +86,11 @@ export function NavUser({
   // --- Dialog state ---
   const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
   const [nameDialogOpen, setNameDialogOpen] = useState(false);
+  const [reconnectDialogOpen, setReconnectDialogOpen] = useState(false);
   const [rebootDialogOpen, setRebootDialogOpen] = useState(false);
   const [rebooting, setRebooting] = useState(false);
+  const { reconnectModem, isReconnecting, step: reconnectStep } =
+    useModemReconnect();
 
   // --- Name edit state ---
   const [nameInput, setNameInput] = useState(displayName);
@@ -167,6 +168,29 @@ export function NavUser({
       document.cookie = "qm_logged_in=; Path=/; Max-Age=0";
       window.location.href = "/reboot/";
     }, 2000);
+  };
+
+  const handleReconnect = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (isReconnecting) return;
+
+    const result = await reconnectModem({
+      onStep: (step) => {
+        if (step === "disconnecting") {
+          toast.info("Disconnecting...");
+          return;
+        }
+        toast.info("Reconnecting...");
+      },
+    });
+
+    if (!result.success) {
+      toast.error(result.error || "Failed to reconnect modem");
+      return;
+    }
+
+    setReconnectDialogOpen(false);
+    toast.success("Modem reconnect complete");
   };
 
   const initials =
@@ -255,6 +279,17 @@ export function NavUser({
                 <DropdownMenuItem>
                   <AnimatedThemeToggler />
                 </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => setReconnectDialogOpen(true)}
+                  disabled={isReconnecting}
+                >
+                  {isReconnecting ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : (
+                    <RotateCcw />
+                  )}
+                  Reconnect Modem
+                </DropdownMenuItem>
               </DropdownMenuGroup>
               <DropdownMenuSeparator />
               <DropdownMenuItem
@@ -325,6 +360,41 @@ export function NavUser({
         open={passwordDialogOpen}
         onOpenChange={setPasswordDialogOpen}
       />
+
+      <AlertDialog
+        open={reconnectDialogOpen}
+        onOpenChange={(open) => {
+          if (!isReconnecting) setReconnectDialogOpen(open);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reconnect Modem</AlertDialogTitle>
+            <AlertDialogDescription aria-live="polite">
+              {isReconnecting
+                ? reconnectStep === "disconnecting"
+                  ? "Disconnecting modem from network..."
+                  : "Reconnecting modem to network..."
+                : "This will disconnect the modem for a few seconds, then reconnect it automatically."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isReconnecting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction disabled={isReconnecting} onClick={handleReconnect}>
+              {isReconnecting ? (
+                <>
+                  <Loader2 className="size-4 animate-spin" />
+                  {reconnectStep === "disconnecting"
+                    ? "Disconnecting..."
+                    : "Reconnecting..."}
+                </>
+              ) : (
+                "Reconnect"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog
         open={rebootDialogOpen}

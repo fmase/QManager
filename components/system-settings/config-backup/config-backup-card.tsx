@@ -21,6 +21,7 @@ import { SaveButton } from "@/components/ui/save-button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { DownloadIcon } from "lucide-react";
 
 const ConfigBackupCard = () => {
   return (
@@ -128,7 +129,10 @@ const ConfigBackupCard = () => {
           </div>
 
           <div>
-            <Button type="submit">Download Backup</Button>
+            <Button type="submit">
+              <DownloadIcon />
+              Download Backup
+            </Button>
           </div>
 
           {/* <SaveButton
