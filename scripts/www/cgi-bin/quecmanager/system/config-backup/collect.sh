@@ -62,6 +62,13 @@ for k in $(echo "$SECTIONS_CSV" | tr ',' ' '); do
 done
 SECTIONS_JSON="${SECTIONS_JSON}}"
 
+# Pre-flight: ensure assembled SECTIONS_JSON is valid JSON before committing 200 status
+if ! echo "$SECTIONS_JSON" | jq -e '.' >/dev/null 2>&1; then
+    printf 'Status: 500\r\nContent-Type: application/json\r\n\r\n'
+    echo '{"error":"collect_fragment_invalid"}'
+    exit 0
+fi
+
 # Emit event
 append_event "config_backup_collected" "Configuration backup collected ($COUNT sections)" "info" 2>/dev/null
 

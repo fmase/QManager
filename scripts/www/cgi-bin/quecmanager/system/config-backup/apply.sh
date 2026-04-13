@@ -9,6 +9,12 @@
 
 cgi_require_auth
 
+if [ "$REQUEST_METHOD" != "POST" ]; then
+    printf 'Status: 405\r\nContent-Type: application/json\r\nAllow: POST\r\n\r\n'
+    echo '{"error":"method_not_allowed"}'
+    exit 0
+fi
+
 MAX_BODY_SIZE=$((256 * 1024))
 PID_FILE="/var/run/qmanager_config_restore.pid"
 INPUT_FILE="/tmp/qmanager_config_restore_input.json"
