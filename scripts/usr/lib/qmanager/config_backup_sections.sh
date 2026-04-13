@@ -162,3 +162,79 @@ apply_watchdog() {
     fi
     return 0
 }
+
+# =============================================================================
+# Network Mode + APN — AT commands via qcmd
+# =============================================================================
+collect_network_mode_apn() {
+    local resp
+    # Compound read: nr5g_disable_mode, roam_pref, mode_pref, APN contexts
+    resp=$(qcmd 'AT+QNWPREFCFG="nr5g_disable_mode";+QNWPREFCFG="roam_pref";+QNWPREFCFG="mode_pref";+CGDCONT?') || return 1
+
+    local nr5g_dis roam mode
+    nr5g_dis=$(echo "$resp" | awk -F',' '/nr5g_disable_mode/ {gsub(/[[:space:]"]/,"",$2); print $2; exit}')
+    roam=$(echo "$resp"     | awk -F',' '/roam_pref/         {gsub(/[[:space:]"]/,"",$2); print $2; exit}')
+    mode=$(echo "$resp"     | awk -F',' '/mode_pref/         {gsub(/[[:space:]"]/,"",$2); print $2; exit}')
+
+    # Parse all +CGDCONT lines → JSON array
+    local contexts
+    contexts=$(echo "$resp" | awk '
+        /\+CGDCONT:/ {
+            gsub(/\+CGDCONT: */, "", $0);
+            n = split($0, a, ",");
+            cid = a[1]; gsub(/"/, "", cid);
+            pdp = a[2]; gsub(/"/, "", pdp);
+            apn = a[3]; gsub(/"/, "", apn);
+            printf "%s{\"cid\":%s,\"pdp_type\":\"%s\",\"apn\":\"%s\"}", (first==""?"":","), cid, pdp, apn;
+            first="done";
+        }
+        END { }
+    ')
+    contexts="[${contexts}]"
+
+    jq -n \
+      --arg nr "$nr5g_dis" --arg ro "$roam" --arg md "$mode" \
+      --argjson ctx "$contexts" \
+      '{nr5g_disable_mode: ($nr|tonumber? // 0),
+        roam_pref: ($ro|tonumber? // 1),
+        mode_pref: $md,
+        contexts: $ctx}'
+}
+
+apply_network_mode_apn() {
+    local input
+    input=$(cat)
+
+    local nr5g_dis roam mode
+    nr5g_dis=$(echo "$input" | jq -r '.nr5g_disable_mode // empty')
+    roam=$(echo "$input"     | jq -r '.roam_pref // empty')
+    mode=$(echo "$input"     | jq -r '.mode_pref // empty')
+
+    # Order: nr5g_disable → roam → mode_pref → APN contexts
+    if [ -n "$nr5g_dis" ]; then
+        qcmd "AT+QNWPREFCFG=\"nr5g_disable_mode\",${nr5g_dis}" >/dev/null || return 1
+        sleep 1
+    fi
+    if [ -n "$roam" ]; then
+        qcmd "AT+QNWPREFCFG=\"roam_pref\",${roam}" >/dev/null || return 1
+        sleep 1
+    fi
+    if [ -n "$mode" ] && [ "$mode" != "null" ]; then
+        qcmd "AT+QNWPREFCFG=\"mode_pref\",${mode}" >/dev/null || return 1
+        sleep 1
+    fi
+
+    # Apply each APN context
+    local count i cid pdp apn
+    count=$(echo "$input" | jq '.contexts | length')
+    i=0
+    while [ "$i" -lt "$count" ]; do
+        cid=$(echo "$input" | jq -r ".contexts[$i].cid")
+        pdp=$(echo "$input" | jq -r ".contexts[$i].pdp_type")
+        apn=$(echo "$input" | jq -r ".contexts[$i].apn")
+        qcmd "AT+CGDCONT=${cid},\"${pdp}\",\"${apn}\"" >/dev/null || return 1
+        sleep 1
+        i=$((i+1))
+    done
+    return 0
+}
