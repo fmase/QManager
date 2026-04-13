@@ -287,3 +287,76 @@ apply_bands() {
     fi
     return 0
 }
+
+# =============================================================================
+# Tower Locking — /etc/qmanager/tower_lock.json + AT+QNWLOCK apply
+# =============================================================================
+collect_tower_lock() {
+    local cfg="/etc/qmanager/tower_lock.json"
+    if [ ! -f "$cfg" ]; then
+        echo '{"lte":{"cells":[]},"nr_sa":{"cells":[]},"failover":{"enabled":false}}'
+        return 0
+    fi
+    # Keep only the persistent structure — drop any runtime fields
+    jq -c '{lte: {cells: (.lte.cells // [])},
+            nr_sa: {cells: (.nr_sa.cells // [])},
+            failover: {enabled: (.failover.enabled // false)}}' "$cfg"
+}
+
+apply_tower_lock() {
+    local input lte_n i earfcn pci nr_cell
+    input=$(cat)
+
+    # Kill failover watcher first to prevent false no-signal detection
+    /etc/init.d/qmanager_tower_failover stop >/dev/null 2>&1
+
+    # --- Apply LTE cells ---
+    lte_n=$(echo "$input" | jq '.lte.cells | length')
+    if [ "$lte_n" = "0" ]; then
+        qcmd 'AT+QNWLOCK="common/4g",0' >/dev/null || return 1
+    else
+        local cmd="AT+QNWLOCK=\"common/4g\",${lte_n}"
+        i=0
+        while [ "$i" -lt "$lte_n" ] && [ "$i" -lt 3 ]; do
+            earfcn=$(echo "$input" | jq -r ".lte.cells[$i].earfcn")
+            pci=$(echo "$input"    | jq -r ".lte.cells[$i].pci")
+            cmd="${cmd},${earfcn},${pci}"
+            i=$((i+1))
+        done
+        qcmd "$cmd" >/dev/null || return 1
+    fi
+    sleep 2
+
+    # --- Apply NR-SA cell ---
+    nr_cell=$(echo "$input" | jq -c '.nr_sa.cells[0] // null')
+    if [ "$nr_cell" = "null" ]; then
+        qcmd 'AT+QNWLOCK="common/5g",0' >/dev/null || return 1
+    else
+        local pci arfcn scs band
+        pci=$(echo "$nr_cell"   | jq -r '.pci')
+        arfcn=$(echo "$nr_cell" | jq -r '.arfcn')
+        scs=$(echo "$nr_cell"   | jq -r '.scs')
+        band=$(echo "$nr_cell"  | jq -r '.band')
+        qcmd "AT+QNWLOCK=\"common/5g\",${pci},${arfcn},${scs},${band}" >/dev/null || return 1
+    fi
+    sleep 2
+
+    # --- MTU reapply + config file update ---
+    if command -v mtu_reapply_after_bounce >/dev/null 2>&1; then
+        mtu_reapply_after_bounce
+    fi
+
+    # Persist config file so tower page reflects the restored state
+    mkdir -p /etc/qmanager
+    local tmp="/etc/qmanager/tower_lock.json.tmp.$$"
+    echo "$input" | jq '.' > "$tmp" && mv "$tmp" /etc/qmanager/tower_lock.json
+
+    # Restart failover watcher if enabled
+    local fo
+    fo=$(echo "$input" | jq -r '.failover.enabled')
+    if [ "$fo" = "true" ]; then
+        /etc/init.d/qmanager_tower_failover enable >/dev/null 2>&1
+        ( /etc/init.d/qmanager_tower_failover start >/dev/null 2>&1 & )
+    fi
+    return 0
+}
