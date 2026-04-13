@@ -29,6 +29,21 @@ import { useConfigRestore } from "@/hooks/use-config-restore";
 import { useModemStatus } from "@/hooks/use-modem-status";
 import { RestorePasswordDialog } from "./restore-password-dialog";
 import { RestoreProgressList } from "./restore-progress-list";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { authFetch } from "@/lib/auth-fetch";
+import {
+  setPendingReboot,
+  clearPendingReboot,
+} from "@/lib/config-backup/pending-reboot";
 
 const RestoreConfigBackupCard = () => {
   const modem = useModemStatus();
@@ -44,6 +59,8 @@ const RestoreConfigBackupCard = () => {
 
   const fileInput = useRef<HTMLInputElement>(null);
   const [pwDialogOpen, setPwDialogOpen] = useState(false);
+  const [rebootDialogOpen, setRebootDialogOpen] = useState(false);
+  const [rebootBusy, setRebootBusy] = useState(false);
 
   // Close the password dialog once decryption has succeeded (or otherwise moved past it)
   const ui = state.ui;
@@ -66,6 +83,46 @@ const RestoreConfigBackupCard = () => {
       setPwDialogOpen(true);
     }
   }, [ui]);
+
+  // When a restore completes (success or partial_success) and the worker
+  // flagged reboot_required, raise the dialog and persist the pending state.
+  // Every restore is a discrete action — show the dialog every time, even
+  // for back-to-back restores in the same session.
+  useEffect(() => {
+    if (
+      (ui === "success" || ui === "partial_success") &&
+      state.progress?.reboot_required === true
+    ) {
+      setPendingReboot();
+      setRebootDialogOpen(true);
+    }
+  }, [ui, state.progress?.reboot_required]);
+
+  const handleRebootNow = async () => {
+    setRebootBusy(true);
+    // Clear the pending flag first — if the reboot succeeds, the page is
+    // about to die and the cleanup is moot, but if it fails the user should
+    // not be left with a stale banner. We re-set the flag on failure.
+    clearPendingReboot();
+    try {
+      await authFetch("/cgi-bin/quecmanager/system/reboot.sh", {
+        method: "POST",
+      });
+      // Page will be unreachable in ~5-30s. Leave the dialog open with
+      // a "rebooting" indicator. The browser will eventually fail to reach
+      // the device and the user will refresh manually once it comes back.
+    } catch {
+      // Reboot request failed — re-flag pending so the banner reappears
+      setPendingReboot();
+      setRebootBusy(false);
+      setRebootDialogOpen(false);
+    }
+  };
+
+  const handleRebootLater = () => {
+    setRebootDialogOpen(false);
+    // pending flag remains set → banner stays visible on the page
+  };
 
   const openFilePicker = () => fileInput.current?.click();
 
@@ -312,6 +369,34 @@ const RestoreConfigBackupCard = () => {
           onSubmit={handlePasswordSubmit}
           incorrect={ui === "password_incorrect"}
         />
+
+        <AlertDialog open={rebootDialogOpen} onOpenChange={setRebootDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Modem reboot required</AlertDialogTitle>
+              <AlertDialogDescription>
+                Some restored settings (IMEI change and/or Custom SIM Profile
+                activation) need a modem reboot to take effect. The QManager
+                interface will be unavailable for about 30–60 seconds during
+                the reboot.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel
+                onClick={handleRebootLater}
+                disabled={rebootBusy}
+              >
+                Reboot Later
+              </AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleRebootNow}
+                disabled={rebootBusy}
+              >
+                {rebootBusy ? "Rebooting…" : "Reboot Now"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </CardContent>
     </Card>
   );
