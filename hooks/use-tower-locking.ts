@@ -39,6 +39,62 @@ import type {
 const CGI_BASE = "/cgi-bin/quecmanager/tower";
 const FAILOVER_POLL_INTERVAL = 3000; // 3s — watcher sleeps 20s then checks
 
+const DEFAULT_FAILOVER_THRESHOLD = 20;
+const DEFAULT_SCHEDULE: TowerScheduleConfig = {
+  enabled: false,
+  start_time: "08:00",
+  end_time: "22:00",
+  days: [1, 2, 3, 4, 5],
+};
+
+function normalizeTowerConfig(
+  rawConfig: TowerStatusResponse["config"] | null | undefined,
+  failoverEnabledFallback = false
+): TowerLockConfig | null {
+  if (!rawConfig) return null;
+
+  const lteCells = Array.isArray(rawConfig.lte?.cells)
+    ? rawConfig.lte.cells.slice(0, 3)
+    : [];
+  while (lteCells.length < 3) {
+    lteCells.push(null);
+  }
+
+  const scheduleDays = Array.isArray(rawConfig.schedule?.days)
+    ? rawConfig.schedule.days.filter(
+        (day) => Number.isInteger(day) && day >= 0 && day <= 6
+      )
+    : DEFAULT_SCHEDULE.days;
+
+  return {
+    lte: {
+      enabled: rawConfig.lte?.enabled === true,
+      cells: lteCells,
+    },
+    nr_sa: {
+      enabled: rawConfig.nr_sa?.enabled === true,
+      pci: rawConfig.nr_sa?.pci ?? null,
+      arfcn: rawConfig.nr_sa?.arfcn ?? null,
+      scs: rawConfig.nr_sa?.scs ?? null,
+      band: rawConfig.nr_sa?.band ?? null,
+    },
+    persist: rawConfig.persist === true,
+    failover: {
+      enabled:
+        rawConfig.failover?.enabled ?? failoverEnabledFallback,
+      threshold:
+        rawConfig.failover?.threshold ?? DEFAULT_FAILOVER_THRESHOLD,
+    },
+    schedule: {
+      enabled: rawConfig.schedule?.enabled === true,
+      start_time:
+        rawConfig.schedule?.start_time || DEFAULT_SCHEDULE.start_time,
+      end_time: rawConfig.schedule?.end_time || DEFAULT_SCHEDULE.end_time,
+      days: scheduleDays.length > 0 ? scheduleDays : DEFAULT_SCHEDULE.days,
+    },
+  };
+}
+
 export interface UseTowerLockingReturn {
   /** Tower lock configuration from config file */
   config: TowerLockConfig | null;
@@ -146,7 +202,12 @@ export function useTowerLocking(): UseTowerLockingReturn {
         setModemState(data.modem_state);
       }
       if (data.config !== null && data.config !== undefined) {
-        setConfig(data.config);
+        setConfig(
+          normalizeTowerConfig(
+            data.config,
+            data.failover_state?.enabled === true
+          )
+        );
       }
       if (data.failover_state !== null && data.failover_state !== undefined) {
         setFailoverState(data.failover_state);
@@ -235,6 +296,13 @@ export function useTowerLocking(): UseTowerLockingReturn {
   // Generic lock/unlock helper
   // ---------------------------------------------------------------------------
   const isWatcherRunning = failoverState?.watcher_running ?? false;
+  const modemReportsUnlocked =
+    modemState?.lte_locked === false && modemState?.nr_locked === false;
+  const hasAnyActiveLock =
+    modemState?.lte_locked === true ||
+    modemState?.nr_locked === true ||
+    (!modemReportsUnlocked &&
+      (config?.lte?.enabled === true || config?.nr_sa?.enabled === true));
 
   const sendLockRequest = useCallback(
     async (
@@ -244,7 +312,11 @@ export function useTowerLocking(): UseTowerLockingReturn {
       // Anti-spam: block new LOCK operations while failover watcher is running.
       // Unlock operations are allowed through — the backend will stop the
       // watcher before sending the AT unlock command.
-      if (body.action === "lock" && failoverState?.watcher_running) {
+      if (
+        body.action === "lock" &&
+        failoverState?.watcher_running &&
+        hasAnyActiveLock
+      ) {
         setError("Please wait — failover check is still in progress");
         return false;
       }
@@ -316,7 +388,12 @@ export function useTowerLocking(): UseTowerLockingReturn {
         }
       }
     },
-    [fetchStatus, startFailoverPolling, failoverState?.watcher_running]
+    [
+      fetchStatus,
+      startFailoverPolling,
+      failoverState?.watcher_running,
+      hasAnyActiveLock,
+    ]
   );
 
   // ---------------------------------------------------------------------------

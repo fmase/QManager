@@ -389,6 +389,44 @@ calc_signal_quality() {
 # Failover Watcher Management
 # =============================================================================
 
+# Check whether a PID is the live tower failover daemon process.
+# Returns 0 when alive and command line matches qmanager_tower_failover.
+tower_is_failover_pid_running() {
+    local pid="$1"
+
+    [ -n "$pid" ] || return 1
+    case "$pid" in
+        *[!0-9]*) return 1 ;;
+    esac
+
+    kill -0 "$pid" 2>/dev/null || return 1
+
+    local cmdline
+    cmdline=$(tr '\000' ' ' < "/proc/$pid/cmdline" 2>/dev/null)
+    case "$cmdline" in
+        *"$TOWER_FAILOVER_SCRIPT"*) return 0 ;;
+    esac
+
+    return 1
+}
+
+# Read watcher PID file and return a verified live daemon PID.
+# Cleans up stale PID files automatically.
+tower_get_running_failover_pid() {
+    local pid
+
+    [ -f "$TOWER_FAILOVER_PID" ] || return 1
+    pid=$(cat "$TOWER_FAILOVER_PID" 2>/dev/null | tr -d ' \n\r')
+
+    if tower_is_failover_pid_running "$pid"; then
+        printf '%s' "$pid"
+        return 0
+    fi
+
+    rm -f "$TOWER_FAILOVER_PID"
+    return 1
+}
+
 # Kill any running failover watcher (delegates to init.d)
 tower_kill_failover_watcher() {
     /etc/init.d/qmanager_tower_failover stop 2>/dev/null
@@ -415,14 +453,12 @@ tower_spawn_failover_watcher() {
 
     # Verify daemon actually started (PID file written immediately on spawn)
     sleep 1
-    if [ -f "$TOWER_FAILOVER_PID" ]; then
-        local pid
-        pid=$(cat "$TOWER_FAILOVER_PID" 2>/dev/null | tr -d ' \n\r')
-        if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
-            qlog_info "Tower failover watcher verified running (PID=$pid)"
-            printf 'true'
-            return 0
-        fi
+    local pid
+    pid=$(tower_get_running_failover_pid)
+    if [ -n "$pid" ]; then
+        qlog_info "Tower failover watcher verified running (PID=$pid)"
+        printf 'true'
+        return 0
     fi
 
     qlog_warn "Tower failover watcher failed to start"

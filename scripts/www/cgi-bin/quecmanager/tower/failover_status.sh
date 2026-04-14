@@ -20,6 +20,9 @@ qlog_init "cgi_tower_failover_status"
 cgi_headers
 cgi_handle_options
 
+# --- Load tower lock library -------------------------------------------------
+. /usr/lib/qmanager/tower_lock_mgr.sh 2>/dev/null
+
 # --- Read failover enabled from config (flash) ------------------------------
 # NOTE: Do not use `// false` — jq's alternative operator treats `false` as
 # falsy, so `false // false` always returns the alternative. Use direct access.
@@ -37,7 +40,11 @@ fi
 
 # --- Check if watcher process is still running -------------------------------
 watcher_running="false"
-if [ -f "$WATCHER_PID_FILE" ]; then
+if command -v tower_get_running_failover_pid >/dev/null 2>&1; then
+    if watcher_pid=$(tower_get_running_failover_pid); then
+        [ -n "$watcher_pid" ] && watcher_running="true"
+    fi
+elif [ -f "$WATCHER_PID_FILE" ]; then
     watcher_pid=$(cat "$WATCHER_PID_FILE" 2>/dev/null | tr -d ' \n\r')
     if [ -n "$watcher_pid" ] && kill -0 "$watcher_pid" 2>/dev/null; then
         watcher_running="true"

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Card,
   CardContent,
@@ -18,7 +18,6 @@ import {
 } from "@/components/ui/field";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Skeleton } from "@/components/ui/skeleton";
 import { EyeIcon, EyeOffIcon, Loader2Icon } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -29,7 +28,6 @@ import {
   selectedKeys,
 } from "@/lib/config-backup/sections";
 import { useConfigBackup } from "@/hooks/use-config-backup";
-import { useModemStatus } from "@/hooks/use-modem-status";
 
 const MIN_PASSPHRASE_LEN = 10;
 
@@ -39,8 +37,7 @@ const ConfigBackupCard = () => {
   const [confirm, setConfirm] = useState("");
   const [showPassphrase, setShowPassphrase] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
-  const { runBackup, stage, error, reset } = useConfigBackup();
-  const modem = useModemStatus();
+  const { runBackup, stage, reset } = useConfigBackup();
 
   const disabled = useMemo(() => computeDisabledKeys(selection), [selection]);
   const chosen = useMemo(() => selectedKeys(selection), [selection]);
@@ -64,20 +61,17 @@ const ConfigBackupCard = () => {
     e.preventDefault();
     if (!canDownload) return;
     reset();
-    await runBackup(chosen, passphrase);
-  };
-
-  useEffect(() => {
-    if (stage === "done") {
+    const result = await runBackup(chosen, passphrase);
+    if (result.ok) {
       toast.success("Backup downloaded");
       setPassphrase("");
       setConfirm("");
       reset();
-    } else if (stage === "error" && error) {
-      toast.error(`Backup failed: ${error}`);
-      reset();
+      return;
     }
-  }, [stage, error, reset]);
+    toast.error(`Backup failed: ${result.error}`);
+    reset();
+  };
 
   return (
     <Card className="@container/card">

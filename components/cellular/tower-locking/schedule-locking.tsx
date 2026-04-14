@@ -46,15 +46,16 @@ const ScheduleTowerLockingComponent = ({
 
   // Debounce timer ref
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const scheduleConfig = config?.schedule;
 
   // Sync from config (adjust state during render)
   const [prevSchedule, setPrevSchedule] = useState<TowerScheduleConfig | null>(null);
-  if (config?.schedule && config.schedule !== prevSchedule) {
-    setPrevSchedule(config.schedule);
-    setEnabled(config.schedule.enabled);
-    setStartTime(config.schedule.start_time);
-    setEndTime(config.schedule.end_time);
-    setDays(config.schedule.days);
+  if (scheduleConfig && scheduleConfig !== prevSchedule) {
+    setPrevSchedule(scheduleConfig);
+    setEnabled(scheduleConfig.enabled);
+    setStartTime(scheduleConfig.start_time);
+    setEndTime(scheduleConfig.end_time);
+    setDays(scheduleConfig.days);
   }
 
   // Debounced save — fires 800ms after last change

@@ -20,6 +20,7 @@ import type {
 } from "@/types/config-backup";
 
 type BackupStage = "idle" | "collecting" | "encrypting" | "downloading" | "done" | "error";
+type BackupRunResult = { ok: true } | { ok: false; error: string };
 
 interface CollectResponse {
   schema: 1;
@@ -30,7 +31,7 @@ interface CollectResponse {
 export interface UseConfigBackupReturn {
   stage: BackupStage;
   error: string | null;
-  runBackup: (selected: BackupSectionKey[], passphrase: string) => Promise<void>;
+  runBackup: (selected: BackupSectionKey[], passphrase: string) => Promise<BackupRunResult>;
   reset: () => void;
 }
 
@@ -45,7 +46,7 @@ export function useConfigBackup(): UseConfigBackupReturn {
     setError(null);
   }, []);
 
-  const runBackup = useCallback(async (selected: BackupSectionKey[], passphrase: string) => {
+  const runBackup = useCallback(async (selected: BackupSectionKey[], passphrase: string): Promise<BackupRunResult> => {
     setError(null);
     try {
       if (selected.length === 0) throw new Error("no_sections_selected");
@@ -93,9 +94,12 @@ export function useConfigBackup(): UseConfigBackupReturn {
       URL.revokeObjectURL(objUrl);
 
       setStage("done");
+      return { ok: true };
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      const message = e instanceof Error ? e.message : String(e);
+      setError(message);
       setStage("error");
+      return { ok: false, error: message };
     }
   }, []);
 

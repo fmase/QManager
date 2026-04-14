@@ -65,6 +65,7 @@ const TowerLockingSettingsComponent = ({
 }: TowerLockingSettingsProps) => {
   // Whether any tower lock is active (from config — matches what failover daemon checks)
   const hasActiveLock = (config?.lte?.enabled || config?.nr_sa?.enabled) ?? false;
+  const scheduleEnabled = config?.schedule?.enabled ?? false;
 
   // Local state for threshold input
   const [thresholdInput, setThresholdInput] = useState<string>("");
@@ -239,7 +240,7 @@ const TowerLockingSettingsComponent = ({
       );
     }
 
-    if (config.schedule.enabled) {
+    if (scheduleEnabled) {
       return (
         <Badge
           variant="outline"
