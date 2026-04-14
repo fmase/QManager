@@ -677,7 +677,15 @@ stop_services() {
     if [ -d "$BIN_DIR" ]; then
         for f in "$BIN_DIR"/qmanager_*; do
             [ -f "$f" ] || continue
-            killall "$(basename "$f")" 2>/dev/null || true
+            local pname
+            pname="$(basename "$f")"
+            # Never kill updater workers during OTA installs. If qmanager_update
+            # (or qmanager_auto_update -> qmanager_update chain) is terminated
+            # here, OTA status can be left stuck at "installing" with no reboot.
+            case "$pname" in
+                qmanager_update|qmanager_auto_update) continue ;;
+            esac
+            killall "$pname" 2>/dev/null || true
         done
     fi
     for p in bridge_traffic_monitor_rm551 websocat nfqws; do
@@ -691,7 +699,12 @@ stop_services() {
     if [ -d "$BIN_DIR" ]; then
         for f in "$BIN_DIR"/qmanager_*; do
             [ -f "$f" ] || continue
-            killall -9 "$(basename "$f")" 2>/dev/null || true
+            local pname
+            pname="$(basename "$f")"
+            case "$pname" in
+                qmanager_update|qmanager_auto_update) continue ;;
+            esac
+            killall -9 "$pname" 2>/dev/null || true
         done
     fi
     for p in bridge_traffic_monitor_rm551 websocat nfqws; do

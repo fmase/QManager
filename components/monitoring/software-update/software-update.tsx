@@ -235,6 +235,7 @@ const SoftwareUpdateComponent = () => {
     isChecking,
     isUpdating,
     isDownloading,
+    isInstallStalled,
     error,
   } = hookData;
 
@@ -324,6 +325,23 @@ const SoftwareUpdateComponent = () => {
                   Do not power off the device during the update
                 </p>
               </div>
+
+              {isInstallStalled && updateStatus.status === "installing" && (
+                <Alert variant="warning">
+                  <AlertTriangleIcon className="size-4" />
+                  <AlertTitle>Install appears stalled</AlertTitle>
+                  <AlertDescription>
+                    <p className="mb-3">
+                      No progress update has been received for a while. If the
+                      install has already completed on the device, you can
+                      request a reboot from the UI.
+                    </p>
+                    <Button size="sm" onClick={hookData.rebootDevice}>
+                      Reboot Device Now
+                    </Button>
+                  </AlertDescription>
+                </Alert>
+              )}
             </div>
           </CardContent>
         </Card>

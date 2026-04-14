@@ -37,6 +37,7 @@ UPDATES_DIR="/etc/qmanager/updates"
 
 STAGED_TARBALL="/tmp/qmanager_staged.tar.gz"
 STAGED_VERSION_MARKER="/tmp/qmanager_staged_version"
+INSTALL_LOG="/tmp/qmanager_install.log"
 
 # URL prefix used for SSRF protection on all downloads
 GITHUB_REPO_PREFIX="https://github.com/dr-dolomite/QManager/releases/download/"
@@ -109,6 +110,40 @@ get_current_version() {
     else
         echo "0.0.0"
     fi
+}
+
+# =============================================================================
+# Install Progress Bridge
+# =============================================================================
+
+latest_install_step() {
+    [ -f "$INSTALL_LOG" ] || return 1
+    sed -n 's/.*=== Step [0-9][0-9]*\/[0-9][0-9]*: \(.*\) ===.*/\1/p' "$INSTALL_LOG" \
+        | tail -n1
+}
+
+run_install_with_progress() {
+    local version="$1" prefix="$2"
+    local install_pid="" last_step="" step=""
+
+    # install.sh truncates this file on start, but clear proactively in case
+    # it exits before log_init() on early failures.
+    rm -f "$INSTALL_LOG"
+
+    sh install.sh --skip-packages --no-reboot >> "$LOG_FILE" 2>&1 &
+    install_pid=$!
+
+    while kill -0 "$install_pid" 2>/dev/null; do
+        step=$(latest_install_step 2>/dev/null || true)
+        if [ -n "$step" ] && [ "$step" != "$last_step" ]; then
+            write_status "installing" "$prefix: $step" "$version" ""
+            last_step="$step"
+        fi
+        sleep 2
+    done
+
+    wait "$install_pid"
+    return $?
 }
 
 # =============================================================================
@@ -331,7 +366,7 @@ mode_install() {
     cd /tmp/qmanager_install || die "Extraction produced no qmanager_install directory"
 
     log_info "Running install.sh --skip-packages --no-reboot"
-    if ! sh install.sh --skip-packages --no-reboot >> "$LOG_FILE" 2>&1; then
+    if ! run_install_with_progress "$version" "Installing QManager $version"; then
         die "Installation failed. See $LOG_FILE for details."
     fi
     log_info "Install complete"
@@ -441,7 +476,7 @@ mode_install_staged() {
 
     # --- Step 3: Run install.sh ---
     log_info "Running install.sh --skip-packages --no-reboot"
-    if ! sh install.sh --skip-packages --no-reboot >> "$LOG_FILE" 2>&1; then
+    if ! run_install_with_progress "$VERSION" "Installing QManager $VERSION"; then
         die "Installation failed. See $LOG_FILE for details."
     fi
     log_info "Install complete"
@@ -516,7 +551,7 @@ mode_rollback() {
     cd /tmp/qmanager_install || die "Extraction produced no qmanager_install directory"
 
     log_info "Running install.sh --skip-packages --no-reboot"
-    if ! sh install.sh --skip-packages --no-reboot >> "$LOG_FILE" 2>&1; then
+    if ! run_install_with_progress "$version" "Restoring $version"; then
         die "Rollback installation failed. See $LOG_FILE for details."
     fi
     log_info "Rollback install complete"

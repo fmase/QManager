@@ -15,6 +15,7 @@ import { authFetch } from "@/lib/auth-fetch";
 const CGI_ENDPOINT = "/cgi-bin/quecmanager/system/update.sh";
 const POLL_INTERVAL = 2000;
 const LAST_CHECKED_KEY = "qm_update_last_checked";
+const INSTALL_STALL_TIMEOUT_MS = 120000;
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -63,12 +64,14 @@ export interface UseSoftwareUpdateReturn {
   isChecking: boolean;
   isUpdating: boolean;
   isDownloading: boolean;
+  isInstallStalled: boolean;
   error: string | null;
   lastChecked: string | null;
   checkForUpdates: () => Promise<void>;
   downloadUpdate: (version?: string) => Promise<void>;
   installStaged: () => Promise<void>;
   installUpdate: () => Promise<void>;
+  rebootDevice: () => Promise<void>;
   togglePrerelease: (enabled: boolean) => Promise<void>;
   saveAutoUpdate: (enabled: boolean, time: string) => Promise<void>;
 }
@@ -84,10 +87,29 @@ export function useSoftwareUpdate(): UseSoftwareUpdateReturn {
   const [error, setError] = useState<string | null>(null);
   const [downloadState, setDownloadState] = useState<DownloadState | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [isInstallStalled, setIsInstallStalled] = useState(false);
   const [lastChecked, setLastChecked] = useState<string | null>(null);
 
   const mountedRef = useRef(true);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const installStallTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastStatusSignatureRef = useRef<string>("");
+
+  const clearInstallStallTimer = useCallback(() => {
+    if (installStallTimerRef.current) {
+      clearTimeout(installStallTimerRef.current);
+      installStallTimerRef.current = null;
+    }
+  }, []);
+
+  const armInstallStallTimer = useCallback(() => {
+    clearInstallStallTimer();
+    installStallTimerRef.current = setTimeout(() => {
+      if (mountedRef.current) {
+        setIsInstallStalled(true);
+      }
+    }, INSTALL_STALL_TIMEOUT_MS);
+  }, [clearInstallStallTimer]);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -97,8 +119,9 @@ export function useSoftwareUpdate(): UseSoftwareUpdateReturn {
     return () => {
       mountedRef.current = false;
       if (pollRef.current) clearInterval(pollRef.current);
+      clearInstallStallTimer();
     };
-  }, []);
+  }, [clearInstallStallTimer]);
 
   // ---------------------------------------------------------------------------
   // Poll download status during background download
@@ -198,7 +221,20 @@ export function useSoftwareUpdate(): UseSoftwareUpdateReturn {
 
         setUpdateStatus(json);
 
+        const signature = `${json.status}|${json.message ?? ""}|${json.version ?? ""}`;
+        if (signature !== lastStatusSignatureRef.current) {
+          lastStatusSignatureRef.current = signature;
+          setIsInstallStalled(false);
+          if (json.status === "installing") {
+            armInstallStallTimer();
+          } else {
+            clearInstallStallTimer();
+          }
+        }
+
         if (json.status === "rebooting") {
+          clearInstallStallTimer();
+          setIsInstallStalled(false);
           // Stop polling, navigate to reboot page
           if (pollRef.current) clearInterval(pollRef.current);
           pollRef.current = null;
@@ -210,12 +246,15 @@ export function useSoftwareUpdate(): UseSoftwareUpdateReturn {
         }
 
         if (json.status === "error") {
+          clearInstallStallTimer();
+          setIsInstallStalled(false);
           if (pollRef.current) clearInterval(pollRef.current);
           pollRef.current = null;
           setIsUpdating(false);
           setError(json.message || "Update failed");
         }
       } catch {
+        clearInstallStallTimer();
         // Device may be rebooting — stop polling and redirect
         if (pollRef.current) clearInterval(pollRef.current);
         pollRef.current = null;
@@ -227,7 +266,7 @@ export function useSoftwareUpdate(): UseSoftwareUpdateReturn {
         }, 2000);
       }
     }, POLL_INTERVAL);
-  }, []);
+  }, [armInstallStallTimer, clearInstallStallTimer]);
 
   // ---------------------------------------------------------------------------
   // Actions
@@ -273,6 +312,8 @@ export function useSoftwareUpdate(): UseSoftwareUpdateReturn {
   const installStaged = useCallback(async () => {
     setError(null);
     setIsUpdating(true);
+    setIsInstallStalled(false);
+    lastStatusSignatureRef.current = "";
     setUpdateStatus({ status: "installing", message: "Installing update..." });
 
     try {
@@ -302,6 +343,8 @@ export function useSoftwareUpdate(): UseSoftwareUpdateReturn {
 
     setError(null);
     setIsUpdating(true);
+    setIsInstallStalled(false);
+    lastStatusSignatureRef.current = "";
     setUpdateStatus({ status: "downloading", version: updateInfo.latest_version });
 
     try {
@@ -330,6 +373,28 @@ export function useSoftwareUpdate(): UseSoftwareUpdateReturn {
       setIsUpdating(false);
     }
   }, [updateInfo, startPolling]);
+
+  const rebootDevice = useCallback(async () => {
+    setError(null);
+    try {
+      const resp = await authFetch("/cgi-bin/quecmanager/system/reboot.sh", {
+        method: "POST",
+      });
+      if (!resp.ok) {
+        throw new Error(`reboot_failed: HTTP ${resp.status}`);
+      }
+
+      setUpdateStatus({ status: "rebooting", message: "Rebooting device..." });
+      setTimeout(() => {
+        sessionStorage.setItem("qm_rebooting", "1");
+        document.cookie = "qm_logged_in=; Path=/; Max-Age=0";
+        window.location.href = "/reboot/";
+      }, 1000);
+    } catch (err) {
+      if (!mountedRef.current) return;
+      setError(err instanceof Error ? err.message : "Failed to request reboot");
+    }
+  }, []);
 
   const togglePrerelease = useCallback(async (enabled: boolean) => {
     try {
@@ -382,12 +447,14 @@ export function useSoftwareUpdate(): UseSoftwareUpdateReturn {
     isChecking,
     isUpdating,
     isDownloading,
+    isInstallStalled,
     error,
     lastChecked,
     checkForUpdates,
     downloadUpdate,
     installStaged,
     installUpdate,
+    rebootDevice,
     togglePrerelease,
     saveAutoUpdate,
   };
