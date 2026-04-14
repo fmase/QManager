@@ -169,7 +169,12 @@ const DeviceMetricsComponent = ({
               </div>
             </div>
             {temp !== null && (
-              <MetricBar value={temp} max={100} warnAt={TEMP_WARN} dangerAt={TEMP_DANGER} />
+              <MetricBar
+                value={temp}
+                max={100}
+                warnAt={TEMP_WARN}
+                dangerAt={TEMP_DANGER}
+              />
             )}
           </div>
 
@@ -193,7 +198,12 @@ const DeviceMetricsComponent = ({
               </div>
             </div>
             {cpu !== null && (
-              <MetricBar value={cpu} max={100} warnAt={CPU_WARN} dangerAt={CPU_DANGER} />
+              <MetricBar
+                value={cpu}
+                max={100}
+                warnAt={CPU_WARN}
+                dangerAt={CPU_DANGER}
+              />
             )}
           </div>
 
@@ -256,7 +266,11 @@ const DeviceMetricsComponent = ({
             <div className="flex items-center gap-1.5">
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <button type="button" className="inline-flex" aria-label="More info">
+                  <button
+                    type="button"
+                    className="inline-flex"
+                    aria-label="More info"
+                  >
                     <TbInfoCircleFilled className="size-5 text-info" />
                   </button>
                 </TooltipTrigger>
@@ -288,7 +302,11 @@ const DeviceMetricsComponent = ({
             <div className="flex items-center gap-1.5">
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <button type="button" className="inline-flex" aria-label="More info">
+                  <button
+                    type="button"
+                    className="inline-flex"
+                    aria-label="More info"
+                  >
                     <TbInfoCircleFilled className="size-5 text-info" />
                   </button>
                 </TooltipTrigger>

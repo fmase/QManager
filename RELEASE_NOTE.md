@@ -1,10 +1,56 @@
 # 🚀 QManager BETA v0.1.16 _(Draft)_
 
-**UI polish and quality-of-life improvements: QManager version now shows live on the dashboard, device icon migrated to PNG, Device Information card decluttered, login footer updated, quick modem reconnect added to the user menu, and minor layout fixes across several cards.**
+**New Configuration Backup feature lets you download an encrypted `.qmbackup` of your modem config and restore it later — full WebCrypto AES-256-GCM, mandatory passphrase, async apply worker with retries, and a deferred-reboot dialog so the modem never reboots out from under you mid-restore. Plus UI polish and quality-of-life improvements: QManager version now shows live on the dashboard, device icon migrated to PNG, Device Information card decluttered, login footer updated, quick modem reconnect added to the user menu, and minor layout fixes across several cards.**
 
 ---
 
 ## ✨ Improvements
+
+### Configuration Backup and Restore — New Feature
+
+A new System Settings page at **System Settings → Configuration Backup** lets you snapshot your modem configuration into an encrypted `.qmbackup` file and restore it onto the same device or another device later. Useful for migrating a working setup to a fresh device, recovering after a factory reset, or shipping a vetted configuration to a field tech.
+
+**Eight backup sections, pick any subset:**
+
+- Network Mode and APN settings
+- Preferred LTE and 5G bands
+- Tower Locking settings
+- TTL/HL settings
+- IMEI Settings
+- Custom SIM Profiles (the entire profile library plus the active marker)
+- SMS Alerts configuration
+- Watchdog/Watchcat configuration
+
+**Custom SIM Profiles overlap rule** — Checking "Custom SIM Profiles" automatically disables APN, TTL/HL, and IMEI in the checklist (and vice versa) since profile activation already owns those settings. The UI explains the disable with inline helper text so it's obvious what's happening and why.
+
+**Mandatory passphrase, real crypto** — Backups are encrypted in the browser via WebCrypto with PBKDF2-SHA256 (200,000 iterations) → AES-256-GCM. The passphrase never leaves the browser. The envelope's plaintext header (`magic`, `version`, `created_at`, `device`, `sections_included`) is bound into the AES-GCM tag as Associated Data, so the visible header is preview-able but tamper-detectable. Wrong passphrase → clean "Incorrect password" UI state, retry without re-uploading.
+
+- **Live "Passphrases match" / "Passphrases don't match" feedback** under the confirm field, mirroring the onboarding password step pattern.
+- **Eye / Eye-off toggle** on both passphrase fields so users can verify what they typed.
+- **Loud "store this passphrase somewhere safe" warning** above the Download button — there is no recovery option.
+
+**Restore is async, with retries and skip-on-incompatibility** — The restore worker (`qmanager_config_restore`) is modeled on the existing `qmanager_profile_apply` pattern: detached double-fork, PID-file singleton, JSON progress polled at 500ms by the frontend. Each section gets up to **3 retries with 1s/2s/4s exponential backoff**. Sections that can't run on the target modem (e.g., a 5G band the modem doesn't support) silently downgrade to `skipped:incompatible` instead of failing the whole restore. Profile activation skips on SIM ICCID mismatch and surfaces a clear reason.
+
+**Cross-device warning, not a hard block** — The envelope records `device.model` / `firmware` / `imei` at backup time. Restoring a backup from `RM520N-GL` onto `RM551E-GL` shows a warning dialog with both model names and lets the user proceed; per-section appliers handle the differences gracefully.
+
+**Restore card is a state machine, not a static empty** — The restore card now swaps icon + title + description + action across **10 distinct UI states**: idle → reading → password_required → password_incorrect → model_warning → ready → applying → success / partial_success / failed. The progress list inside the `applying` and final states uses an identical-width status badge for every section so the layout doesn't shift as states transition (`min-w-[7.5rem] justify-center` shared base, sized for the longest "Retrying (3/3)" label).
+
+**Network events for everything** — 6 new event types in the Data Connection tab: `Backup Collected`, `Restore Started`, `Section Restored`, `Section Failed`, `Section Skipped`, `Restore Completed`. Each restore run leaves a clear audit trail.
+
+### Configuration Backup — Deferred-Reboot Pattern (QManager runs ON the modem)
+
+A critical wrinkle: QManager runs on the modem itself. So if `apply_imei` ran `AT+CFUN=1,1` mid-restore (or if `apply_profiles` spawned `qmanager_profile_apply` which does the same in its IMEI step), the modem reboot would kill the very CGI serving the restore status, tear down the user's session, and freeze the web UI for 30-60 seconds with no warning. This release ships the deferred-reboot fix:
+
+- **`apply_imei` writes the IMEI to NVM via `AT+EGMR=1,7,"<imei>"` but does NOT call `AT+CFUN=1,1`.** The new IMEI is queued and takes effect on the next reboot.
+- **`apply_profiles` writes the active profile marker to `/etc/qmanager/active_profile` but does NOT spawn `qmanager_profile_apply` mid-restore.** The boot-time `auto_apply_profile` in the poller (which already runs on every boot) picks up the active marker and runs the full APN → TTL/HL → IMEI pipeline naturally on the next user-initiated reboot.
+- **One reboot total instead of two** — because `apply_imei` already pre-wrote the IMEI to NVM, the IMEI step inside the boot-time profile activation finds `current_imei == p_imei` and skips, so there is no second reboot from the profile pipeline.
+- **Both appliers leave a hint** at `/tmp/qmanager_config_restore.reboot_required`. The worker reads this in `state_write` and surfaces `reboot_required: true` in the progress JSON.
+- **Frontend pops a "Modem reboot required" AlertDialog** the moment the restore completes (success or partial_success) when the worker reports `reboot_required: true`. Two buttons: **Reboot Now** (POSTs to `/system/reboot.sh`) or **Reboot Later** (closes the dialog without rebooting).
+- **Persistent warning Alert banner** at the top of the Configuration Backup page, backed by a `qmanager_pending_reboot` localStorage key. The banner survives navigation and page reloads until the user clicks Reboot Now or Dismiss. Same-tab updates propagate via a custom `qmanager:pending-reboot-changed` event, cross-tab updates via the native `storage` event — the banner reflects state changes immediately without polling.
+- **Failed reboot is recoverable** — Both `handleRebootNow` handlers check `res.ok` after the `system/reboot.sh` POST and re-set the pending flag if the request failed. `authFetch` only throws on network errors, so the explicit `res.ok` check is what catches a 500 from the reboot CGI and unfreezes the UI instead of leaving the user stranded with a stuck "Rebooting…" dialog.
+- **Dialog fires on every restore that needs a reboot**, even back-to-back ones, since each restore is a discrete user action.
+
+Path: System Settings → Configuration Backup
 
 ### Device Icon — Migrated from SVG to PNG
 

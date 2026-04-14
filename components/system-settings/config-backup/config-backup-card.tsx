@@ -86,22 +86,6 @@ const ConfigBackupCard = () => {
         <CardDescription>
           Download an encrypted backup of your current modem configuration.
         </CardDescription>
-        <div className="mt-2 text-xs text-muted-foreground">
-          {modem.isLoading ? (
-            <Skeleton className="h-4 w-72" />
-          ) : (
-            <>
-              Backing up from{" "}
-              <span className="font-medium">
-                {modem.data?.device.model ?? "Unknown"}
-              </span>
-              {" • "}Firmware{" "}
-              <span className="font-medium">
-                {modem.data?.device.firmware ?? "Unknown"}
-              </span>
-            </>
-          )}
-        </div>
       </CardHeader>
       <CardContent>
         <form className="grid gap-y-8" onSubmit={handleSubmit}>
