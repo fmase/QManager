@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import {
   Card,
   CardContent,
@@ -8,14 +9,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Empty,
-  EmptyContent,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
-} from "@/components/ui/empty";
 import { Button } from "@/components/ui/button";
 import {
   ArchiveRestoreIcon,
@@ -29,6 +22,7 @@ import { useConfigRestore } from "@/hooks/use-config-restore";
 import { useModemStatus } from "@/hooks/use-modem-status";
 import { RestorePasswordDialog } from "./restore-password-dialog";
 import { RestoreProgressList } from "./restore-progress-list";
+import { BACKUP_SECTIONS } from "@/lib/config-backup/sections";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -44,6 +38,73 @@ import {
   setPendingReboot,
   clearPendingReboot,
 } from "@/lib/config-backup/pending-reboot";
+import { cn } from "@/lib/utils";
+
+const SECTION_LABELS: Record<string, string> = Object.fromEntries(
+  BACKUP_SECTIONS.map((s) => [s.key, s.label]),
+);
+
+type Tone = "muted" | "info" | "success" | "warning" | "destructive";
+
+const TONE_ICON_CLASS: Record<Tone, string> = {
+  muted: "text-muted-foreground",
+  info: "text-info",
+  success: "text-success",
+  warning: "text-warning",
+  destructive: "text-destructive",
+};
+
+// Cellular-information style row stagger — each internal row of the status
+// panel slides in from the left on mount. Re-plays every time AnimatePresence
+// swaps the panel (state change), matching the feel of the rest of the app.
+const panelStagger = {
+  hidden: {},
+  visible: { transition: { staggerChildren: 0.06 } },
+};
+const panelRow = {
+  hidden: { opacity: 0, x: -8 },
+  visible: { opacity: 1, x: 0 },
+};
+const panelRowTransition = { duration: 0.2, ease: "easeOut" as const };
+
+interface RestoreStatusPanelProps {
+  icon: ReactNode;
+  tone: Tone;
+  title: string;
+  description?: ReactNode;
+  actions?: ReactNode;
+}
+
+function RestoreStatusPanel({
+  icon,
+  tone,
+  title,
+  description,
+  actions,
+}: RestoreStatusPanelProps) {
+  return (
+    <div className="flex flex-col gap-4 rounded-lg border border-dashed p-5">
+      <div className="flex items-start gap-4">
+        <span
+          className={cn(
+            "mt-0.5 flex size-5 shrink-0 items-center justify-center [&>svg]:size-5",
+            TONE_ICON_CLASS[tone],
+          )}
+          aria-hidden
+        >
+          {icon}
+        </span>
+        <div className="min-w-0 flex-1 space-y-2">
+          <h3 className="text-sm font-medium leading-none">{title}</h3>
+          {description && (
+            <div className="text-sm text-muted-foreground">{description}</div>
+          )}
+        </div>
+      </div>
+      {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
+    </div>
+  );
+}
 
 const RestoreConfigBackupCard = () => {
   const modem = useModemStatus();
@@ -62,8 +123,8 @@ const RestoreConfigBackupCard = () => {
   const [rebootDialogOpen, setRebootDialogOpen] = useState(false);
   const [rebootBusy, setRebootBusy] = useState(false);
 
-  // Close the password dialog once decryption has succeeded (or otherwise moved past it)
   const ui = state.ui;
+
   useEffect(() => {
     if (
       pwDialogOpen &&
@@ -76,18 +137,14 @@ const RestoreConfigBackupCard = () => {
   }, [ui, pwDialogOpen]);
 
   // Open the password dialog automatically when the envelope is parsed.
-  // We intentionally do NOT depend on pwDialogOpen so that user-dismissing
-  // the dialog while still in the password_required state does not re-open it.
+  // Intentionally does NOT depend on pwDialogOpen so user-dismissing it
+  // while still in password_required does not re-open it.
   useEffect(() => {
     if (ui === "password_required") {
       setPwDialogOpen(true);
     }
   }, [ui]);
 
-  // When a restore completes (success or partial_success) and the worker
-  // flagged reboot_required, raise the dialog and persist the pending state.
-  // Every restore is a discrete action — show the dialog every time, even
-  // for back-to-back restores in the same session.
   useEffect(() => {
     if (
       (ui === "success" || ui === "partial_success") &&
@@ -100,9 +157,6 @@ const RestoreConfigBackupCard = () => {
 
   const handleRebootNow = async () => {
     setRebootBusy(true);
-    // Clear the pending flag first — if the reboot succeeds, the page is
-    // about to die and the cleanup is moot, but if it fails the user should
-    // not be left with a stale banner. We re-set the flag on failure.
     clearPendingReboot();
     try {
       const res = await authFetch("/cgi-bin/quecmanager/system/reboot.sh", {
@@ -111,11 +165,7 @@ const RestoreConfigBackupCard = () => {
       if (!res.ok) {
         throw new Error(`reboot_failed: HTTP ${res.status}`);
       }
-      // Page will be unreachable in ~5-30s. Leave the dialog open with
-      // a "rebooting" indicator. The browser will eventually fail to reach
-      // the device and the user will refresh manually once it comes back.
     } catch {
-      // Reboot request failed — re-flag pending so the banner reappears
       setPendingReboot();
       setRebootBusy(false);
       setRebootDialogOpen(false);
@@ -124,7 +174,6 @@ const RestoreConfigBackupCard = () => {
 
   const handleRebootLater = () => {
     setRebootDialogOpen(false);
-    // pending flag remains set → banner stays visible on the page
   };
 
   const openFilePicker = () => fileInput.current?.click();
@@ -134,21 +183,41 @@ const RestoreConfigBackupCard = () => {
     if (f) {
       await readFile(f);
     }
-    e.target.value = ""; // allow re-picking the same file
+    e.target.value = "";
   };
 
   const handlePasswordSubmit = async (pw: string) => {
     await tryPassword(pw);
   };
 
+  const prefersReducedMotion = useReducedMotion();
+  const motionProps = useMemo(
+    () => ({
+      initial: { opacity: 0, y: prefersReducedMotion ? 0 : 6 },
+      animate: { opacity: 1, y: 0 },
+      exit: { opacity: 0, y: prefersReducedMotion ? 0 : -6 },
+      transition: { duration: 0.22, ease: [0.22, 1, 0.36, 1] as const },
+    }),
+    [prefersReducedMotion],
+  );
+
+  // Collapse password_required/password_incorrect and success/partial_success
+  // into single motion keys — transitions inside these pairs are minor text
+  // swaps, not full state changes, so the panel should stay mounted.
+  const panelKey =
+    ui === "password_required" || ui === "password_incorrect"
+      ? "password"
+      : ui === "success" || ui === "partial_success"
+      ? "complete"
+      : ui;
+
   return (
-    <Card className="@container/card">
+    <Card className="@container/card h-full">
       <CardHeader>
-        <CardTitle>Restore Configuration Backup</CardTitle>
+        <CardTitle>Restore from File</CardTitle>
         <CardDescription>
-          Restore your modem configuration from a previously downloaded backup
-          file. This will overwrite your current settings for the sections in
-          the backup.
+          Upload a .qmbackup file to overwrite the settings it contains with
+          the values saved in the backup.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -160,208 +229,183 @@ const RestoreConfigBackupCard = () => {
           onChange={onFileChange}
         />
 
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.div key={panelKey} {...motionProps}>
         {ui === "idle" && (
-          <Empty className="border border-dashed">
-            <EmptyHeader>
-              <EmptyMedia variant="icon">
-                <ArchiveRestoreIcon />
-              </EmptyMedia>
-              <EmptyTitle>No backup file selected</EmptyTitle>
-              <EmptyDescription>
-                Upload a .qmbackup file to restore your modem configuration.
-              </EmptyDescription>
-            </EmptyHeader>
-            <EmptyContent>
-              <Button variant="outline" size="sm" onClick={openFilePicker}>
+          <RestoreStatusPanel
+            icon={<ArchiveRestoreIcon />}
+            tone="muted"
+            title="No backup file selected"
+            description="Choose a .qmbackup file to begin."
+            actions={
+              <Button onClick={openFilePicker}>
                 Upload Backup File
               </Button>
-            </EmptyContent>
-          </Empty>
+            }
+          />
         )}
 
         {ui === "reading" && (
-          <Empty className="border border-dashed">
-            <EmptyHeader>
-              <EmptyMedia variant="icon">
-                <Loader2Icon className="animate-spin" />
-              </EmptyMedia>
-              <EmptyTitle>Reading file…</EmptyTitle>
-              <EmptyDescription>Parsing backup envelope.</EmptyDescription>
-            </EmptyHeader>
-          </Empty>
+          <RestoreStatusPanel
+            icon={<Loader2Icon className="animate-spin" />}
+            tone="info"
+            title="Reading file…"
+            description="Parsing backup envelope."
+          />
         )}
 
         {(ui === "password_required" || ui === "password_incorrect") && (
-          <Empty className="border border-dashed">
-            <EmptyHeader>
-              <EmptyMedia
-                variant="icon"
-                className={
-                  ui === "password_incorrect"
-                    ? "text-destructive"
-                    : "text-info"
-                }
-              >
-                <LockIcon />
-              </EmptyMedia>
-              <EmptyTitle>
-                {ui === "password_incorrect"
-                  ? "Incorrect password"
-                  : "Password required"}
-              </EmptyTitle>
-              <EmptyDescription>
-                {ui === "password_incorrect"
-                  ? "Decryption failed. Check the passphrase and try again."
-                  : "This backup is encrypted. Enter the passphrase that was used to create it."}
-              </EmptyDescription>
-            </EmptyHeader>
-            <EmptyContent>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setPwDialogOpen(true)}
-              >
-                {ui === "password_incorrect" ? "Try Again" : "Enter Password"}
-              </Button>
-              <Button variant="ghost" size="sm" onClick={reset}>
-                Cancel
-              </Button>
-            </EmptyContent>
-          </Empty>
+          <RestoreStatusPanel
+            icon={<LockIcon />}
+            tone={ui === "password_incorrect" ? "destructive" : "info"}
+            title={
+              ui === "password_incorrect"
+                ? "Incorrect password"
+                : "Password required"
+            }
+            description={
+              ui === "password_incorrect"
+                ? "Decryption failed. Check the passphrase and try again."
+                : "This backup is encrypted. Enter the passphrase used to create it."
+            }
+            actions={
+              <>
+                <Button onClick={() => setPwDialogOpen(true)}>
+                  {ui === "password_incorrect" ? "Try Again" : "Enter Password"}
+                </Button>
+                <Button variant="ghost" size="sm" onClick={reset}>
+                  Cancel
+                </Button>
+              </>
+            }
+          />
         )}
 
         {ui === "model_warning" && state.envelope && (
-          <Empty className="border border-dashed">
-            <EmptyHeader>
-              <EmptyMedia variant="icon" className="text-warning">
-                <TriangleAlertIcon />
-              </EmptyMedia>
-              <EmptyTitle>Different modem model</EmptyTitle>
-              <EmptyDescription>
-                This backup was created on{" "}
-                <span className="font-medium">
+          <RestoreStatusPanel
+            icon={<TriangleAlertIcon />}
+            tone="warning"
+            title="Different modem model"
+            description={
+              <>
+                Backup was created on{" "}
+                <span className="font-medium text-foreground">
                   {state.envelope.device.model}
                 </span>
-                {" — you're restoring on "}
-                <span className="font-medium">
+                , restoring onto{" "}
+                <span className="font-medium text-foreground">
                   {modem.data?.device.model ?? "unknown"}
                 </span>
-                {". Some settings may not apply."}
-              </EmptyDescription>
-            </EmptyHeader>
-            <EmptyContent>
-              <Button variant="outline" size="sm" onClick={confirmModelWarning}>
-                Continue Anyway
-              </Button>
-              <Button variant="ghost" size="sm" onClick={reset}>
-                Cancel
-              </Button>
-            </EmptyContent>
-          </Empty>
+                . Incompatible sections will be skipped.
+              </>
+            }
+            actions={
+              <>
+                <Button onClick={confirmModelWarning}>Continue Anyway</Button>
+                <Button variant="ghost" size="sm" onClick={reset}>
+                  Cancel
+                </Button>
+              </>
+            }
+          />
         )}
 
         {ui === "ready" && state.envelope && state.payload && (
-          <Empty className="border border-dashed">
-            <EmptyHeader>
-              <EmptyMedia variant="icon" className="text-success">
-                <CheckCircle2Icon />
-              </EmptyMedia>
-              <EmptyTitle>Backup ready to apply</EmptyTitle>
-              <EmptyDescription>
-                From{" "}
-                <span className="font-medium">
-                  {state.envelope.device.model}
-                </span>
-                {" • "}
-                {new Date(state.envelope.created_at).toLocaleString()}
-                {" • "}
-                {Object.keys(state.payload.sections).length} sections
-              </EmptyDescription>
-            </EmptyHeader>
-            <EmptyContent>
-              <Button size="sm" onClick={startApply}>
-                Apply Backup
-              </Button>
-              <Button variant="ghost" size="sm" onClick={reset}>
-                Cancel
-              </Button>
-            </EmptyContent>
-          </Empty>
+          <RestoreStatusPanel
+            icon={<CheckCircle2Icon />}
+            tone="success"
+            title="Backup ready to apply"
+            description={
+              <div className="space-y-3">
+                <p>
+                  From{" "}
+                  <span className="font-medium text-foreground">
+                    {state.envelope.device.model}
+                  </span>
+                  {" • "}
+                  {new Date(state.envelope.created_at).toLocaleString()}
+                </p>
+                <div>
+                  <p className="mb-2 text-foreground/80">
+                    These sections will overwrite your current settings:
+                  </p>
+                  <ul className="grid gap-1 text-sm text-foreground">
+                    {Object.keys(state.payload.sections).map((key) => (
+                      <li
+                        key={key}
+                        className="flex items-center gap-2 before:size-1.5 before:rounded-full before:bg-foreground/40 before:content-['']"
+                      >
+                        {SECTION_LABELS[key] ?? key}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            }
+            actions={
+              <>
+                <Button onClick={startApply}>Apply Backup</Button>
+                <Button variant="ghost" size="sm" onClick={reset}>
+                  Cancel
+                </Button>
+              </>
+            }
+          />
         )}
 
         {ui === "applying" && (
-          <Empty className="border border-dashed">
-            <EmptyHeader>
-              <EmptyMedia variant="icon" className="text-info">
-                <Loader2Icon className="animate-spin" />
-              </EmptyMedia>
-              <EmptyTitle>Applying configuration…</EmptyTitle>
-              <EmptyDescription>
-                {state.progress ? (
-                  <RestoreProgressList sections={state.progress.sections} />
-                ) : (
-                  "Starting worker…"
-                )}
-              </EmptyDescription>
-            </EmptyHeader>
-            <EmptyContent>
+          <RestoreStatusPanel
+            icon={<Loader2Icon className="animate-spin" />}
+            tone="info"
+            title="Applying configuration…"
+            description={
+              state.progress ? (
+                <RestoreProgressList sections={state.progress.sections} />
+              ) : (
+                "Starting worker…"
+              )
+            }
+            actions={
               <Button variant="outline" size="sm" onClick={cancel}>
                 Cancel
               </Button>
-            </EmptyContent>
-          </Empty>
+            }
+          />
         )}
 
         {(ui === "success" || ui === "partial_success") && state.progress && (
-          <Empty className="border border-dashed">
-            <EmptyHeader>
-              <EmptyMedia
-                variant="icon"
-                className={
-                  ui === "success" ? "text-success" : "text-warning"
-                }
-              >
-                {ui === "success" ? (
-                  <CheckCircle2Icon />
-                ) : (
-                  <TriangleAlertIcon />
-                )}
-              </EmptyMedia>
-              <EmptyTitle>
-                {ui === "success"
-                  ? "Restore complete"
-                  : "Restore completed with issues"}
-              </EmptyTitle>
-              <EmptyDescription>
-                <RestoreProgressList sections={state.progress.sections} />
-              </EmptyDescription>
-            </EmptyHeader>
-            <EmptyContent>
-              <Button size="sm" onClick={reset}>
-                Done
-              </Button>
-            </EmptyContent>
-          </Empty>
+          <RestoreStatusPanel
+            icon={
+              ui === "success" ? <CheckCircle2Icon /> : <TriangleAlertIcon />
+            }
+            tone={ui === "success" ? "success" : "warning"}
+            title={
+              ui === "success"
+                ? "Restore complete"
+                : "Restore completed with issues"
+            }
+            description={
+              <RestoreProgressList sections={state.progress.sections} />
+            }
+            actions={<Button onClick={reset}>Done</Button>}
+          />
         )}
 
         {ui === "failed" && (
-          <Empty className="border border-dashed">
-            <EmptyHeader>
-              <EmptyMedia variant="icon" className="text-destructive">
-                <XCircleIcon />
-              </EmptyMedia>
-              <EmptyTitle>Restore failed</EmptyTitle>
-              <EmptyDescription>
-                {state.error ?? "Unknown error"}
-              </EmptyDescription>
-            </EmptyHeader>
-            <EmptyContent>
-              <Button variant="outline" size="sm" onClick={reset}>
+          <RestoreStatusPanel
+            icon={<XCircleIcon />}
+            tone="destructive"
+            title="Restore failed"
+            description={state.error ?? "Unknown error"}
+            actions={
+              <Button variant="outline" onClick={reset}>
                 Try Again
               </Button>
-            </EmptyContent>
-          </Empty>
+            }
+          />
         )}
+          </motion.div>
+        </AnimatePresence>
 
         <RestorePasswordDialog
           open={

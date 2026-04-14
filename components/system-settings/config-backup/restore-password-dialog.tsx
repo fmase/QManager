@@ -12,6 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Loader2Icon } from "lucide-react";
 
 export interface RestorePasswordDialogProps {
   open: boolean;
@@ -82,6 +83,7 @@ export function RestorePasswordDialog({
               Cancel
             </Button>
             <Button type="submit" disabled={busy || pw.length === 0}>
+              {busy && <Loader2Icon className="size-4 animate-spin" />}
               {busy ? "Decrypting…" : "Decrypt"}
             </Button>
           </DialogFooter>

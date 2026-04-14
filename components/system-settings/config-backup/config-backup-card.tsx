@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { motion } from "motion/react";
 import {
   Card,
   CardContent,
@@ -18,7 +19,7 @@ import {
 } from "@/components/ui/field";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { EyeIcon, EyeOffIcon, Loader2Icon } from "lucide-react";
+import { CheckIcon, EyeIcon, EyeOffIcon, Loader2Icon, XIcon } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import {
@@ -30,6 +31,18 @@ import {
 import { useConfigBackup } from "@/hooks/use-config-backup";
 
 const MIN_PASSPHRASE_LEN = 10;
+
+// Cellular-information style row stagger — contents slide in from the left
+// on mount, one after another, matching the rest of the app's data cards.
+const staggerContainer = {
+  hidden: {},
+  visible: { transition: { staggerChildren: 0.04 } },
+};
+const rowItem = {
+  hidden: { opacity: 0, x: -8 },
+  visible: { opacity: 1, x: 0 },
+};
+const rowTransition = { duration: 0.2, ease: "easeOut" as const };
 
 const ConfigBackupCard = () => {
   const [selection, setSelection] = useState(initialSelection());
@@ -69,65 +82,87 @@ const ConfigBackupCard = () => {
       reset();
       return;
     }
-    toast.error(`Backup failed: ${result.error}`);
+    toast.error("Couldn't create backup. Please try again.");
     reset();
   };
 
   return (
-    <Card className="@container/card">
+    <Card className="@container/card h-full">
       <CardHeader>
-        <CardTitle>Configuration Backup</CardTitle>
+        <CardTitle>Create Backup</CardTitle>
         <CardDescription>
-          Download an encrypted backup of your current modem configuration.
+          Pick which sections to include and set a passphrase to encrypt the
+          download.
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <form className="grid gap-y-8" onSubmit={handleSubmit}>
-          <FieldSet>
-            <FieldLegend variant="label">
-              Select the items you want to include in the backup.
-            </FieldLegend>
-            <FieldGroup className="gap-3">
-              {BACKUP_SECTIONS.map((s) => {
-                const isDisabled = disabled.has(s.key);
-                const checked = selection[s.key] && !isDisabled;
-                return (
-                  <Field key={s.key} orientation="horizontal">
-                    <Checkbox
-                      id={`backup-section-${s.key}`}
-                      name={`backup-section-${s.key}`}
-                      checked={checked}
-                      disabled={isDisabled}
-                      onCheckedChange={(v) =>
-                        setSelection((prev) => ({
-                          ...prev,
-                          [s.key]: v === true,
-                        }))
-                      }
-                    />
-                    <FieldLabel
-                      htmlFor={`backup-section-${s.key}`}
-                      className="font-normal"
-                    >
-                      {s.label}
-                      {isDisabled && s.overlapGroup === "profile" && (
-                        <span className="ml-2 text-xs text-muted-foreground">
-                          Included via Custom SIM Profiles
-                        </span>
-                      )}
-                      {isDisabled && s.key === "profiles" && (
-                        <span className="ml-2 text-xs text-muted-foreground">
-                          Uncheck overlapping items to include profiles
-                        </span>
-                      )}
-                    </FieldLabel>
-                  </Field>
-                );
-              })}
-            </FieldGroup>
-          </FieldSet>
+        <motion.form
+          className="grid gap-y-8"
+          onSubmit={handleSubmit}
+          initial="hidden"
+          animate="visible"
+          variants={staggerContainer}
+        >
+          <motion.div variants={rowItem} transition={rowTransition}>
+            <FieldSet>
+              <FieldLegend variant="label">Sections to include</FieldLegend>
+              <FieldGroup className="gap-3">
+                <motion.div
+                  className="grid gap-3"
+                  variants={staggerContainer}
+                >
+                  {BACKUP_SECTIONS.map((s) => {
+                    const isDisabled = disabled.has(s.key);
+                    const checked = selection[s.key] && !isDisabled;
+                    return (
+                      <motion.div
+                        key={s.key}
+                        variants={rowItem}
+                        transition={rowTransition}
+                      >
+                        <Field orientation="horizontal">
+                          <Checkbox
+                            id={`backup-section-${s.key}`}
+                            name={`backup-section-${s.key}`}
+                            checked={checked}
+                            disabled={isDisabled}
+                            onCheckedChange={(v) =>
+                              setSelection((prev) => ({
+                                ...prev,
+                                [s.key]: v === true,
+                              }))
+                            }
+                          />
+                          <FieldLabel
+                            htmlFor={`backup-section-${s.key}`}
+                            className="font-normal"
+                          >
+                            {s.label}
+                            {isDisabled && s.overlapGroup === "profile" && (
+                              <span className="ml-2 text-xs text-muted-foreground">
+                                Included via Custom SIM Profiles
+                              </span>
+                            )}
+                            {isDisabled && s.key === "profiles" && (
+                              <span className="ml-2 text-xs text-muted-foreground">
+                                Uncheck overlapping items to include profiles
+                              </span>
+                            )}
+                          </FieldLabel>
+                        </Field>
+                      </motion.div>
+                    );
+                  })}
+                </motion.div>
+              </FieldGroup>
+            </FieldSet>
+          </motion.div>
 
-          <div className="grid gap-y-4">
+          <motion.div
+            className="grid gap-y-4"
+            variants={rowItem}
+            transition={rowTransition}
+          >
             <Field>
               <FieldLabel htmlFor="backup-passphrase">Passphrase</FieldLabel>
               <div className="relative max-w-sm">
@@ -144,10 +179,10 @@ const ConfigBackupCard = () => {
                   type="button"
                   variant="ghost"
                   size="icon-sm"
-                  className="absolute right-1 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  className="absolute right-1 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground before:absolute before:-inset-1.5 before:content-['']"
                   onClick={() => setShowPassphrase((v) => !v)}
-                  tabIndex={-1}
                   aria-label={showPassphrase ? "Hide passphrase" : "Show passphrase"}
+                  aria-pressed={showPassphrase}
                 >
                   {showPassphrase ? <EyeOffIcon className="size-4" /> : <EyeIcon className="size-4" />}
                 </Button>
@@ -171,10 +206,10 @@ const ConfigBackupCard = () => {
                   type="button"
                   variant="ghost"
                   size="icon-sm"
-                  className="absolute right-1 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  className="absolute right-1 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground before:absolute before:-inset-1.5 before:content-['']"
                   onClick={() => setShowConfirm((v) => !v)}
-                  tabIndex={-1}
                   aria-label={showConfirm ? "Hide passphrase" : "Show passphrase"}
+                  aria-pressed={showConfirm}
                 >
                   {showConfirm ? <EyeOffIcon className="size-4" /> : <EyeIcon className="size-4" />}
                 </Button>
@@ -183,10 +218,15 @@ const ConfigBackupCard = () => {
                 <p
                   id="backup-confirm-hint"
                   className={cn(
-                    "text-xs transition-colors duration-200",
+                    "flex items-center gap-1.5 text-xs transition-colors duration-200",
                     passphrase === confirm ? "text-success" : "text-destructive"
                   )}
                 >
+                  {passphrase === confirm ? (
+                    <CheckIcon className="size-3.5" />
+                  ) : (
+                    <XIcon className="size-3.5" />
+                  )}
                   {passphrase === confirm ? "Passphrases match" : "Passphrases don't match"}
                 </p>
               )}
@@ -195,15 +235,15 @@ const ConfigBackupCard = () => {
               Store this passphrase somewhere safe. If you lose it, this backup
               cannot be recovered — there is no reset option.
             </p>
-          </div>
+          </motion.div>
 
-          <div>
+          <motion.div variants={rowItem} transition={rowTransition}>
             <Button type="submit" disabled={!canDownload}>
               {busy && <Loader2Icon className="size-4 animate-spin" />}
               {buttonLabel}
             </Button>
-          </div>
-        </form>
+          </motion.div>
+        </motion.form>
       </CardContent>
     </Card>
   );

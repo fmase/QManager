@@ -22,6 +22,10 @@ This release focuses on easier recovery, safer modem operations, and general sta
 
 ## ✅ Improvements
 
+- Fresh install bootstrap is now more reliable: `qmanager-installer.sh` no longer mis-parses GitHub releases and fall back to old tags like `v0.1.0`.
+- Channel resolution (`--channel stable|prerelease|any`) now uses a BusyBox-safe parser, so fresh installs consistently pick the correct latest release.
+- Conflict-package cleanup is now strict during install/update: QManager must remove `sms-tool`, `socat-at-bridge`, and `socat` before continuing.
+- Installer now retries conflict removal with forced dependency flags when needed and fails early if any of those conflicting packages remain installed.
 - Tower Locking is now more reliable, especially around failover status handling.
 - Fixed cases where users could be blocked from applying a new lock even when no lock was active.
 - Improved compatibility with older saved tower-lock settings to avoid settings-page errors.
@@ -48,8 +52,6 @@ Thanks for using QManager! If you find it useful, consider [supporting the proje
 **License:** MIT + Commons Clause
 
 **Happy connecting!**
-
-
 
 # 🚀 QManager BETA v0.1.15
 

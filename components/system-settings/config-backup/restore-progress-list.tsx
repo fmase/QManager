@@ -101,7 +101,7 @@ export function RestoreProgressList({ sections }: RestoreProgressListProps) {
           key={s.key}
           className="flex items-center justify-between gap-3"
         >
-          <span className="text-foreground/90">{LABELS[s.key] ?? s.key}</span>
+          <span className="text-foreground">{LABELS[s.key] ?? s.key}</span>
           <div className="flex items-center gap-2">
             <StatusBadge status={s.status} />
           </div>

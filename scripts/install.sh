@@ -508,18 +508,47 @@ finalize_version() {
 remove_conflicts() {
     step "Removing conflicting packages"
 
+    conflict_pkg_installed() {
+        local pkg="$1"
+        local installed
+
+        installed=$(opkg list-installed 2>>"$LOG_FILE") \
+            || die "Failed to query installed packages via opkg"
+
+        printf '%s\n' "$installed" | awk '{print $1}' | grep -qx "$pkg"
+    }
+
     local any=0
+    local failed=0
     for pkg in $CONFLICT_PACKAGES; do
-        if opkg list-installed 2>/dev/null | awk '{print $1}' | grep -qx "$pkg"; then
+        if conflict_pkg_installed "$pkg"; then
+            any=1
             if opkg remove "$pkg" >>"$LOG_FILE" 2>&1; then
                 info "Removed: $pkg"
-                any=1
             else
-                warn "Could not remove $pkg (dependency lock or in use)"
+                warn "Could not remove $pkg normally, retrying with forced dependency removal"
+                if opkg remove --force-removal-of-dependent-packages "$pkg" >>"$LOG_FILE" 2>&1; then
+                    info "Removed with force-removal-of-dependent-packages: $pkg"
+                elif opkg remove --force-depends "$pkg" >>"$LOG_FILE" 2>&1; then
+                    info "Removed with force-depends: $pkg"
+                else
+                    warn "Could not remove $pkg even with force flags"
+                    failed=1
+                fi
+            fi
+
+            if conflict_pkg_installed "$pkg"; then
+                warn "$pkg is still installed after removal attempts"
+                failed=1
             fi
         fi
     done
     [ "$any" = "0" ] && info "No conflicting packages found"
+
+    if [ "$failed" != "0" ]; then
+        die "Conflicting packages must be removed before install can continue. Remove manually with: opkg remove sms-tool socat-at-bridge socat"
+    fi
+
     return 0
 }
 

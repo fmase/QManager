@@ -121,6 +121,11 @@ if ! command -v tar >/dev/null 2>&1; then
     exit 1
 fi
 
+if ! command -v awk >/dev/null 2>&1; then
+    echo "awk is required but not available" >&2
+    exit 1
+fi
+
 # --- HTTP helpers (curl-only) ------------------------------------------------
 
 fetch_text() {
@@ -130,6 +135,44 @@ fetch_text() {
 download_file() {
     local url="$1" out="$2"
     curl -fsSL --max-time 600 --connect-timeout 15 -o "$out" "$url"
+}
+
+# Parse release tags from GitHub API JSON without jq.
+# This parser is intentionally line-oriented so it remains POSIX/BuysBox-safe
+# and avoids fragile object splitting by literal "},{".
+extract_tag_from_releases_json() {
+    local channel="$1"
+
+    awk -v channel="$channel" '
+        /^[[:space:]]*"tag_name":[[:space:]]*"/ {
+            line = $0
+            sub(/^[[:space:]]*"tag_name":[[:space:]]*"/, "", line)
+            sub(/".*/, "", line)
+            tag = line
+
+            if (channel == "any" && tag != "") {
+                print tag
+                exit
+            }
+            next
+        }
+
+        /^[[:space:]]*"prerelease":[[:space:]]*true/ {
+            if (channel == "prerelease" && tag != "") {
+                print tag
+                exit
+            }
+            next
+        }
+
+        /^[[:space:]]*"prerelease":[[:space:]]*false/ {
+            if (channel == "stable" && tag != "") {
+                print tag
+                exit
+            }
+            next
+        }
+    '
 }
 
 # --- Channel selection -------------------------------------------------------
@@ -147,7 +190,7 @@ esac
 if [ -z "$TAG" ]; then
     echo "Resolving latest $CHANNEL release from $REPO..."
 
-    API="https://api.github.com/repos/${REPO}/releases?per_page=20"
+    API="https://api.github.com/repos/${REPO}/releases?per_page=50"
     JSON="$(fetch_text "$API" || true)"
 
     if [ -z "$JSON" ]; then
@@ -156,36 +199,7 @@ if [ -z "$TAG" ]; then
         exit 1
     fi
 
-    # Parse the releases JSON without jq. GitHub returns a top-level array;
-    # we split on "},{" and then for each object check the prerelease flag
-    # against our channel, emitting the first tag_name that matches.
-    #
-    # This is POSIX-only to keep the bootstrap dependency-free. It doesn't
-    # handle the edge case of "},{" appearing inside a string literal, but
-    # GitHub's API format is consistent enough that this works in practice.
-    case "$CHANNEL" in
-        any)
-            TAG="$(printf '%s' "$JSON" \
-                | tr -d '\n' \
-                | sed 's/},{/}\
-{/g' \
-                | sed -n '/"tag_name":/{s/.*"tag_name":[[:space:]]*"\([^"]*\)".*/\1/p;q}')"
-            ;;
-        stable)
-            TAG="$(printf '%s' "$JSON" \
-                | tr -d '\n' \
-                | sed 's/},{/}\
-{/g' \
-                | sed -n '/"prerelease":[[:space:]]*false/{s/.*"tag_name":[[:space:]]*"\([^"]*\)".*/\1/p;q}')"
-            ;;
-        prerelease)
-            TAG="$(printf '%s' "$JSON" \
-                | tr -d '\n' \
-                | sed 's/},{/}\
-{/g' \
-                | sed -n '/"prerelease":[[:space:]]*true/{s/.*"tag_name":[[:space:]]*"\([^"]*\)".*/\1/p;q}')"
-            ;;
-    esac
+    TAG="$(printf '%s\n' "$JSON" | extract_tag_from_releases_json "$CHANNEL")"
 fi
 
 if [ -z "$TAG" ]; then
