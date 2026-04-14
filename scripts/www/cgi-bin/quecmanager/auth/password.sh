@@ -21,7 +21,7 @@ cgi_read_post
 
 _current=$(printf '%s' "$POST_DATA" | jq -r '.current_password // empty')
 _new=$(printf '%s' "$POST_DATA" | jq -r '.new_password // empty')
-_enforce_strong=$(printf '%s' "$POST_DATA" | jq -r '.enforce_strong // true')
+_enforce_strong=$(printf '%s' "$POST_DATA" | jq -r 'if .enforce_strong == false then "false" else "true" end')
 
 if [ -z "$_current" ] || [ -z "$_new" ]; then
     cgi_headers

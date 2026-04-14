@@ -31,7 +31,7 @@ fi
 
 _password=$(printf '%s' "$POST_DATA" | jq -r '.password // empty')
 _confirm=$(printf '%s' "$POST_DATA" | jq -r '.confirm // empty')
-_enforce_strong=$(printf '%s' "$POST_DATA" | jq -r '.enforce_strong // true')
+_enforce_strong=$(printf '%s' "$POST_DATA" | jq -r 'if .enforce_strong == false then "false" else "true" end')
 
 if [ -z "$_password" ]; then
     cgi_headers
