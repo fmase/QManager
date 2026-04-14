@@ -83,8 +83,17 @@ function RestoreStatusPanel({
   actions,
 }: RestoreStatusPanelProps) {
   return (
-    <div className="flex flex-col gap-4 rounded-lg border border-dashed p-5">
-      <div className="flex items-start gap-4">
+    <motion.div
+      className="flex flex-col gap-4 rounded-lg border border-dashed p-5"
+      initial="hidden"
+      animate="visible"
+      variants={panelStagger}
+    >
+      <motion.div
+        className="flex items-start gap-4"
+        variants={panelRow}
+        transition={panelRowTransition}
+      >
         <span
           className={cn(
             "mt-0.5 flex size-5 shrink-0 items-center justify-center [&>svg]:size-5",
@@ -100,9 +109,17 @@ function RestoreStatusPanel({
             <div className="text-sm text-muted-foreground">{description}</div>
           )}
         </div>
-      </div>
-      {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
-    </div>
+      </motion.div>
+      {actions && (
+        <motion.div
+          className="flex flex-wrap gap-2"
+          variants={panelRow}
+          transition={panelRowTransition}
+        >
+          {actions}
+        </motion.div>
+      )}
+    </motion.div>
   );
 }
 
