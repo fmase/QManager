@@ -136,61 +136,65 @@ export const SPRITE_DRONE: number[][] = [
 ];
 
 // Heart — 9×8 → 18×16 rendered
+// Shaded heart with a left-ventricle highlight for readability in HUD
 export const SPRITE_HEART: number[][] = [
   [0,1,1,0,0,1,1,0,0],
-  [1,1,1,1,1,1,1,1,0],
-  [1,1,1,1,1,1,1,1,0],
-  [1,1,1,1,1,1,1,1,0],
-  [0,1,1,1,1,1,1,0,0],
-  [0,0,1,1,1,1,0,0,0],
+  [1,3,3,1,1,1,1,1,0],
+  [1,3,1,1,1,1,2,1,0],
+  [1,1,1,1,1,1,2,1,0],
+  [0,1,1,1,1,2,1,0,0],
+  [0,0,1,1,2,1,0,0,0],
   [0,0,0,1,1,0,0,0,0],
   [0,0,0,0,0,0,0,0,0],
 ];
 
-// Rapid-fire power-up icon — 7×7 → 14×14 rendered (lightning bolt)
+// Rapid-fire power-up icon — 7×7 → 14×14 rendered (lightning bolt with core highlight)
 export const SPRITE_PU_RAPID: number[][] = [
-  [0,0,0,1,1,0,0],
-  [0,0,1,1,0,0,0],
-  [0,1,1,1,1,0,0],
-  [0,0,0,1,1,0,0],
-  [0,0,1,1,0,0,0],
-  [0,1,1,0,0,0,0],
-  [0,0,0,0,0,0,0],
+  [0,0,1,3,1,0,0],
+  [0,1,3,1,1,0,0],
+  [1,1,3,3,1,1,0],
+  [0,1,1,3,1,0,0],
+  [0,1,3,1,1,0,0],
+  [1,3,1,1,0,0,0],
+  [0,1,0,0,0,0,0],
 ];
 
-// Shield power-up icon — 7×7 → 14×14 rendered (shield/diamond)
+// Shield power-up icon — 7×7 → 14×14 rendered (shield crest)
 export const SPRITE_PU_SHIELD: number[][] = [
-  [0,0,0,1,0,0,0],
   [0,0,1,1,1,0,0],
-  [0,1,1,3,1,1,0],
-  [0,1,1,1,1,1,0],
-  [0,0,1,1,1,0,0],
+  [0,1,3,3,3,1,0],
+  [1,1,3,1,3,1,1],
+  [1,2,1,3,1,2,1],
+  [0,1,2,1,2,1,0],
+  [0,0,1,2,1,0,0],
   [0,0,0,1,0,0,0],
-  [0,0,0,0,0,0,0],
 ];
 
-// Spread-shot power-up icon — 7×7 → 14×14 rendered (triple arrows up)
+// Spread-shot power-up icon — 7×7 → 14×14 rendered (triple chevrons)
 export const SPRITE_PU_SPREAD: number[][] = [
+  [0,1,0,3,0,1,0],
+  [1,3,0,3,0,3,1],
+  [1,1,1,3,1,1,1],
   [0,1,0,1,0,1,0],
-  [1,1,0,1,0,1,1],
+  [1,3,0,3,0,3,1],
+  [1,1,1,1,1,1,1],
   [0,0,0,1,0,0,0],
-  [0,1,0,1,0,1,0],
-  [1,1,0,1,0,1,1],
-  [0,0,0,1,0,0,0],
-  [0,0,0,0,0,0,0],
 ];
 
-// Player engine flame animation — 2 frames, 4×3 → 8×6 rendered
+// Player engine flame animation — 2 frames, 4×4 → 8×8 rendered
+// Alternates narrow core / wide flare for a flickering thrust effect
 export const SPRITE_ENGINE_FLAME: number[][][] = [
   [
     [0,1,1,0],
-    [0,3,3,0],
-    [0,0,0,0],
-  ],
-  [
+    [1,3,3,1],
     [0,3,3,0],
     [0,1,1,0],
+  ],
+  [
     [1,3,3,1],
+    [1,1,1,1],
+    [1,3,3,1],
+    [0,1,1,0],
   ],
 ];
 
