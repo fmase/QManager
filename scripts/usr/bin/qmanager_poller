@@ -112,6 +112,10 @@ t2_carrier_components="[]"
 t2_apn=""
 t2_primary_dns=""
 t2_secondary_dns=""
+t2_primary_dns_v4=""
+t2_primary_dns_v6=""
+t2_secondary_dns_v4=""
+t2_secondary_dns_v6=""
 t2_wan_ipv4=""
 t2_wan_ipv6=""
 t2_mimo=""
@@ -732,6 +736,8 @@ poll_tier2() {
             parse_cgcontrdp "$result"
         else
             t2_apn="" ; t2_primary_dns="" ; t2_secondary_dns=""
+            t2_primary_dns_v4="" ; t2_primary_dns_v6=""
+            t2_secondary_dns_v4="" ; t2_secondary_dns_v6=""
         fi
         if printf '%s\n' "$result" | grep -q '+QMAP:'; then
             parse_wan_ip "$result"
@@ -740,6 +746,8 @@ poll_tier2() {
         fi
     else
         t2_apn="" ; t2_primary_dns="" ; t2_secondary_dns=""
+        t2_primary_dns_v4="" ; t2_primary_dns_v6=""
+        t2_secondary_dns_v4="" ; t2_secondary_dns_v6=""
         t2_wan_ipv4="" ; t2_wan_ipv6=""
     fi
     sleep "$SIP_DELAY"
@@ -1084,6 +1092,10 @@ write_cache() {
         --arg wan6 "$t2_wan_ipv6" \
         --arg dns1 "$t2_primary_dns" \
         --arg dns2 "$t2_secondary_dns" \
+        --arg dns1_v4 "$t2_primary_dns_v4" \
+        --arg dns1_v6 "$t2_primary_dns_v6" \
+        --arg dns2_v4 "$t2_secondary_dns_v4" \
+        --arg dns2_v6 "$t2_secondary_dns_v6" \
         --arg lte_st "$lte_state" \
         --arg lte_b "$lte_band" \
         --argjson lte_earfcn "${lte_earfcn:-null}" \
@@ -1198,7 +1210,11 @@ write_cache() {
                 wan_ipv4: $wan4,
                 wan_ipv6: $wan6,
                 primary_dns: $dns1,
-                secondary_dns: $dns2
+                secondary_dns: $dns2,
+                primary_dns_v4: $dns1_v4,
+                primary_dns_v6: $dns1_v6,
+                secondary_dns_v4: $dns2_v4,
+                secondary_dns_v6: $dns2_v6
             },
             lte: {
                 state: $lte_st, band: $lte_b,

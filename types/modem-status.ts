@@ -113,6 +113,14 @@ export interface NetworkStatus {
   primary_dns: string;
   /** Secondary DNS server from AT+CGCONTRDP */
   secondary_dns: string;
+  /** Primary DNS IPv4 address (populated for both single-stack and dual-stack APNs) */
+  primary_dns_v4: string;
+  /** Primary DNS IPv6 address (empty for single-stack IPv4-only APNs) */
+  primary_dns_v6: string;
+  /** Secondary DNS IPv4 address (populated for both single-stack and dual-stack APNs) */
+  secondary_dns_v4: string;
+  /** Secondary DNS IPv6 address (empty for single-stack IPv4-only APNs) */
+  secondary_dns_v6: string;
   /** Per-carrier component details from AT+QCAINFO (PCC + all SCCs) */
   carrier_components: CarrierComponent[];
 }
