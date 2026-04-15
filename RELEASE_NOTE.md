@@ -1,25 +1,17 @@
-# 🚀 QManager BETA v0.1.16
+# 🚀 QManager BETA v0.1.17 (Draft)
 
-This release improves backup and restore workflows, modem recovery, and installation reliability on OpenWRT devices.
+This draft release improves DNS visibility and parsing reliability for both single-stack and dual-stack cellular connections.
 
 ## ✨ New Features
 
-- Added a new Configuration Backup page at System Settings -> Configuration Backup.
-- You can now create encrypted backups and choose exactly which settings to include.
-- Restore now runs in the background with progress updates and retry handling.
-- If restore requires a reboot, QManager now prompts you at the end instead of interrupting the flow.
-- Added a Quick Modem Reconnect action in the user menu for faster recovery.
+- Cellular Information displays Primary DNS and Secondary DNS rows that adapt to your carrier: single-stack carriers see clean "Primary DNS" / "Secondary DNS" rows, and dual-stack carriers see separate IPv4 and IPv6 rows side-by-side.
 
 ## ✅ Improvements
 
-- Tower Locking is more reliable, including better failover status handling.
-- Fixed cases where applying a new tower lock could be blocked even when no lock was active.
-- Improved compatibility with older saved tower-lock settings to prevent settings-page errors.
-- Fresh install bootstrap is now more reliable: installer release resolution no longer falls back to old tags like v0.1.0.
-- Release channel resolution (`--channel stable|prerelease|any`) now uses a BusyBox-safe parser for consistent latest-tag selection.
-- Install and update now strictly enforce removal of conflicting packages: sms-tool, socat-at-bridge, and socat.
-- Installer now retries conflict removal with forced dependency flags and stops early if conflicts remain.
-- Dashboard and settings UI received small polish updates.
+- Fixed CGCONTRDP DNS parsing for dual-stack responses that return adjacent IPv4/IPv6 DNS tuples.
+- Fixed single-stack (IPv4-only) carriers where every DNS row was incorrectly showing "-".
+- DNS parser now identifies the active carrier profile by WAN mux ID instead of guessing from APN strings — avoids picking the wrong profile when multiple data contexts are active.
+- IPv6 DNS formatting remains compressed in the UI while preserving the full value in tooltip details.
 
 ## 📥 Installation
 
@@ -29,7 +21,7 @@ This release improves backup and restore workflows, modem recovery, and installa
 curl -fsSL -o /tmp/qmanager-installer.sh https://raw.githubusercontent.com/dr-dolomite/QManager/development-home/qmanager-installer.sh && sh /tmp/qmanager-installer.sh
 ```
 
-### Upgrading from v0.1.15
+### Upgrading from v0.1.16
 
 Head to System Settings -> Software Update and run the update.
 
