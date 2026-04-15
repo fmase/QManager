@@ -123,15 +123,16 @@ export const SPRITE_ORBITER: number[][] = [
 ];
 
 // Drone enemy — 8×8 → 16×16 rendered
+// Segmented body cell with top/bottom sockets so stacked drones read as a snake
 export const SPRITE_DRONE: number[][] = [
-  [0,0,1,1,1,1,0,0],
-  [0,1,1,3,3,1,1,0],
-  [1,1,3,1,1,3,1,1],
-  [1,1,1,1,1,1,1,1],
+  [0,1,3,1,1,3,1,0],
+  [1,3,1,2,2,1,3,1],
   [1,1,2,1,1,2,1,1],
-  [1,1,1,2,2,1,1,1],
-  [0,1,1,1,1,1,1,0],
-  [0,0,1,1,1,1,0,0],
+  [1,2,1,3,3,1,2,1],
+  [1,2,1,3,3,1,2,1],
+  [1,1,2,1,1,2,1,1],
+  [1,3,1,2,2,1,3,1],
+  [0,1,3,1,1,3,1,0],
 ];
 
 // Heart — 9×8 → 18×16 rendered
