@@ -352,8 +352,16 @@ export function updateEnemy(
       break;
     }
 
-    // ── Drone: falls fast, mark escaped if off-screen ──
+    // ── Drone: S-pattern snake segment ──
+    // Each segment falls at a constant dy; its x oscillates around baseX using
+    // the global timestamp and a per-segment phase stored in swerveTimer. The
+    // phase lag between segments creates a traveling wave that looks like a
+    // snake slithering downward.
     case "drone": {
+      if (e.baseX !== undefined) {
+        const wave = Math.sin(timestamp * DRONE_SNAKE_FREQUENCY + e.swerveTimer);
+        e.x = e.baseX + wave * DRONE_SNAKE_AMPLITUDE;
+      }
       if (e.y > canvasHeight) {
         e.swarmSurvived = false;
         e.active = false;
