@@ -591,7 +591,7 @@ function updateTier4(
   // Phase 2: diagonal slide — refresh targetY every 2s so the boss slides in a
   // new diagonal each horizontal swing, then glide toward it at 30 px/s.
   if (boss.phase === 2) {
-    if (boss.shootTimer <= 0 || boss.targetY <= 0) {
+    if (boss.shootTimer <= 0 || boss.targetY === BOSS_ENTER_Y) {
       boss.targetY = BOSS_DIAG_Y_MIN + Math.random() * (BOSS_DIAG_Y_MAX - BOSS_DIAG_Y_MIN);
     }
     const yDiff = boss.targetY - boss.y;
