@@ -91,6 +91,7 @@ export interface Boss extends Entity {
   shootTimer: number;
   patternPhase: number;
   targetX: number;
+  targetY: number;
   dx: number;
   // Phase system
   name: string;

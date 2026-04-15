@@ -24,6 +24,10 @@ export const SCORE_BOSS = 100;
 const BOSS_BOB_AMPLITUDE = 24; // px — peak vertical offset from BOSS_ENTER_Y
 const BOSS_BOB_PERIOD = 5.5;   // seconds for one full oscillation
 
+// Diagonal dash — how far below BOSS_ENTER_Y tier 2 / tier 4 bosses can steer
+const BOSS_DIAG_Y_MIN = BOSS_ENTER_Y;
+const BOSS_DIAG_Y_MAX = BOSS_ENTER_Y + 70;
+
 const BOSS_NAMES: Record<1 | 2 | 3 | 4 | 5, string> = {
   1: "SIGNAL DISRUPTOR",
   2: "FREQUENCY JAMMER",
@@ -107,6 +111,7 @@ export function spawnBoss(
     shootTimer: 0,
     patternPhase: 0,
     targetX: canvasWidth / 2 - w / 2,
+    targetY: BOSS_ENTER_Y,
     dx: 0,
     name: BOSS_NAMES[tier],
     phase: 1,
@@ -376,21 +381,28 @@ function updateTier2(
   boss.moveTimer += dt;
 
   const dashSpeed = boss.phase === 1 ? 80 : boss.phase === 2 ? 110 : 130;
-  const diff = boss.targetX - boss.x;
+  const diffX = boss.targetX - boss.x;
+  const diffY = boss.targetY - boss.y;
+  const dist = Math.sqrt(diffX * diffX + diffY * diffY);
   const step = dashSpeed * dt;
   let arrived = false;
   const prevX = boss.x;
+  const prevY = boss.y;
 
-  if (Math.abs(diff) <= step) {
+  if (dist <= step) {
     boss.x = boss.targetX;
+    boss.y = boss.targetY;
     arrived = true;
   } else {
-    boss.x += Math.sign(diff) * step;
+    boss.x += (diffX / dist) * step;
+    boss.y += (diffY / dist) * step;
   }
 
-  // Phase 3: drop beams based on distance traveled (1 per 100px, max 3 per dash)
+  // Phase 3: drop beams based on straight-line distance traveled (1 per 100px, max 3 per dash)
   if (boss.phase === 3 && !arrived) {
-    boss.trailDistAccum += Math.abs(boss.x - prevX);
+    const segDx = boss.x - prevX;
+    const segDy = boss.y - prevY;
+    boss.trailDistAccum += Math.sqrt(segDx * segDx + segDy * segDy);
     if (boss.trailDistAccum >= T2_TRAIL_DIST && boss.patternPhase < T2_TRAIL_MAX) {
       boss.trailDistAccum -= T2_TRAIL_DIST;
       boss.patternPhase++;
@@ -426,8 +438,9 @@ function updateTier2(
         }
       }
 
-      // Pick new target and reset trail counters
+      // Pick new diagonal target and reset trail counters
       boss.targetX = Math.random() * (canvasWidth - boss.width);
+      boss.targetY = BOSS_DIAG_Y_MIN + Math.random() * (BOSS_DIAG_Y_MAX - BOSS_DIAG_Y_MIN);
       boss.patternPhase = 0;
       boss.trailDistAccum = 0;
       boss.shootTimer = 0;
@@ -573,6 +586,18 @@ function updateTier4(
   } else if (boss.x + boss.width >= canvasWidth) {
     boss.x = canvasWidth - boss.width;
     boss.dx = -speed;
+  }
+
+  // Phase 2: diagonal slide — refresh targetY every 2s so the boss slides in a
+  // new diagonal each horizontal swing, then glide toward it at 30 px/s.
+  if (boss.phase === 2) {
+    if (boss.shootTimer <= 0 || boss.targetY <= 0) {
+      boss.targetY = BOSS_DIAG_Y_MIN + Math.random() * (BOSS_DIAG_Y_MAX - BOSS_DIAG_Y_MIN);
+    }
+    const yDiff = boss.targetY - boss.y;
+    const yStep = 30 * dt;
+    if (Math.abs(yDiff) <= yStep) boss.y = boss.targetY;
+    else boss.y += Math.sign(yDiff) * yStep;
   }
 
   boss.shootTimer += dt;
