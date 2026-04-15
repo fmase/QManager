@@ -186,7 +186,7 @@ const SNIPER_PARK_Y = 80;
 const SNIPER_ATTACK_INTERVAL = 3000; // ms per cycle
 const SNIPER_TELEGRAPH_MS = 400;    // ms of red line before firing
 const SNIPER_BEAM_SPEED = 180;
-const SNIPER_LIFE_CAP = 15000;      // ms after parking before self-destruct
+const SNIPER_LIFE_CAP = 10000;      // ms after parking before self-destruct
 const ORBITER_SHOOT_INTERVAL = 1500;
 const ORBITER_GRAVITY = 60;         // px/s² added to dy each frame
 
