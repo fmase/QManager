@@ -20,6 +20,10 @@ export const BOSS_ENTER_Y = 60;
 export const BOSS_WAVE_INTERVAL = 5;
 export const SCORE_BOSS = 100;
 
+// Vertical bob — gentle sine oscillation layered on top of horizontal motion
+const BOSS_BOB_AMPLITUDE = 24; // px — peak vertical offset from BOSS_ENTER_Y
+const BOSS_BOB_PERIOD = 5.5;   // seconds for one full oscillation
+
 const BOSS_NAMES: Record<1 | 2 | 3 | 4 | 5, string> = {
   1: "SIGNAL DISRUPTOR",
   2: "FREQUENCY JAMMER",
@@ -224,6 +228,21 @@ export function updateBoss(
 
 // ─── Per-tier update functions ────────────────────────────────────────────────
 
+/**
+ * Apply a gentle vertical sine bob to a boss. Uses `boss.moveTimer` as the
+ * driving clock so each boss's bob progresses independently and survives
+ * `moveTimer` being advanced by the tier update that called this.
+ *
+ * Intentionally bobs BELOW `BOSS_ENTER_Y` only (never above) so the boss never
+ * dips behind the HP bar or intro banner area.
+ */
+function applyBossVerticalBob(boss: Boss): void {
+  const phase = boss.moveTimer * (2 * Math.PI / BOSS_BOB_PERIOD);
+  // sin is in [-1, 1]; shift to [0, 1] so the boss only moves downward from its park line.
+  const offset = (Math.sin(phase) + 1) * 0.5 * BOSS_BOB_AMPLITUDE;
+  boss.y = BOSS_ENTER_Y + offset;
+}
+
 // Helper: emit a beam from boss center-bottom
 function beamFromBoss(
   boss: Boss,
@@ -280,6 +299,7 @@ function updateTier1(
 ): void {
   const centerX = canvasWidth / 2 - boss.width / 2;
   boss.moveTimer += dt;
+  applyBossVerticalBob(boss);
 
   if (boss.phase === 1) {
     const period = 8;
@@ -426,6 +446,9 @@ function updateTier3(
   _canvasHeight: number,
   result: BossUpdateResult,
 ): void {
+  boss.moveTimer += dt;
+  applyBossVerticalBob(boss);
+
   // Horizontal bounce
   const speed = boss.phase === 1 ? 25 : 45;
   if (boss.dx === 0) boss.dx = speed;
@@ -636,6 +659,7 @@ function updateTier5(
   result: BossUpdateResult,
 ): void {
   boss.moveTimer += dt;
+  applyBossVerticalBob(boss);
 
   // ── Movement (all phases) ──
   if (boss.phase === 1) {
