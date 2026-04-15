@@ -32,6 +32,14 @@ export const ENEMY_BEAM_SPEED = 150;
 export const SWERVER_AMPLITUDE = 60;
 export const SWERVER_FREQUENCY = 3;
 
+// Drone snake (drone_swarm spawn formation)
+export const DRONE_SNAKE_LENGTH = 6;
+export const DRONE_SNAKE_SEGMENT_GAP = 4;   // px gap between segment hitboxes
+export const DRONE_SNAKE_AMPLITUDE = 55;    // px x-offset of sine curve
+export const DRONE_SNAKE_FREQUENCY = 0.003; // radians per ms of global time
+export const DRONE_SNAKE_PHASE_LAG = 0.7;   // radians of phase per segment
+export const DRONE_SNAKE_FALL_SPEED = 85;   // slightly slower than old 90 to keep snake readable
+
 // ─── Score values ─────────────────────────────────────────────────────────────
 
 export const SCORE_INTERFERENCE = 10;
@@ -138,24 +146,42 @@ export function spawnOrbiter(
 
 export function spawnDroneSwarm(canvasWidth: number): Enemy[] {
   const swarmId = nextSwarmId();
-  const cx = canvasWidth / 2;
-  // V-formation: 4 drones — lead, two flanks, center back
-  const offsets = [
-    { dx: 0, dy: 10 },    // lead (front)
-    { dx: -25, dy: 0 },   // left flank
-    { dx: 25, dy: 0 },    // right flank
-    { dx: 0, dy: -10 },   // center back
-  ];
+
+  // Anchor the snake near a random horizontal position so multiple snakes do
+  // not always stack on the same column. Clamp so the sine amplitude keeps the
+  // whole chain visible.
+  const minBase = DRONE_SNAKE_AMPLITUDE;
+  const maxBase = canvasWidth - DRONE_W - DRONE_SNAKE_AMPLITUDE;
+  const baseX = Math.max(minBase, Math.min(maxBase, Math.random() * (maxBase - minBase) + minBase));
+
+  const segmentStride = DRONE_H + DRONE_SNAKE_SEGMENT_GAP;
+
   const drones: Enemy[] = [];
-  for (let i = 0; i < offsets.length; i++) {
-    const { dx, dy } = offsets[i];
-    const x = Math.max(0, Math.min(cx + dx - DRONE_W / 2, canvasWidth - DRONE_W));
-    drones.push(
-      makeBaseEnemy("drone", x, -DRONE_H + dy, DRONE_W, DRONE_H, 90, 1, {
+  for (let i = 0; i < DRONE_SNAKE_LENGTH; i++) {
+    // Head (i=0) enters first; later segments start further above the screen.
+    const spawnY = -DRONE_H - i * segmentStride;
+    // Negative phase lag so the head leads the wave and tail trails behind.
+    const phase = -i * DRONE_SNAKE_PHASE_LAG;
+
+    const drone = makeBaseEnemy(
+      "drone",
+      baseX,               // will be re-computed each frame in updateEnemy
+      spawnY,
+      DRONE_W,
+      DRONE_H,
+      DRONE_SNAKE_FALL_SPEED,
+      1,
+      {
         swarmId,
         swarmSurvived: true,
-      })
+        // Reuse swerveTimer to carry the per-segment phase offset. Drones do
+        // not advance this timer themselves — it is read as a constant in
+        // updateEnemy using the global `timestamp` as the driving clock.
+        swerveTimer: phase,
+      }
     );
+    drone.baseX = baseX;
+    drones.push(drone);
   }
   return drones;
 }
