@@ -659,7 +659,6 @@ function updateTier5(
   result: BossUpdateResult,
 ): void {
   boss.moveTimer += dt;
-  applyBossVerticalBob(boss);
 
   // ── Movement (all phases) ──
   if (boss.phase === 1) {
