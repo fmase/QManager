@@ -853,7 +853,7 @@ parse_cgcontrdp() {
     data_line=$(printf '%s\n' "$raw" | grep "^+CGCONTRDP: ${active_cid}," | head -1)
 
     if [ -z "$data_line" ]; then
-        qlog_debug "parse_cgcontrdp: no non-IMS CGCONTRDP line found"
+        qlog_debug "parse_cgcontrdp: no CGCONTRDP line found for active CID $active_cid"
         return
     fi
 
