@@ -152,6 +152,10 @@ export function spawnDroneSwarm(canvasWidth: number): Enemy[] {
   // whole chain visible.
   const minBase = DRONE_SNAKE_AMPLITUDE;
   const maxBase = canvasWidth - DRONE_W - DRONE_SNAKE_AMPLITUDE;
+  if (maxBase < minBase) {
+    // Canvas too narrow to respect the sine amplitude margin — skip this swarm.
+    return [];
+  }
   const baseX = Math.max(minBase, Math.min(maxBase, Math.random() * (maxBase - minBase) + minBase));
 
   const segmentStride = DRONE_H + DRONE_SNAKE_SEGMENT_GAP;
@@ -165,7 +169,7 @@ export function spawnDroneSwarm(canvasWidth: number): Enemy[] {
 
     const drone = makeBaseEnemy(
       "drone",
-      baseX,               // will be re-computed each frame in updateEnemy
+      baseX,               // sine-wave anchor — read as a constant in updateEnemy
       spawnY,
       DRONE_W,
       DRONE_H,
