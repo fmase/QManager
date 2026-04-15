@@ -4,12 +4,15 @@
 
 import type { GamePalette, SpriteAtlas } from "./signal-storm-types";
 
-export const PIXEL_SCALE = 2; // Each sprite pixel = 2×2 canvas pixels
+export const PIXEL_SCALE = 2;      // Base sprite pixel scale
+export const BOSS_PIXEL_SCALE = 6; // 3× base — bosses are rendered larger for presence
 
 // ─── Size constants ───────────────────────────────────────────────────────────
 
 export const SWERVER_W = 20;
 export const SWERVER_H = 20;
+// Boss size constants are declared at the bottom of this file after the sprite
+// arrays are defined (see BOSS{1..5}_W/H near preRenderAllSprites).
 
 // ─── Sprite definitions ───────────────────────────────────────────────────────
 
@@ -289,6 +292,19 @@ export const SPRITE_BOSS5: number[][] = [
   [0,0,0,0,0,0,0,0,3,0,0,0,0,3,0,0,0,0,0,0,0,0],
 ];
 
+// ─── Boss size exports (derived from sprite arrays × BOSS_PIXEL_SCALE) ───────
+
+export const BOSS1_W = SPRITE_BOSS1[0].length * BOSS_PIXEL_SCALE;
+export const BOSS1_H = SPRITE_BOSS1.length    * BOSS_PIXEL_SCALE;
+export const BOSS2_W = SPRITE_BOSS2[0].length * BOSS_PIXEL_SCALE;
+export const BOSS2_H = SPRITE_BOSS2.length    * BOSS_PIXEL_SCALE;
+export const BOSS3_W = SPRITE_BOSS3[0].length * BOSS_PIXEL_SCALE;
+export const BOSS3_H = SPRITE_BOSS3.length    * BOSS_PIXEL_SCALE;
+export const BOSS4_W = SPRITE_BOSS4[0].length * BOSS_PIXEL_SCALE;
+export const BOSS4_H = SPRITE_BOSS4.length    * BOSS_PIXEL_SCALE;
+export const BOSS5_W = SPRITE_BOSS5[0].length * BOSS_PIXEL_SCALE;
+export const BOSS5_H = SPRITE_BOSS5.length    * BOSS_PIXEL_SCALE;
+
 // ─── Pre-rendering helpers ────────────────────────────────────────────────────
 
 export function preRenderSprite(
@@ -327,6 +343,7 @@ export function preRenderSprite(
 /** Pre-render all sprites in one pass and return a complete atlas. */
 export function preRenderAllSprites(palette: GamePalette): SpriteAtlas {
   const s = PIXEL_SCALE;
+  const bs = BOSS_PIXEL_SCALE;
   return {
     player:     preRenderSprite(SPRITE_PLAYER,      palette.player,  s),
     meteor:     preRenderSprite(SPRITE_METEOR,      palette.enemy,   s),
@@ -343,15 +360,15 @@ export function preRenderAllSprites(palette: GamePalette): SpriteAtlas {
                   preRenderSprite(frame, palette.spread, s)),
     heartFull:  preRenderSprite(SPRITE_HEART,       palette.enemy,   s),
     heartEmpty: preRenderSprite(SPRITE_HEART,       palette.textMuted, s),
-    boss1:      preRenderSprite(SPRITE_BOSS1,       palette.jammer,  s),
-    boss2:      preRenderSprite(SPRITE_BOSS2,       palette.enemy,   s),
-    boss3:      preRenderSprite(SPRITE_BOSS3,       palette.powerUp, s),
-    boss4:      preRenderSprite(SPRITE_BOSS4,       palette.spread,  s),
-    boss5:      preRenderSprite(SPRITE_BOSS5,       palette.enemy,   s),
-    boss1White: preRenderSprite(SPRITE_BOSS1,       "#ffffff",       s),
-    boss2White: preRenderSprite(SPRITE_BOSS2,       "#ffffff",       s),
-    boss3White: preRenderSprite(SPRITE_BOSS3,       "#ffffff",       s),
-    boss4White: preRenderSprite(SPRITE_BOSS4,       "#ffffff",       s),
-    boss5White: preRenderSprite(SPRITE_BOSS5,       "#ffffff",       s),
+    boss1:      preRenderSprite(SPRITE_BOSS1,       palette.jammer,  bs),
+    boss2:      preRenderSprite(SPRITE_BOSS2,       palette.enemy,   bs),
+    boss3:      preRenderSprite(SPRITE_BOSS3,       palette.powerUp, bs),
+    boss4:      preRenderSprite(SPRITE_BOSS4,       palette.spread,  bs),
+    boss5:      preRenderSprite(SPRITE_BOSS5,       palette.enemy,   bs),
+    boss1White: preRenderSprite(SPRITE_BOSS1,       "#ffffff",       bs),
+    boss2White: preRenderSprite(SPRITE_BOSS2,       "#ffffff",       bs),
+    boss3White: preRenderSprite(SPRITE_BOSS3,       "#ffffff",       bs),
+    boss4White: preRenderSprite(SPRITE_BOSS4,       "#ffffff",       bs),
+    boss5White: preRenderSprite(SPRITE_BOSS5,       "#ffffff",       bs),
   };
 }

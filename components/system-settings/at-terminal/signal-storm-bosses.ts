@@ -6,6 +6,13 @@ import type {
   GamePalette,
   SpriteAtlas,
 } from "./signal-storm-types";
+import {
+  BOSS1_W, BOSS1_H,
+  BOSS2_W, BOSS2_H,
+  BOSS3_W, BOSS3_H,
+  BOSS4_W, BOSS4_H,
+  BOSS5_W, BOSS5_H,
+} from "./signal-storm-sprites";
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -76,8 +83,9 @@ export function spawnBoss(
   const baseHp = [0, 8, 12, 14, 10, 18][tier];
   const hp = baseHp + cycleNumber * 6;
 
-  const widths = [0, 40, 36, 48, 32, 44];
-  const heights = [0, 24, 28, 20, 28, 32];
+  // Indexes 1..5 match boss tier; 0 is a placeholder so index lookups match tier.
+  const widths  = [0, BOSS1_W, BOSS2_W, BOSS3_W, BOSS4_W, BOSS5_W];
+  const heights = [0, BOSS1_H, BOSS2_H, BOSS3_H, BOSS4_H, BOSS5_H];
   const w = widths[tier];
   const h = heights[tier];
 
