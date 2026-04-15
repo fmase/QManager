@@ -892,8 +892,12 @@ parse_cgcontrdp() {
         t2_secondary_dns=$(_pick_preferred_dns "$dns2_v4" "$dns2_v6")
     elif [ "$qcount" -eq 4 ]; then
         # IPv4-only style: apn, local_addr, dns1, dns2.
-        t2_primary_dns=$(sed -n '3p' "$qtmp" | tr -d ' \r')
-        t2_secondary_dns=$(sed -n '4p' "$qtmp" | tr -d ' \r')
+        # Mirror the values into the _v4 fields so the frontend's per-row
+        # IPv4 binding has data for single-stack carriers. _v6 fields stay empty.
+        t2_primary_dns_v4=$(sed -n '3p' "$qtmp" | tr -d ' \r')
+        t2_secondary_dns_v4=$(sed -n '4p' "$qtmp" | tr -d ' \r')
+        t2_primary_dns="$t2_primary_dns_v4"
+        t2_secondary_dns="$t2_secondary_dns_v4"
     elif [ "$qcount" -ge 3 ]; then
         # Fallback: use the last two quoted fields as DNS entries.
         t2_primary_dns=$(sed -n "$((qcount - 1))p" "$qtmp" | tr -d ' \r')
