@@ -66,6 +66,8 @@ export interface Enemy extends Entity {
   telegraphAimY: number;
   swarmId: number;
   swarmSurvived: boolean;
+  /** Drone-only: anchor X used by the S-curve motion (left edge of hitbox) */
+  baseX?: number;
 }
 
 export interface EnemyBeam extends Entity {
