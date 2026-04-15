@@ -9,7 +9,6 @@ import {
   RadioTowerIcon,
   LucideSignal,
   EthernetPortIcon,
-  MonitorCloudIcon,
   BirdIcon,
   MessageCircleIcon,
   DogIcon,
@@ -21,6 +20,7 @@ import {
   TerminalIcon,
   DownloadIcon,
   PackageOpenIcon,
+  WaypointsIcon,
 } from "lucide-react";
 
 import QManagerLogo from "@/public/qmanager-logo.svg";
@@ -250,7 +250,7 @@ const data = {
     {
       title: "Tailscale",
       url: "/monitoring/tailscale",
-      icon: MonitorCloudIcon,
+      icon: WaypointsIcon,
     },
     {
       title: "NetBird",
