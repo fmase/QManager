@@ -820,16 +820,17 @@ _cgcontrdp_active_cid() {
 
 # -----------------------------------------------------------------------------
 # Parse AT+CGCONTRDP — APN name and DNS servers
-# Uses the first non-IMS profile (skips lines where APN is "ims").
+# Uses the WAN-active PDP context (identified by +QMAP "WWAN" mux_id).
 #
 # Response format (varies by PDP type):
 #   IPv4 PDP:
 #     +CGCONTRDP: <cid>,<bearer_id>,"<apn>","<local_addr>",<subnet>,"<dns_prim>","<dns_sec>"
 #   IPv4v6 PDP (dual-stack DNS often reported as adjacent quoted pairs):
 #     ...,"<dns1_v4>" "<dns1_v6>","<dns2_v4>" "<dns2_v6>"
-# Example:
+# Example (active CID determined from +QMAP "WWAN" mux_id, not by APN string):
 #   +CGCONTRDP: 1,5,"SMARTBRO","10.110.61.83",,"10.151.151.44","10.151.151.48"
 #   +CGCONTRDP: 2,6,"ims","36.4.216.0...",...
+#   +QMAP: "WWAN",1,1,"IPV4","10.110.61.83"  <- mux=1 -> use CGCONTRDP cid=1
 #
 # Populates: t2_apn, t2_primary_dns, t2_secondary_dns,
 #            t2_primary_dns_v4, t2_primary_dns_v6,
@@ -846,9 +847,10 @@ parse_cgcontrdp() {
     t2_secondary_dns_v4=""
     t2_secondary_dns_v6=""
 
-    # Get +CGCONTRDP lines, exclude IMS profile (case-insensitive)
-    local data_line
-    data_line=$(printf '%s\n' "$raw" | grep '^+CGCONTRDP:' | grep -iv '"ims"' | head -1)
+    # Identify the WAN-active PDP CID via +QMAP, then pick the matching CGCONTRDP line.
+    local active_cid data_line
+    active_cid=$(_cgcontrdp_active_cid "$raw")
+    data_line=$(printf '%s\n' "$raw" | grep "^+CGCONTRDP: ${active_cid}," | head -1)
 
     if [ -z "$data_line" ]; then
         qlog_debug "parse_cgcontrdp: no non-IMS CGCONTRDP line found"
