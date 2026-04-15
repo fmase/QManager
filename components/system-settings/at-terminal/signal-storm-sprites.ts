@@ -33,16 +33,16 @@ export const SPRITE_PLAYER: number[][] = [
 ];
 
 // Meteor / interference enemy — 10×8 → 20×16 rendered
-// An irregular rocky asteroid shape
+// Cratered rocky asteroid with scatter highlights and edge shadow
 export const SPRITE_METEOR: number[][] = [
   [0,0,0,1,1,1,1,0,0,0],
-  [0,0,1,1,1,2,1,1,0,0],
-  [0,1,1,2,1,1,1,1,1,0],
-  [1,1,1,1,1,1,2,1,1,1],
-  [1,1,2,1,1,1,1,1,1,1],
-  [1,1,1,1,2,1,1,2,1,0],
-  [0,1,1,1,1,1,1,1,0,0],
-  [0,0,0,1,1,1,0,0,0,0],
+  [0,0,1,3,1,2,3,1,1,0],
+  [0,1,2,1,3,1,1,2,1,1],
+  [1,2,1,1,1,3,2,1,3,1],
+  [1,1,3,1,2,1,1,3,1,1],
+  [1,2,1,2,1,1,2,1,1,0],
+  [0,1,1,3,1,2,1,2,0,0],
+  [0,0,1,1,1,1,0,0,0,0],
 ];
 
 // Jammer / alien ship — 14×10 → 28×20 rendered
