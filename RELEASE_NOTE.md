@@ -1,17 +1,16 @@
-# 🚀 QManager BETA v0.1.17 (Draft)
+# 🚀 QManager BETA v0.1.17
 
-This draft release improves DNS visibility and parsing reliability for both single-stack and dual-stack cellular connections.
-
-## ✨ New Features
-
-- Cellular Information displays Primary DNS and Secondary DNS rows that adapt to your carrier: single-stack carriers see clean "Primary DNS" / "Secondary DNS" rows, and dual-stack carriers see separate IPv4 and IPv6 rows side-by-side.
+A maintenance release focused on fixes and small quality-of-life improvements across DNS reporting, software updates, authentication, and the sidebar.
 
 ## ✅ Improvements
 
-- Fixed CGCONTRDP DNS parsing for dual-stack responses that return adjacent IPv4/IPv6 DNS tuples.
-- Fixed single-stack (IPv4-only) carriers where every DNS row was incorrectly showing "-".
-- DNS parser now identifies the active carrier profile by WAN mux ID instead of guessing from APN strings — avoids picking the wrong profile when multiple data contexts are active.
-- IPv6 DNS formatting remains compressed in the UI while preserving the full value in tooltip details.
+- Cellular Information now shows correct DNS values for single-stack (IPv4-only) carriers — previously every DNS row displayed "-". Dual-stack carriers continue to see separate IPv4 and IPv6 rows side-by-side.
+- DNS parser now identifies the active carrier profile by WAN mux ID instead of guessing from APN strings, so the right profile is picked even when multiple data contexts are active.
+- Fixed CGCONTRDP parsing for dual-stack responses that return adjacent IPv4/IPv6 DNS tuples.
+- IPv6 DNS addresses are displayed in compressed form with the full value available in a tooltip.
+- Software Update card now shows a clear alert when an install stalls and offers a reboot option while an update is in progress, so you can recover without SSH.
+- Fixed password strength enforcement toggle — disabling strict rules during login or password change is now honored instead of silently falling back to strict mode.
+- Sidebar: Tailscale entry now uses the Waypoints icon for a clearer visual match with its mesh networking role.
 
 ## 📥 Installation
 
