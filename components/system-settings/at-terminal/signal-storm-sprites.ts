@@ -61,18 +61,18 @@ export const SPRITE_JAMMER: number[][] = [
 ];
 
 // Swerver enemy — 10×10 → 20×20 rendered
-// A diamond/dart shape that looks agile and evasive
+// Sharper dart silhouette with glowing nose, central ridge, twin fins, and tail spark
 export const SPRITE_SWERVER: number[][] = [
   [0,0,0,0,1,1,0,0,0,0],
-  [0,0,0,1,1,1,1,0,0,0],
-  [0,0,1,1,3,3,1,1,0,0],
-  [0,1,1,1,1,1,1,1,1,0],
-  [1,1,2,1,1,1,1,2,1,1],
-  [1,1,2,1,1,1,1,2,1,1],
-  [0,1,1,1,1,1,1,1,1,0],
+  [0,0,0,1,3,3,1,0,0,0],
+  [0,0,1,3,1,1,3,1,0,0],
+  [0,1,2,1,3,3,1,2,1,0],
+  [1,1,1,1,1,1,1,1,1,1],
+  [1,2,1,3,1,1,3,1,2,1],
+  [0,1,1,2,1,1,2,1,1,0],
   [0,0,1,1,0,0,1,1,0,0],
   [0,0,0,1,0,0,1,0,0,0],
-  [0,0,0,0,1,1,0,0,0,0],
+  [0,0,0,0,3,3,0,0,0,0],
 ];
 
 // Splitter enemy — 12×10 → 24×20 rendered
