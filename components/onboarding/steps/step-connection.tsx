@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { motion } from "motion/react";
 import { FolderOpenIcon, WrenchIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -45,6 +46,7 @@ export function StepConnection({
   onLoadingChange,
   onSuccess,
 }: StepConnectionProps) {
+  const { t } = useTranslation("onboarding");
   const [selectedType, setSelectedType] = useState<ConnectionType>(null);
 
   // Shared form state
@@ -80,12 +82,12 @@ export function StepConnection({
     }
 
     if (!apnName.trim()) {
-      setFormError("APN name is required.");
+      setFormError(t("connection.error_apn_required"));
       return;
     }
 
     if (selectedType === "profile" && !profileName.trim()) {
-      setFormError("Profile name is required.");
+      setFormError(t("connection.error_profile_name_required"));
       return;
     }
 
@@ -132,10 +134,10 @@ export function StepConnection({
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-1.5">
         <h2 className="text-2xl font-semibold tracking-tight">
-          Configure your connection
+          {t("connection.heading")}
         </h2>
         <p className="text-sm text-muted-foreground">
-          Set up your data APN or create a custom SIM profile.
+          {t("connection.description")}
         </p>
       </div>
 
@@ -145,15 +147,15 @@ export function StepConnection({
           selected={selectedType === "profile"}
           onClick={() => handleTypeSelect("profile")}
           icon={<FolderOpenIcon className="size-5" />}
-          title="Custom Profile"
-          description="Save complete configs per SIM"
+          title={t("connection.choice_profile_title")}
+          description={t("connection.choice_profile_desc")}
         />
         <ChoiceCard
           selected={selectedType === "apn"}
           onClick={() => handleTypeSelect("apn")}
           icon={<WrenchIcon className="size-5" />}
-          title="APN Only"
-          description="Quick setup for your carrier"
+          title={t("connection.choice_apn_title")}
+          description={t("connection.choice_apn_desc")}
         />
       </div>
 
@@ -169,10 +171,10 @@ export function StepConnection({
           <FieldGroup>
             {selectedType === "profile" && (
               <Field>
-                <FieldLabel htmlFor="conn-profile-name">Profile Name</FieldLabel>
+                <FieldLabel htmlFor="conn-profile-name">{t("connection.label_profile_name")}</FieldLabel>
                 <Input
                   id="conn-profile-name"
-                  placeholder="e.g. Home SIM, Data Only"
+                  placeholder={t("connection.placeholder_profile_name")}
                   value={profileName}
                   onChange={(e) => setProfileName(e.target.value)}
                 />
@@ -180,10 +182,10 @@ export function StepConnection({
             )}
 
             <Field>
-              <FieldLabel htmlFor="conn-carrier">Carrier Preset</FieldLabel>
+              <FieldLabel htmlFor="conn-carrier">{t("connection.label_carrier")}</FieldLabel>
               <Select value={mno} onValueChange={handleMnoChange}>
                 <SelectTrigger id="conn-carrier">
-                  <SelectValue placeholder="Select carrier…" />
+                  <SelectValue placeholder={t("connection.placeholder_carrier")} />
                 </SelectTrigger>
                 <SelectContent>
                   {MNO_PRESETS.map((p) => (
@@ -191,31 +193,31 @@ export function StepConnection({
                       {p.label}
                     </SelectItem>
                   ))}
-                  <SelectItem value={MNO_CUSTOM_ID}>Custom</SelectItem>
+                  <SelectItem value={MNO_CUSTOM_ID}>{t("connection.option_carrier_custom")}</SelectItem>
                 </SelectContent>
               </Select>
             </Field>
 
             <Field>
-              <FieldLabel htmlFor="conn-apn">APN Name</FieldLabel>
+              <FieldLabel htmlFor="conn-apn">{t("connection.label_apn")}</FieldLabel>
               <Input
                 id="conn-apn"
-                placeholder="e.g. internet, SMARTLTE"
+                placeholder={t("connection.placeholder_apn")}
                 value={apnName}
                 onChange={(e) => setApnName(e.target.value)}
               />
             </Field>
 
             <Field>
-              <FieldLabel htmlFor="conn-pdp">IP Protocol</FieldLabel>
+              <FieldLabel htmlFor="conn-pdp">{t("connection.label_pdp_type")}</FieldLabel>
               <Select value={pdpType} onValueChange={setPdpType}>
                 <SelectTrigger id="conn-pdp">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="IPV4V6">IPv4 + IPv6 (Default)</SelectItem>
-                  <SelectItem value="IP">IPv4 Only</SelectItem>
-                  <SelectItem value="IPV6">IPv6 Only</SelectItem>
+                  <SelectItem value="IPV4V6">{t("connection.option_pdp_ipv4v6")}</SelectItem>
+                  <SelectItem value="IP">{t("connection.option_pdp_ipv4")}</SelectItem>
+                  <SelectItem value="IPV6">{t("connection.option_pdp_ipv6")}</SelectItem>
                 </SelectContent>
               </Select>
             </Field>
