@@ -39,6 +39,7 @@ import {
   clearPendingReboot,
 } from "@/lib/config-backup/pending-reboot";
 import { cn } from "@/lib/utils";
+import { useTranslation, Trans } from "react-i18next";
 
 const SECTION_LABELS: Record<string, string> = Object.fromEntries(
   BACKUP_SECTIONS.map((s) => [s.key, s.label]),
@@ -124,6 +125,7 @@ function RestoreStatusPanel({
 }
 
 const RestoreConfigBackupCard = () => {
+  const { t } = useTranslation("system-settings");
   const modem = useModemStatus();
   const {
     state,
@@ -231,10 +233,9 @@ const RestoreConfigBackupCard = () => {
   return (
     <Card className="@container/card h-full">
       <CardHeader>
-        <CardTitle>Restore from File</CardTitle>
+        <CardTitle>{t("config_backup.restore.card_title")}</CardTitle>
         <CardDescription>
-          Upload a .qmbackup file to overwrite the settings it contains with
-          the values saved in the backup.
+          {t("config_backup.restore.card_description")}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -252,11 +253,11 @@ const RestoreConfigBackupCard = () => {
           <RestoreStatusPanel
             icon={<ArchiveRestoreIcon />}
             tone="muted"
-            title="No backup file selected"
-            description="Choose a .qmbackup file to begin."
+            title={t("config_backup.restore.idle_title")}
+            description={t("config_backup.restore.idle_description")}
             actions={
               <Button onClick={openFilePicker}>
-                Upload Backup File
+                {t("config_backup.restore.upload_button")}
               </Button>
             }
           />
@@ -266,8 +267,8 @@ const RestoreConfigBackupCard = () => {
           <RestoreStatusPanel
             icon={<Loader2Icon className="animate-spin" />}
             tone="info"
-            title="Reading file…"
-            description="Parsing backup envelope."
+            title={t("config_backup.restore.reading_title")}
+            description={t("config_backup.restore.reading_description")}
           />
         )}
 
@@ -277,21 +278,23 @@ const RestoreConfigBackupCard = () => {
             tone={ui === "password_incorrect" ? "destructive" : "info"}
             title={
               ui === "password_incorrect"
-                ? "Incorrect password"
-                : "Password required"
+                ? t("config_backup.restore.password_incorrect_title")
+                : t("config_backup.restore.password_required_title")
             }
             description={
               ui === "password_incorrect"
-                ? "Decryption failed. Check the passphrase and try again."
-                : "This backup is encrypted. Enter the passphrase used to create it."
+                ? t("config_backup.restore.password_incorrect_description")
+                : t("config_backup.restore.password_required_description")
             }
             actions={
               <>
                 <Button onClick={() => setPwDialogOpen(true)}>
-                  {ui === "password_incorrect" ? "Try Again" : "Enter Password"}
+                  {ui === "password_incorrect"
+                    ? t("config_backup.restore.button_try_again")
+                    : t("config_backup.restore.button_enter_password")}
                 </Button>
                 <Button variant="ghost" size="sm" onClick={reset}>
-                  Cancel
+                  {t("config_backup.restore.cancel_button")}
                 </Button>
               </>
             }
@@ -302,25 +305,27 @@ const RestoreConfigBackupCard = () => {
           <RestoreStatusPanel
             icon={<TriangleAlertIcon />}
             tone="warning"
-            title="Different modem model"
+            title={t("config_backup.restore.model_warning_title")}
             description={
-              <>
-                Backup was created on{" "}
-                <span className="font-medium text-foreground">
-                  {state.envelope.device.model}
-                </span>
-                , restoring onto{" "}
-                <span className="font-medium text-foreground">
-                  {modem.data?.device.model ?? "unknown"}
-                </span>
-                . Incompatible sections will be skipped.
-              </>
+              <Trans
+                i18nKey="config_backup.restore.model_warning_body"
+                ns="system-settings"
+                values={{
+                  from: state.envelope.device.model,
+                  to: modem.data?.device.model ?? t("config_backup.restore.model_unknown"),
+                }}
+                components={{
+                  b: <span className="font-medium text-foreground" />,
+                }}
+              />
             }
             actions={
               <>
-                <Button onClick={confirmModelWarning}>Continue Anyway</Button>
+                <Button onClick={confirmModelWarning}>
+                  {t("config_backup.restore.button_continue_anyway")}
+                </Button>
                 <Button variant="ghost" size="sm" onClick={reset}>
-                  Cancel
+                  {t("config_backup.restore.cancel_button")}
                 </Button>
               </>
             }
@@ -331,20 +336,25 @@ const RestoreConfigBackupCard = () => {
           <RestoreStatusPanel
             icon={<CheckCircle2Icon />}
             tone="success"
-            title="Backup ready to apply"
+            title={t("config_backup.restore.ready_title")}
             description={
               <div className="space-y-3">
                 <p>
-                  From{" "}
-                  <span className="font-medium text-foreground">
-                    {state.envelope.device.model}
-                  </span>
-                  {" • "}
-                  {new Date(state.envelope.created_at).toLocaleString()}
+                  <Trans
+                    i18nKey="config_backup.restore.ready_from_body"
+                    ns="system-settings"
+                    values={{
+                      model: state.envelope.device.model,
+                      created: new Date(state.envelope.created_at).toLocaleString(),
+                    }}
+                    components={{
+                      b: <span className="font-medium text-foreground" />,
+                    }}
+                  />
                 </p>
                 <div>
                   <p className="mb-2 text-foreground/80">
-                    These sections will overwrite your current settings:
+                    {t("config_backup.restore.ready_sections_label")}
                   </p>
                   <ul className="grid gap-1 text-sm text-foreground">
                     {Object.keys(state.payload.sections).map((key) => (
@@ -352,7 +362,7 @@ const RestoreConfigBackupCard = () => {
                         key={key}
                         className="flex items-center gap-2 before:size-1.5 before:rounded-full before:bg-foreground/40 before:content-['']"
                       >
-                        {SECTION_LABELS[key] ?? key}
+                        {t(`config_backup.sections.${key}`, SECTION_LABELS[key] ?? key)}
                       </li>
                     ))}
                   </ul>
@@ -361,9 +371,11 @@ const RestoreConfigBackupCard = () => {
             }
             actions={
               <>
-                <Button onClick={startApply}>Apply Backup</Button>
+                <Button onClick={startApply}>
+                  {t("config_backup.restore.button_apply")}
+                </Button>
                 <Button variant="ghost" size="sm" onClick={reset}>
-                  Cancel
+                  {t("config_backup.restore.cancel_button")}
                 </Button>
               </>
             }
@@ -374,17 +386,17 @@ const RestoreConfigBackupCard = () => {
           <RestoreStatusPanel
             icon={<Loader2Icon className="animate-spin" />}
             tone="info"
-            title="Applying configuration…"
+            title={t("config_backup.restore.applying_title")}
             description={
               state.progress ? (
                 <RestoreProgressList sections={state.progress.sections} />
               ) : (
-                "Starting worker…"
+                t("config_backup.restore.applying_starting")
               )
             }
             actions={
               <Button variant="outline" size="sm" onClick={cancel}>
-                Cancel
+                {t("config_backup.restore.cancel_button")}
               </Button>
             }
           />
@@ -398,13 +410,13 @@ const RestoreConfigBackupCard = () => {
             tone={ui === "success" ? "success" : "warning"}
             title={
               ui === "success"
-                ? "Restore complete"
-                : "Restore completed with issues"
+                ? t("config_backup.restore.success_title")
+                : t("config_backup.restore.partial_success_title")
             }
             description={
               <RestoreProgressList sections={state.progress.sections} />
             }
-            actions={<Button onClick={reset}>Done</Button>}
+            actions={<Button onClick={reset}>{t("config_backup.restore.button_done")}</Button>}
           />
         )}
 
@@ -412,11 +424,11 @@ const RestoreConfigBackupCard = () => {
           <RestoreStatusPanel
             icon={<XCircleIcon />}
             tone="destructive"
-            title="Restore failed"
-            description={state.error ?? "Unknown error"}
+            title={t("config_backup.restore.failed_title")}
+            description={state.error ?? t("config_backup.restore.failed_unknown")}
             actions={
               <Button variant="outline" onClick={reset}>
-                Try Again
+                {t("config_backup.restore.button_try_again")}
               </Button>
             }
           />
@@ -437,12 +449,9 @@ const RestoreConfigBackupCard = () => {
         <AlertDialog open={rebootDialogOpen} onOpenChange={setRebootDialogOpen}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Modem reboot required</AlertDialogTitle>
+              <AlertDialogTitle>{t("config_backup.restore.reboot_dialog_title")}</AlertDialogTitle>
               <AlertDialogDescription>
-                Some restored settings (IMEI change and/or Custom SIM Profile
-                activation) need a modem reboot to take effect. The QManager
-                interface will be unavailable for about 30–60 seconds during
-                the reboot.
+                {t("config_backup.restore.reboot_dialog_description")}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
@@ -450,13 +459,13 @@ const RestoreConfigBackupCard = () => {
                 onClick={handleRebootLater}
                 disabled={rebootBusy}
               >
-                Reboot Later
+                {t("config_backup.restore.reboot_later_button")}
               </AlertDialogCancel>
               <AlertDialogAction
                 onClick={handleRebootNow}
                 disabled={rebootBusy}
               >
-                {rebootBusy ? "Rebooting…" : "Reboot Now"}
+                {rebootBusy ? t("config_backup.rebooting_button") : t("config_backup.reboot_now_button")}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
