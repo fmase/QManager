@@ -38,6 +38,16 @@ if [ -f "$FAILOVER_ACTIVATED_FLAG" ]; then
     activated="true"
 fi
 
+# --- Read lock active state (drives self-heal decision) ----------------------
+lte_active="false"
+nr_active="false"
+if [ -f "$TOWER_CONFIG_FILE" ]; then
+    lte_val=$(jq -r '.lte.enabled' "$TOWER_CONFIG_FILE" 2>/dev/null)
+    [ "$lte_val" = "true" ] && lte_active="true"
+    nr_val=$(jq -r '.nr_sa.enabled' "$TOWER_CONFIG_FILE" 2>/dev/null)
+    [ "$nr_val" = "true" ] && nr_active="true"
+fi
+
 # --- Check if watcher process is still running -------------------------------
 watcher_running="false"
 if command -v tower_get_running_failover_pid >/dev/null 2>&1; then
@@ -49,6 +59,19 @@ elif [ -f "$WATCHER_PID_FILE" ]; then
     if [ -n "$watcher_pid" ] && kill -0 "$watcher_pid" 2>/dev/null; then
         watcher_running="true"
     fi
+fi
+
+# --- Self-heal: orphan daemon with no active lock ---------------------------
+# If a watcher is running but neither lock is configured as enabled, the
+# daemon is orphaned (unlock left it behind, or config was edited). Kill it
+# and clear the activation flag so the UI stops reading "Monitoring".
+if [ "$watcher_running" = "true" ] && [ "$lte_active" != "true" ] && [ "$nr_active" != "true" ]; then
+    qlog_warn "Orphan failover daemon detected with no active lock — self-healing"
+    /etc/init.d/qmanager_tower_failover stop 2>/dev/null
+    /etc/init.d/qmanager_tower_failover disable 2>/dev/null
+    rm -f "$FAILOVER_ACTIVATED_FLAG" "$WATCHER_PID_FILE"
+    watcher_running="false"
+    activated="false"
 fi
 
 # --- Response ----------------------------------------------------------------
