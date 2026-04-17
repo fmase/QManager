@@ -94,8 +94,9 @@ if [ -z "$_recomputed" ] || [ "$_recomputed" != "$_shadow_line" ]; then
 fi
 
 # --- Apply new password via chpasswd stdin ----------------------------------
-if ! printf 'root:%s\n' "$_new" | chpasswd 2>/dev/null; then
-    _rc=$?
+printf 'root:%s\n' "$_new" | chpasswd 2>/dev/null
+_rc=$?
+if [ "$_rc" -ne 0 ]; then
     qlog_error "chpasswd failed (rc=$_rc)"
     cgi_error "chpasswd_failed" "Failed to apply new password"
     exit 0
