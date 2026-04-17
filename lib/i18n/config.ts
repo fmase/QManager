@@ -1,6 +1,5 @@
 import i18n, { type i18n as I18nInstance } from "i18next";
 import { initReactI18next } from "react-i18next";
-import ICU from "i18next-icu";
 import { resources, ALL_NAMESPACES, DEFAULT_NAMESPACE } from "./resources";
 import {
   AVAILABLE_LANGUAGES,
@@ -36,7 +35,6 @@ export async function createI18n(): Promise<I18nInstance> {
 
   const instance = i18n.createInstance();
   await instance
-    .use(ICU)
     .use(initReactI18next)
     .init({
       resources,
