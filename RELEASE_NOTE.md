@@ -2,6 +2,10 @@
 
 A targeted reliability release that hardens VPN setup on multi-WAN modems, adds an automatic boot-time fix for the most common Tailscale/Netbird connectivity issue, and refines how **Signal Failover** arms itself on cell locks.
 
+## ✨ New Features
+
+- **Change SSH password from the web UI.** A new **System Settings → SSH Password** page lets you rotate the `root` password used for SSH and console access. Requires your current password, offers an optional strong-password policy (uppercase, lowercase, number, 5+ chars), and leaves your QManager web login untouched — the two credentials are fully independent.
+
 ## ✅ Improvements
 
 - **Tailscale and Netbird are now reliable across reboots.** A new boot-time self-heal service (`qmanager_vpn_zone`) re-asserts both the VPN firewall zone and the mwan3 routing exception on every boot, so reboots no longer leave your VPN unreachable from peers. If you installed Tailscale or Netbird through LuCI → Software (bypassing QManager's install flow), or the firewall zone was removed manually, the next reboot restores everything without a reinstall.
