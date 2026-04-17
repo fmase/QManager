@@ -120,7 +120,9 @@ function LiveSpeed({
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Icon className="size-4 text-primary" />
-          <span className="text-sm font-medium capitalize">{phase}</span>
+          <span className="text-sm font-medium">
+            {phase === "download" ? t("speedtest.phase_download") : t("speedtest.phase_upload")}
+          </span>
         </div>
         <span className="text-xs text-muted-foreground">
           {t("speedtest.bytes_transferred", { bytes: formatBytes(bytes) })}
