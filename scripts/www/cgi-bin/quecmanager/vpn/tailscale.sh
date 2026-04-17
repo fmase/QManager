@@ -372,7 +372,6 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
                 state=$(jq -r 'select(.BackendState == "Running") | .BackendState' "$TS_UP_OUTPUT" 2>/dev/null | head -1)
                 if [ "$state" = "Running" ]; then
                     rm -f "$AUTH_URL_FILE" "$TS_UP_PID_FILE"
-                    vpn_fw_ensure_zone "tailscale" "tailscale0"
                     qlog_info "Tailscale already authenticated"
                     jq -n '{"success": true, "already_authenticated": true}'
                     exit 0
@@ -450,7 +449,6 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
         fi
         sleep 1
         if is_daemon_running; then
-            vpn_fw_ensure_zone "tailscale" "tailscale0"
             qlog_info "Tailscale daemon started"
             cgi_success
         else
