@@ -17,4 +17,4 @@ export const resources = {
 } as const;
 
 export const DEFAULT_NAMESPACE = "common" as const;
-export const ALL_NAMESPACES = ["common", "sidebar"] as const;
+export const ALL_NAMESPACES = ["common", "sidebar", "dashboard"] as const;
