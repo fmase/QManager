@@ -1,5 +1,6 @@
 {
   "groups": {
+    "dashboard": "仪表板",
     "cellular": "蜂窝网络",
     "local_network": "本地网络",
     "monitoring": "监控",

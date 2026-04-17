@@ -1,5 +1,6 @@
 {
   "groups": {
+    "dashboard": "Dashboard",
     "cellular": "Cellular",
     "local_network": "Local Network",
     "monitoring": "Monitoring",

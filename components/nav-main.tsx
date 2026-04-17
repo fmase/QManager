@@ -52,7 +52,7 @@ export function NavMain({
 
   return (
     <SidebarGroup>
-      <SidebarGroupLabel>Dashboard</SidebarGroupLabel>
+      <SidebarGroupLabel>{t("groups.dashboard")}</SidebarGroupLabel>
       <SidebarMenu>
         {items.map((item) => {
           const isActive = pathname === item.url || pathname.startsWith(item.url + "/");
