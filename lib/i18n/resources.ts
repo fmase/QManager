@@ -2,10 +2,12 @@ import enCommon from "@/public/locales/en/common.json";
 import enSidebar from "@/public/locales/en/sidebar.json";
 import enDashboard from "@/public/locales/en/dashboard.json";
 import enOnboarding from "@/public/locales/en/onboarding.json";
+import enSystemSettings from "@/public/locales/en/system-settings.json";
 import zhCNCommon from "@/public/locales/zh-CN/common.json";
 import zhCNSidebar from "@/public/locales/zh-CN/sidebar.json";
 import zhCNDashboard from "@/public/locales/zh-CN/dashboard.json";
 import zhCNOnboarding from "@/public/locales/zh-CN/onboarding.json";
+import zhCNSystemSettings from "@/public/locales/zh-CN/system-settings.json";
 
 // Resources for i18next. Every bundled language must declare every namespace.
 // New namespaces added in a future plan (cellular, local-network, etc.) get wired here.
@@ -15,12 +17,14 @@ export const resources = {
     sidebar: enSidebar,
     dashboard: enDashboard,
     onboarding: enOnboarding,
+    "system-settings": enSystemSettings,
   },
   "zh-CN": {
     common: zhCNCommon,
     sidebar: zhCNSidebar,
     dashboard: zhCNDashboard,
     onboarding: zhCNOnboarding,
+    "system-settings": zhCNSystemSettings,
   },
 } as const;
 
