@@ -23,8 +23,10 @@ import {
   clearPendingReboot,
   setPendingReboot,
 } from "@/lib/config-backup/pending-reboot";
+import { useTranslation } from "react-i18next";
 
 const ConfigurationBackupComponent = () => {
+  const { t } = useTranslation("system-settings");
   const pending = usePendingReboot();
   const [rebootBusy, setRebootBusy] = useState(false);
   const [dismissDialogOpen, setDismissDialogOpen] = useState(false);
@@ -54,12 +56,9 @@ const ConfigurationBackupComponent = () => {
   return (
     <div className="@container/main mx-auto p-2">
       <div className="mb-6">
-        <h1 className="text-3xl font-bold mb-2">Configuration Backup</h1>
+        <h1 className="text-3xl font-bold mb-2">{t("config_backup.page_title")}</h1>
         <p className="text-muted-foreground">
-          Save an encrypted snapshot of your modem settings. Use it to recover
-          after a factory reset or to clone configuration onto another modem —
-          different models are supported, but incompatible sections will be
-          skipped during restore.
+          {t("config_backup.page_description")}
         </p>
       </div>
 
@@ -75,12 +74,10 @@ const ConfigurationBackupComponent = () => {
           >
             <Alert variant="warning" className="mb-6">
               <TriangleAlertIcon />
-              <AlertTitle>Modem reboot required</AlertTitle>
+              <AlertTitle>{t("config_backup.pending_reboot_title")}</AlertTitle>
               <AlertDescription>
                 <p className="text-foreground/80">
-                  A previous restore queued an IMEI change or profile
-                  activation that needs a modem reboot to take effect. Reboot
-                  now or use the Reboot Now button below when you are ready.
+                  {t("config_backup.pending_reboot_description")}
                 </p>
                 <div className="flex gap-2 pt-1">
                   <Button
@@ -88,7 +85,7 @@ const ConfigurationBackupComponent = () => {
                     onClick={handleRebootNow}
                     disabled={rebootBusy}
                   >
-                    {rebootBusy ? "Rebooting…" : "Reboot Now"}
+                    {rebootBusy ? t("config_backup.rebooting_button") : t("config_backup.reboot_now_button")}
                   </Button>
                   <Button
                     size="sm"
@@ -96,7 +93,7 @@ const ConfigurationBackupComponent = () => {
                     onClick={() => setDismissDialogOpen(true)}
                     disabled={rebootBusy}
                   >
-                    Dismiss
+                    {t("config_backup.dismiss_button")}
                   </Button>
                 </div>
               </AlertDescription>
@@ -108,17 +105,15 @@ const ConfigurationBackupComponent = () => {
       <AlertDialog open={dismissDialogOpen} onOpenChange={setDismissDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Dismiss reboot reminder?</AlertDialogTitle>
+            <AlertDialogTitle>{t("config_backup.dismiss_dialog_title")}</AlertDialogTitle>
             <AlertDialogDescription>
-              Any IMEI change or profile activation queued by the restore will
-              not take effect until you reboot the modem. Dismiss only if you
-              have already rebooted through another method.
+              {t("config_backup.dismiss_dialog_description")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Keep reminder</AlertDialogCancel>
+            <AlertDialogCancel>{t("config_backup.dismiss_keep")}</AlertDialogCancel>
             <AlertDialogAction onClick={handleConfirmDismiss}>
-              Dismiss anyway
+              {t("config_backup.dismiss_confirm")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
