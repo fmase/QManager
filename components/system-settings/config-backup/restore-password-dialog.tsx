@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2Icon } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 export interface RestorePasswordDialogProps {
   open: boolean;
@@ -27,6 +28,7 @@ export function RestorePasswordDialog({
   onSubmit,
   incorrect,
 }: RestorePasswordDialogProps) {
+  const { t } = useTranslation("system-settings");
   const [pw, setPw] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -52,14 +54,13 @@ export function RestorePasswordDialog({
       <DialogContent className="sm:max-w-md">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
-            <DialogTitle>Enter backup passphrase</DialogTitle>
+            <DialogTitle>{t("config_backup.password_dialog.title")}</DialogTitle>
             <DialogDescription>
-              This backup is encrypted. Enter the passphrase used when it was
-              created.
+              {t("config_backup.password_dialog.description")}
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-3 py-4">
-            <Label htmlFor="restore-pw">Passphrase</Label>
+            <Label htmlFor="restore-pw">{t("config_backup.password_dialog.label")}</Label>
             <Input
               id="restore-pw"
               type="password"
@@ -70,7 +71,7 @@ export function RestorePasswordDialog({
             />
             {incorrect && (
               <p className="text-xs text-destructive">
-                Incorrect passphrase. Check it and try again.
+                {t("config_backup.password_dialog.error_incorrect")}
               </p>
             )}
           </div>
@@ -80,11 +81,11 @@ export function RestorePasswordDialog({
               variant="outline"
               onClick={() => onOpenChange(false)}
             >
-              Cancel
+              {t("config_backup.restore.cancel_button")}
             </Button>
             <Button type="submit" disabled={busy || pw.length === 0}>
               {busy && <Loader2Icon className="size-4 animate-spin" />}
-              {busy ? "Decrypting…" : "Decrypt"}
+              {busy ? t("config_backup.password_dialog.button_decrypting") : t("config_backup.password_dialog.button_decrypt")}
             </Button>
           </DialogFooter>
         </form>
