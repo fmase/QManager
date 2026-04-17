@@ -11,6 +11,7 @@ import type { NetworkEvent, EventSeverity } from "@/types/modem-status";
 import { formatTimeAgo } from "@/types/modem-status";
 import { useRecentActivities } from "@/hooks/use-recent-activities";
 import { EVENT_LABELS } from "@/constants/network-events";
+import { useTranslation } from "react-i18next";
 
 import {
   Empty,
@@ -82,13 +83,14 @@ function EventSkeleton() {
 
 // --- Main component ---
 const RecentActivitiesComponent = () => {
+  const { t } = useTranslation("dashboard");
   const { events, isLoading } = useRecentActivities();
 
   return (
     <Card className="@container/card">
       <CardHeader className="-mb-4">
         <CardTitle className="text-lg font-semibold">
-          Recent Activities
+          {t("activities.title")}
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -109,11 +111,9 @@ const RecentActivitiesComponent = () => {
                 <EmptyMedia variant="icon">
                   <CalendarX2Icon />
                 </EmptyMedia>
-                <EmptyTitle>No Events</EmptyTitle>
+                <EmptyTitle>{t("activities.empty_title")}</EmptyTitle>
                 <EmptyDescription className="max-w-xs text-pretty">
-                  No recent network events detected. Your device is likely
-                  stable and not experiencing any significant changes in network
-                  conditions.
+                  {t("activities.empty_description")}
                 </EmptyDescription>
               </EmptyHeader>
             </Empty>
