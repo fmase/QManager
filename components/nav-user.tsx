@@ -53,6 +53,8 @@ import {
 } from "@/components/ui/sidebar";
 import { ChangePasswordDialog } from "@/components/auth/change-password-dialog";
 import { AnimatedThemeToggler } from "./ui/animated-theme-toggler";
+import { useTranslation } from "react-i18next";
+import { LanguageSwitcher } from "@/components/i18n/language-switcher";
 
 export function NavUser({
   user,
@@ -63,6 +65,7 @@ export function NavUser({
   };
 }) {
   const { isMobile } = useSidebar();
+  const { t } = useTranslation("common");
 
   // --- Display name from device hostname ---
   const [displayName, setDisplayName] = useState<string>(user.name);
@@ -177,10 +180,10 @@ export function NavUser({
     const result = await reconnectModem({
       onStep: (step) => {
         if (step === "disconnecting") {
-          toast.info("Disconnecting...");
+          toast.info(t("state.disconnecting"));
           return;
         }
-        toast.info("Reconnecting...");
+        toast.info(t("state.reconnecting"));
       },
     });
 
@@ -270,11 +273,11 @@ export function NavUser({
                   }}
                 >
                   <Pencil />
-                  Change Display Name
+                  {t("actions.change_display_name")}
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setPasswordDialogOpen(true)}>
                   <KeyRound />
-                  Change Password
+                  {t("actions.change_password")}
                 </DropdownMenuItem>
                 <DropdownMenuItem>
                   <AnimatedThemeToggler />
@@ -288,20 +291,27 @@ export function NavUser({
                   ) : (
                     <RotateCcw />
                   )}
-                  Reconnect Modem
+                  {t("actions.reconnect_modem")}
                 </DropdownMenuItem>
               </DropdownMenuGroup>
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel className="text-muted-foreground text-xs">
+                {t("language.label")}
+              </DropdownMenuLabel>
+              <div className="px-1 pb-1">
+                <LanguageSwitcher />
+              </div>
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 variant="destructive"
                 onClick={() => setRebootDialogOpen(true)}
               >
                 <Power />
-                Reboot Device
+                {t("actions.reboot_device")}
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => logout()}>
                 <LogOut />
-                Log out
+                {t("actions.log_out")}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -318,7 +328,7 @@ export function NavUser({
       >
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
-            <DialogTitle>Change Display Name</DialogTitle>
+            <DialogTitle>{t("actions.change_display_name")}</DialogTitle>
           </DialogHeader>
           <div className="py-2">
             <Input
@@ -333,7 +343,7 @@ export function NavUser({
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setNameDialogOpen(false)}>
-              Cancel
+              {t("actions.cancel")}
             </Button>
             <Button
               onClick={handleNameSave}
@@ -346,10 +356,10 @@ export function NavUser({
               {savingName ? (
                 <>
                   <Loader2 className="size-4 animate-spin" />
-                  Saving...
+                  {t("state.saving")}
                 </>
               ) : (
-                "Save"
+                t("actions.save")
               )}
             </Button>
           </DialogFooter>
@@ -379,14 +389,14 @@ export function NavUser({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isReconnecting}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={isReconnecting}>{t("actions.cancel")}</AlertDialogCancel>
             <AlertDialogAction disabled={isReconnecting} onClick={handleReconnect}>
               {isReconnecting ? (
                 <>
                   <Loader2 className="size-4 animate-spin" />
                   {reconnectStep === "disconnecting"
-                    ? "Disconnecting..."
-                    : "Reconnecting..."}
+                    ? t("state.disconnecting")
+                    : t("state.reconnecting")}
                 </>
               ) : (
                 "Reconnect"
@@ -404,7 +414,7 @@ export function NavUser({
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Reboot Device</AlertDialogTitle>
+            <AlertDialogTitle>{t("actions.reboot_device")}</AlertDialogTitle>
             <AlertDialogDescription aria-live="polite">
               {rebooting
                 ? "Reboot command sent. You will be logged out shortly..."
@@ -412,7 +422,7 @@ export function NavUser({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={rebooting}>Not Now</AlertDialogCancel>
+            <AlertDialogCancel disabled={rebooting}>{t("actions.cancel")}</AlertDialogCancel>
             <AlertDialogAction
               variant="destructive"
               disabled={rebooting}
@@ -421,7 +431,7 @@ export function NavUser({
               {rebooting ? (
                 <>
                   <Loader2 className="size-4 animate-spin" />
-                  Rebooting...
+                  {t("state.applying")}
                 </>
               ) : (
                 "Reboot Now"
