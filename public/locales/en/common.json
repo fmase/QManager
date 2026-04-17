@@ -1,0 +1,27 @@
+{
+  "actions": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "apply": "Apply",
+    "close": "Close",
+    "retry": "Retry",
+    "reboot": "Reboot",
+    "log_out": "Log out",
+    "reboot_device": "Reboot Device",
+    "reconnect_modem": "Reconnect Modem",
+    "change_display_name": "Change Display Name",
+    "change_password": "Change Password"
+  },
+  "state": {
+    "loading": "Loading…",
+    "saving": "Saving…",
+    "applying": "Applying…",
+    "disconnecting": "Disconnecting…",
+    "reconnecting": "Reconnecting…"
+  },
+  "language": {
+    "label": "Language",
+    "switch_aria": "Switch language"
+  }
+}
