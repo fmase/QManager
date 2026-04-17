@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { motion } from "motion/react";
 import { containerVariants, itemVariants } from "@/lib/motion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,33 +21,34 @@ const DeviceStatusComponent = ({
   data,
   isLoading,
 }: DeviceStatusComponentProps) => {
+  const { t } = useTranslation("dashboard");
   const [hidePrivate, setHidePrivate] = useState(false);
 
   const rows = [
-    { label: "Firmware Version", value: data?.firmware || "-" },
-    { label: "Build Date", value: data?.build_date || "-" },
+    { label: t("device_status.firmware_version"), value: data?.firmware || "-" },
+    { label: t("device_status.build_date"), value: data?.build_date || "-" },
     {
-      label: "Phone Number",
+      label: t("device_status.phone_number"),
       value: data?.phone_number || "-",
       mono: true,
       private: true,
     },
-    { label: "IMSI", value: data?.imsi || "-", mono: true, private: true },
-    { label: "ICCID", value: data?.iccid || "-", mono: true, private: true },
+    { label: t("device_status.imsi"), value: data?.imsi || "-", mono: true, private: true },
+    { label: t("device_status.iccid"), value: data?.iccid || "-", mono: true, private: true },
     {
-      label: "Device IMEI",
+      label: t("device_status.device_imei"),
       value: data?.imei || "-",
       mono: true,
       private: true,
     },
     {
-      label: "LTE Category",
+      label: t("device_status.lte_category"),
       value: data?.lte_category ? `Cat ${data.lte_category}` : "-",
       mono: true,
     },
-    { label: "Active MIMO", value: data?.mimo || "-", mono: true },
+    { label: t("device_status.active_mimo"), value: data?.mimo || "-", mono: true },
     {
-      label: "QManager Version",
+      label: t("device_status.qmanager_version"),
       value: data?.qmanager_version || "-",
       mono: true,
     },
@@ -57,7 +59,7 @@ const DeviceStatusComponent = ({
       <Card className="@container/card col-span-2">
         <CardHeader>
           <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl text-center">
-            Device Information
+            {t("device_status.title")}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -86,7 +88,7 @@ const DeviceStatusComponent = ({
     <Card className="@container/card col-span-2">
       <CardHeader>
         <CardTitle className="text-2xl font-semibold @[250px]/card:text-3xl text-center flex-1">
-          Device Information
+          {t("device_status.title")}
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -95,7 +97,7 @@ const DeviceStatusComponent = ({
             <div className="size-44 bg-primary/15 rounded-full p-4 flex items-center justify-center">
               <img
                 src="/device-icon.png"
-                alt="Device Icon"
+                alt={t("device_status.icon_alt")}
                 className="size-full drop-shadow-md object-contain"
               />
             </div>
@@ -108,7 +110,7 @@ const DeviceStatusComponent = ({
                 size="icon"
                 onClick={() => setHidePrivate((prev) => !prev)}
                 aria-label={
-                  hidePrivate ? "Show private details" : "Hide private details"
+                  hidePrivate ? t("device_status.show_private") : t("device_status.hide_private")
                 }
               >
                 {hidePrivate ? (
