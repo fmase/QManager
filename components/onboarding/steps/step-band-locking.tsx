@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { motion } from "motion/react";
 import { cn } from "@/lib/utils";
 import { authFetch } from "@/lib/auth-fetch";
@@ -55,6 +56,7 @@ function BandPresetSection({
   onPresetChange,
   onCustomBandToggle,
 }: BandPresetSectionProps) {
+  const { t } = useTranslation("onboarding");
   const presetBands = useMemo(
     () => ({
       low: parseBandString(presets.low).filter((band) => availableBands.includes(band)),
@@ -64,22 +66,22 @@ function BandPresetSection({
   );
 
   const options: { id: BandPreset; label: string; detail?: string }[] = [
-    { id: "all", label: "All bands (default)" },
+    { id: "all", label: t("band_locking.preset_label_all") },
     {
       id: "low",
-      label: "Low-band only",
+      label: t("band_locking.preset_label_low"),
       detail: presetBands.low
         .map((b) => `${prefix}${b}`)
         .join(", "),
     },
     {
       id: "mid",
-      label: "Mid-band only",
+      label: t("band_locking.preset_label_mid"),
       detail: presetBands.mid
         .map((b) => `${prefix}${b}`)
         .join(", "),
     },
-    { id: "custom", label: "Custom…" },
+    { id: "custom", label: t("band_locking.preset_label_custom") },
   ];
 
   return (
@@ -127,7 +129,7 @@ function BandPresetSection({
       {selectedPreset === "custom" && (
         loading && availableBands.length === 0 ? (
           <div className="rounded-lg border border-border bg-muted/30 p-3 text-sm text-muted-foreground">
-            Loading supported bands from the modem...
+            {t("band_locking.loading_bands")}
           </div>
         ) : availableBands.length > 0 ? (
           <div className="rounded-lg border border-border bg-muted/30 p-3">
@@ -154,7 +156,7 @@ function BandPresetSection({
           </div>
         ) : (
           <div className="rounded-lg border border-border bg-muted/30 p-3 text-sm text-muted-foreground">
-            No supported bands were returned by the modem.
+            {t("band_locking.error_no_bands")}
           </div>
         )
       )}
@@ -173,6 +175,7 @@ export function StepBandLocking({
   onLoadingChange,
   onSuccess,
 }: StepBandLockingProps) {
+  const { t } = useTranslation("onboarding");
   const { data, isLoading, error } = useModemStatus();
   const [ltePreset, setLtePreset] = useState<BandPreset>("all");
   const [nr5gPreset, setNr5gPreset] = useState<BandPreset>("all");
@@ -275,21 +278,21 @@ export function StepBandLocking({
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-1.5">
-        <h2 className="text-2xl font-semibold tracking-tight">Band preferences</h2>
+        <h2 className="text-2xl font-semibold tracking-tight">{t("band_locking.heading")}</h2>
         <p className="text-sm text-muted-foreground">
-          Lock specific frequency bands for better signal on your network.
+          {t("band_locking.description")}
         </p>
       </div>
 
       <div className="flex flex-col gap-5">
         {error && (
           <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-            Unable to load supported bands from the modem. You can skip this step and configure bands later.
+            {t("band_locking.error_bands_unavailable")}
           </div>
         )}
 
         <BandPresetSection
-          title="LTE Bands"
+          title={t("band_locking.section_lte_title")}
           prefix="B"
           availableBands={supportedLteBands}
           presets={LTE_PRESETS}
@@ -303,7 +306,7 @@ export function StepBandLocking({
         <div className="border-t border-border" />
 
         <BandPresetSection
-          title="5G Bands (NSA + SA)"
+          title={t("band_locking.section_5g_title")}
           prefix="N"
           availableBands={supportedNrBands}
           presets={NR5G_PRESETS}
