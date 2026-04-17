@@ -331,6 +331,8 @@ On-demand cell scanning daemons started by CGI endpoints.
 
 Signal-based automatic failover daemons for bands and towers.
 
+Tower failover is an **explicit user toggle** (v0.1.18+) — applying a cell lock does not auto-enable the watcher. The user must flip the **Signal Failover** switch on the Tower Locking page for the daemon to spawn. Unlocking still stops and disables the daemon automatically. The init.d `stop()` escalates SIGTERM → 2 s wait → SIGKILL and always clears the PID file + activation flag, and `failover_status.sh` self-heals any orphan daemon it detects during the frontend's status poll.
+
 ### qmanager_tower_schedule
 
 Cron-driven tower lock schedule executor.
