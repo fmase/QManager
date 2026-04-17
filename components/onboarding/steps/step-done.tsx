@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { CircleCheckIcon } from "lucide-react";
+import { useTranslation, Trans } from "react-i18next";
 import { Button } from "@/components/ui/button";
 
 // =============================================================================
@@ -12,6 +13,7 @@ import { Button } from "@/components/ui/button";
 const CONFETTI_COLORS = ["#4f46e5", "#6366f1", "#818cf8", "#a5b4fc", "#c7d2fe", "#e0e7ff"];
 
 export function StepDone() {
+  const { t } = useTranslation("onboarding");
   const prefersReducedMotion =
     typeof window !== "undefined" &&
     window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -94,26 +96,30 @@ export function StepDone() {
       />
 
       <div className="flex flex-col gap-2">
-        <h2 className="text-2xl font-semibold tracking-tight">You&apos;re all set!</h2>
+        <h2 className="text-2xl font-semibold tracking-tight">
+          {t("done.heading")}
+        </h2>
         <p className="text-sm text-muted-foreground max-w-xs leading-relaxed">
-          QManager is ready. Everything you configured is active, and you can
-          change any setting anytime from the sidebar.
+          {t("done.description")}
         </p>
       </div>
 
       {/* Tip callout */}
       <div className="w-full rounded-xl bg-muted/60 border border-border px-4 py-3 text-left">
         <p className="text-xs text-muted-foreground leading-relaxed">
-          <span className="font-medium text-foreground">Pro tip:</span> Visit{" "}
-          <span className="font-medium">Cellular › Band Locking</span> to
-          fine-tune signal strength, or{" "}
-          <span className="font-medium">Monitoring › Watchdog</span> to set up
-          automatic recovery.
+          <Trans
+            i18nKey="done.callout_body"
+            ns="onboarding"
+            components={{
+              bold: <span className="font-medium text-foreground" />,
+              menu: <span className="font-medium" />,
+            }}
+          />
         </p>
       </div>
 
       <Button ref={dashboardBtnRef} onClick={handleGoToDashboard} className="w-full" size="lg">
-        Go to Dashboard
+        {t("done.button_dashboard")}
       </Button>
     </div>
   );
