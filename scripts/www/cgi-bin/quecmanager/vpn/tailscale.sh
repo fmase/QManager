@@ -357,10 +357,18 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
 
         # CRITICAL: NEVER use --accept-routes — it disconnects the device from
         # the network entirely and requires a physical reboot to recover.
-        # Run tailscale up in background, capturing output for auth URL
-        ( tailscale up --accept-dns=false --json > "$TS_UP_OUTPUT" 2>&1 ) &
-        ts_up_pid=$!
-        echo "$ts_up_pid" > "$TS_UP_PID_FILE"
+        # Run tailscale up as a fully orphaned background job so it survives
+        # this CGI exiting. The previous pattern — `( cmd ) &` without stdin
+        # redirection — kept the process in the CGI's process group, so when
+        # uhttpd closed the HTTP connection the child got SIGHUP/SIGPIPE'd.
+        # That killed `tailscale up` before it could push the post-auth prefs
+        # to tailscaled, and the admin console showed "registered but
+        # disconnected" until the user stopped/started the service and
+        # re-authenticated. The double-fork form below (inner `&`, </dev/null)
+        # orphans tailscale up to init before the CGI returns.
+        ( tailscale up --accept-dns=false --json </dev/null >"$TS_UP_OUTPUT" 2>&1 &
+          echo $! > "$TS_UP_PID_FILE"
+        )
 
         # Poll for auth URL or Running state (up to 10 seconds)
         attempts=0
