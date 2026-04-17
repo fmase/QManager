@@ -1,12 +1,15 @@
 # 🚀 QManager BETA v0.1.18
 
-A targeted reliability release that simplifies VPN setup on multi-WAN modems and adds an automatic boot-time fix for the most common Tailscale/Netbird connectivity issue.
+A targeted reliability release that hardens VPN setup on multi-WAN modems, adds an automatic boot-time fix for the most common Tailscale/Netbird connectivity issue, and refines how **Signal Failover** arms itself on cell locks.
 
 ## ✅ Improvements
 
-- **VPN firewall setup simplified.** Removed a redundant workaround that duplicated mwan3's own route tracking. Tailscale and Netbird connections now rely on a single persistent firewall zone per VPN, reducing install-time noise and avoiding three firewall restarts per connect action.
-- **Boot-time VPN self-heal.** A new lightweight init service (`qmanager_vpn_zone`) verifies the VPN firewall zone on every boot and recreates it automatically if missing. If you installed Tailscale or Netbird via LuCI → Software (bypassing QManager's install flow), or the zone got removed manually, the next reboot now restores it without a reinstall.
-- Faster connect actions. The previous flow restarted the firewall once on every connect/start/install — even when the zone was already in place. The connect path is now a clean no-op for the firewall in the steady state.
+- **Tailscale and Netbird are now reliable across reboots.** A new boot-time self-heal service (`qmanager_vpn_zone`) re-asserts both the VPN firewall zone and the mwan3 routing exception on every boot, so reboots no longer leave your VPN unreachable from peers. If you installed Tailscale or Netbird through LuCI → Software (bypassing QManager's install flow), or the firewall zone was removed manually, the next reboot restores everything without a reinstall.
+- **Faster connect actions.** The previous flow restarted the firewall once on every connect, start, and install action — even when the zone was already in place. The connect path is now a clean no-op for the firewall in the steady state, with the firewall restart happening only when the zone is actually being created.
+- **Signal Failover is now an explicit choice.** Locking to a cell no longer auto-enables the failover watcher. Apply your LTE or NR-SA lock first, then flip the **Signal Failover** switch when you want auto-recovery on poor signal. A hint under the switch points to it whenever a lock is active but failover is off. Unlocking still stops and disables failover automatically.
+- **Failover unlock is bulletproof.** The watcher daemon is now guaranteed to stop on unlock — the init script waits up to 2 s for a graceful exit and escalates to `SIGKILL` if needed, so the UI can no longer get stuck in "Monitoring" state.
+- **Self-healing failover state.** If the daemon is ever orphaned (config edited by hand, a botched unlock, or a crash), the lightweight status poll detects and reaps it within a few seconds — no reboot needed.
+- **Fresh installs start with failover off.** The default for Signal Failover is now Disabled on new installs, matching the new explicit-toggle contract. Existing devices keep whatever you had previously set.
 
 ## 📥 Installation
 
@@ -20,9 +23,11 @@ curl -fsSL -o /tmp/qmanager-installer.sh https://raw.githubusercontent.com/dr-do
 
 Head to System Settings → Software Update and run the update. **No migration steps required.**
 
-If your Tailscale or Netbird connection was already working before the upgrade, you will see no change — the new firewall zone for your VPN was already in place from the previous install. The cleanup of the redundant mwan3 ipset entry happens silently on the next reboot; mwan3 keeps the equivalent `100.0.0.0/8` entry on its own, so reachability is uninterrupted.
+If your Tailscale or Netbird connection was already working before the upgrade, you will see no change — the firewall zone and mwan3 routing exception that v0.1.17 set up at install time are still in place, and reachability is uninterrupted across the upgrade.
 
-If your Tailscale or Netbird was previously installed through LuCI → Software (and was unreachable from tailnet/netbird peers), reboot the modem after the upgrade. The new boot-time self-heal will create the missing firewall zone on the first boot, and your VPN peers will be able to reach the modem afterwards — no reinstall needed.
+If your Tailscale or Netbird was previously installed through LuCI → Software (and was unreachable from tailnet/netbird peers), reboot the modem after the upgrade. The new boot-time self-heal will set up both the missing firewall zone and the mwan3 routing exception on the first boot, and your VPN peers will be able to reach the modem afterwards — no reinstall needed.
+
+Your existing tower lock and Signal Failover settings are preserved across the upgrade. Going forward, applying or changing a cell lock will no longer flip failover on automatically — toggle **Signal Failover** yourself on the Tower Locking page when you want it armed.
 
 ## 💙 Thank You
 
