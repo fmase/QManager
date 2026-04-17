@@ -357,17 +357,14 @@ export function useTowerLocking(): UseTowerLockingReturn {
           failoverPollRef.current = null;
         }
 
-        // If failover is armed (watcher spawned), update state + start polling.
-        // lock.sh auto-enables failover in config, so sync frontend state.
+        // If failover is armed, the backend has spawned the watcher because
+        // the user had Signal Failover already enabled. Only update runtime
+        // state (watcher_running / activated); never force enabled=true —
+        // that's the user's explicit toggle and lives in config.failover.
         if (data.failover_armed) {
-          setConfig((prev) =>
-            prev
-              ? { ...prev, failover: { ...prev.failover, enabled: true } }
-              : prev
-          );
           setFailoverState((prev) =>
             prev
-              ? { ...prev, enabled: true, activated: false, watcher_running: true }
+              ? { ...prev, activated: false, watcher_running: true }
               : { enabled: true, activated: false, watcher_running: true }
           );
           startFailoverPolling();
