@@ -49,6 +49,7 @@ import { SaveButton, useSaveFlash } from "@/components/ui/save-button";
 import { motion } from "motion/react";
 import { containerVariants, itemVariants } from "@/lib/motion";
 import { TbInfoCircleFilled } from "react-icons/tb";
+import { useTranslation } from "react-i18next";
 
 import type {
   UseSystemSettingsReturn,
@@ -71,14 +72,16 @@ export default function SystemSettingsCard({
   error,
   saveSettings,
 }: SystemSettingsCardProps) {
+  const { t } = useTranslation("system-settings");
+
   // --- Loading skeleton ---
   if (isLoading) {
     return (
       <Card className="@container/card">
         <CardHeader>
-          <CardTitle>System Settings</CardTitle>
+          <CardTitle>{t("system.card_title")}</CardTitle>
           <CardDescription>
-            Configure device preferences and display options.
+            {t("system.card_description")}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -118,9 +121,9 @@ export default function SystemSettingsCard({
     return (
       <Card className="@container/card">
         <CardHeader>
-          <CardTitle>System Settings</CardTitle>
+          <CardTitle>{t("system.card_title")}</CardTitle>
           <CardDescription>
-            Configure device preferences and display options.
+            {t("system.card_description")}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -165,6 +168,7 @@ function SystemSettingsForm({
   error,
   saveSettings,
 }: SystemSettingsFormProps) {
+  const { t } = useTranslation("system-settings");
   const { saved, markSaved } = useSaveFlash();
 
   // --- Local form state (initialized from settings prop) ---
@@ -214,14 +218,14 @@ function SystemSettingsForm({
       setWanGuardSaving(false);
 
       if (success) {
-        toast.success(checked ? "WAN Guard enabled" : "WAN Guard disabled");
+        toast.success(checked ? t("system.wan_guard_toast_enabled") : t("system.wan_guard_toast_disabled"));
       } else {
         // Revert on failure
         setWanGuardEnabled(!checked);
-        toast.error("Failed to update WAN Guard");
+        toast.error(t("system.wan_guard_toast_failed"));
       }
     },
-    [saveSettings, settings],
+    [saveSettings, settings, t],
   );
 
   // --- Timezone change handler ---
@@ -248,9 +252,9 @@ function SystemSettingsForm({
 
     if (success) {
       markSaved();
-      toast.success("Settings saved");
+      toast.success(t("system.toast_saved"));
     } else {
-      toast.error(error || "Failed to save settings");
+      toast.error(error || t("system.toast_failed"));
     }
   }, [
     canSave,
@@ -262,14 +266,15 @@ function SystemSettingsForm({
     zonename,
     error,
     markSaved,
+    t,
   ]);
 
   return (
     <Card className="@container/card">
       <CardHeader>
-        <CardTitle>System Settings</CardTitle>
+        <CardTitle>{t("system.card_title")}</CardTitle>
         <CardDescription>
-          Configure device preferences and display options.
+          {t("system.card_description")}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -295,21 +300,17 @@ function SystemSettingsForm({
                   <button
                     type="button"
                     className="inline-flex"
-                    aria-label="WAN Guard info"
+                    aria-label={t("system.wan_guard_info_aria")}
                   >
                     <TbInfoCircleFilled className="size-5 text-info" />
                   </button>
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>
-                    Checks WAN interface profiles at boot and disables <br />{" "}
-                    any that don&apos;t have an active data connection, <br />{" "}
-                    preventing unnecessary CPU usage.
-                  </p>
+                  <p>{t("system.wan_guard_tooltip")}</p>
                 </TooltipContent>
               </Tooltip>
               <p className="font-semibold text-muted-foreground text-sm">
-                WAN Guard
+                {t("system.wan_guard_label")}
               </p>
             </div>
             <div className="flex items-center space-x-2">
@@ -320,7 +321,7 @@ function SystemSettingsForm({
                 disabled={wanGuardSaving}
               />
               <Label htmlFor="wan-guard-enabled">
-                {wanGuardEnabled ? "Enabled" : "Disabled"}
+                {wanGuardEnabled ? t("state.enabled", { ns: "common" }) : t("state.disabled", { ns: "common" })}
               </Label>
             </div>
           </motion.div>
@@ -329,18 +330,18 @@ function SystemSettingsForm({
           <Separator />
           <motion.div variants={itemVariants} className="flex items-center justify-between">
             <p className="font-semibold text-muted-foreground text-sm">
-              Temperature Unit
+              {t("system.temperature_unit_label")}
             </p>
             <Select
               value={tempUnit}
               onValueChange={(v) => setTempUnit(v as "celsius" | "fahrenheit")}
             >
-              <SelectTrigger className="w-36" aria-label="Temperature unit">
+              <SelectTrigger className="w-36" aria-label={t("system.temperature_unit_aria")}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="celsius">Celsius</SelectItem>
-                <SelectItem value="fahrenheit">Fahrenheit</SelectItem>
+                <SelectItem value="celsius">{t("system.temperature_celsius")}</SelectItem>
+                <SelectItem value="fahrenheit">{t("system.temperature_fahrenheit")}</SelectItem>
               </SelectContent>
             </Select>
           </motion.div>
@@ -349,18 +350,18 @@ function SystemSettingsForm({
           <Separator />
           <motion.div variants={itemVariants} className="flex items-center justify-between">
             <p className="font-semibold text-muted-foreground text-sm">
-              Distance Unit
+              {t("system.distance_unit_label")}
             </p>
             <Select
               value={distanceUnit}
               onValueChange={(v) => setDistanceUnit(v as "km" | "miles")}
             >
-              <SelectTrigger className="w-36" aria-label="Distance unit">
+              <SelectTrigger className="w-36" aria-label={t("system.distance_unit_aria")}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="km">Kilometers</SelectItem>
-                <SelectItem value="miles">Miles</SelectItem>
+                <SelectItem value="km">{t("system.distance_km")}</SelectItem>
+                <SelectItem value="miles">{t("system.distance_miles")}</SelectItem>
               </SelectContent>
             </Select>
           </motion.div>
@@ -369,7 +370,7 @@ function SystemSettingsForm({
           <Separator />
           <motion.div variants={itemVariants} className="flex items-center justify-between">
             <p className="font-semibold text-muted-foreground text-sm">
-              Timezone
+              {t("system.timezone_label")}
             </p>
             <Popover open={tzOpen} onOpenChange={setTzOpen}>
               <PopoverTrigger asChild>
@@ -381,16 +382,16 @@ function SystemSettingsForm({
                 >
                   <span className="truncate">
                     {TIMEZONES.find((tz) => tz.zonename === zonename)?.label ??
-                      "Select timezone"}
+                      t("system.timezone_placeholder")}
                   </span>
                   <ChevronsUpDown className="ml-2 size-4 shrink-0 opacity-50" />
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-64 p-0" align="end">
                 <Command>
-                  <CommandInput placeholder="Search timezone..." />
+                  <CommandInput placeholder={t("system.timezone_search_placeholder")} />
                   <CommandList>
-                    <CommandEmpty>No timezone found.</CommandEmpty>
+                    <CommandEmpty>{t("system.timezone_not_found")}</CommandEmpty>
                     <CommandGroup>
                       {TIMEZONES.map((tz) => (
                         <CommandItem
