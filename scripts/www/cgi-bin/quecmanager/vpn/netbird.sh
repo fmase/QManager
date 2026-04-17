@@ -542,7 +542,6 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
             exit 0
         fi
 
-        vpn_fw_ensure_zone "netbird" "wt0"
         qlog_info "NetBird connected"
         cgi_success
         exit 0
@@ -581,7 +580,6 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
         fi
         sleep 1
         if is_daemon_running; then
-            vpn_fw_ensure_zone "netbird" "wt0"
             qlog_info "NetBird daemon started"
             cgi_success
         else
