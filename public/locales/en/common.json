@@ -18,7 +18,11 @@
     "saving": "Saving…",
     "applying": "Applying…",
     "disconnecting": "Disconnecting…",
-    "reconnecting": "Reconnecting…"
+    "reconnecting": "Reconnecting…",
+    "enabled": "Enabled",
+    "disabled": "Disabled",
+    "on": "On",
+    "off": "Off"
   },
   "language": {
     "label": "Language",
