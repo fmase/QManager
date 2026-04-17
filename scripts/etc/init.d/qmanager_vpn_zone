@@ -1,0 +1,67 @@
+#!/bin/sh /etc/rc.common
+# =============================================================================
+# qmanager_vpn_zone — Boot-Time VPN Firewall Zone Self-Heal
+# =============================================================================
+# Runs once at boot. For each installed VPN (Tailscale, Netbird), ensures the
+# fw4 firewall zone for its interface exists. If the zone is already present
+# (the common case — zones persist in UCI), this is a fast no-op.
+#
+# Why this exists:
+#   fw4's default input policy is DROP. Without a zone for tailscale0 / wt0,
+#   inbound VPN traffic hits no jump rule and is silently dropped. The CGI
+#   install flow adds the zone when the user installs the VPN via QManager —
+#   but users who installed the VPN via LuCI > Software first, or who
+#   accidentally removed the zone, would be stuck without recourse short of
+#   reinstalling. This script self-heals the zone on every boot.
+#
+# Non-procd: runs once at boot, exits. No watch, no respawn.
+#
+# Usage:
+#   /etc/init.d/qmanager_vpn_zone start|enable|disable
+#
+# Install location: /etc/init.d/qmanager_vpn_zone
+# =============================================================================
+
+START=99
+STOP=10
+
+. /usr/lib/qmanager/vpn_firewall.sh
+
+# -----------------------------------------------------------------------------
+# ensure_if_installed <binary> <zone_name> <device>
+#   Calls vpn_fw_ensure_zone only when:
+#     1. the VPN binary is on PATH (VPN is installed), AND
+#     2. the fw4 zone is currently missing.
+#   Both checks together make this a cheap idempotent no-op in the common case.
+# -----------------------------------------------------------------------------
+ensure_if_installed() {
+    bin="$1"
+    zone_name="$2"
+    device="$3"
+
+    if ! command -v "$bin" >/dev/null 2>&1; then
+        logger -t qmanager_vpn_zone "$bin not installed, skipping $zone_name zone"
+        return 0
+    fi
+
+    if vpn_fw_zone_exists "$zone_name"; then
+        logger -t qmanager_vpn_zone "Zone '$zone_name' already present, no action"
+        return 0
+    fi
+
+    logger -t qmanager_vpn_zone "Zone '$zone_name' missing for installed $bin — creating"
+    vpn_fw_ensure_zone "$zone_name" "$device"
+}
+
+start() {
+    ensure_if_installed "tailscale" "tailscale" "tailscale0"
+    ensure_if_installed "netbird"   "netbird"   "wt0"
+}
+
+# stop() is intentionally a no-op. Zone removal on stop would force a
+# firewall restart that breaks VPN reachability on every service reload,
+# which is precisely the opposite of what this self-heal is for. Zone
+# removal is owned by the uninstall path in the CGI scripts.
+stop() {
+    :
+}
