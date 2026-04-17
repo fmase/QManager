@@ -68,7 +68,6 @@ fi
 if [ "$watcher_running" = "true" ] && [ "$lte_active" != "true" ] && [ "$nr_active" != "true" ]; then
     qlog_warn "Orphan failover daemon detected with no active lock — self-healing"
     /etc/init.d/qmanager_tower_failover stop 2>/dev/null
-    /etc/init.d/qmanager_tower_failover disable 2>/dev/null
     rm -f "$FAILOVER_ACTIVATED_FLAG" "$WATCHER_PID_FILE"
     watcher_running="false"
     activated="false"
