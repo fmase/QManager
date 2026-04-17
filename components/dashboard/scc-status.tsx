@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { FaCircle } from "react-icons/fa6";
+import { useTranslation } from "react-i18next";
 import type { CarrierComponent } from "@/types/modem-status";
 import { RSRP_THRESHOLDS, getSignalQuality } from "@/types/modem-status";
 import {
@@ -23,12 +24,13 @@ const SccStatusComponent = ({ carriers }: SccStatusProps) => {
     (sum, c) => sum + (c.bandwidth_mhz || 0),
     0,
   );
+  const { t } = useTranslation("dashboard");
 
   return (
     <Card>
       <CardHeader>
         <CardTitle className="text-lg font-semibold">
-          Secondary Carriers
+          {t("scc.title")}
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -36,14 +38,14 @@ const SccStatusComponent = ({ carriers }: SccStatusProps) => {
           {/* Summary — mirrors SignalStatusCard's signal strength header */}
           <div className="flex items-center justify-between">
             <div className="grid gap-0.5">
-              <h3 className="text-sm font-semibold">Carrier Aggregation</h3>
+              <h3 className="text-sm font-semibold">{t("scc.heading")}</h3>
               <div className="flex items-center gap-x-1">
                 <FaCircle
                   className="w-2 h-2 text-success"
                   aria-hidden
                 />
                 <p className="text-muted-foreground text-xs">
-                  {sccCarriers.length} active carrier{sccCarriers.length !== 1 ? "s" : ""}
+                  {t("scc.active_carriers", { count: sccCarriers.length })}
                 </p>
               </div>
             </div>
