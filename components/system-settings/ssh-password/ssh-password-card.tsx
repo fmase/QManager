@@ -23,10 +23,7 @@ import { SaveButton } from "@/components/ui/save-button";
 import { TbInfoCircleFilled } from "react-icons/tb";
 
 import { useSshPassword } from "@/hooks/use-ssh-password";
-
-const STRONG_POLICY_HINT =
-  "New password must be at least 5 characters and include uppercase, lowercase, and a number.";
-const WEAK_POLICY_HINT = "New password must be at least 5 characters.";
+import { useTranslation } from "react-i18next";
 
 function meetsPolicy(password: string, enforceStrong: boolean): boolean {
   if (password.length < 5) return false;
@@ -35,6 +32,7 @@ function meetsPolicy(password: string, enforceStrong: boolean): boolean {
 }
 
 const SshPasswordCard = () => {
+  const { t } = useTranslation("system-settings");
   const { changePassword, isPending, error, clearError } = useSshPassword();
 
   const [current, setCurrent] = useState("");
@@ -42,7 +40,9 @@ const SshPasswordCard = () => {
   const [confirm, setConfirm] = useState("");
   const [enforceStrong, setEnforceStrong] = useState(true);
 
-  const policyHint = enforceStrong ? STRONG_POLICY_HINT : WEAK_POLICY_HINT;
+  const policyHint = enforceStrong
+    ? t("ssh_password.strong_policy_hint")
+    : t("ssh_password.weak_policy_hint");
 
   const policyOk = useMemo(
     () => meetsPolicy(next, enforceStrong),
@@ -64,9 +64,9 @@ const SshPasswordCard = () => {
       setCurrent("");
       setNext("");
       setConfirm("");
-      toast.success("SSH password updated");
+      toast.success(t("ssh_password.toast_success"));
     }
-  }, [canSubmit, changePassword, current, next, enforceStrong]);
+  }, [canSubmit, changePassword, current, next, enforceStrong, t]);
 
   const onAnyInputChange = useCallback(() => {
     if (error) clearError();
@@ -75,17 +75,15 @@ const SshPasswordCard = () => {
   return (
     <Card className="@container/card">
       <CardHeader>
-        <CardTitle>SSH Password</CardTitle>
+        <CardTitle>{t("ssh_password.card_title")}</CardTitle>
         <CardDescription>
-          Change the root password used for SSH and console access. This is
-          separate from the QManager web login and does not affect your current
-          browser session.
+          {t("ssh_password.card_description")}
         </CardDescription>
       </CardHeader>
       <CardContent>
         <div className="grid gap-4 max-w-md">
           <div className="grid gap-2">
-            <Label htmlFor="ssh-current">Current SSH password</Label>
+            <Label htmlFor="ssh-current">{t("ssh_password.current_label")}</Label>
             <Input
               id="ssh-current"
               type="password"
@@ -100,7 +98,7 @@ const SshPasswordCard = () => {
           </div>
 
           <div className="grid gap-2">
-            <Label htmlFor="ssh-new">New SSH password</Label>
+            <Label htmlFor="ssh-new">{t("ssh_password.new_label")}</Label>
             <Input
               id="ssh-new"
               type="password"
@@ -121,7 +119,7 @@ const SshPasswordCard = () => {
           </div>
 
           <div className="grid gap-2">
-            <Label htmlFor="ssh-confirm">Confirm new SSH password</Label>
+            <Label htmlFor="ssh-confirm">{t("ssh_password.confirm_label")}</Label>
             <Input
               id="ssh-confirm"
               type="password"
@@ -136,7 +134,7 @@ const SshPasswordCard = () => {
             />
             {confirm.length > 0 && !confirmMatches && (
               <p id="ssh-confirm-hint" className="text-xs text-destructive">
-                Passwords do not match.
+                {t("ssh_password.error_mismatch")}
               </p>
             )}
           </div>
@@ -148,17 +146,17 @@ const SshPasswordCard = () => {
                   <button
                     type="button"
                     className="inline-flex"
-                    aria-label="Strong password policy info"
+                    aria-label={t("ssh_password.enforce_strong_info_aria")}
                   >
                     <TbInfoCircleFilled className="size-5 text-info" />
                   </button>
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>{STRONG_POLICY_HINT}</p>
+                  <p>{t("ssh_password.strong_policy_hint")}</p>
                 </TooltipContent>
               </Tooltip>
               <span className="font-semibold text-muted-foreground text-sm">
-                Enforce strong password
+                {t("ssh_password.enforce_strong_label")}
               </span>
             </div>
             <div className="flex items-center space-x-2">
@@ -172,7 +170,7 @@ const SshPasswordCard = () => {
                 }}
               />
               <Label htmlFor="ssh-strong">
-                {enforceStrong ? "On" : "Off"}
+                {enforceStrong ? t("state.on", { ns: "common" }) : t("state.off", { ns: "common" })}
               </Label>
             </div>
           </div>
