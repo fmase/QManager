@@ -150,3 +150,17 @@ vpn_fw_remove_zone() {
     qlog_info "Firewall zone '$zone_name' removed successfully"
     return 0
 }
+
+# -----------------------------------------------------------------------------
+# vpn_check_other_installed <binary_name>
+#   Echoes "true" if the given binary is found, "false" otherwise.
+#   Emitted as a JSON literal — consumed by VPN CGI GET handlers via
+#   jq --argjson to report whether the "other" VPN is present.
+# -----------------------------------------------------------------------------
+vpn_check_other_installed() {
+    if command -v "$1" >/dev/null 2>&1; then
+        echo "true"
+    else
+        echo "false"
+    fi
+}
