@@ -29,6 +29,7 @@ import {
   selectedKeys,
 } from "@/lib/config-backup/sections";
 import { useConfigBackup } from "@/hooks/use-config-backup";
+import { useTranslation } from "react-i18next";
 
 const MIN_PASSPHRASE_LEN = 10;
 
@@ -45,6 +46,7 @@ const rowItem = {
 const rowTransition = { duration: 0.2, ease: "easeOut" as const };
 
 const ConfigBackupCard = () => {
+  const { t } = useTranslation("system-settings");
   const [selection, setSelection] = useState(initialSelection());
   const [passphrase, setPassphrase] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -63,12 +65,12 @@ const ConfigBackupCard = () => {
 
   const buttonLabel =
     stage === "collecting"
-      ? "Collecting…"
+      ? t("config_backup.create.button_collecting")
       : stage === "encrypting"
-      ? "Encrypting…"
+      ? t("config_backup.create.button_encrypting")
       : stage === "downloading"
-      ? "Downloading…"
-      : "Download Backup";
+      ? t("config_backup.create.button_downloading")
+      : t("config_backup.create.button_default");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -76,23 +78,22 @@ const ConfigBackupCard = () => {
     reset();
     const result = await runBackup(chosen, passphrase);
     if (result.ok) {
-      toast.success("Backup downloaded");
+      toast.success(t("config_backup.create.toast_success"));
       setPassphrase("");
       setConfirm("");
       reset();
       return;
     }
-    toast.error("Couldn't create backup. Please try again.");
+    toast.error(t("config_backup.create.toast_failed"));
     reset();
   };
 
   return (
     <Card className="@container/card h-full">
       <CardHeader>
-        <CardTitle>Create Backup</CardTitle>
+        <CardTitle>{t("config_backup.create.card_title")}</CardTitle>
         <CardDescription>
-          Pick which sections to include and set a passphrase to encrypt the
-          download.
+          {t("config_backup.create.card_description")}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -105,7 +106,7 @@ const ConfigBackupCard = () => {
         >
           <motion.div variants={rowItem} transition={rowTransition}>
             <FieldSet>
-              <FieldLegend variant="label">Sections to include</FieldLegend>
+              <FieldLegend variant="label">{t("config_backup.create.sections_legend")}</FieldLegend>
               <FieldGroup className="gap-3">
                 <motion.div
                   className="grid gap-3"
@@ -137,15 +138,15 @@ const ConfigBackupCard = () => {
                             htmlFor={`backup-section-${s.key}`}
                             className="font-normal"
                           >
-                            {s.label}
+                            {t(`config_backup.sections.${s.key}`)}
                             {isDisabled && s.overlapGroup === "profile" && (
                               <span className="ml-2 text-xs text-muted-foreground">
-                                Included via Custom SIM Profiles
+                                {t("config_backup.create.profile_overlap_hint")}
                               </span>
                             )}
                             {isDisabled && s.key === "profiles" && (
                               <span className="ml-2 text-xs text-muted-foreground">
-                                Uncheck overlapping items to include profiles
+                                {t("config_backup.create.profile_uncheck_hint")}
                               </span>
                             )}
                           </FieldLabel>
@@ -164,14 +165,14 @@ const ConfigBackupCard = () => {
             transition={rowTransition}
           >
             <Field>
-              <FieldLabel htmlFor="backup-passphrase">Passphrase</FieldLabel>
+              <FieldLabel htmlFor="backup-passphrase">{t("config_backup.create.passphrase_label")}</FieldLabel>
               <div className="relative max-w-sm">
                 <Input
                   id="backup-passphrase"
                   type={showPassphrase ? "text" : "password"}
                   value={passphrase}
                   onChange={(e) => setPassphrase(e.target.value)}
-                  placeholder="At least 10 characters"
+                  placeholder={t("config_backup.create.passphrase_placeholder")}
                   className="pr-10"
                   autoComplete="new-password"
                 />
@@ -181,7 +182,7 @@ const ConfigBackupCard = () => {
                   size="icon-sm"
                   className="absolute right-1 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground before:absolute before:-inset-1.5 before:content-['']"
                   onClick={() => setShowPassphrase((v) => !v)}
-                  aria-label={showPassphrase ? "Hide passphrase" : "Show passphrase"}
+                  aria-label={showPassphrase ? t("config_backup.create.passphrase_hide_aria") : t("config_backup.create.passphrase_show_aria")}
                   aria-pressed={showPassphrase}
                 >
                   {showPassphrase ? <EyeOffIcon className="size-4" /> : <EyeIcon className="size-4" />}
@@ -190,7 +191,7 @@ const ConfigBackupCard = () => {
             </Field>
             <Field>
               <FieldLabel htmlFor="backup-passphrase-confirm">
-                Confirm passphrase
+                {t("config_backup.create.confirm_label")}
               </FieldLabel>
               <div className="relative max-w-sm">
                 <Input
@@ -208,7 +209,7 @@ const ConfigBackupCard = () => {
                   size="icon-sm"
                   className="absolute right-1 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground before:absolute before:-inset-1.5 before:content-['']"
                   onClick={() => setShowConfirm((v) => !v)}
-                  aria-label={showConfirm ? "Hide passphrase" : "Show passphrase"}
+                  aria-label={showConfirm ? t("config_backup.create.passphrase_hide_aria") : t("config_backup.create.passphrase_show_aria")}
                   aria-pressed={showConfirm}
                 >
                   {showConfirm ? <EyeOffIcon className="size-4" /> : <EyeIcon className="size-4" />}
@@ -227,13 +228,12 @@ const ConfigBackupCard = () => {
                   ) : (
                     <XIcon className="size-3.5" />
                   )}
-                  {passphrase === confirm ? "Passphrases match" : "Passphrases don't match"}
+                  {passphrase === confirm ? t("config_backup.create.confirm_match") : t("config_backup.create.confirm_mismatch")}
                 </p>
               )}
             </Field>
             <p className="text-xs text-muted-foreground max-w-sm">
-              Store this passphrase somewhere safe. If you lose it, this backup
-              cannot be recovered — there is no reset option.
+              {t("config_backup.create.warning")}
             </p>
           </motion.div>
 
