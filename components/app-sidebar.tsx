@@ -69,6 +69,10 @@ const data = {
           url: "/system-settings/config-backup",
         },
         {
+          title: "SSH Password",
+          url: "/system-settings/ssh-password",
+        },
+        {
           title: "Bandwidth Monitor",
           url: "/system-settings/bandwidth-monitor",
         },
