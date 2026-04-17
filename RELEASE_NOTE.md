@@ -1,33 +1,22 @@
-# 🚀 QManager BETA v0.1.17
+# QManager <next version>
 
-A maintenance release focused on fixes and small quality-of-life improvements across DNS reporting, software updates, authentication, and the sidebar.
+VPN setup is simpler and more resilient on OpenWRT builds that include mwan3.
 
 ## ✅ Improvements
 
-- Cellular Information now shows correct DNS values for single-stack (IPv4-only) carriers — previously every DNS row displayed "-". Dual-stack carriers continue to see separate IPv4 and IPv6 rows side-by-side.
-- DNS parser now identifies the active carrier profile by WAN mux ID instead of guessing from APN strings, so the right profile is picked even when multiple data contexts are active.
-- Fixed CGCONTRDP parsing for dual-stack responses that return adjacent IPv4/IPv6 DNS tuples.
-- IPv6 DNS addresses are displayed in compressed form with the full value available in a tooltip.
-- Software Update card now shows a clear alert when an install stalls and offers a reboot option while an update is in progress, so you can recover without SSH.
-- Fixed password strength enforcement toggle — disabling strict rules during login or password change is now honored instead of silently falling back to strict mode.
-- Sidebar: Tailscale entry now uses the Waypoints icon for a clearer visual match with its mesh networking role.
+- VPN firewall setup simplified. Removed a redundant workaround that duplicated mwan3's own route tracking. Tailscale and Netbird connections now rely on a single persistent firewall zone per VPN, reducing install-time noise and avoiding three firewall restarts per connect action.
+- Added a boot-time self-heal for the VPN firewall zone. If Tailscale or Netbird is installed via LuCI → Software (bypassing QManager's install flow) or the zone was removed manually, the next reboot restores it automatically — no reinstall required.
 
 ## 📥 Installation
 
-### Fresh Install
+Fresh install:
 
 ```sh
-curl -fsSL -o /tmp/qmanager-installer.sh https://raw.githubusercontent.com/dr-dolomite/QManager/development-home/qmanager-installer.sh && sh /tmp/qmanager-installer.sh
+curl -sL https://raw.githubusercontent.com/dr-dolomite/QManager/main/qmanager-installer.sh | sh
 ```
 
-### Upgrading from v0.1.16
-
-Head to System Settings -> Software Update and run the update.
+Upgrade: use Software Update in the QManager UI.
 
 ## 💙 Thank You
 
-Thanks for using QManager! If you find it useful, consider [supporting the project](https://paypal.me/iamrusss). Bug reports and feature requests are always welcome on [GitHub Issues](https://github.com/dr-dolomite/QManager/issues).
-
-**License:** MIT + Commons Clause
-
-**Happy connecting!**
+Thanks to everyone who tested the Tailscale/Netbird workarounds on mwan3 builds and confirmed the simplification works end-to-end.
