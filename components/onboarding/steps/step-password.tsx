@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { EyeIcon, EyeOffIcon } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { setupPassword } from "@/hooks/use-auth";
 import { authFetch } from "@/lib/auth-fetch";
 import { Input } from "@/components/ui/input";
@@ -30,8 +31,6 @@ function getStrength(pw: string): 0 | 1 | 2 | 3 | 4 {
   return Math.min(score, 4) as 0 | 1 | 2 | 3 | 4;
 }
 
-const STRENGTH_LABELS = ["", "Weak", "Fair", "Good", "Strong"] as const;
-
 function strengthColorClass(strength: number) {
   if (strength === 1) return "bg-destructive";
   if (strength === 2) return "bg-warning";
@@ -54,6 +53,16 @@ interface StepPasswordProps {
 }
 
 export function StepPassword({ onSuccess, onLoadingChange, onSubmitRef, onValidityChange }: StepPasswordProps) {
+  const { t } = useTranslation("onboarding");
+
+  const strengthLabels = [
+    "",
+    t("password.strength_weak"),
+    t("password.strength_fair"),
+    t("password.strength_good"),
+    t("password.strength_strong"),
+  ];
+
   const [displayName, setDisplayName] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -78,13 +87,13 @@ export function StepPassword({ onSuccess, onLoadingChange, onSubmitRef, onValidi
     if (!isPasswordValid(password, useStrongPassword)) {
       setError(
         useStrongPassword
-          ? "Password must be at least 5 characters and include uppercase, lowercase, and a number."
-          : "Password must be at least 5 characters."
+          ? t("password.error_strong_requirements")
+          : t("password.error_basic_requirements")
       );
       return;
     }
     if (password !== confirm) {
-      setError("Passwords do not match.");
+      setError(t("password.error_mismatch"));
       return;
     }
 
@@ -108,7 +117,7 @@ export function StepPassword({ onSuccess, onLoadingChange, onSubmitRef, onValidi
         }
         onSuccess();
       } else {
-        setError(result.error || "Setup failed. Please try again.");
+        setError(result.error || t("password.error_setup_failed"));
       }
     } finally {
       setIsSubmitting(false);
@@ -123,36 +132,36 @@ export function StepPassword({ onSuccess, onLoadingChange, onSubmitRef, onValidi
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-1.5">
-        <h2 className="text-2xl font-semibold tracking-tight">Secure your setup</h2>
+        <h2 className="text-2xl font-semibold tracking-tight">{t("password.heading")}</h2>
         <p className="text-sm text-muted-foreground">
-          Choose a password to protect access to your modem interface.
+          {t("password.description")}
         </p>
       </div>
 
       <form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }}>
         <FieldGroup>
           <Field>
-            <FieldLabel htmlFor="onboard-name">Your name <span className="text-muted-foreground font-normal">(optional)</span></FieldLabel>
+            <FieldLabel htmlFor="onboard-name">{t("password.label_name")} <span className="text-muted-foreground font-normal">{t("password.label_name_optional_suffix")}</span></FieldLabel>
             <Input
               id="onboard-name"
               type="text"
-              placeholder="e.g. Alex"
+              placeholder={t("password.placeholder_name")}
               autoComplete="name"
               aria-describedby="onboard-name-desc"
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
               disabled={isSubmitting}
             />
-            <FieldDescription id="onboard-name-desc">Shown in the sidebar. You can change this anytime.</FieldDescription>
+            <FieldDescription id="onboard-name-desc">{t("password.hint_name")}</FieldDescription>
           </Field>
 
           <Field>
-            <FieldLabel htmlFor="onboard-password">Password</FieldLabel>
+            <FieldLabel htmlFor="onboard-password">{t("password.label_password")}</FieldLabel>
             <div className="relative">
               <Input
                 id="onboard-password"
                 type={showPassword ? "text" : "password"}
-                placeholder="Create a password"
+                placeholder={t("password.placeholder_password")}
                 autoComplete="new-password"
                 required
                 aria-describedby="onboard-password-reqs"
@@ -168,7 +177,7 @@ export function StepPassword({ onSuccess, onLoadingChange, onSubmitRef, onValidi
                 className="absolute right-1 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                 onClick={() => setShowPassword((v) => !v)}
                 tabIndex={-1}
-                aria-label={showPassword ? "Hide password" : "Show password"}
+                aria-label={showPassword ? t("password.aria_hide_password") : t("password.aria_show_password")}
               >
                 {showPassword ? <EyeOffIcon className="size-4" /> : <EyeIcon className="size-4" />}
               </Button>
@@ -213,7 +222,7 @@ export function StepPassword({ onSuccess, onLoadingChange, onSubmitRef, onValidi
                       strengthTextClass(strength)
                     )}
                   >
-                    {STRENGTH_LABELS[strength]}
+                    {strengthLabels[strength]}
                   </span>
                 </motion.div>
               )}
@@ -223,12 +232,12 @@ export function StepPassword({ onSuccess, onLoadingChange, onSubmitRef, onValidi
           </Field>
 
           <Field>
-            <FieldLabel htmlFor="onboard-confirm">Confirm Password</FieldLabel>
+            <FieldLabel htmlFor="onboard-confirm">{t("password.label_confirm")}</FieldLabel>
             <div className="relative">
               <Input
                 id="onboard-confirm"
                 type={showConfirm ? "text" : "password"}
-                placeholder="Confirm your password"
+                placeholder={t("password.placeholder_confirm")}
                 autoComplete="new-password"
                 required
                 aria-describedby={confirm.length > 0 ? "onboard-confirm-hint" : undefined}
@@ -244,7 +253,7 @@ export function StepPassword({ onSuccess, onLoadingChange, onSubmitRef, onValidi
                 className="absolute right-1 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                 onClick={() => setShowConfirm((v) => !v)}
                 tabIndex={-1}
-                aria-label={showConfirm ? "Hide password" : "Show password"}
+                aria-label={showConfirm ? t("password.aria_hide_password") : t("password.aria_show_password")}
               >
                 {showConfirm ? <EyeOffIcon className="size-4" /> : <EyeIcon className="size-4" />}
               </Button>
@@ -257,7 +266,7 @@ export function StepPassword({ onSuccess, onLoadingChange, onSubmitRef, onValidi
                   password === confirm ? "text-success" : "text-destructive"
                 )}
               >
-                {password === confirm ? "Passwords match" : "Passwords don't match"}
+                {password === confirm ? t("password.hint_match_success") : t("password.hint_match_error")}
               </p>
             )}
           </Field>
