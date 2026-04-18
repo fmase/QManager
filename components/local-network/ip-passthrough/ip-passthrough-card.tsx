@@ -266,7 +266,7 @@ const IPPassthroughCard = () => {
                       disabled={isSaving}
                     >
                       <SelectTrigger aria-label={t("ippt.aria_passthrough_mode")}>
-                        <SelectValue placeholder="Select Mode" />
+                        <SelectValue placeholder={t("ippt.placeholder_mode")} />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="disabled">
@@ -314,8 +314,8 @@ const IPPassthroughCard = () => {
                             }
                             disabled={isSaving}
                           >
-                            <SelectTrigger aria-label="MAC source" className="w-full">
-                              <SelectValue placeholder="Select Target" />
+                            <SelectTrigger aria-label={t("ippt.aria_mac_source")} className="w-full">
+                              <SelectValue placeholder={t("ippt.placeholder_mac_source")} />
                             </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="automatic">
@@ -341,7 +341,7 @@ const IPPassthroughCard = () => {
                                 }}
                               >
                                 <Input
-                                  aria-label="MAC address"
+                                  aria-label={t("ippt.aria_mac_address")}
                                   placeholder={t("ippt.placeholder_mac_manual")}
                                   className="font-mono uppercase placeholder:normal-case"
                                   value={localMacInput}
@@ -378,7 +378,7 @@ const IPPassthroughCard = () => {
                       disabled={isSaving}
                     >
                       <SelectTrigger aria-label={t("ippt.aria_nat_mode")}>
-                        <SelectValue placeholder="Select NAT Mode" />
+                        <SelectValue placeholder={t("ippt.placeholder_nat_mode")} />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="nat-on">
@@ -398,7 +398,7 @@ const IPPassthroughCard = () => {
                       disabled={isSaving}
                     >
                       <SelectTrigger aria-label={t("ippt.aria_usb_mode")}>
-                        <SelectValue placeholder="Choose USB Modem Protocol" />
+                        <SelectValue placeholder={t("ippt.placeholder_usb_mode")} />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="rmnet">{t("ippt.option_usb_rmnet")}</SelectItem>
@@ -421,7 +421,7 @@ const IPPassthroughCard = () => {
                       disabled={isSaving}
                     >
                       <SelectTrigger aria-label={t("ippt.aria_dns_proxy")}>
-                        <SelectValue placeholder="Select DNS mode" />
+                        <SelectValue placeholder={t("ippt.placeholder_dns_proxy")} />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="disabled">

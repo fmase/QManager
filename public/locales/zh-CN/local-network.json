@@ -115,7 +115,14 @@
     "dialog_desc_reboot_notice": "应用这些更改将保存配置并立即重启设备。",
     "dialog_desc_unreachable_warning": "IP 穿透激活后，设备的本地网关将无法访问。请确保您有可用的 Tailscale 连接或其他带外方式，以便在重启后访问设备。",
     "dialog_desc_persistence": "此设置在重启后仍然保留。",
-    "button_apply_reboot": "应用并重启"
+    "button_apply_reboot": "应用并重启",
+    "placeholder_mode": "选择模式",
+    "placeholder_mac_source": "选择目标",
+    "aria_mac_source": "MAC 来源",
+    "aria_mac_address": "MAC 地址",
+    "placeholder_nat_mode": "选择 NAT 模式",
+    "placeholder_usb_mode": "选择 USB 调制解调器协议",
+    "placeholder_dns_proxy": "选择 DNS 模式"
   },
   "masquerade": {
     "page_title": "流量伪装",

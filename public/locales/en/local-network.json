@@ -115,7 +115,14 @@
     "dialog_desc_reboot_notice": "Applying these changes will save the configuration and immediately reboot the device.",
     "dialog_desc_unreachable_warning": "Once IP Passthrough is active, the device's local gateway will no longer be reachable. Make sure you have an active Tailscale connection or another out-of-band method to access the device after reboot.",
     "dialog_desc_persistence": "This setting persists across reboots.",
-    "button_apply_reboot": "Apply & Reboot"
+    "button_apply_reboot": "Apply & Reboot",
+    "placeholder_mode": "Select Mode",
+    "placeholder_mac_source": "Select Target",
+    "aria_mac_source": "MAC source",
+    "aria_mac_address": "MAC address",
+    "placeholder_nat_mode": "Select NAT Mode",
+    "placeholder_usb_mode": "Choose USB Modem Protocol",
+    "placeholder_dns_proxy": "Select DNS mode"
   },
   "masquerade": {
     "page_title": "Traffic Masquerade",
