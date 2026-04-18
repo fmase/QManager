@@ -132,7 +132,7 @@
     "card_description_full": "通过注入带有伪造域名的虚假 TLS 握手，让 HTTPS 流量在运营商 DPI 看来像是白名单服务。部分运营商可能检测到该行为并降低您的连接优先级。",
     "error_load_failed": "加载设置失败。",
     "error_binary_not_installed": "此设备上未安装 `nfqws` 程序。",
-    "error_install_from_video_optimizer": "请在视频优化器页面安装，然后再次检查。",
+    "error_install_from_video_optimizer": "请在<link>视频优化器</link>页面安装，然后再次检查。",
     "badge_experimental": "实验性功能",
     "alert_video_optimizer_active": "视频优化器当前已激活。请先禁用它，再启用流量伪装。",
     "alert_kernel_module_missing": "未找到所需的内核模块。请在设备上运行 `opkg install kmod-nft-queue`。",

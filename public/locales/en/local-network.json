@@ -132,7 +132,7 @@
     "card_description_full": "Make HTTPS traffic appear as a whitelisted service to carrier DPI by injecting fake TLS handshakes with a spoofed domain. Some carriers may detect this behavior and de-prioritize your connection.",
     "error_load_failed": "Failed to load settings.",
     "error_binary_not_installed": "The `nfqws` binary is not installed on this device.",
-    "error_install_from_video_optimizer": "Install it from the Video Optimizer page, then check again.",
+    "error_install_from_video_optimizer": "Install it from the <link>Video Optimizer</link> page, then check again.",
     "badge_experimental": "Experimental Feature",
     "alert_video_optimizer_active": "Video Optimizer is currently active. Disable it first before enabling Traffic Masquerade.",
     "alert_kernel_module_missing": "Required kernel module not found. Run `opkg install kmod-nft-queue` on the device.",

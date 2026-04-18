@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useState, useMemo } from "react";
-import { useTranslation } from "react-i18next";
+import { useTranslation, Trans } from "react-i18next";
 import { toast } from "sonner";
 import {
   Card,
@@ -112,12 +112,18 @@ export default function TrafficMasqueradeSettingsCard({
                 {t("masquerade.error_binary_not_installed")}
               </p>
               <p className="text-xs text-muted-foreground">
-                <Link
-                  href="/local-network/video-optimizer"
-                  className="underline underline-offset-2"
-                >
-                  {t("masquerade.error_install_from_video_optimizer")}
-                </Link>
+                <Trans
+                  i18nKey="masquerade.error_install_from_video_optimizer"
+                  t={t}
+                  components={{
+                    link: (
+                      <Link
+                        href="/local-network/video-optimizer"
+                        className="underline underline-offset-2"
+                      />
+                    ),
+                  }}
+                />
               </p>
             </div>
             <Button variant="outline" size="sm" onClick={() => refresh()}>
