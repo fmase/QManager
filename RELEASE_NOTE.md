@@ -15,6 +15,9 @@ A targeted reliability release that hardens VPN setup on multi-WAN modems, adds 
 - **Failover unlock is bulletproof.** The watcher daemon is now guaranteed to stop on unlock — the init script waits up to 2 s for a graceful exit and escalates to `SIGKILL` if needed, so the UI can no longer get stuck in "Monitoring" state.
 - **Self-healing failover state.** If the daemon is ever orphaned (config edited by hand, a botched unlock, or a crash), the lightweight status poll detects and reaps it within a few seconds — no reboot needed.
 - **Fresh installs start with failover off.** The default for Signal Failover is now Disabled on new installs, matching the new explicit-toggle contract. Existing devices keep whatever you had previously set.
+- **Configuration restore is protected from Watchdog reboots.** A poorly-timed connectivity blip during a multi-section restore could previously trip the Watchdog and reboot the modem before every section was applied — leaving IMEI, custom profiles, or other later steps half-written. Restore now pauses Watchdog recovery for the full duration and releases it on completion, so every section lands atomically.
+- **Watchdog maintenance mode no longer silences network events.** If the Watchdog entered a maintenance hold while a recovery was in flight (for example, because a custom profile apply started), "internet lost" and "internet restored" events could stay suppressed until the next cooldown completed. Events now resume the moment maintenance mode kicks in, and the Watchdog restarts cleanly from monitoring on release.
+- **Watchdog settings are now validated on the server.** Out-of-range values posted directly to the API — a cooldown shorter than 10 seconds, a non-numeric failure threshold, a SIM slot other than 1 or 2 — are rejected with a clear error instead of being silently written to config. The settings page itself already prevented this; the server now backs it up.
 
 ## 📥 Installation
 
