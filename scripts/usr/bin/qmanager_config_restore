@@ -27,6 +27,8 @@ INPUT_FILE="/tmp/qmanager_config_restore_input.json"
 STATE_FILE="/tmp/qmanager_config_restore.json"
 PID_FILE="/var/run/qmanager_config_restore.pid"
 CANCEL_FILE="/tmp/qmanager_config_restore.cancel"
+WATCHCAT_LOCK="/tmp/qmanager_watchcat.lock"
+WATCHCAT_LOCK_OWNED=0
 
 # --- Singleton ---
 if [ -f "$PID_FILE" ]; then
@@ -38,11 +40,18 @@ if [ -f "$PID_FILE" ]; then
 fi
 echo "$$" > "$PID_FILE"
 
+# Suppress watchcat recovery while we apply sections — prevents Tier 4
+# reboot from interrupting a multi-section restore.
+if [ ! -f "$WATCHCAT_LOCK" ]; then
+    touch "$WATCHCAT_LOCK" && WATCHCAT_LOCK_OWNED=1
+fi
+
 # Clear any stale reboot hint from a previous run
 rm -f /tmp/qmanager_config_restore.reboot_required
 
 cleanup() {
     rm -f "$PID_FILE" "$CANCEL_FILE" "$INPUT_FILE"
+    [ "$WATCHCAT_LOCK_OWNED" = "1" ] && rm -f "$WATCHCAT_LOCK"
 }
 trap cleanup EXIT INT TERM
 
