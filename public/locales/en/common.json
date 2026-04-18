@@ -24,6 +24,17 @@
     "on": "On",
     "off": "Off"
   },
+  "time": {
+    "just_now": "Just now",
+    "now": "Now",
+    "unknown": "Unknown",
+    "minutes_ago_one": "{{count}}m ago",
+    "minutes_ago_other": "{{count}}m ago",
+    "hours_ago_one": "{{count}}h ago",
+    "hours_ago_other": "{{count}}h ago",
+    "days_ago_one": "{{count}}d ago",
+    "days_ago_other": "{{count}}d ago"
+  },
   "language": {
     "label": "Language",
     "switch_aria": "Switch language"

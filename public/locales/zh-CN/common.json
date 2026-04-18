@@ -24,6 +24,17 @@
     "on": "开",
     "off": "关"
   },
+  "time": {
+    "just_now": "刚刚",
+    "now": "现在",
+    "unknown": "未知",
+    "minutes_ago_one": "{{count}} 分钟前",
+    "minutes_ago_other": "{{count}} 分钟前",
+    "hours_ago_one": "{{count}} 小时前",
+    "hours_ago_other": "{{count}} 小时前",
+    "days_ago_one": "{{count}} 天前",
+    "days_ago_other": "{{count}} 天前"
+  },
   "language": {
     "label": "语言",
     "switch_aria": "切换语言"
