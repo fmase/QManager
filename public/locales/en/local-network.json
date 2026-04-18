@@ -28,7 +28,8 @@
     "option_speed_10": "10 Mbps",
     "option_speed_100": "100 Mbps",
     "option_speed_1000": "1000 Mbps",
-    "label_duplex": "Duplex"
+    "label_duplex": "Duplex",
+    "alt_device_icon": "Device Icon"
   },
   "dns": {
     "page_title": "Custom DNS Settings",

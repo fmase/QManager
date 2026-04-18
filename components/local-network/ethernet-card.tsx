@@ -319,7 +319,7 @@ const EthernetStatusCard = () => {
             >
               <img
                 src="/device-icon.png"
-                alt="Device Icon"
+                alt={t("ethernet.alt_device_icon")}
                 className="size-full drop-shadow-md object-contain"
                 loading="lazy"
               />
