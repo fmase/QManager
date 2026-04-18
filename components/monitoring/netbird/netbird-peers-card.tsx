@@ -1,5 +1,7 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import { motion } from "motion/react";
 import {
   Card,
@@ -36,11 +38,39 @@ interface NetBirdPeersCardProps {
   error?: string | null;
 }
 
-function formatLastSeen(lastSeen: string, connected: boolean): string {
-  if (connected) return "Now";
-  if (!lastSeen || lastSeen === "-") return "Unknown";
-  // NetBird returns relative strings like "2 minutes ago" or timestamps
-  return lastSeen;
+function formatLastSeen(lastSeen: string, connected: boolean, t: TFunction): string {
+  if (connected) return t("time.now", { ns: "common" });
+  if (!lastSeen || lastSeen === "-") return t("time.unknown", { ns: "common" });
+
+  const date = new Date(lastSeen);
+  const now = Date.now();
+  const diffMs = now - date.getTime();
+
+  if (diffMs < 0 || isNaN(diffMs)) return lastSeen;
+
+  const diffMin = Math.floor(diffMs / 60_000);
+  if (diffMin < 1) return t("time.just_now", { ns: "common" });
+  if (diffMin < 60) return t("time.minutes_ago", { ns: "common", count: diffMin });
+
+  const diffHr = Math.floor(diffMin / 60);
+  if (diffHr < 24) return t("time.hours_ago", { ns: "common", count: diffHr });
+
+  const diffDay = Math.floor(diffHr / 24);
+  return t("time.days_ago", { ns: "common", count: diffDay });
+}
+
+function capitalizeOS(os: string, t: TFunction): string {
+  if (!os) return t("shared.os_unknown", { ns: "monitoring" });
+  const map: Record<string, string> = {
+    linux: t("shared.os_linux", { ns: "monitoring" }),
+    windows: t("shared.os_windows", { ns: "monitoring" }),
+    macos: t("shared.os_macos", { ns: "monitoring" }),
+    darwin: t("shared.os_macos", { ns: "monitoring" }),
+    ios: t("shared.os_ios", { ns: "monitoring" }),
+    android: t("shared.os_android", { ns: "monitoring" }),
+    freebsd: t("shared.os_freebsd", { ns: "monitoring" }),
+  };
+  return map[os.toLowerCase()] || os.charAt(0).toUpperCase() + os.slice(1);
 }
 
 export function NetBirdPeersCard({
@@ -48,6 +78,7 @@ export function NetBirdPeersCard({
   isLoading,
   error,
 }: NetBirdPeersCardProps) {
+  const { t } = useTranslation("monitoring");
   const isConnected = status?.backend_state === "Connected";
   const peers: NetBirdPeer[] = (isConnected && status?.peers) || [];
 
@@ -56,9 +87,9 @@ export function NetBirdPeersCard({
     return (
       <Card className="@container/card">
         <CardHeader>
-          <CardTitle>Network Peers</CardTitle>
+          <CardTitle>{t("netbird.peers_title")}</CardTitle>
           <CardDescription>
-            Devices on your NetBird network.
+            {t("netbird.peers_description")}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -92,16 +123,16 @@ export function NetBirdPeersCard({
     return (
       <Card className="@container/card">
         <CardHeader>
-          <CardTitle>Network Peers</CardTitle>
+          <CardTitle>{t("netbird.peers_title")}</CardTitle>
           <CardDescription>
-            Devices on your NetBird network.
+            {t("netbird.peers_description")}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex flex-col items-center justify-center py-8 gap-3">
             <AlertCircle className="size-10 text-destructive" />
             <p className="text-sm text-muted-foreground text-center">
-              Failed to load peer data.
+              {t("netbird.peers_error_load")}
             </p>
           </div>
         </CardContent>
@@ -114,16 +145,16 @@ export function NetBirdPeersCard({
     return (
       <Card className="@container/card">
         <CardHeader>
-          <CardTitle>Network Peers</CardTitle>
+          <CardTitle>{t("netbird.peers_title")}</CardTitle>
           <CardDescription>
-            Devices on your NetBird network.
+            {t("netbird.peers_description")}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex flex-col items-center justify-center py-8 gap-3">
             <UsersIcon className="size-10 text-muted-foreground" />
             <p className="text-sm text-muted-foreground text-center">
-              Connect to NetBird to see your network peers.
+              {t("netbird.peers_not_connected_message")}
             </p>
           </div>
         </CardContent>
@@ -140,9 +171,9 @@ export function NetBirdPeersCard({
     return (
       <Card className="@container/card">
         <CardHeader>
-          <CardTitle>Network Peers</CardTitle>
+          <CardTitle>{t("netbird.peers_title")}</CardTitle>
           <CardDescription>
-            Devices on your NetBird network.
+            {t("netbird.peers_description")}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -159,17 +190,16 @@ export function NetBirdPeersCard({
                     </span>
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    {peersConnected === 1 ? "peer" : "peers"} connected
+                    {t("netbird.peers_connected_count", { count: peersConnected })}
                   </p>
                 </div>
                 <p className="text-xs text-muted-foreground text-center max-w-xs">
-                  Per-peer details are not available in this NetBird version.
-                  Upgrade to a newer version for detailed peer information.
+                  {t("netbird.peers_no_detail_hint")}
                 </p>
               </>
             ) : (
               <p className="text-sm text-muted-foreground text-center">
-                No peers found on your NetBird network.
+                {t("netbird.peers_no_peers_message")}
               </p>
             )}
           </div>
@@ -182,9 +212,9 @@ export function NetBirdPeersCard({
   return (
     <Card className="@container/card">
       <CardHeader>
-        <CardTitle>Network Peers</CardTitle>
+        <CardTitle>{t("netbird.peers_title")}</CardTitle>
         <CardDescription>
-          Devices on your NetBird network.
+          {t("netbird.peers_description")}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -192,12 +222,12 @@ export function NetBirdPeersCard({
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Device</TableHead>
-                <TableHead>IP Address</TableHead>
-                <TableHead className="hidden @sm/card:table-cell">Connection</TableHead>
-                <TableHead className="w-24">Status</TableHead>
+                <TableHead>{t("netbird.peers_header_name")}</TableHead>
+                <TableHead>{t("netbird.peers_header_ip")}</TableHead>
+                <TableHead className="hidden @sm/card:table-cell">{t("netbird.peers_header_connection")}</TableHead>
+                <TableHead className="w-24">{t("netbird.peers_header_status")}</TableHead>
                 <TableHead className="hidden @md/card:table-cell w-28">
-                  Last Seen
+                  {t("netbird.peers_header_last_seen")}
                 </TableHead>
               </TableRow>
             </TableHeader>
@@ -216,7 +246,7 @@ export function NetBirdPeersCard({
                   >
                     <TableCell className="max-w-48">
                       <span className="font-medium text-sm truncate block">
-                        {peer.hostname || "Unknown"}
+                        {peer.hostname || t("shared.os_unknown")}
                       </span>
                     </TableCell>
                     <TableCell className="font-mono text-xs">
@@ -227,12 +257,12 @@ export function NetBirdPeersCard({
                         isP2P ? (
                           <Badge variant="outline" className="bg-success/15 text-success hover:bg-success/20 border-success/30">
                             <CheckCircle2Icon className="size-3" />
-                            P2P
+                            {t("netbird.peers_connection_p2p")}
                           </Badge>
                         ) : (
                           <Badge variant="outline" className="bg-warning/15 text-warning hover:bg-warning/20 border-warning/30">
                             <AlertCircle className="size-3" />
-                            Relayed
+                            {t("netbird.peers_connection_relayed")}
                           </Badge>
                         )
                       ) : (
@@ -243,17 +273,17 @@ export function NetBirdPeersCard({
                       {isOnline ? (
                         <Badge variant="outline" className="bg-success/15 text-success hover:bg-success/20 border-success/30">
                           <CheckCircle2Icon className="h-3 w-3" />
-                          Online
+                          {t("netbird.peers_status_online")}
                         </Badge>
                       ) : (
                         <Badge variant="outline" className="bg-muted/50 text-muted-foreground border-muted-foreground/30">
                           <MinusCircleIcon className="h-3 w-3" />
-                          Offline
+                          {t("netbird.peers_status_offline")}
                         </Badge>
                       )}
                     </TableCell>
                     <TableCell className="hidden @md/card:table-cell text-xs text-muted-foreground">
-                      {formatLastSeen(peer.last_seen, isOnline)}
+                      {formatLastSeen(peer.last_seen, isOnline, t)}
                     </TableCell>
                   </MotionTableRow>
                 );
@@ -264,13 +294,12 @@ export function NetBirdPeersCard({
       </CardContent>
       <CardFooter className="flex justify-between items-center">
         <div className="text-xs text-muted-foreground">
-          Showing <strong>{peers.length}</strong>{" "}
-          {peers.length === 1 ? "peer" : "peers"}
+          {t("netbird.peers_showing_count", { count: peers.length })}
         </div>
         {status?.peers_connected !== undefined && status.peers_connected > 0 && (
           <div className="flex items-center gap-1 text-xs text-muted-foreground">
             <CheckCircle2Icon className="size-3 text-success" />
-            {status.peers_connected} connected
+            {t("netbird.peers_connected_footer", { count: status.peers_connected })}
           </div>
         )}
       </CardFooter>
