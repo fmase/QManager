@@ -219,7 +219,7 @@ export function TailscalePeersCard({
                             className="text-xs shrink-0"
                           >
                             <ShieldIcon className="size-3 mr-1" />
-                            Exit Node
+                            {t("tailscale.peers_exit_node_badge")}
                           </Badge>
                         )}
                       </div>
@@ -260,13 +260,15 @@ export function TailscalePeersCard({
       </CardContent>
       <CardFooter className="flex justify-between items-center">
         <div className="text-xs text-muted-foreground">
-          Showing <strong>{peers.length}</strong>{" "}
-          {peers.length === 1 ? "peer" : "peers"}
+          {t("tailscale.peers_showing_count", {
+            count: peers.length,
+            total: peers.length,
+          })}
         </div>
         {hasExitNode && (
           <div className="flex items-center gap-1 text-xs text-muted-foreground">
             <ShieldIcon className="size-3" />
-            Exit node active
+            {t("tailscale.peers_exit_node_active")}
           </div>
         )}
       </CardFooter>
