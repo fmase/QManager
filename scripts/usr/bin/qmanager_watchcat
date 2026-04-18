@@ -706,6 +706,11 @@ main() {
             if [ "$state" != "locked" ]; then
                 qlog_info "Entering LOCKED state (maintenance)"
                 state="locked"
+                # If we were mid-recovery, clear the suppression flag so events resume.
+                # Any active recovery is abandoned; the lock holder owns the modem.
+                rm -f "$RECOVERY_FLAG"
+                current_tier=0
+                failure_counter=0
             fi
             write_state
             sleep "$CFG_CHECK_INTERVAL"
