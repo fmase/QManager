@@ -10,7 +10,6 @@ import { TbCircleCheckFilled, TbCircleXFilled } from "react-icons/tb";
 import type { NetworkEvent, EventSeverity } from "@/types/modem-status";
 import { formatTimeAgo } from "@/types/modem-status";
 import { useRecentActivities } from "@/hooks/use-recent-activities";
-import { EVENT_LABELS } from "@/constants/network-events";
 import { useTranslation } from "react-i18next";
 
 import {
@@ -43,7 +42,8 @@ const rowVariants = {
 
 // --- Single event row ---
 function EventRow({ event }: { event: NetworkEvent }) {
-  const label = EVENT_LABELS[event.type] ?? event.type;
+  const { t: tEvents } = useTranslation("events");
+  const label = tEvents(`type.${event.type}`, { defaultValue: event.type });
   const timeAgo = formatTimeAgo(event.timestamp);
 
   return (
