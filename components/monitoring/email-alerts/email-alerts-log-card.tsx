@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect, useRef } from "react";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 import { authFetch } from "@/lib/auth-fetch";
 
 import {
@@ -58,6 +59,7 @@ interface EmailAlertsLogCardProps {
 }
 
 const EmailAlertsLogCard = ({ refreshKey }: EmailAlertsLogCardProps) => {
+  const { t } = useTranslation("monitoring");
   const [entries, setEntries] = useState<EmailLogEntry[]>([]);
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
@@ -102,14 +104,14 @@ const EmailAlertsLogCard = ({ refreshKey }: EmailAlertsLogCardProps) => {
           setTotal(data.total);
           setLastFetched(new Date());
         } else {
-          const msg = data.error || "Failed to load email log";
+          const msg = data.error || t("email_alerts.log_error_title");
           setFetchError(msg);
           if (mode !== "silent") toast.error(msg);
         }
       } catch (err) {
         if (controller.signal.aborted) return;
         const msg =
-          err instanceof Error ? err.message : "Failed to load email alert log";
+          err instanceof Error ? err.message : t("email_alerts.log_error_title");
         setFetchError(msg);
         if (mode !== "silent") toast.error(msg);
       } finally {
@@ -119,7 +121,7 @@ const EmailAlertsLogCard = ({ refreshKey }: EmailAlertsLogCardProps) => {
         }
       }
     },
-    [],
+    [t],
   );
 
   useEffect(() => {
@@ -138,9 +140,9 @@ const EmailAlertsLogCard = ({ refreshKey }: EmailAlertsLogCardProps) => {
     return (
       <Card className="@container/card">
         <CardHeader>
-          <CardTitle>Alert Log</CardTitle>
+          <CardTitle>{t("email_alerts.log_card_title")}</CardTitle>
           <CardDescription>
-            History of sent and failed email alerts.
+            {t("email_alerts.log_card_description")}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -172,15 +174,15 @@ const EmailAlertsLogCard = ({ refreshKey }: EmailAlertsLogCardProps) => {
     return (
       <Card className="@container/card">
         <CardHeader>
-          <CardTitle>Alert Log</CardTitle>
+          <CardTitle>{t("email_alerts.log_card_title")}</CardTitle>
           <CardDescription>
-            History of sent and failed email alerts.
+            {t("email_alerts.log_card_description")}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <Alert variant="destructive">
             <AlertCircle className="size-4" />
-            <AlertTitle>Failed to load alert log</AlertTitle>
+            <AlertTitle>{t("email_alerts.log_error_title")}</AlertTitle>
             <AlertDescription>
               <p>{fetchError}</p>
               <Button
@@ -190,7 +192,7 @@ const EmailAlertsLogCard = ({ refreshKey }: EmailAlertsLogCardProps) => {
                 onClick={() => fetchLog("initial")}
               >
                 <RefreshCcwIcon className="size-3.5" />
-                Retry
+                {t("actions.retry", { ns: "common" })}
               </Button>
             </AlertDescription>
           </Alert>
@@ -205,15 +207,15 @@ const EmailAlertsLogCard = ({ refreshKey }: EmailAlertsLogCardProps) => {
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle>Alert Log</CardTitle>
+            <CardTitle>{t("email_alerts.log_card_title")}</CardTitle>
             <CardDescription>
-              History of sent and failed email alerts.
+              {t("email_alerts.log_card_description")}
             </CardDescription>
           </div>
           <Button
             variant="outline"
             size="icon"
-            aria-label="Refresh alert log"
+            aria-label={t("email_alerts.log_aria_refresh")}
             disabled={isRefreshing}
             onClick={() => fetchLog("refresh")}
           >
@@ -229,14 +231,14 @@ const EmailAlertsLogCard = ({ refreshKey }: EmailAlertsLogCardProps) => {
             <TableHeader>
               <TableRow>
                 <TableHead scope="col" className="whitespace-nowrap">
-                  Timestamp
+                  {t("email_alerts.log_header_timestamp")}
                 </TableHead>
-                <TableHead scope="col">Trigger</TableHead>
+                <TableHead scope="col">{t("email_alerts.log_header_trigger")}</TableHead>
                 <TableHead scope="col" className="w-20">
-                  Status
+                  {t("email_alerts.log_header_status")}
                 </TableHead>
                 <TableHead scope="col" className="hidden @md/card:table-cell">
-                  Recipient
+                  {t("email_alerts.log_header_recipient")}
                 </TableHead>
               </TableRow>
             </TableHeader>
@@ -247,15 +249,14 @@ const EmailAlertsLogCard = ({ refreshKey }: EmailAlertsLogCardProps) => {
                     <div className="flex flex-col items-center gap-2">
                       <MailIcon className="size-8 text-muted-foreground" />
                       <p className="text-sm text-muted-foreground">
-                        No alerts sent yet
+                        {t("email_alerts.log_empty_title")}
                       </p>
                       <div className="grid gap-1">
                         <p className="text-xs text-muted-foreground/70 ">
-                          Alerts appear here when your connection drops past the
-                          configured threshold.
+                          {t("email_alerts.log_empty_hint_1")}
                         </p>
                         <p className="text-xs text-muted-foreground/70">
-                          Use Send Test Email to verify your setup.
+                          {t("email_alerts.log_empty_hint_2")}
                         </p>
                       </div>
                     </div>
@@ -286,12 +287,12 @@ const EmailAlertsLogCard = ({ refreshKey }: EmailAlertsLogCardProps) => {
                       {entry.status === "sent" ? (
                         <Badge variant="outline" className="bg-success/15 text-success hover:bg-success/20 border-success/30">
                           <CheckCircle2Icon className="h-3 w-3" />
-                          Sent
+                          {t("email_alerts.log_badge_sent")}
                         </Badge>
                       ) : (
                         <Badge variant="outline" className="bg-destructive/15 text-destructive hover:bg-destructive/20 border-destructive/30">
                           <XCircleIcon className="h-3 w-3" />
-                          Failed
+                          {t("email_alerts.log_badge_failed")}
                         </Badge>
                       )}
                     </TableCell>
@@ -308,13 +309,12 @@ const EmailAlertsLogCard = ({ refreshKey }: EmailAlertsLogCardProps) => {
       {entries.length > 0 && (
         <CardFooter className="flex flex-col gap-1 @xs/card:flex-row @xs/card:justify-between @xs/card:items-center">
           <div className="text-xs text-muted-foreground">
-            Showing <strong>{entries.length}</strong> of{" "}
-            <strong>{total}</strong> entries
+            {t("email_alerts.log_showing_count", { count: total, shown: entries.length, total })}
           </div>
           {lastFetched && (
             <div className="flex items-center gap-1 text-xs text-muted-foreground">
               <Clock className="size-3 shrink-0" />
-              Last updated: {lastFetched.toLocaleTimeString()}
+              {t("email_alerts.log_last_updated", { time: lastFetched.toLocaleTimeString() })}
             </div>
           )}
         </CardFooter>
