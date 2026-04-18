@@ -107,7 +107,7 @@ const EthernetStatusCard = () => {
         setIsLoading(false);
       }
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     fetchStatus();
@@ -215,7 +215,9 @@ const EthernetStatusCard = () => {
 
   const formatAutoNeg = (autoNeg: string) => {
     if (!autoNeg || autoNeg === "Unknown") return "N/A";
-    return autoNeg === "on" ? "Active" : "Inactive";
+    return autoNeg === "on"
+      ? t("shared.status_active")
+      : t("shared.status_inactive");
   };
 
   // ---------------------------------------------------------------------------
