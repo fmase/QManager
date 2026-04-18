@@ -4,15 +4,18 @@ import enDashboard from "@/public/locales/en/dashboard.json";
 import enOnboarding from "@/public/locales/en/onboarding.json";
 import enSystemSettings from "@/public/locales/en/system-settings.json";
 import enLocalNetwork from "@/public/locales/en/local-network.json";
+import enMonitoring from "@/public/locales/en/monitoring.json";
+import enEvents from "@/public/locales/en/events.json";
 import zhCNCommon from "@/public/locales/zh-CN/common.json";
 import zhCNSidebar from "@/public/locales/zh-CN/sidebar.json";
 import zhCNDashboard from "@/public/locales/zh-CN/dashboard.json";
 import zhCNOnboarding from "@/public/locales/zh-CN/onboarding.json";
 import zhCNSystemSettings from "@/public/locales/zh-CN/system-settings.json";
 import zhCNLocalNetwork from "@/public/locales/zh-CN/local-network.json";
+import zhCNMonitoring from "@/public/locales/zh-CN/monitoring.json";
+import zhCNEvents from "@/public/locales/zh-CN/events.json";
 
 // Resources for i18next. Every bundled language must declare every namespace.
-// New namespaces added in a future plan (cellular, monitoring, etc.) get wired here.
 export const resources = {
   en: {
     common: enCommon,
@@ -21,6 +24,8 @@ export const resources = {
     onboarding: enOnboarding,
     "system-settings": enSystemSettings,
     "local-network": enLocalNetwork,
+    monitoring: enMonitoring,
+    events: enEvents,
   },
   "zh-CN": {
     common: zhCNCommon,
@@ -29,6 +34,8 @@ export const resources = {
     onboarding: zhCNOnboarding,
     "system-settings": zhCNSystemSettings,
     "local-network": zhCNLocalNetwork,
+    monitoring: zhCNMonitoring,
+    events: zhCNEvents,
   },
 } as const;
 
