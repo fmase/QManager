@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 
 import {
   Card,
@@ -45,6 +46,7 @@ interface SmsAlertsSettingsCardProps {
 }
 
 const SmsAlertsSettingsCard = ({ onTestSmsSent }: SmsAlertsSettingsCardProps) => {
+  const { t } = useTranslation("monitoring");
   const {
     settings,
     isLoading,
@@ -73,7 +75,7 @@ const SmsAlertsSettingsCard = ({ onTestSmsSent }: SmsAlertsSettingsCardProps) =>
   // --- Validation ------------------------------------------------------------
   const phoneError =
     recipientPhone && !PHONE_REGEX.test(recipientPhone)
-      ? "Include country code, e.g. +14155551234"
+      ? t("sms_alerts.validation_phone")
       : null;
 
   const thresholdError =
@@ -81,7 +83,7 @@ const SmsAlertsSettingsCard = ({ onTestSmsSent }: SmsAlertsSettingsCardProps) =>
     (isNaN(Number(thresholdMinutes)) ||
       Number(thresholdMinutes) < 1 ||
       Number(thresholdMinutes) > 60)
-      ? "Duration must be 1\u201360 minutes"
+      ? t("sms_alerts.validation_threshold")
       : null;
 
   const hasValidationErrors = !!(phoneError || thresholdError);
@@ -114,18 +116,18 @@ const SmsAlertsSettingsCard = ({ onTestSmsSent }: SmsAlertsSettingsCardProps) =>
     const success = await saveSettings(payload);
     if (success) {
       markSaved();
-      toast.success("SMS alert settings saved");
+      toast.success(t("sms_alerts.toast_save_success"));
     } else {
-      toast.error(error || "Failed to save SMS alert settings");
+      toast.error(error || t("sms_alerts.toast_save_error"));
     }
   };
 
   const handleSendTest = async () => {
     const success = await sendTestSms();
     if (success) {
-      toast.success("Test SMS sent successfully");
+      toast.success(t("sms_alerts.toast_test_success"));
     } else {
-      toast.error(error || "Failed to send test SMS — check your configuration");
+      toast.error(error || t("sms_alerts.toast_test_error"));
     }
     onTestSmsSent?.();
   };
@@ -143,9 +145,9 @@ const SmsAlertsSettingsCard = ({ onTestSmsSent }: SmsAlertsSettingsCardProps) =>
     return (
       <Card className="@container/card">
         <CardHeader>
-          <CardTitle>SMS Alert Settings</CardTitle>
+          <CardTitle>{t("sms_alerts.card_title")}</CardTitle>
           <CardDescription>
-            Sends SMS via your modem&apos;s cellular network.
+            {t("sms_alerts.card_description")}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -168,15 +170,15 @@ const SmsAlertsSettingsCard = ({ onTestSmsSent }: SmsAlertsSettingsCardProps) =>
     return (
       <Card className="@container/card">
         <CardHeader>
-          <CardTitle>SMS Alert Settings</CardTitle>
+          <CardTitle>{t("sms_alerts.card_title")}</CardTitle>
           <CardDescription>
-            Sends SMS via your modem&apos;s cellular network.
+            {t("sms_alerts.card_description")}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <Alert variant="destructive">
             <AlertCircle className="size-4" />
-            <AlertTitle>Failed to load settings</AlertTitle>
+            <AlertTitle>{t("sms_alerts.error_load_settings")}</AlertTitle>
             <AlertDescription>
               <p>{error}</p>
               <Button
@@ -186,7 +188,7 @@ const SmsAlertsSettingsCard = ({ onTestSmsSent }: SmsAlertsSettingsCardProps) =>
                 onClick={() => refresh()}
               >
                 <RefreshCcwIcon className="size-3.5" />
-                Retry
+                {t("actions.retry", { ns: "common" })}
               </Button>
             </AlertDescription>
           </Alert>
@@ -199,9 +201,9 @@ const SmsAlertsSettingsCard = ({ onTestSmsSent }: SmsAlertsSettingsCardProps) =>
   return (
     <Card className="@container/card">
       <CardHeader>
-        <CardTitle>SMS Alert Settings</CardTitle>
+        <CardTitle>{t("sms_alerts.card_title")}</CardTitle>
         <CardDescription>
-          Sends SMS via your modem&apos;s cellular network.
+          {t("sms_alerts.card_description")}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -211,7 +213,7 @@ const SmsAlertsSettingsCard = ({ onTestSmsSent }: SmsAlertsSettingsCardProps) =>
               {/* Enable toggle */}
               <Field orientation="horizontal" className="w-fit">
                 <FieldLabel htmlFor="sms-alerts-enabled">
-                  Enable SMS Alerts
+                  {t("sms_alerts.enable_label")}
                 </FieldLabel>
                 <Switch
                   id="sms-alerts-enabled"
@@ -223,13 +225,13 @@ const SmsAlertsSettingsCard = ({ onTestSmsSent }: SmsAlertsSettingsCardProps) =>
               {/* Recipient phone */}
               <Field>
                 <FieldLabel htmlFor="recipient-phone">
-                  Recipient Phone
+                  {t("sms_alerts.recipient_phone_label")}
                 </FieldLabel>
                 <Input
                   id="recipient-phone"
                   type="tel"
                   inputMode="tel"
-                  placeholder="+14155551234"
+                  placeholder={t("sms_alerts.recipient_phone_placeholder")}
                   className="max-w-sm font-mono"
                   value={recipientPhone}
                   onChange={(e) => setRecipientPhone(e.target.value)}
@@ -247,7 +249,7 @@ const SmsAlertsSettingsCard = ({ onTestSmsSent }: SmsAlertsSettingsCardProps) =>
                   </FieldError>
                 ) : (
                   <FieldDescription id="recipient-phone-desc">
-                    Include the country code with a leading +, e.g. +14155551234.
+                    {t("sms_alerts.recipient_phone_description")}
                   </FieldDescription>
                 )}
               </Field>
@@ -255,14 +257,14 @@ const SmsAlertsSettingsCard = ({ onTestSmsSent }: SmsAlertsSettingsCardProps) =>
               {/* Threshold duration */}
               <Field>
                 <FieldLabel htmlFor="sms-threshold-minutes">
-                  Alert After (minutes)
+                  {t("sms_alerts.threshold_label")}
                 </FieldLabel>
                 <Input
                   id="sms-threshold-minutes"
                   type="number"
                   min="1"
                   max="60"
-                  placeholder="5"
+                  placeholder={t("sms_alerts.threshold_placeholder")}
                   className="max-w-sm"
                   value={thresholdMinutes}
                   onChange={(e) => setThresholdMinutes(e.target.value)}
@@ -279,8 +281,7 @@ const SmsAlertsSettingsCard = ({ onTestSmsSent }: SmsAlertsSettingsCardProps) =>
                   </FieldError>
                 ) : (
                   <FieldDescription id="sms-threshold-desc">
-                    How long the connection must be down before an alert is
-                    sent. Prevents alerts for brief, transient outages.
+                    {t("sms_alerts.threshold_description")}
                   </FieldDescription>
                 )}
               </Field>
@@ -304,19 +305,19 @@ const SmsAlertsSettingsCard = ({ onTestSmsSent }: SmsAlertsSettingsCardProps) =>
                     {isSendingTest ? (
                       <>
                         <Loader2 className="size-4 animate-spin" />
-                        Sending&hellip;
+                        {t("sms_alerts.test_sms_sending")}
                       </>
                     ) : (
                       <>
                         <SendIcon className="size-4" />
-                        Send Test SMS
+                        {t("sms_alerts.test_sms_button")}
                       </>
                     )}
                   </Button>
                 </div>
                 {isDirty && !canSendTest && isEnabled && (
                   <p className="text-xs text-muted-foreground">
-                    Save your changes before sending a test SMS.
+                    {t("sms_alerts.save_before_test_hint")}
                   </p>
                 )}
               </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { useTranslation } from "react-i18next";
 
 import {
   Card,
@@ -48,6 +49,7 @@ interface SmsAlertsLogCardProps {
 }
 
 const SmsAlertsLogCard = ({ refreshKey }: SmsAlertsLogCardProps) => {
+  const { t } = useTranslation("monitoring");
   const {
     entries,
     total,
@@ -70,9 +72,9 @@ const SmsAlertsLogCard = ({ refreshKey }: SmsAlertsLogCardProps) => {
     return (
       <Card className="@container/card">
         <CardHeader>
-          <CardTitle>Alert Log</CardTitle>
+          <CardTitle>{t("sms_alerts.log_card_title")}</CardTitle>
           <CardDescription>
-            History of sent and failed SMS alerts.
+            {t("sms_alerts.log_card_description")}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -104,15 +106,15 @@ const SmsAlertsLogCard = ({ refreshKey }: SmsAlertsLogCardProps) => {
     return (
       <Card className="@container/card">
         <CardHeader>
-          <CardTitle>Alert Log</CardTitle>
+          <CardTitle>{t("sms_alerts.log_card_title")}</CardTitle>
           <CardDescription>
-            History of sent and failed SMS alerts.
+            {t("sms_alerts.log_card_description")}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <Alert variant="destructive">
             <AlertCircle className="size-4" />
-            <AlertTitle>Failed to load alert log</AlertTitle>
+            <AlertTitle>{t("sms_alerts.log_error_title")}</AlertTitle>
             <AlertDescription>
               <p>{error}</p>
               <Button
@@ -122,7 +124,7 @@ const SmsAlertsLogCard = ({ refreshKey }: SmsAlertsLogCardProps) => {
                 onClick={refresh}
               >
                 <RefreshCcwIcon className="size-3.5" />
-                Retry
+                {t("actions.retry", { ns: "common" })}
               </Button>
             </AlertDescription>
           </Alert>
@@ -137,15 +139,15 @@ const SmsAlertsLogCard = ({ refreshKey }: SmsAlertsLogCardProps) => {
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle>Alert Log</CardTitle>
+            <CardTitle>{t("sms_alerts.log_card_title")}</CardTitle>
             <CardDescription>
-              History of sent and failed SMS alerts.
+              {t("sms_alerts.log_card_description")}
             </CardDescription>
           </div>
           <Button
             variant="outline"
             size="icon"
-            aria-label="Refresh alert log"
+            aria-label={t("sms_alerts.log_aria_refresh")}
             disabled={isRefreshing}
             onClick={refresh}
           >
@@ -161,14 +163,14 @@ const SmsAlertsLogCard = ({ refreshKey }: SmsAlertsLogCardProps) => {
             <TableHeader>
               <TableRow>
                 <TableHead scope="col" className="whitespace-nowrap">
-                  Timestamp
+                  {t("sms_alerts.log_header_timestamp")}
                 </TableHead>
-                <TableHead scope="col">Trigger</TableHead>
+                <TableHead scope="col">{t("sms_alerts.log_header_trigger")}</TableHead>
                 <TableHead scope="col" className="w-20">
-                  Status
+                  {t("sms_alerts.log_header_status")}
                 </TableHead>
                 <TableHead scope="col" className="hidden @md/card:table-cell">
-                  Recipient
+                  {t("sms_alerts.log_header_recipient")}
                 </TableHead>
               </TableRow>
             </TableHeader>
@@ -179,15 +181,14 @@ const SmsAlertsLogCard = ({ refreshKey }: SmsAlertsLogCardProps) => {
                     <div className="flex flex-col items-center gap-2">
                       <MessageSquareIcon className="size-8 text-muted-foreground" />
                       <p className="text-sm text-muted-foreground">
-                        No alerts sent yet
+                        {t("sms_alerts.log_empty_title")}
                       </p>
                       <div className="grid gap-1">
                         <p className="text-xs text-muted-foreground/70">
-                          Alerts appear here when your connection drops past
-                          the configured threshold.
+                          {t("sms_alerts.log_empty_hint_1")}
                         </p>
                         <p className="text-xs text-muted-foreground/70">
-                          Use Send Test SMS to verify your setup.
+                          {t("sms_alerts.log_empty_hint_2")}
                         </p>
                       </div>
                     </div>
@@ -221,7 +222,7 @@ const SmsAlertsLogCard = ({ refreshKey }: SmsAlertsLogCardProps) => {
                           className="bg-success/15 text-success hover:bg-success/20 border-success/30"
                         >
                           <CheckCircle2Icon className="size-3" />
-                          Sent
+                          {t("sms_alerts.log_badge_sent")}
                         </Badge>
                       ) : (
                         <Badge
@@ -229,7 +230,7 @@ const SmsAlertsLogCard = ({ refreshKey }: SmsAlertsLogCardProps) => {
                           className="bg-destructive/15 text-destructive hover:bg-destructive/20 border-destructive/30"
                         >
                           <XCircleIcon className="size-3" />
-                          Failed
+                          {t("sms_alerts.log_badge_failed")}
                         </Badge>
                       )}
                     </TableCell>
@@ -248,13 +249,18 @@ const SmsAlertsLogCard = ({ refreshKey }: SmsAlertsLogCardProps) => {
       {entries.length > 0 && (
         <CardFooter className="flex flex-col gap-1 @xs/card:flex-row @xs/card:justify-between @xs/card:items-center">
           <div className="text-xs text-muted-foreground">
-            Showing <strong>{entries.length}</strong> of{" "}
-            <strong>{total}</strong> entries
+            {t("sms_alerts.log_showing_count", {
+              count: total,
+              shown: entries.length,
+              total,
+            })}
           </div>
           {lastFetched && (
             <div className="flex items-center gap-1 text-xs text-muted-foreground">
               <Clock className="size-3 shrink-0" />
-              Last updated: {lastFetched.toLocaleTimeString()}
+              {t("sms_alerts.log_last_updated", {
+                time: lastFetched.toLocaleTimeString(),
+              })}
             </div>
           )}
         </CardFooter>
