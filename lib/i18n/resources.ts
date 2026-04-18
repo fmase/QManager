@@ -29,4 +29,4 @@ export const resources = {
 } as const;
 
 export const DEFAULT_NAMESPACE = "common" as const;
-export const ALL_NAMESPACES = ["common", "sidebar", "dashboard", "onboarding", "system-settings"] as const;
+export const ALL_NAMESPACES = ["common", "sidebar", "dashboard", "onboarding", "system-settings", "local-network"] as const;
