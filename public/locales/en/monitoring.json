@@ -250,13 +250,17 @@
     "entries_title": "Detailed Entries",
     "entries_description": "Raw ping measurements for the selected timeframe.",
     "entries_header_timestamp": "Timestamp",
+    "entries_header_date": "Date",
+    "entries_header_time": "Time",
     "entries_header_latency": "Latency (ms)",
     "entries_header_packet_loss": "Packet Loss (%)",
     "entries_header_status": "Status",
     "entries_sort_label": "Sort by",
+    "entries_sort_button": "Sort",
     "entries_sort_newest": "Newest first",
     "entries_sort_oldest": "Oldest first",
     "entries_empty": "No ping entries available for this timeframe.",
+    "entries_cell_timeout": "Timeout",
     "entries_error_load": "Failed to load ping entries"
   },
   "tailscale": {

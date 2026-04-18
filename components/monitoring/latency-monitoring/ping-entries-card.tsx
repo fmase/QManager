@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { motion } from "motion/react";
 import {
   Card,
@@ -60,6 +61,7 @@ const PingEntriesCard = ({
   emptyMessage,
   isRealtime,
 }: PingEntriesCardProps) => {
+  const { t } = useTranslation("monitoring");
   const [sortOrder, setSortOrder] = useState<SortOrder>("newest");
 
   const sortedEntries = useMemo(
@@ -71,46 +73,46 @@ const PingEntriesCard = ({
     <Card>
       <CardHeader>
         <div className="flex items-center justify-between">
-          <CardTitle>Detailed Entries</CardTitle>
+          <CardTitle>{t("latency.entries_title")}</CardTitle>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm" className="h-7 gap-1">
                 <ArrowUpDown className="h-3.5 w-3.5" />
                 <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-                  Sort
+                  {t("latency.entries_sort_button")}
                 </span>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuLabel>Sort by</DropdownMenuLabel>
+              <DropdownMenuLabel>{t("latency.entries_sort_label")}</DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuCheckboxItem
                 checked={sortOrder === "newest"}
                 onCheckedChange={() => setSortOrder("newest")}
               >
-                Newest first
+                {t("latency.entries_sort_newest")}
               </DropdownMenuCheckboxItem>
               <DropdownMenuCheckboxItem
                 checked={sortOrder === "oldest"}
                 onCheckedChange={() => setSortOrder("oldest")}
               >
-                Oldest first
+                {t("latency.entries_sort_oldest")}
               </DropdownMenuCheckboxItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
         <CardDescription>
-          Individual ping results for the selected time range.
+          {t("latency.entries_description")}
         </CardDescription>
       </CardHeader>
       <CardContent>
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Latency</TableHead>
-              <TableHead>Packet Loss</TableHead>
-              <TableHead>Date</TableHead>
-              <TableHead>Time</TableHead>
+              <TableHead>{t("latency.entries_header_latency")}</TableHead>
+              <TableHead>{t("latency.entries_header_packet_loss")}</TableHead>
+              <TableHead>{t("latency.entries_header_date")}</TableHead>
+              <TableHead>{t("latency.entries_header_time")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -124,7 +126,7 @@ const PingEntriesCard = ({
                 >
                   <TableCell>
                     {isRealtime && !ping.ok
-                      ? "Timeout"
+                      ? t("latency.entries_cell_timeout")
                       : `${ping.latency} ms`}
                   </TableCell>
                   <TableCell>{ping.packet_loss}%</TableCell>

@@ -250,13 +250,17 @@
     "entries_title": "详细记录",
     "entries_description": "所选时间范围内的原始 ping 测量数据。",
     "entries_header_timestamp": "时间戳",
+    "entries_header_date": "日期",
+    "entries_header_time": "时间",
     "entries_header_latency": "延迟 (ms)",
     "entries_header_packet_loss": "丢包 (%)",
     "entries_header_status": "状态",
     "entries_sort_label": "排序方式",
+    "entries_sort_button": "排序",
     "entries_sort_newest": "最新优先",
     "entries_sort_oldest": "最早优先",
     "entries_empty": "此时间范围内暂无 ping 记录。",
+    "entries_cell_timeout": "超时",
     "entries_error_load": "加载 ping 记录失败"
   },
   "tailscale": {
