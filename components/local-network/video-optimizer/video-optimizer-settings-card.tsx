@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useState, useMemo } from "react";
+import { useTranslation, Trans } from "react-i18next";
 import { toast } from "sonner";
 import {
   Card,
@@ -70,12 +71,14 @@ function VerificationDisplay({
   isRunning: boolean;
   serviceRunning: boolean;
 }) {
+  const { t } = useTranslation("local-network");
+
   return (
     <div className="space-y-3">
       <div>
-        <h4 className="text-sm font-medium">Verify Service</h4>
+        <h4 className="text-sm font-medium">{t("video_optimizer.verify_title")}</h4>
         <p className="text-xs text-muted-foreground">
-          Confirm DPI evasion is intercepting traffic for hostlisted domains
+          {t("video_optimizer.verify_description")}
         </p>
       </div>
 
@@ -115,12 +118,12 @@ function VerificationDisplay({
         {isRunning ? (
           <>
             <Loader2 className="animate-spin" />
-            Verifying...
+            {t("video_optimizer.state_verifying")}
           </>
         ) : (
           <>
             <Zap />
-            Verify Service
+            {t("video_optimizer.button_verify_service")}
           </>
         )}
       </Button>
@@ -139,6 +142,7 @@ export default function VideoOptimizerSettingsCard({
   otherActive = false,
   onSaved,
 }: VideoOptimizerSettingsCardProps) {
+  const { t } = useTranslation("local-network");
   const { settings, isLoading, error, refresh } = hook;
 
   const { installResult, runInstall } = hook;
@@ -150,20 +154,19 @@ export default function VideoOptimizerSettingsCard({
     return (
       <Card className="@container/card">
         <CardHeader>
-          <CardTitle>Video Optimizer</CardTitle>
+          <CardTitle>{t("video_optimizer.card_title")}</CardTitle>
           <CardDescription>
-            Bypass carrier video throttling on cellular connections using DPI
-            evasion.
+            {t("video_optimizer.card_description")}
           </CardDescription>
         </CardHeader>
         <CardContent aria-live="polite">
           <Alert variant="destructive">
             <AlertTriangle className="size-4" />
             <AlertDescription className="flex items-center justify-between">
-              <span>Failed to load settings.</span>
+              <span>{t("video_optimizer.error_load_failed")}</span>
               <Button variant="outline" size="sm" onClick={() => refresh()}>
                 <RefreshCcwIcon className="size-3.5" />
-                Retry
+                {t("actions.retry", { ns: "common" })}
               </Button>
             </AlertDescription>
           </Alert>
@@ -177,10 +180,9 @@ export default function VideoOptimizerSettingsCard({
     return (
       <Card className="@container/card">
         <CardHeader>
-          <CardTitle>Video Optimizer</CardTitle>
+          <CardTitle>{t("video_optimizer.card_title")}</CardTitle>
           <CardDescription>
-            Bypass carrier video throttling on cellular connections using DPI
-            evasion.
+            {t("video_optimizer.card_description")}
           </CardDescription>
         </CardHeader>
         <CardContent aria-live="polite">
@@ -188,19 +190,23 @@ export default function VideoOptimizerSettingsCard({
             <PackageIcon className="size-10 text-muted-foreground" />
             <div className="text-center space-y-1.5">
               <p className="text-sm font-medium">
-                The <code>nfqws</code> binary is not installed on this device.
+                {t("video_optimizer.error_binary_not_installed")}
               </p>
               <p className="text-xs text-muted-foreground">
-                Download it automatically from the{" "}
-                <a
-                  href="https://github.com/bol-van/zapret"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="underline underline-offset-2"
-                >
-                  zapret
-                </a>{" "}
-                project.
+                <Trans
+                  i18nKey="video_optimizer.error_download_zapret"
+                  t={t}
+                  components={{
+                    link: (
+                      <a
+                        href="https://github.com/bol-van/zapret"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="underline underline-offset-2"
+                      />
+                    ),
+                  }}
+                />
               </p>
             </div>
 
@@ -245,12 +251,12 @@ export default function VideoOptimizerSettingsCard({
                 {installResult.status === "running" ? (
                   <>
                     <Loader2 className="animate-spin" />
-                    {installResult.message || "Installing..."}
+                    {installResult.message || t("video_optimizer.state_installing")}
                   </>
                 ) : (
                   <>
                     <Download />
-                    Install nfqws
+                    {t("video_optimizer.button_install")}
                   </>
                 )}
               </Button>
@@ -261,7 +267,7 @@ export default function VideoOptimizerSettingsCard({
                 disabled={installResult.status === "running"}
               >
                 <RefreshCcwIcon className="size-3.5" />
-                Check Again
+                {t("video_optimizer.button_check_again")}
               </Button>
             </div>
           </div>
@@ -293,6 +299,7 @@ function VideoOptimizerForm({
   otherActive: boolean;
   onSaved?: () => void;
 }) {
+  const { t } = useTranslation("local-network");
   const {
     settings,
     isSaving,
@@ -320,14 +327,34 @@ function VideoOptimizerForm({
       if (success) {
         markSaved();
         toast.success(
-          isEnabled ? "Video Optimizer enabled" : "Video Optimizer disabled",
+          isEnabled
+            ? t("video_optimizer.toast_success_enabled")
+            : t("video_optimizer.toast_success_disabled"),
         );
         onSaved?.();
       } else {
-        toast.error(error || "Failed to save settings");
+        toast.error(error || t("video_optimizer.toast_error_apply"));
       }
     },
-    [isEnabled, saveSettings, markSaved, error, onSaved],
+    [isEnabled, saveSettings, markSaved, error, onSaved, t],
+  );
+
+  const serviceStats = useMemo(
+    () =>
+      settings
+        ? [
+            { label: t("video_optimizer.stat_uptime"), value: settings.uptime },
+            {
+              label: t("video_optimizer.stat_packets_processed"),
+              value: settings.packets_processed.toLocaleString(),
+            },
+            {
+              label: t("video_optimizer.stat_domains_protected"),
+              value: settings.domains_loaded.toString(),
+            },
+          ]
+        : [],
+    [settings, t],
   );
 
   const canEnable =
@@ -341,11 +368,9 @@ function VideoOptimizerForm({
   return (
     <Card className="@container/card">
       <CardHeader>
-        <CardTitle>Video Optimizer</CardTitle>
+        <CardTitle>{t("video_optimizer.card_title")}</CardTitle>
         <CardDescription>
-          Bypass carrier video throttling on cellular connections using DPI
-          evasion. Some carriers (e.g., T-Mobile) may detect DPI evasion and
-          de-prioritize your connection.
+          {t("video_optimizer.card_description_full")}
         </CardDescription>
       </CardHeader>
       <CardContent aria-live="polite">
@@ -353,15 +378,14 @@ function VideoOptimizerForm({
           <Alert className="border-warning/30 bg-warning/10 text-warning mb-4">
             <AlertTriangle className="size-4" />
             <AlertDescription className="text-warning">
-              Traffic Masquerade is currently active. Disable it first before
-              enabling Video Optimizer.
+              {t("video_optimizer.alert_masquerade_active")}
             </AlertDescription>
           </Alert>
         ) : (
           <Alert className="border-warning/30 bg-warning/10 text-warning mb-4">
             <AlertTriangle className="size-4" />
             <AlertTitle className="text-warning">
-              Experimental Feature
+              {t("video_optimizer.badge_experimental")}
             </AlertTitle>
           </Alert>
         )}
@@ -370,9 +394,7 @@ function VideoOptimizerForm({
           <Alert className="mb-4">
             <AlertTriangle className="size-4" />
             <AlertDescription>
-              Required kernel module not found. Run{" "}
-              <code className="text-xs">opkg install kmod-nft-queue</code> on
-              the device.
+              {t("video_optimizer.alert_kernel_module_missing")}
             </AlertDescription>
           </Alert>
         )}
@@ -384,14 +406,14 @@ function VideoOptimizerForm({
               <div className="flex items-center justify-between">
                 <Field orientation="horizontal" className="w-fit">
                   <FieldLabel htmlFor="dpi-enabled">
-                    Enable Video Optimizer
+                    {t("video_optimizer.label_enable")}
                   </FieldLabel>
                   <Switch
                     id="dpi-enabled"
                     checked={isEnabled}
                     onCheckedChange={setIsEnabled}
                     disabled={!canToggle || isSaving}
-                    aria-label="Enable Video Optimizer"
+                    aria-label={t("video_optimizer.aria_enable")}
                   />
                 </Field>
                 {settings && (
@@ -407,13 +429,7 @@ function VideoOptimizerForm({
               {isRunning && settings && (
                 <>
                   <Separator />
-                  <ServiceStats
-                    stats={[
-                      { label: "Uptime", value: settings.uptime },
-                      { label: "Packets Processed", value: settings.packets_processed.toLocaleString() },
-                      { label: "Domains Protected", value: settings.domains_loaded.toString() },
-                    ]}
-                  />
+                  <ServiceStats stats={serviceStats} />
 
                   <Separator />
 
@@ -444,9 +460,11 @@ function VideoOptimizerForm({
             <Separator className="mt-4" />
             <div className="flex items-center justify-between pt-4">
               <div>
-                <p className="text-sm font-medium">Remove nfqws</p>
+                <p className="text-sm font-medium">
+                  {t("video_optimizer.section_remove_binary")}
+                </p>
                 <p className="text-xs text-muted-foreground">
-                  Uninstall the nfqws binary from this device.
+                  {t("video_optimizer.section_remove_binary_desc")}
                 </p>
               </div>
               <AlertDialog>
@@ -459,42 +477,44 @@ function VideoOptimizerForm({
                     {isUninstalling ? (
                       <>
                         <Loader2 className="size-4 animate-spin" />
-                        Removing…
+                        {t("video_optimizer.state_removing")}
                       </>
                     ) : (
                       <>
                         <Trash2Icon className="size-4" />
-                        Uninstall
+                        {t("video_optimizer.button_uninstall")}
                       </>
                     )}
                   </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent>
                   <AlertDialogHeader>
-                    <AlertDialogTitle>Uninstall nfqws?</AlertDialogTitle>
+                    <AlertDialogTitle>
+                      {t("video_optimizer.dialog_uninstall_title")}
+                    </AlertDialogTitle>
                     <AlertDialogDescription>
-                      This will remove the nfqws binary and disable both Video
-                      Optimizer and Traffic Masquerade. You can reinstall it
-                      later from this page.
+                      {t("video_optimizer.dialog_uninstall_desc")}
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogCancel>
+                      {t("actions.cancel", { ns: "common" })}
+                    </AlertDialogCancel>
                     <AlertDialogAction
                       className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                       onClick={async () => {
                         const success = await runUninstall();
                         if (success) {
-                          toast.success("nfqws uninstalled");
+                          toast.success(t("video_optimizer.toast_uninstall_success"));
                           refresh();
                         } else {
                           toast.error(
-                            error || "Failed to uninstall nfqws",
+                            error || t("video_optimizer.toast_uninstall_error"),
                           );
                         }
                       }}
                     >
-                      Uninstall
+                      {t("video_optimizer.button_uninstall")}
                     </AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>

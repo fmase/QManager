@@ -171,7 +171,7 @@
     "card_description_full": "Bypass carrier video throttling on cellular connections using DPI evasion. Some carriers (e.g., T-Mobile) may detect DPI evasion and de-prioritize your connection.",
     "error_load_failed": "Failed to load settings.",
     "error_binary_not_installed": "The `nfqws` binary is not installed on this device.",
-    "error_download_zapret": "Download it automatically from the zapret project.",
+    "error_download_zapret": "Download it automatically from the <link>zapret</link> project.",
     "badge_experimental": "Experimental Feature",
     "alert_masquerade_active": "Traffic Masquerade is currently active. Disable it first before enabling Video Optimizer.",
     "alert_kernel_module_missing": "Required kernel module not found. Run `opkg install kmod-nft-queue` on the device.",
