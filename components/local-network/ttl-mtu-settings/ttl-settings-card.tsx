@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 
 import {
   Card,
@@ -36,6 +37,7 @@ import { useSimProfiles } from "@/hooks/use-sim-profiles";
 // =============================================================================
 
 const TTLSettingsCard = () => {
+  const { t } = useTranslation("local-network");
   const { data, isLoading, isSaving, error, saveTtlHl } = useTtlSettings();
   const {
     activeProfileId,
@@ -81,11 +83,8 @@ const TTLSettingsCard = () => {
     return (
       <Card className="@container/card">
         <CardHeader>
-          <CardTitle>TTL &amp; Hop Limit Configuration</CardTitle>
-          <CardDescription>
-            Set custom TTL (IPv4) and Hop Limit (IPv6) values applied to
-            outbound packets on the cellular interface.
-          </CardDescription>
+          <CardTitle>{t("ttl.card_title")}</CardTitle>
+          <CardDescription>{t("ttl.card_description")}</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid gap-4">
@@ -131,6 +130,7 @@ function TTLForm({
   isProfileControlled: boolean;
   profileName: string | null;
 }) {
+  const { t } = useTranslation("local-network");
   const { saved, markSaved } = useSaveFlash();
 
   // Form state initialized from data — no sync effect needed
@@ -172,33 +172,26 @@ function TTLForm({
       markSaved();
       toast.success(
         ttl > 0 || hl > 0
-          ? `Applied — TTL: ${ttl}, Hop Limit: ${hl}`
-          : "Custom TTL/Hop Limit disabled",
+          ? t("ttl.toast_success_enabled", { ttl, hl })
+          : t("ttl.toast_success_disabled"),
       );
     } else {
-      toast.error(error || "Failed to apply TTL/Hop Limit settings");
+      toast.error(error || t("ttl.toast_error_apply"));
     }
-  }, [isEnabled, ttlValue, hlValue, saveTtlHl, error, markSaved]);
+  }, [isEnabled, ttlValue, hlValue, saveTtlHl, error, markSaved, t]);
 
   return (
     <Card className="@container/card">
       <CardHeader>
-        <CardTitle>TTL &amp; Hop Limit Configuration</CardTitle>
-        <CardDescription>
-          Set custom TTL (IPv4) and Hop Limit (IPv6) values applied to outbound
-          packets on the cellular interface.
-        </CardDescription>
+        <CardTitle>{t("ttl.card_title")}</CardTitle>
+        <CardDescription>{t("ttl.card_description")}</CardDescription>
       </CardHeader>
       <CardContent>
         {isProfileControlled && (
           <Alert className="mb-4">
             <InfoIcon className="size-4" />
             <AlertDescription>
-              <p>
-                TTL/HL configuration is managed by the{" "}
-                <span className="font-semibold">{profileName}</span> Custom SIM
-                Profile.
-              </p>
+              <p>{t("ttl.alert_profile_override", { profileName })}</p>
             </AlertDescription>
           </Alert>
         )}
@@ -215,7 +208,7 @@ function TTLForm({
               <div className="grid gap-2">
                 <Field orientation="horizontal" className="w-fit">
                   <FieldLabel htmlFor="ttl-setting">
-                    Enable Custom TTL/HL
+                    {t("ttl.label_enable")}
                   </FieldLabel>
                   <Switch
                     id="ttl-setting"
@@ -227,13 +220,13 @@ function TTLForm({
               </div>
 
               <Field>
-                <FieldLabel htmlFor="ttl-value">TTL Value</FieldLabel>
+                <FieldLabel htmlFor="ttl-value">{t("ttl.label_ttl")}</FieldLabel>
                 <Input
                   id="ttl-value"
                   type="number"
                   min="1"
                   max="255"
-                  placeholder="e.g. 64"
+                  placeholder={t("ttl.placeholder_ttl")}
                   className="w-full"
                   value={ttlValue}
                   onChange={(e) => setTtlValue(e.target.value)}
@@ -243,14 +236,14 @@ function TTLForm({
 
               <Field>
                 <FieldLabel htmlFor="hl-value">
-                  Hop Limit (HL) Value
+                  {t("ttl.label_hl")}
                 </FieldLabel>
                 <Input
                   id="hl-value"
                   type="number"
                   min="1"
                   max="255"
-                  placeholder="e.g. 64"
+                  placeholder={t("ttl.placeholder_hl")}
                   className="w-full"
                   value={hlValue}
                   onChange={(e) => setHlValue(e.target.value)}
@@ -260,7 +253,7 @@ function TTLForm({
 
               {isEnabled && !ttlValue && !hlValue && (
                 <FieldError id="ttl-hl-error">
-                  Enter at least a TTL or Hop Limit value
+                  {t("ttl.error_at_least_one")}
                 </FieldError>
               )}
             </FieldGroup>
@@ -270,7 +263,7 @@ function TTLForm({
               type="submit"
               isSaving={isSaving}
               saved={saved}
-              label="Apply"
+              label={t("actions.apply", { ns: "common" })}
               disabled={isProfileControlled || !isDirty}
             />
           </div>

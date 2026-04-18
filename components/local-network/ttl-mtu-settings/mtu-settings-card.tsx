@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 
 import {
   Card,
@@ -32,6 +33,7 @@ import { useMtuSettings } from "@/hooks/use-mtu-settings";
 // =============================================================================
 
 const MTUSettingsCard = () => {
+  const { t } = useTranslation("local-network");
   const { data, isLoading, isSaving, error, saveMtu, disableMtu } =
     useMtuSettings();
 
@@ -39,11 +41,8 @@ const MTUSettingsCard = () => {
     return (
       <Card className="@container/card">
         <CardHeader>
-          <CardTitle>Maximum Transmission Unit (MTU) Configuration</CardTitle>
-          <CardDescription>
-            Set the maximum packet size on the cellular data interface. Lower
-            values can help with fragmentation issues.
-          </CardDescription>
+          <CardTitle>{t("mtu.card_title")}</CardTitle>
+          <CardDescription>{t("mtu.card_description")}</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid gap-4">
@@ -85,6 +84,7 @@ function MTUForm({
   saveMtu: ReturnType<typeof useMtuSettings>["saveMtu"];
   disableMtu: ReturnType<typeof useMtuSettings>["disableMtu"];
 }) {
+  const { t } = useTranslation("local-network");
   const { saved, markSaved } = useSaveFlash();
 
   // Form state initialized from data — no sync effect needed
@@ -121,9 +121,9 @@ function MTUForm({
       const success = await disableMtu();
       if (success) {
         markSaved();
-        toast.success("Custom MTU disabled");
+        toast.success(t("mtu.toast_success_disabled"));
       } else {
-        toast.error(error || "Failed to disable MTU settings");
+        toast.error(error || t("mtu.toast_error_apply"));
       }
       return;
     }
@@ -134,20 +134,17 @@ function MTUForm({
     const success = await saveMtu(mtu);
     if (success) {
       markSaved();
-      toast.success(`MTU set to ${mtu}`);
+      toast.success(t("mtu.toast_success_enabled", { mtu }));
     } else {
-      toast.error(error || "Failed to apply MTU settings");
+      toast.error(error || t("mtu.toast_error_apply"));
     }
-  }, [isEnabled, mtuValue, saveMtu, disableMtu, error, markSaved]);
+  }, [isEnabled, mtuValue, saveMtu, disableMtu, error, markSaved, t]);
 
   return (
     <Card className="@container/card">
       <CardHeader>
-        <CardTitle>Maximum Transmission Unit (MTU) Configuration</CardTitle>
-        <CardDescription>
-          Set the maximum packet size on the cellular data interface. Lower
-          values can help with fragmentation issues.
-        </CardDescription>
+        <CardTitle>{t("mtu.card_title")}</CardTitle>
+        <CardDescription>{t("mtu.card_description")}</CardDescription>
       </CardHeader>
       <CardContent>
         <form
@@ -162,7 +159,7 @@ function MTUForm({
               <div className="grid gap-2">
                 <Field orientation="horizontal" className="w-fit">
                   <FieldLabel htmlFor="mtu-setting">
-                    Enable Custom MTU
+                    {t("mtu.label_enable")}
                   </FieldLabel>
                   <Switch
                     id="mtu-setting"
@@ -173,13 +170,13 @@ function MTUForm({
               </div>
 
               <Field>
-                <FieldLabel htmlFor="mtu-value">MTU Value</FieldLabel>
+                <FieldLabel htmlFor="mtu-value">{t("mtu.label_mtu")}</FieldLabel>
                 <Input
                   id="mtu-value"
                   type="number"
                   min="576"
                   max="9000"
-                  placeholder="e.g. 1500"
+                  placeholder={t("mtu.placeholder_mtu")}
                   className="w-full"
                   value={mtuValue}
                   onChange={(e) => setMtuValue(e.target.value)}
@@ -189,7 +186,7 @@ function MTUForm({
                 />
                 {isMtuInvalid && (
                   <FieldError id="mtu-error">
-                    MTU must be between 576 and 9000
+                    {t("mtu.error_range")}
                   </FieldError>
                 )}
               </Field>
@@ -200,7 +197,7 @@ function MTUForm({
               type="submit"
               isSaving={isSaving}
               saved={saved}
-              label="Apply"
+              label={t("actions.apply", { ns: "common" })}
               disabled={!isDirty}
             />
           </div>
