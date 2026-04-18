@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 
 import { SaveButton, useSaveFlash } from "@/components/ui/save-button";
 import { Button } from "@/components/ui/button";
@@ -28,6 +29,7 @@ import { useDnsSettings } from "@/hooks/use-dns-settings";
 // =============================================================================
 
 const CustomDNSCard = () => {
+  const { t } = useTranslation("local-network");
   const { data, isLoading, isSaving, error, saveDns, refresh } = useDnsSettings();
   const { saved, markSaved } = useSaveFlash();
 
@@ -82,21 +84,21 @@ const CustomDNSCard = () => {
       markSaved();
       toast.success(
         isEnabled
-          ? "Custom DNS applied successfully"
-          : "Reverted to carrier DNS",
+          ? t("dns.toast_success_enabled")
+          : t("dns.toast_success_disabled"),
       );
     } else {
-      toast.error(error || "Failed to apply DNS settings — check connection");
+      toast.error(error || t("dns.toast_error_apply"));
     }
-  }, [data, isEnabled, dns1, dns2, dns3, saveDns, error, markSaved]);
+  }, [data, isEnabled, dns1, dns2, dns3, saveDns, error, markSaved, t]);
 
   // --- Render ----------------------------------------------------------------
   return (
     <Card className="@container/card">
       <CardHeader>
-        <CardTitle>Custom DNS Configuration</CardTitle>
+        <CardTitle>{t("dns.card_title")}</CardTitle>
         <CardDescription>
-          Override carrier DNS servers for all devices on your local network.
+          {t("dns.card_description")}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -110,7 +112,7 @@ const CustomDNSCard = () => {
               className="shrink-0 text-destructive hover:text-destructive"
               onClick={refresh}
             >
-              Retry
+              {t("actions.retry", { ns: "common" })}
             </Button>
           </div>
         )}
@@ -134,7 +136,7 @@ const CustomDNSCard = () => {
             <FieldSet>
               <FieldGroup>
                 <Field orientation="horizontal" className="w-fit">
-                  <FieldLabel htmlFor="custom-dns">Enable Custom DNS</FieldLabel>
+                  <FieldLabel htmlFor="custom-dns">{t("dns.label_enable")}</FieldLabel>
                   <Switch
                     id="custom-dns"
                     checked={isEnabled}
@@ -145,11 +147,11 @@ const CustomDNSCard = () => {
                 <div className="grid @md/card:grid-cols-2 grid-cols-1 grid-flow-row gap-4">
                   <Field>
                     <FieldLabel htmlFor="primary-dns">
-                      Primary DNS Server
+                      {t("dns.label_primary_dns")}
                     </FieldLabel>
                     <Input
                       id="primary-dns"
-                      placeholder="e.g. 8.8.8.8"
+                      placeholder={t("dns.placeholder_primary_dns")}
                       value={dns1}
                       onChange={(e) => setDns1(e.target.value)}
                       disabled={!isEnabled}
@@ -158,11 +160,11 @@ const CustomDNSCard = () => {
 
                   <Field>
                     <FieldLabel htmlFor="secondary-dns">
-                      Secondary DNS Server
+                      {t("dns.label_secondary_dns")}
                     </FieldLabel>
                     <Input
                       id="secondary-dns"
-                      placeholder="e.g. 1.1.1.1"
+                      placeholder={t("dns.placeholder_secondary_dns")}
                       value={dns2}
                       onChange={(e) => setDns2(e.target.value)}
                       disabled={!isEnabled}
@@ -171,14 +173,11 @@ const CustomDNSCard = () => {
 
                   <Field>
                     <FieldLabel htmlFor="tertiary-dns">
-                      Tertiary DNS Server{" "}
-                      <span className="text-muted-foreground font-normal">
-                        (optional)
-                      </span>
+                      {t("dns.label_tertiary_dns")}
                     </FieldLabel>
                     <Input
                       id="tertiary-dns"
-                      placeholder="e.g. 8.8.4.4"
+                      placeholder={t("dns.placeholder_tertiary_dns")}
                       value={dns3}
                       onChange={(e) => setDns3(e.target.value)}
                       disabled={!isEnabled}
@@ -188,7 +187,7 @@ const CustomDNSCard = () => {
 
                 {isEnabled && !dns1 && !dns2 && !dns3 && (
                   <FieldError id="dns-error">
-                    Enter at least one DNS server address
+                    {t("dns.error_at_least_one")}
                   </FieldError>
                 )}
 
@@ -196,7 +195,7 @@ const CustomDNSCard = () => {
                   type="submit"
                   isSaving={isSaving}
                   saved={saved}
-                  label="Apply"
+                  label={t("actions.apply", { ns: "common" })}
                   className="w-fit"
                   disabled={!isDirty || (isEnabled && !dns1 && !dns2 && !dns3)}
                 />
