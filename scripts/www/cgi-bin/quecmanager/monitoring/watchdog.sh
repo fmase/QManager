@@ -61,11 +61,13 @@ validate_int() {
     [ "$val" -ge "$min" ] 2>/dev/null && [ "$val" -le "$max" ] 2>/dev/null
 }
 
-# Reject the request with a 400 + reason, exit the script
+# Reject the request with a structured error and exit.
+# Frontend checks .success === false; HTTP status remains 200 (headers
+# already emitted by cgi_headers at file top — project convention).
 reject_field() {
     local field="$1" reason="$2"
-    printf 'Status: 400\r\nContent-Type: application/json\r\n\r\n'
-    printf '{"error":"invalid_field","field":"%s","reason":"%s"}\n' "$field" "$reason"
+    jq -n --arg field "$field" --arg reason "$reason" \
+        '{success:false, error:"invalid_field", field:$field, reason:$reason}'
     exit 0
 }
 
@@ -223,7 +225,7 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
         if [ -n "$val" ] && [ "$val" != "null" ]; then
             case "$val" in
                 1|2) uci set quecmanager.watchcat.backup_sim_slot="$val" ;;
-                *) reject_field "backup_sim_slot" "must be 1 or 2 or null" ;;
+                *) reject_field "backup_sim_slot" "must be 1 or 2" ;;
             esac
         else
             uci set quecmanager.watchcat.backup_sim_slot=""
