@@ -230,6 +230,11 @@
     "state_restoring": "恢复中…",
     "dialog_restore_title": "恢复默认主机名？",
     "dialog_restore_desc": "这将使用出厂默认的 CDN 主机名替换当前列表。您添加的所有自定义域名将被移除。",
-    "dialog_action_restore": "恢复默认"
+    "dialog_action_restore": "恢复默认",
+    "validation_domain_required": "请输入域名",
+    "validation_domain_invalid_format": "域名格式无效",
+    "validation_domain_needs_dot": "必须至少包含一个点",
+    "validation_domain_too_long": "域名过长（最多 253 个字符）",
+    "validation_domain_duplicate": "域名已在列表中"
   }
 }

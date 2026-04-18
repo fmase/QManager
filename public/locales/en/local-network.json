@@ -230,6 +230,11 @@
     "state_restoring": "Restoring…",
     "dialog_restore_title": "Restore Default Hostnames?",
     "dialog_restore_desc": "This will replace the current list with the factory default CDN hostnames. Any custom domains you added will be removed.",
-    "dialog_action_restore": "Restore Defaults"
+    "dialog_action_restore": "Restore Defaults",
+    "validation_domain_required": "Domain is required",
+    "validation_domain_invalid_format": "Invalid domain format",
+    "validation_domain_needs_dot": "Must contain at least one dot",
+    "validation_domain_too_long": "Domain too long (max 253 chars)",
+    "validation_domain_duplicate": "Domain already in list"
   }
 }
