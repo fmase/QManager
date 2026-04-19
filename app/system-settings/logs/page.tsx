@@ -1,4 +1,4 @@
-import SystemLogsComponent from "@/components/monitoring/logs/system-logs";
+import SystemLogsComponent from "@/components/system-settings/logs/system-logs";
 import React from "react";
 
 const SystemLogsPage = () => {
