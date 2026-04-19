@@ -30,7 +30,7 @@ Each language has the same set of namespace files. Keys are identical across lan
    Use a standard BCP-47 language code for the folder name (`de` for German, `es` for Spanish, `ja` for Japanese, `ar` for Arabic, `zh-CN` for Simplified Chinese, `zh-TW` for Traditional Chinese, etc.).
 3. **Edit every JSON file** in your new directory. Translate the **values** on the right of each `":"`. **Never change the keys** on the left. Keys are identifiers the code uses to find your text.
    - Preserve placeholders like `{{cellId}}` exactly as-is.
-   - Preserve plural-form siblings like `bands_locked` and `bands_locked_plural`.
+   - Preserve plural-form siblings like `bands_locked_one` and `bands_locked_other`. Your language may need more forms (`_zero`, `_two`, `_few`, `_many`) — see the pluralization section below.
    - ARIA keys (ending in `_aria`) are for screen readers. They should describe the action, not label it visually.
 4. **Register the language** in `lib/i18n/available-languages.ts`:
    ```typescript
@@ -58,10 +58,16 @@ Edit the values in the JSON files directly. If you're only fixing typos, `bun ru
 
 - **Tone**: friendly, clear, technical but not jargon-heavy.
 - **Capitalization**: follow your language's sentence-case norms, not English title-case — unless your language uses title-case for UI labels.
-- **Technical terms**: keep product names, protocols, and hardware identifiers literal (e.g., "APN", "IMEI", "LTE", "Tailscale", `AT+CSQ`, `192.168.224.1`). These are not translated.
+- **Technical terms**: keep product names, protocols, and hardware identifiers literal. These are not translated:
+  - AT commands (`AT+CSQ`, `AT+CFUN=1,1`, `AT+QENG="servingcell"`, `AT+GAME`)
+  - Unit codes (`dBm`, `MHz`, `ms`, `Mbps`, `Kbps`)
+  - Identifiers (`APN`, `IMEI`, `ICCID`, `LTE`, `NR5G`, `B3`, `N78`)
+  - IP addresses, phone numbers, MAC addresses, UCI keys
+  - Product and brand names (`Tailscale`, `NetBird`, `QManager`, `OpenWRT`)
+  - Log level tokens (`DEBUG`, `INFO`, `WARN`, `ERROR`)
 - **Punctuation**: use native punctuation (`。` for Chinese, `«…»` for French quotes, non-breaking space before `:` in French).
 - **Placeholders**: `{{variable}}` is replaced at runtime. Move it where it fits grammatically — `"Connected to {{apn}}"` might become `"{{apn}} 已连接"`.
-- **Pluralization**: when you see `foo` and `foo_plural`, both must be translated. Your language may have more plural forms than English — see the [i18next plural docs](https://www.i18next.com/translation-function/plurals) for language-specific suffixes (`_zero`, `_two`, `_few`, `_many`).
+- **Pluralization**: plural keys use `_one` / `_other` suffixes (CLDR-aware, handled natively by i18next v25+ — no ICU plugin needed). Both forms must be translated. Languages that need additional forms can add siblings with `_zero`, `_two`, `_few`, `_many` — see the [i18next plural docs](https://www.i18next.com/translation-function/plurals) for the suffix table per locale.
 
 ## Getting help
 
