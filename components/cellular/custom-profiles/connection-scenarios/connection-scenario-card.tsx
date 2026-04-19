@@ -97,7 +97,7 @@ const ConnectionScenariosCard = () => {
         config: {
           atModeValue: "NR5G",
           mode: t("scenarios.mode_option_nrsa"),
-          optimization: "Latency",
+          optimization: t("scenarios.default_gaming_optimization"),
           lte_bands: "",
           nsa_nr_bands: "",
           sa_nr_bands: "",
@@ -114,7 +114,7 @@ const ConnectionScenariosCard = () => {
         config: {
           atModeValue: "LTE:NR5G",
           mode: t("scenarios.mode_option_nrsa_nsa"),
-          optimization: "Throughput",
+          optimization: t("scenarios.default_streaming_optimization"),
           lte_bands: "",
           nsa_nr_bands: "",
           sa_nr_bands: "",
@@ -264,7 +264,7 @@ const ConnectionScenariosCard = () => {
       config: {
         atModeValue: addMode,
         mode: modeValueToLabel(addMode),
-        optimization: "Custom",
+        optimization: t("scenarios.default_custom_optimization"),
         lte_bands: inputToBands(addLteBands),
         nsa_nr_bands: inputToBands(addNsaNrBands),
         sa_nr_bands: inputToBands(addSaNrBands),
