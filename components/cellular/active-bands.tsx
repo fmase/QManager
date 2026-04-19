@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { motion } from "motion/react";
 import {
   Card,
@@ -123,14 +124,16 @@ const ActiveBandsComponent = ({
   carrierComponents,
   isLoading,
 }: ActiveBandsComponentProps) => {
+  const { t } = useTranslation("cellular");
+
   // Loading state
   if (isLoading) {
     return (
       <Card className="@container/card">
         <CardHeader>
-          <CardTitle>Active Cellular Bands</CardTitle>
+          <CardTitle>{t("core_settings.info.active_bands.card_title")}</CardTitle>
           <CardDescription>
-            Detailed information about the currently active cellular bands.
+            {t("core_settings.info.active_bands.card_description_loading")}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -149,15 +152,14 @@ const ActiveBandsComponent = ({
     return (
       <Card className="@container/card">
         <CardHeader>
-          <CardTitle>Active Cellular Bands</CardTitle>
+          <CardTitle>{t("core_settings.info.active_bands.card_title")}</CardTitle>
           <CardDescription>
-            Detailed information about the currently active cellular bands.
+            {t("core_settings.info.active_bands.card_description_loading")}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground text-center py-6">
-            No active carrier components detected. Carrier aggregation data
-            updates every ~30 seconds.
+            {t("core_settings.info.active_bands.empty")}
           </p>
         </CardContent>
       </Card>
@@ -167,10 +169,11 @@ const ActiveBandsComponent = ({
   return (
     <Card className="@container/card">
       <CardHeader>
-        <CardTitle>Active Cellular Bands</CardTitle>
+        <CardTitle>{t("core_settings.info.active_bands.card_title")}</CardTitle>
         <CardDescription>
-          {components.length} active carrier{components.length !== 1 ? "s" : ""}
-          . Expand each band for detailed signal metrics.
+          {t("core_settings.info.active_bands.card_description", {
+            count: components.length,
+          })}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -226,7 +229,7 @@ const ActiveBandsComponent = ({
                         {/* Signal metrics with progress bars */}
                         <motion.div variants={{ hidden: { opacity: 0, x: -6 }, visible: { opacity: 1, x: 0 } }} transition={{ duration: 0.18, ease: "easeOut" }}>
                           <SignalRow
-                            label="RSRP"
+                            label={t("core_settings.info.active_bands.metrics.rsrp")}
                             value={cc.rsrp}
                             unit="dBm"
                             progress={signalToProgress(cc.rsrp, RSRP_THRESHOLDS)}
@@ -235,7 +238,7 @@ const ActiveBandsComponent = ({
                         </motion.div>
                         <motion.div variants={{ hidden: { opacity: 0, x: -6 }, visible: { opacity: 1, x: 0 } }} transition={{ duration: 0.18, ease: "easeOut" }}>
                           <SignalRow
-                            label="RSRQ"
+                            label={t("core_settings.info.active_bands.metrics.rsrq")}
                             value={cc.rsrq}
                             unit="dB"
                             progress={signalToProgress(cc.rsrq, RSRQ_THRESHOLDS)}
@@ -244,7 +247,11 @@ const ActiveBandsComponent = ({
                         </motion.div>
                         <motion.div variants={{ hidden: { opacity: 0, x: -6 }, visible: { opacity: 1, x: 0 } }} transition={{ duration: 0.18, ease: "easeOut" }}>
                           <SignalRow
-                            label={cc.technology === "NR" ? "SNR" : "SINR"}
+                            label={
+                              cc.technology === "NR"
+                                ? t("core_settings.info.active_bands.metrics.snr")
+                                : t("core_settings.info.active_bands.metrics.sinr")
+                            }
                             value={cc.sinr}
                             unit="dB"
                             progress={signalToProgress(cc.sinr, SINR_THRESHOLDS)}
@@ -253,19 +260,22 @@ const ActiveBandsComponent = ({
                         </motion.div>
                         {cc.technology === "LTE" && cc.rssi !== null && (
                           <motion.div variants={{ hidden: { opacity: 0, x: -6 }, visible: { opacity: 1, x: 0 } }} transition={{ duration: 0.18, ease: "easeOut" }}>
-                            <InfoRow label="RSSI" value={`${cc.rssi} dBm`} />
+                            <InfoRow
+                              label={t("core_settings.info.active_bands.metrics.rssi")}
+                              value={`${cc.rssi} dBm`}
+                            />
                           </motion.div>
                         )}
                         {/* Static info */}
                         <motion.div variants={{ hidden: { opacity: 0, x: -6 }, visible: { opacity: 1, x: 0 } }} transition={{ duration: 0.18, ease: "easeOut" }}>
                           <InfoRow
-                            label="Band Name"
+                            label={t("core_settings.info.active_bands.info.band_name")}
                             value={getBandName(cc.band, cc.technology)}
                           />
                         </motion.div>
                         <motion.div variants={{ hidden: { opacity: 0, x: -6 }, visible: { opacity: 1, x: 0 } }} transition={{ duration: 0.18, ease: "easeOut" }}>
                           <InfoRow
-                            label="UL Frequency"
+                            label={t("core_settings.info.active_bands.info.ul_frequency")}
                             value={
                               cc.earfcn !== null
                                 ? formatFrequency(
@@ -277,7 +287,7 @@ const ActiveBandsComponent = ({
                         </motion.div>
                         <motion.div variants={{ hidden: { opacity: 0, x: -6 }, visible: { opacity: 1, x: 0 } }} transition={{ duration: 0.18, ease: "easeOut" }}>
                           <InfoRow
-                            label="DL Frequency"
+                            label={t("core_settings.info.active_bands.info.dl_frequency")}
                             value={
                               cc.earfcn !== null
                                 ? formatFrequency(
@@ -289,7 +299,7 @@ const ActiveBandsComponent = ({
                         </motion.div>
                         <motion.div variants={{ hidden: { opacity: 0, x: -6 }, visible: { opacity: 1, x: 0 } }} transition={{ duration: 0.18, ease: "easeOut" }}>
                           <InfoRow
-                            label="Bandwidth"
+                            label={t("core_settings.info.active_bands.info.bandwidth")}
                             value={
                               cc.bandwidth_mhz > 0 ? `${cc.bandwidth_mhz} MHz` : "-"
                             }
@@ -297,7 +307,7 @@ const ActiveBandsComponent = ({
                         </motion.div>
                         <motion.div variants={{ hidden: { opacity: 0, x: -6 }, visible: { opacity: 1, x: 0 } }} transition={{ duration: 0.18, ease: "easeOut" }}>
                           <InfoRow
-                            label="PCI"
+                            label={t("core_settings.info.active_bands.info.pci")}
                             value={cc.pci !== null ? String(cc.pci) : "-"}
                           />
                         </motion.div>
