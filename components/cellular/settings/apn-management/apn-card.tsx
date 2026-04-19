@@ -2,6 +2,7 @@
 
 import { useState, useEffect, type FormEvent } from "react";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 import {
   Card,
   CardContent,
@@ -49,6 +50,7 @@ const APNSettingsCard = ({
   isProfileControlled = false,
   profileName = null,
 }: APNSettingsCardProps) => {
+  const { t } = useTranslation("cellular");
   // Form state
   const { saved, markSaved } = useSaveFlash();
   const [selectedCid, setSelectedCid] = useState<string>("");
@@ -126,9 +128,9 @@ const APNSettingsCard = ({
     const success = await onSave(request);
     if (success) {
       markSaved();
-      toast.success("APN settings applied successfully");
+      toast.success(t("core_settings.apn.toast.success"));
     } else {
-      toast.error("Failed to apply APN settings");
+      toast.error(t("core_settings.apn.toast.error"));
     }
   };
 
@@ -148,10 +150,9 @@ const APNSettingsCard = ({
     return (
       <Card className="@container/card">
         <CardHeader>
-          <CardTitle>APN Settings</CardTitle>
+          <CardTitle>{t("core_settings.apn.card.title")}</CardTitle>
           <CardDescription>
-            Configure and manage Access Point Names (APNs) for your cellular
-            connections.
+            {t("core_settings.apn.card.description")}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -189,10 +190,9 @@ const APNSettingsCard = ({
   return (
     <Card className="@container/card">
       <CardHeader>
-        <CardTitle>APN Settings</CardTitle>
+        <CardTitle>{t("core_settings.apn.card.title")}</CardTitle>
         <CardDescription>
-          Configure and manage Access Point Names (APNs) for your cellular
-          connections.
+          {t("core_settings.apn.card.description")}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -201,11 +201,9 @@ const APNSettingsCard = ({
             <InfoIcon className="size-4" />
             <AlertDescription>
               <p>
-                APN settings are managed by the{" "}
-                <span className="font-semibold">
-                  {profileName ?? "active Custom SIM Profile"}
-                </span>
-                .
+                {t("core_settings.apn.managed_by_profile", {
+                  profile_name: profileName ?? t("core_settings.apn.managed_by_profile_fallback"),
+                })}
               </p>
             </AlertDescription>
           </Alert>
@@ -216,10 +214,10 @@ const APNSettingsCard = ({
               <FieldGroup>
                 <div className="grid @md/card:grid-cols-2 grid-cols-1 grid-flow-row gap-4">
                   <Field>
-                    <FieldLabel htmlFor="active-apn">Active APN *</FieldLabel>
+                    <FieldLabel htmlFor="active-apn">{t("core_settings.apn.fields.active_apn.label")}</FieldLabel>
                     <Input
                       id="active-apn"
-                      placeholder="Enter Active APN"
+                      placeholder={t("core_settings.apn.fields.active_apn.placeholder")}
                       value={activeApn}
                       onChange={(e) => setActiveApn(e.target.value)}
                       disabled={isSaving || isProfileControlled}
@@ -229,7 +227,7 @@ const APNSettingsCard = ({
                   </Field>
 
                   <Field>
-                    <FieldLabel>Carrier Preset</FieldLabel>
+                    <FieldLabel>{t("core_settings.apn.fields.carrier_preset.label")}</FieldLabel>
                     <Select
                       value={
                         autoApnPreset ||
@@ -239,10 +237,10 @@ const APNSettingsCard = ({
                       disabled={isSaving || isProfileControlled}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Choose Carrier Preset" />
+                        <SelectValue placeholder={t("core_settings.apn.fields.carrier_preset.placeholder")} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="none">None</SelectItem>
+                        <SelectItem value="none">{t("core_settings.apn.fields.carrier_preset.option_none")}</SelectItem>
                         {MNO_PRESETS.map((p) => (
                           <SelectItem key={p.id} value={p.id}>
                             {p.label}
@@ -255,7 +253,7 @@ const APNSettingsCard = ({
 
                 <div className="grid @md/card:grid-cols-2 grid-cols-1 grid-flow-row gap-4">
                   <Field>
-                    <FieldLabel>Connection Profile</FieldLabel>
+                    <FieldLabel>{t("core_settings.apn.fields.connection_profile.label")}</FieldLabel>
                     <Select
                       value={
                         selectedCid ||
@@ -265,13 +263,16 @@ const APNSettingsCard = ({
                       disabled={isSaving || isProfileControlled}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Choose Connection Profile" />
+                        <SelectValue placeholder={t("core_settings.apn.fields.connection_profile.placeholder")} />
                       </SelectTrigger>
                       <SelectContent>
                         {profiles?.map((p) => (
                           <SelectItem key={p.cid} value={String(p.cid)}>
-                            Profile {p.cid} — {p.apn || "(empty)"}
-                            {p.cid === activeCid ? " (Active)" : ""}
+                            {t("core_settings.apn.fields.connection_profile.option_template", {
+                              cid: p.cid,
+                              apn: p.apn || t("core_settings.apn.fields.connection_profile.option_empty_apn"),
+                            })}
+                            {p.cid === activeCid ? t("core_settings.apn.fields.connection_profile.option_active_suffix") : ""}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -279,7 +280,7 @@ const APNSettingsCard = ({
                   </Field>
 
                   <Field>
-                    <FieldLabel>IP Protocol</FieldLabel>
+                    <FieldLabel>{t("core_settings.apn.fields.ip_protocol.label")}</FieldLabel>
                     <Select
                       value={
                         pdpType ||
@@ -292,14 +293,14 @@ const APNSettingsCard = ({
                       disabled={isSaving || isProfileControlled}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Choose IP Protocol" />
+                        <SelectValue placeholder={t("core_settings.apn.fields.ip_protocol.placeholder")} />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="IPV4V6">
-                          IPv4 + IPv6 (Default)
+                          {t("core_settings.apn.fields.ip_protocol.options.ipv4v6")}
                         </SelectItem>
-                        <SelectItem value="IP">IPv4 Only</SelectItem>
-                        <SelectItem value="IPV6">IPv6 Only</SelectItem>
+                        <SelectItem value="IP">{t("core_settings.apn.fields.ip_protocol.options.ipv4")}</SelectItem>
+                        <SelectItem value="IPV6">{t("core_settings.apn.fields.ip_protocol.options.ipv6")}</SelectItem>
                       </SelectContent>
                     </Select>
                   </Field>
@@ -319,7 +320,7 @@ const APNSettingsCard = ({
               variant="outline"
               onClick={handleReset}
               disabled={isSaving || isProfileControlled}
-              aria-label="Reset to saved values"
+              aria-label={t("core_settings.apn.reset_aria")}
             >
               <RotateCcwIcon />
             </Button>
