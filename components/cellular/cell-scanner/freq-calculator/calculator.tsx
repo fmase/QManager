@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, type KeyboardEvent } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Card,
   CardContent,
@@ -66,7 +67,7 @@ type NRResult = {
 type CalculationResult = LTEResult | NRResult | null;
 
 type ErrorResult = {
-  error: string;
+  errorKey: "error_invalid" | "error_no_band";
 };
 
 type HistoryEntry = {
@@ -163,7 +164,7 @@ const calculateFrequency = (
   const earfcnNum = parseInt(earfcn);
 
   if (isNaN(earfcnNum)) {
-    return { error: "Please enter a valid number" };
+    return { errorKey: "error_invalid" };
   }
 
   if (
@@ -197,6 +198,7 @@ const getInitialHistory = (): HistoryEntry[] => {
 };
 
 const FrequencyCalculator = () => {
+  const { t } = useTranslation("cellular");
   const [earfcn, setEarfcn] = useState<string>("");
   const [result, setResult] = useState<CalculationResult>(null);
   const [error, setError] = useState<string>("");
@@ -220,7 +222,9 @@ const FrequencyCalculator = () => {
 
   const handleCalculate = (): void => {
     if (!earfcn) {
-      setError("Please enter an E/ARFCN value");
+      setError(
+        t("cell_scanner.frequency_calculator.calculator.error_no_input")
+      );
       setResult(null);
       return;
     }
@@ -229,7 +233,7 @@ const FrequencyCalculator = () => {
       const forceType = activeTab === "auto" ? null : activeTab;
       const calculationResult = calculateFrequency(earfcn, forceType);
 
-      if (calculationResult && !("error" in calculationResult)) {
+      if (calculationResult && !("errorKey" in calculationResult)) {
         setResult(calculationResult);
         setError("");
 
@@ -240,16 +244,26 @@ const FrequencyCalculator = () => {
         };
 
         setHistory((prev) => [historyEntry, ...prev.slice(0, 9)]);
-      } else if (calculationResult && "error" in calculationResult) {
-        setError(calculationResult.error);
+      } else if (calculationResult && "errorKey" in calculationResult) {
+        setError(
+          t(
+            `cell_scanner.frequency_calculator.calculator.${calculationResult.errorKey}`
+          )
+        );
         setResult(null);
       } else {
-        setError("Could not identify band for this E/ARFCN value");
+        setError(
+          t("cell_scanner.frequency_calculator.calculator.error_no_band")
+        );
         setResult(null);
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Unknown error";
-      setError("Calculation error: " + errorMessage);
+      setError(
+        t("cell_scanner.frequency_calculator.calculator.error_calculation", {
+          message: errorMessage,
+        })
+      );
       setResult(null);
     }
   };
@@ -273,9 +287,11 @@ const FrequencyCalculator = () => {
       {/* Calculator Card */}
       <Card className="@container/card">
         <CardHeader>
-          <CardTitle>E/ARFCN Calculator</CardTitle>
+          <CardTitle>
+            {t("cell_scanner.frequency_calculator.calculator.title")}
+          </CardTitle>
           <CardDescription>
-            Enter a channel number to calculate frequency and band information.
+            {t("cell_scanner.frequency_calculator.calculator.description")}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -286,30 +302,46 @@ const FrequencyCalculator = () => {
             }
           >
             <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="auto">Auto</TabsTrigger>
-              <TabsTrigger value="lte">LTE</TabsTrigger>
-              <TabsTrigger value="nr">NR</TabsTrigger>
+              <TabsTrigger value="auto">
+                {t("cell_scanner.frequency_calculator.calculator.tabs.auto")}
+              </TabsTrigger>
+              <TabsTrigger value="lte">
+                {t("cell_scanner.frequency_calculator.calculator.tabs.lte")}
+              </TabsTrigger>
+              <TabsTrigger value="nr">
+                {t("cell_scanner.frequency_calculator.calculator.tabs.nr")}
+              </TabsTrigger>
             </TabsList>
           </Tabs>
 
           <div className="space-y-2">
             <Label htmlFor="earfcn">
               {activeTab === "lte"
-                ? "E-ARFCN"
+                ? t(
+                    "cell_scanner.frequency_calculator.calculator.input_label_lte"
+                  )
                 : activeTab === "nr"
-                ? "NR-ARFCN"
-                : "E/ARFCN Value"}
+                  ? t(
+                      "cell_scanner.frequency_calculator.calculator.input_label_nr"
+                    )
+                  : t(
+                      "cell_scanner.frequency_calculator.calculator.input_label_auto"
+                    )}
             </Label>
             <div className="flex gap-2">
               <Input
                 id="earfcn"
                 type="number"
-                placeholder="Enter channel number"
+                placeholder={t(
+                  "cell_scanner.frequency_calculator.calculator.input_placeholder"
+                )}
                 value={earfcn}
                 onChange={(e) => setEarfcn(e.target.value)}
                 onKeyDown={handleKeyDown}
               />
-              <Button onClick={handleCalculate}>Calculate</Button>
+              <Button onClick={handleCalculate}>
+                {t("cell_scanner.frequency_calculator.calculator.calculate")}
+              </Button>
             </div>
           </div>
 
@@ -323,19 +355,37 @@ const FrequencyCalculator = () => {
             <div className="space-y-4">
               <Separator />
               <div className="space-y-3">
-                <h3 className="font-semibold">Result</h3>
+                <h3 className="font-semibold">
+                  {t(
+                    "cell_scanner.frequency_calculator.calculator.result_heading"
+                  )}
+                </h3>
                 <div className="grid grid-cols-2 gap-2 text-sm">
-                  <div className="text-muted-foreground font-semibold">Network Type</div>
+                  <div className="text-muted-foreground font-semibold">
+                    {t(
+                      "cell_scanner.frequency_calculator.calculator.network_type_label"
+                    )}
+                  </div>
                   <div className="font-medium">
                     <Badge variant="default">{result.networkType}</Badge>
                   </div>
 
                   <div className="text-muted-foreground font-semibold">
-                    {result.networkType === "LTE" ? "EARFCN" : "NR-ARFCN"}
+                    {result.networkType === "LTE"
+                      ? t(
+                          "cell_scanner.frequency_calculator.calculator.earfcn_label"
+                        )
+                      : t(
+                          "cell_scanner.frequency_calculator.calculator.nr_arfcn_label"
+                        )}
                   </div>
                   <div className="font-medium">{result.earfcn}</div>
 
-                  <div className="text-muted-foreground font-semibold">Frequency</div>
+                  <div className="text-muted-foreground font-semibold">
+                    {t(
+                      "cell_scanner.frequency_calculator.calculator.frequency_label"
+                    )}
+                  </div>
                   <div className="font-medium">{result.frequency} MHz</div>
                 </div>
               </div>
@@ -343,7 +393,11 @@ const FrequencyCalculator = () => {
               <Separator />
 
               <div className="space-y-3">
-                <h4 className="font-semibold">Possible Operating Bands</h4>
+                <h4 className="font-semibold">
+                  {t(
+                    "cell_scanner.frequency_calculator.calculator.possible_bands_heading"
+                  )}
+                </h4>
                 <div className="space-y-4">
                   {result.possibleBands.map((band, index) => (
                     <div key={index} className="space-y-2">
@@ -357,11 +411,17 @@ const FrequencyCalculator = () => {
                         </span>
                       </div>
                       <div className="grid grid-cols-2 gap-1 text-sm">
-                        <div className="text-muted-foreground font-semibold">Duplex Mode</div>
+                        <div className="text-muted-foreground font-semibold">
+                          {t(
+                            "cell_scanner.frequency_calculator.calculator.duplex_mode_label"
+                          )}
+                        </div>
                         <div className="font-medium">{band.duplexType}</div>
 
                         <div className="text-muted-foreground font-semibold">
-                          Downlink Range
+                          {t(
+                            "cell_scanner.frequency_calculator.calculator.downlink_range_label"
+                          )}
                         </div>
                         <div className="font-medium">
                           {band.dlLow} - {band.dlHigh} MHz
@@ -370,7 +430,9 @@ const FrequencyCalculator = () => {
                         {band.duplexType === "FDD" && (
                           <>
                             <div className="text-muted-foreground font-semibold">
-                              Uplink Range
+                              {t(
+                                "cell_scanner.frequency_calculator.calculator.uplink_range_label"
+                              )}
                             </div>
                             <div className="font-medium">
                               {band.ulLow} - {band.ulHigh} MHz
@@ -380,8 +442,12 @@ const FrequencyCalculator = () => {
 
                         <div className="text-muted-foreground font-semibold">
                           {result.networkType === "LTE"
-                            ? "EARFCN Range"
-                            : "NR-ARFCN Range"}
+                            ? t(
+                                "cell_scanner.frequency_calculator.calculator.earfcn_range_label"
+                              )
+                            : t(
+                                "cell_scanner.frequency_calculator.calculator.nr_arfcn_range_label"
+                              )}
                         </div>
                         <div className="font-medium">
                           {"earfcnRange" in band
@@ -390,7 +456,9 @@ const FrequencyCalculator = () => {
                         </div>
 
                         <div className="text-muted-foreground font-semibold">
-                          DL Frequency
+                          {t(
+                            "cell_scanner.frequency_calculator.calculator.dl_frequency_label"
+                          )}
                         </div>
                         <div className="font-medium">
                           {band.dlFrequency} MHz
@@ -399,7 +467,9 @@ const FrequencyCalculator = () => {
                         {band.duplexType !== "SDL" && (
                           <>
                             <div className="text-muted-foreground font-semibold">
-                              UL Frequency
+                              {t(
+                                "cell_scanner.frequency_calculator.calculator.ul_frequency_label"
+                              )}
                             </div>
                             <div className="font-medium">
                               {band.ulFrequency} MHz
@@ -410,10 +480,14 @@ const FrequencyCalculator = () => {
                         {band.duplexType === "SDL" && (
                           <>
                             <div className="text-muted-foreground font-semibold">
-                              UL Frequency
+                              {t(
+                                "cell_scanner.frequency_calculator.calculator.ul_frequency_label"
+                              )}
                             </div>
                             <div className="font-medium text-muted-foreground">
-                              Downlink Only
+                              {t(
+                                "cell_scanner.frequency_calculator.calculator.downlink_only"
+                              )}
                             </div>
                           </>
                         )}
@@ -422,7 +496,9 @@ const FrequencyCalculator = () => {
                           band.duplexType === "FDD" && (
                             <>
                               <div className="text-muted-foreground font-semibold">
-                                UL EARFCN
+                                {t(
+                                  "cell_scanner.frequency_calculator.calculator.ul_earfcn_label"
+                                )}
                               </div>
                               <div className="font-medium">
                                 {(band as LTEMatchingBand).ulEarfcn}
@@ -436,10 +512,16 @@ const FrequencyCalculator = () => {
               </div>
 
               <div className="text-xs text-muted-foreground">
-                Calculation method:{" "}
+                {t(
+                  "cell_scanner.frequency_calculator.calculator.calculation_method_prefix"
+                )}
                 {result.networkType === "NR"
-                  ? "3GPP TS 38.104 Section 5.4.2.1"
-                  : "3GPP TS 36.101 Section 5.7"}
+                  ? t(
+                      "cell_scanner.frequency_calculator.calculator.calculation_method_nr"
+                    )
+                  : t(
+                      "cell_scanner.frequency_calculator.calculator.calculation_method_lte"
+                    )}
               </div>
             </div>
           )}
@@ -451,15 +533,17 @@ const FrequencyCalculator = () => {
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle>Calculation History</CardTitle>
+              <CardTitle>
+                {t("cell_scanner.frequency_calculator.history.title")}
+              </CardTitle>
               <CardDescription>
-                Your recent calculations are saved locally.
+                {t("cell_scanner.frequency_calculator.history.description")}
               </CardDescription>
             </div>
             {history.length > 0 && (
               <Button variant="destructive" size="sm" onClick={clearHistory}>
                 <Trash2 className="size-4" />
-                Clear
+                {t("cell_scanner.frequency_calculator.history.clear")}
               </Button>
             )}
           </div>
@@ -467,7 +551,7 @@ const FrequencyCalculator = () => {
         <CardContent>
           {history.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
-              No calculation history yet.
+              {t("cell_scanner.frequency_calculator.history.empty")}
             </div>
           ) : (
             <div className="space-y-2">
@@ -486,7 +570,9 @@ const FrequencyCalculator = () => {
                     </div>
                     {entry.possibleBands && (
                       <div className="text-sm font-semibold">
-                        Bands:{" "}
+                        {t(
+                          "cell_scanner.frequency_calculator.history.bands_label"
+                        )}
                         {entry.possibleBands
                           .map((band) =>
                             entry.networkType === "NR"
@@ -499,14 +585,18 @@ const FrequencyCalculator = () => {
                     <div className="text-xs text-muted-foreground">
                       {entry.timestamp
                         ? new Date(entry.timestamp).toLocaleString()
-                        : "No timestamp"}
+                        : t(
+                            "cell_scanner.frequency_calculator.history.no_timestamp"
+                          )}
                     </div>
                   </div>
                   <Button
                     variant="ghost"
                     size="icon"
                     onClick={() => deleteHistoryEntry(entry.id)}
-                    aria-label="Delete history entry"
+                    aria-label={t(
+                      "cell_scanner.frequency_calculator.history.delete_aria"
+                    )}
                     className="h-8 w-8 text-muted-foreground hover:text-foreground"
                   >
                     <X className="size-4" />
