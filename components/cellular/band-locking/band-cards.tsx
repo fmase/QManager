@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { motion } from "motion/react";
 import { SaveButton, useSaveFlash } from "@/components/ui/save-button";
 import {
@@ -72,6 +73,7 @@ const BandCardsComponent = ({
   error,
   disabled = false,
 }: BandCardsProps) => {
+  const { t } = useTranslation("cellular");
   const { saved, markSaved } = useSaveFlash();
 
   // --- Local checkbox state (number set for O(1) lookup) --------------------
@@ -131,27 +133,29 @@ const BandCardsComponent = ({
   const handleLock = async () => {
     const bands = [...checkedBands].sort((a, b) => a - b);
     if (bands.length === 0) {
-      toast.error("Select at least one band to lock");
+      toast.error(t("cell_locking.band_locking.toast.select_one_band"));
       return;
     }
 
+    const categoryLabel = t(`cell_locking.band_locking.card_category_label.${bandCategory}`);
     const success = await onLock(bands);
     if (success) {
       markSaved();
       toast.success(
-        `${title.replace(" Locking", "")} bands locked successfully`,
+        t("cell_locking.band_locking.toast.locked_success", { category_label: categoryLabel }),
       );
     } else {
-      toast.error(error || "Failed to apply band lock");
+      toast.error(error || t("cell_locking.band_locking.toast.lock_error"));
     }
   };
 
   const handleUnlockAll = async () => {
+    const categoryLabel = t(`cell_locking.band_locking.card_category_label.${bandCategory}`);
     const success = await onUnlockAll();
     if (success) {
-      toast.success(`${title.replace(" Locking", "")} bands unlocked`);
+      toast.success(t("cell_locking.band_locking.toast.unlocked_success", { category_label: categoryLabel }));
     } else {
-      toast.error(error || "Failed to unlock bands");
+      toast.error(error || t("cell_locking.band_locking.toast.unlock_error"));
     }
   };
 
@@ -188,7 +192,7 @@ const BandCardsComponent = ({
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground">
-            No supported bands reported by the modem for this category.
+            {t("cell_locking.band_locking.card_empty")}
           </p>
         </CardContent>
       </Card>
@@ -212,7 +216,7 @@ const BandCardsComponent = ({
               className="bg-info/15 text-info hover:bg-info/20 border-info/30"
             >
               <ShieldIcon className="h-3 w-3" />
-              Scenario Controlled
+              {t("cell_locking.band_locking.card_badges.scenario_controlled")}
             </Badge>
           ) : isAllUnlocked ? (
             <Badge
@@ -220,7 +224,7 @@ const BandCardsComponent = ({
               className="bg-success/15 text-success hover:bg-success/20 border-success/30"
             >
               <LockOpenIcon className="h-3 w-3" />
-              All Unlocked
+              {t("cell_locking.band_locking.card_badges.all_unlocked")}
             </Badge>
           ) : (
             <Badge
@@ -228,7 +232,7 @@ const BandCardsComponent = ({
               className="bg-warning/15 text-warning hover:bg-warning/20 border-warning/30"
             >
               <LockIcon className="h-3 w-3" />
-              {currentLockedBands.length} / {supportedBands.length} Bands
+              {t("cell_locking.band_locking.card_badges.bands_locked", { locked: currentLockedBands.length, total: supportedBands.length })}
             </Badge>
           )}
         </div>
@@ -281,7 +285,9 @@ const BandCardsComponent = ({
 
       {/* Screen reader live region for operation results */}
       <div className="sr-only" aria-live="polite" aria-atomic="true">
-        {isLocking ? `Applying ${title.replace(" Locking", "")} band lock…` : ""}
+        {isLocking ? t("cell_locking.band_locking.card_live_region", {
+          category_label: t(`cell_locking.band_locking.card_category_label.${bandCategory}`),
+        }) : ""}
       </div>
 
       <CardFooter className="flex flex-wrap items-center justify-between gap-2 mt-4">
@@ -290,7 +296,7 @@ const BandCardsComponent = ({
             onClick={handleLock}
             isSaving={isLocking}
             saved={saved}
-            label="Lock Selected Bands"
+            label={t("cell_locking.band_locking.card_buttons.lock_selected")}
             disabled={isDisabled || noneSelected || !hasChanges}
           />
           <Button
@@ -298,8 +304,8 @@ const BandCardsComponent = ({
             size="icon"
             onClick={handleUnlockAll}
             disabled={isDisabled || isAllUnlocked}
-            aria-label="Unlock all bands"
-            title="Unlock all bands (reset)"
+            aria-label={t("cell_locking.band_locking.card_buttons.unlock_all_aria")}
+            title={t("cell_locking.band_locking.card_buttons.unlock_all_title")}
           >
             <RotateCcwIcon />
           </Button>
@@ -311,14 +317,14 @@ const BandCardsComponent = ({
             onClick={handleSelectAll}
             disabled={isDisabled}
           >
-            Select All
+            {t("cell_locking.band_locking.card_buttons.select_all")}
           </Button>
           <Button
             variant="outline"
             onClick={handleSelectNone}
             disabled={isDisabled}
           >
-            Deselect All
+            {t("cell_locking.band_locking.card_buttons.deselect_all")}
           </Button>
         </div>
       </CardFooter>

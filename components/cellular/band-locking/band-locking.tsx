@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import BandCardsComponent from "./band-cards";
 import BandSettingsComponent from "./band-settings";
 import { useBandLocking } from "@/hooks/use-band-locking";
@@ -31,30 +32,8 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 //   "owns" RF configuration. Switch to Balanced for manual band control.
 // =============================================================================
 
-/** Band card configuration — static, one entry per card */
-const BAND_CARDS: {
-  category: BandCategory;
-  title: string;
-  description: string;
-}[] = [
-  {
-    category: "lte",
-    title: "LTE Band Locking",
-    description: "Select the LTE bands to lock for your device.",
-  },
-  {
-    category: "nsa_nr5g",
-    title: "NSA Band Locking",
-    description: "Select the 5G NSA bands to lock (5G via LTE anchor).",
-  },
-  {
-    category: "sa_nr5g",
-    title: "SA Band Locking",
-    description: "Select the 5G SA bands to lock (standalone 5G).",
-  },
-];
-
 const BandLockingComponent = () => {
+  const { t } = useTranslation("cellular");
   const { data, isLoading: statusLoading } = useModemStatus();
   const {
     currentBands,
@@ -89,6 +68,13 @@ const BandLockingComponent = () => {
     return activeScenarioId;
   }, [activeScenarioId, isScenarioControlled, customScenarios]);
 
+  // --- Band card definitions (translated) -----------------------------------
+  const bandCards = useMemo(() => [
+    { category: "lte" as BandCategory, title: t("cell_locking.band_locking.cards.lte.title"), description: t("cell_locking.band_locking.cards.lte.description") },
+    { category: "nsa_nr5g" as BandCategory, title: t("cell_locking.band_locking.cards.nsa_nr5g.title"), description: t("cell_locking.band_locking.cards.nsa_nr5g.description") },
+    { category: "sa_nr5g" as BandCategory, title: t("cell_locking.band_locking.cards.sa_nr5g.title"), description: t("cell_locking.band_locking.cards.sa_nr5g.description") },
+  ], [t]);
+
   // --- Derive supported bands from poller boot data -------------------------
   const supportedBands = {
     lte: parseBandString(data?.device.supported_lte_bands),
@@ -105,9 +91,11 @@ const BandLockingComponent = () => {
   return (
     <div className="@container/main mx-auto p-2">
       <div className="mb-6">
-        <h1 className="text-3xl font-bold mb-2">Band Locking</h1>
+        <h1 className="text-3xl font-bold mb-2">
+          {t("cell_locking.band_locking.page.title")}
+        </h1>
         <p className="text-muted-foreground">
-          Restrict which LTE and NR bands the modem can use.
+          {t("cell_locking.band_locking.page.description")}
         </p>
       </div>
 
@@ -116,11 +104,7 @@ const BandLockingComponent = () => {
         <Alert className="mb-4">
           <InfoIcon className="size-4" />
           <AlertDescription>
-            <p>
-              Band configuration is managed by the{" "}
-              <span className="font-semibold">{activeScenarioName}</span>{" "}
-              scenario.
-            </p>
+            <p>{t("cell_locking.band_locking.scenario_override_banner", { scenario_name: activeScenarioName })}</p>
           </AlertDescription>
         </Alert>
       )}
@@ -133,7 +117,7 @@ const BandLockingComponent = () => {
           isLoading={isPageLoading}
           isScenarioControlled={isScenarioControlled}
         />
-        {BAND_CARDS.map(({ category, title, description }) => (
+        {bandCards.map(({ category, title, description }) => (
           <BandCardsComponent
             key={category}
             title={title}
