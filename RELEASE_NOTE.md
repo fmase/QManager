@@ -45,7 +45,9 @@ Your existing tower lock and Signal Failover settings are preserved across the u
 
 Thanks to everyone who tested the Tailscale/Netbird workarounds on mwan3 builds and confirmed the simplification works end-to-end on real hardware. Bug reports and feature requests are always welcome on [GitHub Issues](https://github.com/dr-dolomite/QManager/issues).
 
-If you find QManager useful, consider [sponsoring on GitHub](https://github.com/sponsors/dr-dolomite) or sending GCash via Remitly to **Russel Yasol** (+639544817486).
+If you find QManager useful, consider sponsoring or sending GCash via Remitly to **Russel Yasol** (+639544817486).
+
+<iframe src="https://github.com/sponsors/dr-dolomite/button" title="Sponsor dr-dolomite" height="32" width="114" style="border: 0; border-radius: 6px;"></iframe>
 
 **License:** MIT + Commons Clause
 
