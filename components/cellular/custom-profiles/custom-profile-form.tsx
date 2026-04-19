@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 
 import {
   Field,
@@ -34,7 +35,6 @@ import { toast } from "sonner";
 import type { SimProfile, CurrentModemSettings } from "@/types/sim-profile";
 import type { ProfileFormData } from "@/hooks/use-sim-profiles";
 import {
-  PDP_TYPE_LABELS,
   type PdpType,
 } from "@/types/sim-profile";
 import {
@@ -91,11 +91,22 @@ const CustomProfileFormComponent = ({
   currentSettings,
   onLoadCurrentSettings,
 }: CustomProfileFormProps) => {
+  const { t } = useTranslation("cellular");
+
   const [form, setForm] = useState<ProfileFormData>(DEFAULT_FORM_STATE);
   const [isSaving, setIsSaving] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const isEditing = !!editingProfile;
+
+  const pdpTypeLabels = useMemo<Record<PdpType, string>>(
+    () => ({
+      IP: t("custom_profiles.form.fields.ip_protocol_ipv4"),
+      IPV6: t("custom_profiles.form.fields.ip_protocol_ipv6"),
+      IPV4V6: t("custom_profiles.form.fields.ip_protocol_dual"),
+    }),
+    [t],
+  );
 
   // Derive MNO selection from form.mno — no separate state needed
   const selectedMno = useMemo(() => {
@@ -180,23 +191,23 @@ const CustomProfileFormComponent = ({
     const newErrors: Record<string, string> = {};
 
     if (!form.name.trim()) {
-      newErrors.name = "Profile name is required.";
+      newErrors.name = t("custom_profiles.form.fields.profile_name_required");
     }
 
     if (form.cid < 1 || form.cid > 15) {
-      newErrors.cid = "CID must be 1–15.";
+      newErrors.cid = t("custom_profiles.form.fields.cid_error");
     }
 
     if (form.imei && !/^\d{15}$/.test(form.imei)) {
-      newErrors.imei = "IMEI must be exactly 15 digits.";
+      newErrors.imei = t("custom_profiles.form.fields.imei_error");
     }
 
     if (form.ttl < 0 || form.ttl > 255) {
-      newErrors.ttl = "TTL must be 0–255.";
+      newErrors.ttl = t("custom_profiles.form.fields.ttl_error");
     }
 
     if (form.hl < 0 || form.hl > 255) {
-      newErrors.hl = "HL must be 0–255.";
+      newErrors.hl = t("custom_profiles.form.fields.hl_error");
     }
 
     setErrors(newErrors);
@@ -215,8 +226,8 @@ const CustomProfileFormComponent = ({
     if (result) {
       toast.success(
         isEditing
-          ? "Profile updated successfully."
-          : "Profile created successfully.",
+          ? t("custom_profiles.form.toast.update_success")
+          : t("custom_profiles.form.toast.create_success"),
       );
       if (!isEditing) {
         setForm(DEFAULT_FORM_STATE);
@@ -224,8 +235,8 @@ const CustomProfileFormComponent = ({
     } else {
       toast.error(
         isEditing
-          ? "Failed to update profile."
-          : "Failed to create profile.",
+          ? t("custom_profiles.form.toast.update_error")
+          : t("custom_profiles.form.toast.create_error"),
       );
     }
   };
@@ -243,12 +254,16 @@ const CustomProfileFormComponent = ({
     <Card className="@container/card">
       <CardHeader>
         <CardTitle>
-          {isEditing ? "Edit Profile" : "Create Custom SIM Profile"}
+          {isEditing
+            ? t("custom_profiles.form.edit_title")
+            : t("custom_profiles.form.create_title")}
         </CardTitle>
         <CardDescription>
           {isEditing
-            ? `Editing "${editingProfile?.name}". Update the fields below.`
-            : "Create a custom SIM profile with specific APN, TTL, and IMEI settings."}
+            ? t("custom_profiles.form.edit_description", {
+                name: editingProfile?.name ?? "",
+              })
+            : t("custom_profiles.form.create_description")}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -256,7 +271,7 @@ const CustomProfileFormComponent = ({
           {!isEditing && onLoadCurrentSettings && (
             <Button type="button" size="sm" onClick={onLoadCurrentSettings}>
               <DownloadIcon className="size-4" />
-              Load Current SIM
+              {t("custom_profiles.form.load_current_button")}
             </Button>
           )}
         </div>
@@ -267,24 +282,36 @@ const CustomProfileFormComponent = ({
               {/* --- Profile Identity --- */}
               <div className="grid grid-cols-1 @md/card:grid-cols-2 gap-4">
                 <Field>
-                  <FieldLabel htmlFor="profileName">Profile Name *</FieldLabel>
+                  <FieldLabel htmlFor="profileName">
+                    {t("custom_profiles.form.fields.profile_name_label")} *
+                  </FieldLabel>
                   <Input
                     id="profileName"
                     type="text"
-                    placeholder="My LTE Profile"
+                    placeholder={t(
+                      "custom_profiles.form.fields.profile_name_placeholder",
+                    )}
                     value={form.name}
                     onChange={(e) => updateField("name", e.target.value)}
-                    aria-describedby={errors.name ? "profileName-error" : undefined}
+                    aria-describedby={
+                      errors.name ? "profileName-error" : undefined
+                    }
                   />
-                  {errors.name && <FieldError id="profileName-error">{errors.name}</FieldError>}
+                  {errors.name && (
+                    <FieldError id="profileName-error">{errors.name}</FieldError>
+                  )}
                 </Field>
 
                 <Field>
-                  <FieldLabel htmlFor="simIccid">SIM ICCID</FieldLabel>
+                  <FieldLabel htmlFor="simIccid">
+                    {t("custom_profiles.form.fields.sim_iccid_label")}
+                  </FieldLabel>
                   <Input
                     id="simIccid"
                     type="text"
-                    placeholder="Auto-filled from current SIM"
+                    placeholder={t(
+                      "custom_profiles.form.fields.sim_iccid_placeholder",
+                    )}
                     value={form.sim_iccid}
                     onChange={(e) => updateField("sim_iccid", e.target.value)}
                   />
@@ -293,10 +320,16 @@ const CustomProfileFormComponent = ({
 
               <div className="grid grid-cols-1 @md/card:grid-cols-2 gap-4">
                 <Field>
-                  <FieldLabel>Mobile Network Operator</FieldLabel>
+                  <FieldLabel>
+                    {t("custom_profiles.form.fields.mno_label")}
+                  </FieldLabel>
                   <Select value={selectedMno} onValueChange={handleMnoChange}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select carrier…" />
+                      <SelectValue
+                        placeholder={t(
+                          "custom_profiles.form.fields.mno_placeholder",
+                        )}
+                      />
                     </SelectTrigger>
                     <SelectContent>
                       {MNO_PRESETS.map((preset) => (
@@ -304,17 +337,23 @@ const CustomProfileFormComponent = ({
                           {preset.label}
                         </SelectItem>
                       ))}
-                      <SelectItem value={MNO_CUSTOM_ID}>Custom</SelectItem>
+                      <SelectItem value={MNO_CUSTOM_ID}>
+                        {t("custom_profiles.form.fields.mno_custom")}
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 </Field>
 
                 <Field>
-                  <FieldLabel htmlFor="apnName">APN Name</FieldLabel>
+                  <FieldLabel htmlFor="apnName">
+                    {t("custom_profiles.form.fields.apn_name_label")}
+                  </FieldLabel>
                   <Input
                     id="apnName"
                     type="text"
-                    placeholder="internet"
+                    placeholder={t(
+                      "custom_profiles.form.fields.apn_name_placeholder",
+                    )}
                     value={form.apn_name}
                     onChange={(e) => updateField("apn_name", e.target.value)}
                   />
@@ -323,7 +362,9 @@ const CustomProfileFormComponent = ({
 
               <div className="grid grid-cols-1 @md/card:grid-cols-2 gap-4">
                 <Field>
-                  <FieldLabel>IP Protocol</FieldLabel>
+                  <FieldLabel>
+                    {t("custom_profiles.form.fields.ip_protocol_label")}
+                  </FieldLabel>
                   <Select
                     value={form.pdp_type}
                     onValueChange={(v) => updateField("pdp_type", v)}
@@ -333,7 +374,7 @@ const CustomProfileFormComponent = ({
                     </SelectTrigger>
                     <SelectContent>
                       {(
-                        Object.entries(PDP_TYPE_LABELS) as [PdpType, string][]
+                        Object.entries(pdpTypeLabels) as [PdpType, string][]
                       ).map(([value, label]) => (
                         <SelectItem key={value} value={value}>
                           {label}
@@ -343,7 +384,9 @@ const CustomProfileFormComponent = ({
                   </Select>
                 </Field>
                 <Field>
-                  <FieldLabel htmlFor="apnCid">Profile Slot (CID)</FieldLabel>
+                  <FieldLabel htmlFor="apnCid">
+                    {t("custom_profiles.form.fields.cid_label")}
+                  </FieldLabel>
                   <Input
                     id="apnCid"
                     type="number"
@@ -355,27 +398,37 @@ const CustomProfileFormComponent = ({
                     }
                     aria-describedby={errors.cid ? "apnCid-error" : undefined}
                   />
-                  {errors.cid && <FieldError id="apnCid-error">{errors.cid}</FieldError>}
+                  {errors.cid && (
+                    <FieldError id="apnCid-error">{errors.cid}</FieldError>
+                  )}
                 </Field>
               </div>
 
               <Field>
-                <FieldLabel htmlFor="imei">Preferred IMEI</FieldLabel>
+                <FieldLabel htmlFor="imei">
+                  {t("custom_profiles.form.fields.imei_label")}
+                </FieldLabel>
                 <Input
                   id="imei"
                   type="text"
-                  placeholder="Leave blank to keep current IMEI"
+                  placeholder={t(
+                    "custom_profiles.form.fields.imei_placeholder",
+                  )}
                   maxLength={15}
                   value={form.imei}
                   onChange={(e) => updateField("imei", e.target.value)}
                   aria-describedby={errors.imei ? "imei-error" : undefined}
                 />
-                {errors.imei && <FieldError id="imei-error">{errors.imei}</FieldError>}
+                {errors.imei && (
+                  <FieldError id="imei-error">{errors.imei}</FieldError>
+                )}
               </Field>
 
               <div className="grid grid-cols-1 @md/card:grid-cols-2 gap-4">
                 <Field>
-                  <FieldLabel htmlFor="ttl">TTL Value</FieldLabel>
+                  <FieldLabel htmlFor="ttl">
+                    {t("custom_profiles.form.fields.ttl_label")}
+                  </FieldLabel>
                   <Input
                     id="ttl"
                     type="number"
@@ -387,10 +440,14 @@ const CustomProfileFormComponent = ({
                     }
                     aria-describedby={errors.ttl ? "ttl-error" : undefined}
                   />
-                  {errors.ttl && <FieldError id="ttl-error">{errors.ttl}</FieldError>}
+                  {errors.ttl && (
+                    <FieldError id="ttl-error">{errors.ttl}</FieldError>
+                  )}
                 </Field>
                 <Field>
-                  <FieldLabel htmlFor="hl">Hop Limit</FieldLabel>
+                  <FieldLabel htmlFor="hl">
+                    {t("custom_profiles.form.fields.hl_label")}
+                  </FieldLabel>
                   <Input
                     id="hl"
                     type="number"
@@ -402,7 +459,9 @@ const CustomProfileFormComponent = ({
                     }
                     aria-describedby={errors.hl ? "hl-error" : undefined}
                   />
-                  {errors.hl && <FieldError id="hl-error">{errors.hl}</FieldError>}
+                  {errors.hl && (
+                    <FieldError id="hl-error">{errors.hl}</FieldError>
+                  )}
                 </Field>
               </div>
 
@@ -410,7 +469,9 @@ const CustomProfileFormComponent = ({
               <div className="flex gap-3 pt-2">
                 <Button type="submit" disabled={isSaving}>
                   {isSaving && <Spinner className="size-4" />}
-                  {isEditing ? "Update Profile" : "Create Profile"}
+                  {isEditing
+                    ? t("custom_profiles.form.buttons.update_submit")
+                    : t("custom_profiles.form.buttons.create_submit")}
                 </Button>
                 <Button
                   type="button"
@@ -418,7 +479,9 @@ const CustomProfileFormComponent = ({
                   onClick={handleReset}
                   disabled={isSaving}
                 >
-                  {isEditing ? "Cancel" : "Reset"}
+                  {isEditing
+                    ? t("cancel", { ns: "common" })
+                    : t("custom_profiles.form.buttons.reset")}
                 </Button>
               </div>
             </FieldGroup>
