@@ -919,7 +919,7 @@ System preferences, scheduled reboot, and low power mode.
 - `temp_unit`: `"celsius"` or `"fahrenheit"`
 - `distance_unit`: `"km"` or `"miles"`
 - `wan_guard_enabled`: toggles init.d symlink (enable/disable)
-- `timezone`/`zonename`: written to UCI `system.@system[0]`
+- `hostname`/`timezone`/`zonename`: written to UCI `system.@system[0]`. Handler compares each incoming value to the current UCI value and only writes when changed. When any of these three actually change, the handler backgrounds `/etc/init.d/system reload` to republish `/tmp/TZ`, `/tmp/localtime`, and kernel hostname. When `timezone` or `zonename` changes, it additionally backgrounds `/etc/init.d/cron restart` so busybox crond (which caches TZ at startup) picks up the new zone for `qmanager_scheduled_reboot` and `qmanager_low_power` entries. Both spawns are fire-and-forget so the HTTP response returns promptly.
 
 **POST (save_scheduled_reboot):**
 
