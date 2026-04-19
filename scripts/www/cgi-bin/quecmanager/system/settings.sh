@@ -230,14 +230,14 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
         # the pattern used by ip_passthrough.sh reboot-on-apply and
         # qmanager_low_power exit handler in this same file.
         if [ "$system_dirty" = "1" ]; then
-            qlog_info "system dirty — scheduling /etc/init.d/system reload"
+            qlog_info "system dirty: scheduling /etc/init.d/system reload"
             ( /etc/init.d/system reload </dev/null >/dev/null 2>&1 & )
 
             # crond is NOT restarted by /etc/init.d/system reload. On TZ
             # change, restart it so qmanager_scheduled_reboot and
             # qmanager_low_power cron entries fire at the new wall time.
             if [ "$tz_dirty" = "1" ]; then
-                qlog_info "TZ changed — scheduling /etc/init.d/cron restart"
+                qlog_info "TZ changed: scheduling /etc/init.d/cron restart"
                 ( /etc/init.d/cron restart </dev/null >/dev/null 2>&1 & )
             fi
         fi
