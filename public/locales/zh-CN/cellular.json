@@ -140,7 +140,8 @@
       "delete_confirm": {
         "title": "删除场景",
         "description": "确定要删除「{{name}}」吗？此操作不可撤销。",
-        "confirm": "删除"
+        "confirm": "删除",
+        "deleting": "删除中…"
       }
     },
     "add_button": {

@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { motion } from "motion/react";
 import { Trash2 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { AbstractPattern } from "./abstract-pattern";
 import {
@@ -31,7 +32,7 @@ interface ScenarioItemProps {
   isActive: boolean;
   isSelected: boolean;
   onSelect: (id: string) => void;
-  onDelete?: (id: string) => void;
+  onDelete?: (id: string) => void | Promise<void>;
 }
 
 // Map gradient to matching ring color
@@ -58,8 +59,10 @@ export const ScenarioItem = ({
   onSelect,
   onDelete,
 }: ScenarioItemProps) => {
+  const { t } = useTranslation("cellular");
   const Icon = scenario.icon;
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const isCustom = scenario.pattern === "custom";
 
   const handleDeleteClick = (e: React.MouseEvent) => {
@@ -67,8 +70,10 @@ export const ScenarioItem = ({
     setShowDeleteDialog(true);
   };
 
-  const handleConfirmDelete = () => {
-    onDelete?.(scenario.id);
+  const handleConfirmDelete = async () => {
+    setIsDeleting(true);
+    await onDelete?.(scenario.id);
+    setIsDeleting(false);
     setShowDeleteDialog(false);
   };
 
@@ -110,7 +115,7 @@ export const ScenarioItem = ({
               </div>
               {isActive && (
                 <span className="px-2 py-0.5 bg-white/25 backdrop-blur-sm rounded-full text-xs font-medium">
-                  Active
+                  {t("scenarios.scenario_item.active_badge")}
                 </span>
               )}
             </div>
@@ -136,19 +141,22 @@ export const ScenarioItem = ({
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Scenario</AlertDialogTitle>
+            <AlertDialogTitle>
+              {t("scenarios.scenario_item.delete_confirm.title")}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete &quot;{scenario.name}&quot;? This
-              action cannot be undone.
+              {t("scenarios.scenario_item.delete_confirm.description", { name: scenario.name })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t("cancel", { ns: "common" })}</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleConfirmDelete}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Delete
+              {isDeleting
+                ? t("scenarios.scenario_item.delete_confirm.deleting")
+                : t("scenarios.scenario_item.delete_confirm.confirm")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
