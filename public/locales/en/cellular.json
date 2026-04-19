@@ -910,5 +910,371 @@
         }
       }
     }
+  },
+  "core_settings": {
+    "basic": {
+      "page": {
+        "title": "Cellular Basic Settings",
+        "description": "SIM slot, radio state, and network mode preferences.",
+        "error_load": "Failed to load cellular settings. Displayed values may be outdated."
+      },
+      "radio": {
+        "card": {
+          "title": "Modem Radio Settings",
+          "description": "Configure SIM slot, radio power, network type, and roaming preferences."
+        },
+        "sim_slot": {
+          "label": "SIM Slot",
+          "placeholder": "Choose SIM Slot",
+          "options": {
+            "sim1": "SIM 1",
+            "sim2": "SIM 2"
+          }
+        },
+        "radio_power": {
+          "label": "Radio Power",
+          "placeholder": "Choose Radio Power Mode",
+          "options": {
+            "low_power": "Radio Off (Low Power)",
+            "normal": "Normal Operation",
+            "airplane": "Airplane Mode (RF Off)"
+          }
+        },
+        "network_type": {
+          "label": "Preferred Network Type",
+          "placeholder": "Choose Network Type",
+          "options": {
+            "auto": "Automatic",
+            "lte": "LTE Only",
+            "nr5g": "5G Only",
+            "lte_nr5g": "LTE + 5G"
+          }
+        },
+        "architecture": {
+          "label": "5G Architecture",
+          "placeholder": "Choose 5G Mode",
+          "options": {
+            "auto": "Auto (SA + NSA)",
+            "nsa": "NSA Only (5G via LTE)",
+            "sa": "SA Only (Standalone)"
+          }
+        },
+        "roaming": {
+          "label": "Roaming Preference",
+          "placeholder": "Choose Roaming Preference",
+          "options": {
+            "any": "Any Network",
+            "home": "Home Network Only",
+            "partner": "Partner Networks"
+          }
+        },
+        "reset_aria": "Reset to saved values",
+        "toast": {
+          "success": "Modem settings saved",
+          "error": "Failed to save modem settings",
+          "no_changes": "No changes to save"
+        }
+      },
+      "ambr": {
+        "card": {
+          "title": "Data Rate Limits",
+          "description": "The maximum upload and download speeds your carrier allows for each data connection. These limits are set by your carrier's network policy."
+        },
+        "section": {
+          "lte": "LTE Rates",
+          "nr5g": "5G Rates"
+        },
+        "empty": {
+          "lte": "No LTE rate data — not connected to LTE",
+          "nr5g": "No 5G rate data — not connected to 5G"
+        },
+        "tooltip": {
+          "aria": "More info",
+          "content": "While devices can request specific AMBR values, operators may ignore these and enforce their own speed limits based on subscription plans, network policies, or congestion conditions."
+        }
+      }
+    },
+    "apn": {
+      "page": {
+        "title": "APN Management",
+        "description": "Configure APNs and carrier firmware profiles.",
+        "error_load": "Failed to load APN settings. Displayed values may be outdated."
+      },
+      "card": {
+        "title": "APN Settings",
+        "description": "Configure and manage Access Point Names (APNs) for your cellular connections."
+      },
+      "fields": {
+        "active_apn": {
+          "label": "Active APN *",
+          "placeholder": "Enter Active APN"
+        },
+        "carrier_preset": {
+          "label": "Carrier Preset",
+          "placeholder": "Choose Carrier Preset",
+          "option_none": "None"
+        },
+        "connection_profile": {
+          "label": "Connection Profile",
+          "placeholder": "Choose Connection Profile",
+          "option_template": "Profile {{cid}} — {{apn}}",
+          "option_empty_apn": "(empty)",
+          "option_active_suffix": " (Active)"
+        },
+        "ip_protocol": {
+          "label": "IP Protocol",
+          "placeholder": "Choose IP Protocol",
+          "options": {
+            "ipv4v6": "IPv4 + IPv6 (Default)",
+            "ipv4": "IPv4 Only",
+            "ipv6": "IPv6 Only"
+          }
+        }
+      },
+      "managed_by_profile": "APN settings are managed by the {{profile_name}}.",
+      "managed_by_profile_fallback": "active Custom SIM Profile",
+      "reset_aria": "Reset to saved values",
+      "toast": {
+        "success": "APN settings applied successfully",
+        "error": "Failed to apply APN settings"
+      },
+      "mbn": {
+        "card": {
+          "title": "Carrier Profile",
+          "description": "Select which carrier firmware profile is active on the modem. A reboot is required after changes."
+        },
+        "auto_select": {
+          "label": "Auto-Select Profile",
+          "placeholder": "Choose Auto-Select",
+          "options": {
+            "enabled": "Enabled",
+            "disabled": "Disabled"
+          }
+        },
+        "configuration": {
+          "label": "Carrier Configuration",
+          "placeholder": "Choose Carrier Configuration",
+          "option_active_suffix": " (Active)"
+        },
+        "save": "Save Settings",
+        "reset_aria": "Reset to saved values",
+        "reboot_dialog": {
+          "title": "Reboot Required",
+          "description": "Carrier profile changes require a device reboot to take effect. Would you like to reboot now?",
+          "cancel": "Reboot Later",
+          "reboot": "Reboot Now",
+          "rebooting": "Rebooting…"
+        },
+        "toast": {
+          "auto_enabled": "Auto-select enabled — reboot required",
+          "auto_disabled": "Auto-select disabled — reboot required",
+          "profile_applied": "Carrier profile applied — reboot required",
+          "enable_error": "Failed to enable auto-select",
+          "disable_error": "Failed to disable auto-select",
+          "apply_error": "Failed to apply carrier profile",
+          "no_changes": "No changes to save",
+          "rebooting": "Device is rebooting…",
+          "reboot_error": "Reboot failed — restart the device manually"
+        }
+      }
+    },
+    "imei": {
+      "page": {
+        "title": "IMEI Settings",
+        "description": "View, modify, or back up the device IMEI."
+      },
+      "settings_card": {
+        "title": "IMEI Settings",
+        "description": "Change the device's IMEI identifier. A reboot is required after changes. Check your local regulations before modifying.",
+        "field_label": "Set Device IMEI",
+        "field_placeholder": "Enter Device IMEI",
+        "field_description": "Changing the IMEI will require a device reboot to take effect.",
+        "length_error_one": "IMEI must be exactly 15 digits ({{count}}/15)",
+        "length_error_other": "IMEI must be exactly 15 digits ({{count}}/15)",
+        "warning_aria": "IMEI legal warning",
+        "warning_content": "IMEI modification regulations vary by country. Check your local laws before changing the IMEI.",
+        "write_button": "Write IMEI",
+        "reset_aria": "Reset to saved values",
+        "reboot_dialog": {
+          "title": "Reboot Required",
+          "description": "IMEI changes require a device reboot to take effect. Would you like to reboot now?",
+          "cancel": "Reboot Later",
+          "reboot": "Reboot Now",
+          "rebooting": "Rebooting…"
+        },
+        "toast": {
+          "success": "IMEI saved — reboot required to apply",
+          "error": "Failed to save IMEI",
+          "rebooting": "Device is rebooting…",
+          "reboot_error": "Reboot failed — restart the device manually"
+        }
+      },
+      "backup_card": {
+        "title": "Backup Device IMEI",
+        "description_loading": "Automatically sets up a backup IMEI for your device to ensure connectivity in case of primary IMEI issues.",
+        "description": "If the network rejects the current IMEI after a reboot, the device can automatically switch to a backup IMEI and restart.",
+        "enable_label": "Enable Backup IMEI",
+        "enable_tooltip_aria": "More info",
+        "enable_tooltip_content": "Switch to a backup IMEI when the primary IMEI was rejected by the network.",
+        "field_label": "Set Backup IMEI",
+        "field_placeholder": "Enter Backup IMEI",
+        "field_description": "Switching to the backup IMEI will require a device reboot to take effect.",
+        "warning_aria": "IMEI legal warning",
+        "warning_content": "IMEI modification regulations vary by country. Check your local laws before changing the IMEI.",
+        "reset_aria": "Reset to saved values",
+        "enable_dialog": {
+          "title": "Backup IMEI Auto-Recovery",
+          "description": "When backup IMEI is enabled, the device will automatically check for IMEI rejection after each reboot following an IMEI change. If the network rejects the primary IMEI, the device will switch to the backup IMEI and reboot automatically.",
+          "confirm": "Enable Backup"
+        },
+        "toast": {
+          "success": "Backup IMEI configuration saved",
+          "invalid": "Backup IMEI must be exactly 15 digits",
+          "error": "Failed to save backup configuration",
+          "no_changes": "No changes to save"
+        }
+      },
+      "tools_card": {
+        "title": "IMEI Tools",
+        "description": "Generate and validate IMEI numbers using the Luhn algorithm. For educational purposes only.",
+        "preset_label": "Device Preset",
+        "preset_description": "Select a device TAC or enter a custom 8–12 digit prefix.",
+        "preset_placeholder": "Select a device",
+        "preset_custom": "Custom Prefix",
+        "custom_prefix_label": "Custom Prefix",
+        "custom_prefix_placeholder": "Enter 8–12 digit prefix",
+        "custom_prefix_error_one": "Prefix must be 8–12 digits ({{count}} entered)",
+        "custom_prefix_error_other": "Prefix must be 8–12 digits ({{count}} entered)",
+        "custom_prefix_description": "The remaining digits and check digit are generated automatically.",
+        "imei_label": "IMEI",
+        "imei_placeholder": "Generate or enter a 15-digit IMEI",
+        "imei_description": "Luhn validation runs automatically at 15 digits. You can also type or paste any IMEI to validate it.",
+        "copy_aria": "Copy IMEI",
+        "copy_tooltip": "Copy to clipboard",
+        "breakdown_label": "Breakdown",
+        "breakdown_validity": "Validity",
+        "breakdown_tac": "TAC (1–8)",
+        "breakdown_snr": "SNR (9–14)",
+        "breakdown_check": "Check (15)",
+        "breakdown_valid": "Valid IMEI",
+        "breakdown_invalid": "Invalid IMEI",
+        "generate_button": "Generate IMEI",
+        "check_info_button": "Check IMEI Info",
+        "copy_success": "Copied to clipboard"
+      }
+    },
+    "network_priority": {
+      "page": {
+        "title": "Network Priority Settings",
+        "description": "Set the preferred order of network connections."
+      },
+      "card": {
+        "title": "Network Priority",
+        "description": "Set the priority order of your network connections."
+      },
+      "drag_aria": "Drag to reorder",
+      "priority_label": "Priority {{number}}",
+      "reset_aria": "Reset to saved values",
+      "toast": {
+        "success": "Network priority updated",
+        "error_fallback": "Failed to set network priority",
+        "no_changes": "No changes to save"
+      }
+    },
+    "fplmn": {
+      "page": {
+        "title": "FPLMN Device Settings",
+        "description": "Check and clear the forbidden network list on your SIM."
+      },
+      "card": {
+        "title": "Blocked Networks",
+        "description": "Your SIM stores a list of networks that previously rejected your device. Clearing this list may restore connectivity and improve roaming. <link>Learn more</link>."
+      },
+      "states": {
+        "error_title": "Unable to Check",
+        "found_title": "Blocked Networks Found",
+        "found_description": "Your SIM has blocked one or more networks, which may prevent connection. Clearing the list is recommended.",
+        "found_clear": "Clear Blocked Networks",
+        "found_clearing": "Clearing…",
+        "none_title": "No Blocked Networks",
+        "none_description": "Your SIM has no blocked networks. No action needed.",
+        "none_refresh": "Refresh Status"
+      },
+      "toast": {
+        "success": "Blocked networks cleared",
+        "error_fallback": "Failed to clear blocked networks"
+      }
+    },
+    "info": {
+      "page": {
+        "title": "Cellular and Radio Information",
+        "description": "View detailed information about your device's cellular radio status, including signal strength, network type, and connection status."
+      },
+      "cell_data": {
+        "card": {
+          "title": "Cellular Information",
+          "description": "Detailed information about the connected cellular network."
+        },
+        "info_aria": "More info",
+        "rows": {
+          "isp": "ISP",
+          "apn": "Access Point Name (APN)",
+          "apn_edit": "Edit",
+          "network_type": "Network Type",
+          "cell_id": "Cell ID",
+          "cell_id_tooltip_row": "{{label}} ID:",
+          "sector_tooltip": "Sector:",
+          "tac": "Tracking Area Code",
+          "tac_hex_tooltip": "Hex:",
+          "total_bandwidth": "Total Bandwidth in Use",
+          "carrier_aggregation": "Carrier Aggregation",
+          "active_mimo": "Active MIMO",
+          "active_mimo_link": "Per-Antenna",
+          "wan_ipv4": "WAN IPv4",
+          "wan_ipv6": "WAN IPv6",
+          "primary_dns": "Primary DNS",
+          "primary_dns_ipv4": "Primary DNS (IPv4)",
+          "primary_dns_ipv6": "Primary DNS (IPv6)",
+          "secondary_dns": "Secondary DNS",
+          "secondary_dns_ipv4": "Secondary DNS (IPv4)",
+          "secondary_dns_ipv6": "Secondary DNS (IPv6)"
+        },
+        "network_type_values": {
+          "nsa": "5G NR + LTE",
+          "sa": "5G NR SA",
+          "lte": "LTE"
+        },
+        "carrier_aggregation": {
+          "lte_carriers_one": "LTE ({{count}} carrier)",
+          "lte_carriers_other": "LTE ({{count}} carriers)",
+          "nr_carriers_one": "NR ({{count}} carrier)",
+          "nr_carriers_other": "NR ({{count}} carriers)",
+          "lte_anchor": "LTE",
+          "nr_leg": "NR",
+          "inactive": "Inactive"
+        }
+      },
+      "active_bands": {
+        "card_title": "Active Cellular Bands",
+        "card_description_loading": "Detailed information about the currently active cellular bands.",
+        "card_description_one": "{{count}} active carrier. Expand each band for detailed signal metrics.",
+        "card_description_other": "{{count}} active carriers. Expand each band for detailed signal metrics.",
+        "empty": "No active carrier components detected. Carrier aggregation data updates every ~30 seconds.",
+        "metrics": {
+          "rsrp": "RSRP",
+          "rsrq": "RSRQ",
+          "snr": "SNR",
+          "sinr": "SINR",
+          "rssi": "RSSI"
+        },
+        "info": {
+          "band_name": "Band Name",
+          "ul_frequency": "UL Frequency",
+          "dl_frequency": "DL Frequency",
+          "bandwidth": "Bandwidth",
+          "pci": "PCI"
+        }
+      }
+    }
   }
 }
