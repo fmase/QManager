@@ -255,6 +255,7 @@
           "date": "日期"
         },
         "actions": {
+          "open_menu": "打开菜单",
           "view": "查看",
           "delete": "删除"
         },

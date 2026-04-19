@@ -255,6 +255,7 @@
           "date": "Date"
         },
         "actions": {
+          "open_menu": "Open menu",
           "view": "View",
           "delete": "Delete"
         },
