@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 
 import {
   Card,
@@ -64,6 +65,8 @@ const LteFreqLockingComponent = ({
   onUnlock,
   onRefresh,
 }: LteFreqLockingProps) => {
+  const { t } = useTranslation("cellular");
+
   // Local form state for the 2 EARFCN inputs
   const [earfcn1, setEarfcn1] = useState("");
   const [earfcn2, setEarfcn2] = useState("");
@@ -123,8 +126,8 @@ const LteFreqLockingComponent = ({
     if (checked) {
       const earfcns = buildEarfcns();
       if (earfcns.length === 0) {
-        toast.warning("No frequencies entered", {
-          description: "Enter at least one channel number before enabling.",
+        toast.warning(t("cell_locking.frequency_locking.lte.toast.no_frequencies_title"), {
+          description: t("cell_locking.frequency_locking.lte.toast.no_frequencies_description"),
         });
         return;
       }
@@ -154,9 +157,9 @@ const LteFreqLockingComponent = ({
     setShowUnsupportedWarning(false);
     const success = await onLock(pendingEarfcns);
     if (success) {
-      toast.success("LTE frequency lock applied");
+      toast.success(t("cell_locking.frequency_locking.lte.toast.lock_success"));
     } else {
-      toast.error("Failed to apply LTE frequency lock");
+      toast.error(t("cell_locking.frequency_locking.lte.toast.lock_error"));
     }
   };
 
@@ -164,9 +167,9 @@ const LteFreqLockingComponent = ({
     setShowUnlockDialog(false);
     const success = await onUnlock();
     if (success) {
-      toast.success("LTE frequency lock cleared");
+      toast.success(t("cell_locking.frequency_locking.lte.toast.unlock_success"));
     } else {
-      toast.error("Failed to clear LTE frequency lock");
+      toast.error(t("cell_locking.frequency_locking.lte.toast.unlock_error"));
     }
   };
 
@@ -175,9 +178,9 @@ const LteFreqLockingComponent = ({
     const earfcn = modemData?.lte?.earfcn;
     if (earfcn != null) {
       setEarfcn1(String(earfcn));
-      toast.info("Filled from current connected tower");
+      toast.info(t("cell_locking.frequency_locking.lte.toast.filled_current"));
     } else {
-      toast.warning("No active LTE connection");
+      toast.warning(t("cell_locking.frequency_locking.lte.toast.no_active_connection"));
     }
   };
 
@@ -187,9 +190,9 @@ const LteFreqLockingComponent = ({
     return (
       <Card className="@container/card">
         <CardHeader>
-          <CardTitle>LTE Frequency Locking</CardTitle>
+          <CardTitle>{t("cell_locking.frequency_locking.lte.title")}</CardTitle>
           <CardDescription>
-            Lock to specific LTE channel frequencies.
+            {t("cell_locking.frequency_locking.lte.description_loading")}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -215,9 +218,9 @@ const LteFreqLockingComponent = ({
     return (
       <Card className="@container/card">
         <CardHeader>
-          <CardTitle>LTE Frequency Locking</CardTitle>
+          <CardTitle>{t("cell_locking.frequency_locking.lte.title")}</CardTitle>
           <CardDescription>
-            Lock to specific LTE channel frequencies.
+            {t("cell_locking.frequency_locking.lte.description_loading")}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -227,11 +230,13 @@ const LteFreqLockingComponent = ({
           >
             <AlertCircleIcon className="size-8 text-destructive" />
             <div className="space-y-1">
-              <p className="text-sm font-medium">Failed to load frequency lock status</p>
+              <p className="text-sm font-medium">
+                {t("cell_locking.frequency_locking.lte.error_title")}
+              </p>
               <p className="text-xs text-muted-foreground">{error}</p>
             </div>
             <Button variant="outline" size="sm" onClick={onRefresh}>
-              Retry
+              {t("actions.retry", { ns: "common" })}
             </Button>
           </div>
         </CardContent>
@@ -246,9 +251,9 @@ const LteFreqLockingComponent = ({
         aria-disabled={towerLockActive || undefined}
       >
         <CardHeader>
-          <CardTitle>LTE Frequency Locking</CardTitle>
+          <CardTitle>{t("cell_locking.frequency_locking.lte.title")}</CardTitle>
           <CardDescription>
-            Lock to specific LTE channel frequencies. Maximum 2 channels.
+            {t("cell_locking.frequency_locking.lte.description")}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -258,14 +263,15 @@ const LteFreqLockingComponent = ({
               <div className="flex items-start gap-2 p-2 rounded-md bg-destructive/10 border border-destructive/30 text-destructive text-sm">
                 <TbAlertTriangleFilled className="size-5 mt-0.5 shrink-0" />
                 <p className="font-semibold">
-                  LTE Tower Lock is active. Disable it before using frequency
-                  locking.
+                  {t("cell_locking.frequency_locking.lte.tower_lock_active")}
                 </p>
               </div>
             ) : (
               <div className="flex items-start gap-2 p-2 rounded-md bg-warning/10 border border-warning/30 text-warning text-sm">
                 <TbAlertTriangleFilled className="size-5 mt-0.5 shrink-0" />
-                <p className="font-semibold">Experimental Feature</p>
+                <p className="font-semibold">
+                  {t("cell_locking.frequency_locking.lte.experimental_warning")}
+                </p>
               </div>
             )}
 
@@ -274,20 +280,22 @@ const LteFreqLockingComponent = ({
               <div className="flex items-center gap-1.5">
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <button type="button" className="inline-flex" aria-label="More info">
+                    <button
+                      type="button"
+                      className="inline-flex"
+                      aria-label={t("cell_locking.frequency_locking.lte.enabled_info_aria")}
+                    >
                       <TbInfoCircleFilled className="size-5 text-info" />
                     </button>
                   </TooltipTrigger>
                   <TooltipContent>
                     <p>
-                      Locking to an unsupported frequency may cause the modem
-                      to restart unexpectedly. <br />
-                      Cannot be used while Tower Lock is active.
+                      {t("cell_locking.frequency_locking.lte.enabled_tooltip")}
                     </p>
                   </TooltipContent>
                 </Tooltip>
                 <p className="font-semibold text-muted-foreground text-sm">
-                  LTE Frequency Lock Enabled
+                  {t("cell_locking.frequency_locking.lte.enabled_label")}
                 </p>
               </div>
               <div className="flex items-center space-x-2">
@@ -301,7 +309,9 @@ const LteFreqLockingComponent = ({
                   disabled={isDisabled}
                 />
                 <Label htmlFor="lte-freq-locking">
-                  {isEnabled ? "Enabled" : "Disabled"}
+                  {isEnabled
+                    ? t("state.enabled", { ns: "common" })
+                    : t("state.disabled", { ns: "common" })}
                 </Label>
               </div>
             </div>
@@ -317,7 +327,9 @@ const LteFreqLockingComponent = ({
                     {/* EARFCN 1 */}
                     <Field>
                       <div className="flex items-center justify-between">
-                        <FieldLabel htmlFor="freq-earfcn1">Channel (EARFCN)</FieldLabel>
+                        <FieldLabel htmlFor="freq-earfcn1">
+                          {t("cell_locking.frequency_locking.lte.channel_label")}
+                        </FieldLabel>
                         <Button
                           type="button"
                           variant="outline"
@@ -325,14 +337,14 @@ const LteFreqLockingComponent = ({
                           onClick={handleUseCurrent}
                           disabled={isDisabled || !hasActiveLteCell}
                         >
-                          Use Current
+                          {t("cell_locking.frequency_locking.lte.use_current")}
                         </Button>
                       </div>
                       <Input
                         id="freq-earfcn1"
                         type="text"
-                        placeholder="Enter EARFCN"
-                                                value={earfcn1}
+                        placeholder={t("cell_locking.frequency_locking.lte.channel_placeholder")}
+                        value={earfcn1}
                         onChange={(e) => setEarfcn1(e.target.value)}
                         disabled={isDisabled}
                       />
@@ -341,20 +353,20 @@ const LteFreqLockingComponent = ({
                         hasInput={earfcn1.length > 0}
                         supportedBands={supportedBands}
                         prefix="B"
-                        noMatchLabel="this channel"
+                        noMatchLabelKey="this_channel"
                       />
                     </Field>
 
                     {/* EARFCN 2 */}
                     <Field>
                       <FieldLabel htmlFor="freq-earfcn2">
-                        Channel 2 (Optional)
+                        {t("cell_locking.frequency_locking.lte.channel_label_optional")}
                       </FieldLabel>
                       <Input
                         id="freq-earfcn2"
                         type="text"
-                        placeholder="Enter EARFCN 2"
-                                                value={earfcn2}
+                        placeholder={t("cell_locking.frequency_locking.lte.channel_placeholder_2")}
+                        value={earfcn2}
                         onChange={(e) => setEarfcn2(e.target.value)}
                         disabled={isDisabled}
                       />
@@ -363,7 +375,7 @@ const LteFreqLockingComponent = ({
                         hasInput={earfcn2.length > 0}
                         supportedBands={supportedBands}
                         prefix="B"
-                        noMatchLabel="this channel"
+                        noMatchLabelKey="this_channel"
                       />
                     </Field>
                   </FieldGroup>
@@ -378,23 +390,21 @@ const LteFreqLockingComponent = ({
       <AlertDialog open={showLockDialog} onOpenChange={setShowLockDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Lock LTE Frequency?</AlertDialogTitle>
+            <AlertDialogTitle>
+              {t("cell_locking.frequency_locking.lte.lock_dialog.title")}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              This will lock your modem to{" "}
               {pendingEarfcns.length === 1
-                ? `EARFCN ${pendingEarfcns[0]}`
-                : `EARFCNs ${pendingEarfcns.join(", ")}`}
-              . The modem will only use{" "}
-              {pendingEarfcns.length === 1
-                ? "this frequency"
-                : "these frequencies"}{" "}
-              and may briefly disconnect.
+                ? t("cell_locking.frequency_locking.lte.lock_dialog.description_single", { earfcn: pendingEarfcns[0] })
+                : t("cell_locking.frequency_locking.lte.lock_dialog.description_multi", { earfcns: pendingEarfcns.join(", ") })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>
+              {t("actions.cancel", { ns: "common" })}
+            </AlertDialogCancel>
             <AlertDialogAction onClick={confirmLock}>
-              Lock Frequency
+              {t("cell_locking.frequency_locking.lte.lock_dialog.confirm")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -408,33 +418,33 @@ const LteFreqLockingComponent = ({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle className="text-destructive">
-              Unsupported Frequency Warning
+              {t("cell_locking.frequency_locking.lte.unsupported_dialog.title")}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              The frequencies you entered match bands not supported by your
-              modem. Locking to an unsupported frequency may cause the modem to
-              restart unexpectedly.
+              {t("cell_locking.frequency_locking.lte.unsupported_dialog.description_prefix")}
               <br />
               <br />
-              <strong>Matched bands:</strong>{" "}
+              <strong>{t("cell_locking.frequency_locking.lte.unsupported_dialog.matched_bands_label")}</strong>{" "}
               {[...matchedBands1, ...matchedBands2]
                 .map((b) => `B${b.band}`)
-                .join(", ") || "Unknown"}
+                .join(", ") || t("cell_locking.frequency_locking.lte.unsupported_dialog.unknown")}
               <br />
-              <strong>Supported bands:</strong>{" "}
+              <strong>{t("cell_locking.frequency_locking.lte.unsupported_dialog.supported_bands_label")}</strong>{" "}
               {supportedBands.map((b) => `B${b}`).join(", ")}
               <br />
               <br />
-              Are you sure you want to proceed?
+              {t("cell_locking.frequency_locking.lte.unsupported_dialog.confirm_prompt")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>
+              {t("actions.cancel", { ns: "common" })}
+            </AlertDialogCancel>
             <AlertDialogAction
               onClick={confirmLock}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Lock Anyway
+              {t("cell_locking.frequency_locking.lte.unsupported_dialog.confirm")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -444,16 +454,19 @@ const LteFreqLockingComponent = ({
       <AlertDialog open={showUnlockDialog} onOpenChange={setShowUnlockDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Unlock LTE Frequency?</AlertDialogTitle>
+            <AlertDialogTitle>
+              {t("cell_locking.frequency_locking.lte.unlock_dialog.title")}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              This will remove the LTE frequency lock. The modem will be free to
-              use any available frequency and may briefly disconnect.
+              {t("cell_locking.frequency_locking.lte.unlock_dialog.description")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>
+              {t("actions.cancel", { ns: "common" })}
+            </AlertDialogCancel>
             <AlertDialogAction onClick={confirmUnlock}>
-              Remove Lock
+              {t("cell_locking.frequency_locking.lte.unlock_dialog.confirm")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
