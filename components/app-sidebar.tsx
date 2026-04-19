@@ -20,6 +20,7 @@ import {
   SettingsIcon,
   TerminalIcon,
   DownloadIcon,
+  Languages as LanguagesIcon,
   PackageOpenIcon,
   WaypointsIcon,
 } from "lucide-react";
@@ -78,6 +79,7 @@ const data = {
       icon: DownloadIcon,
     },
     { t_key: "at_terminal", url: "/system-settings/at-terminal", icon: TerminalIcon },
+    { t_key: "languages", url: "/system-settings/languages", icon: LanguagesIcon },
     { t_key: "luci", url: "/cgi-bin/luci", icon: PackageOpenIcon },
   ],
   navSecondary: [
