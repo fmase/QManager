@@ -1,8 +1,9 @@
 "use client";
 
-import React from "react";
+import React, { useMemo } from "react";
 import { motion } from "motion/react";
 import { SignalIcon } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import {
   Card,
   CardContent,
@@ -105,6 +106,7 @@ function MetricRow({
   unit: string;
   thresholds: { excellent: number; good: number; fair: number; poor: number };
 }) {
+  const { t } = useTranslation("cellular");
   const quality = getSignalQuality(value, thresholds);
   const progress = signalToProgress(value, thresholds);
 
@@ -115,7 +117,7 @@ function MetricRow({
       </span>
       <AnimatedProgress
         value={progress}
-        label={`${label} signal strength`}
+        label={t("antennas.statistics.signal_strength_aria", { metric: label })}
         barColor={QUALITY_BAR_COLORS[quality]}
       />
       <span className="text-sm font-semibold tabular-nums min-w-17 text-right shrink-0">
@@ -160,13 +162,19 @@ function AntennaSection({
 function TechCard({
   title,
   description,
+  emptyTitle,
+  emptyDescription,
   signal,
   prefix,
+  portMeta,
 }: {
   title: string;
   description: string;
+  emptyTitle: string;
+  emptyDescription: string;
   signal: SignalPerAntenna | undefined;
   prefix: "lte" | "nr";
+  portMeta: { name: string; rx: string; description: string }[];
 }) {
   const active = hasData(signal, prefix);
 
@@ -183,10 +191,9 @@ function TechCard({
               <EmptyMedia variant="icon">
                 <SignalIcon />
               </EmptyMedia>
-              <EmptyTitle>No {title.split(" ")[0]} Signal</EmptyTitle>
+              <EmptyTitle>{emptyTitle}</EmptyTitle>
               <EmptyDescription className="max-w-xs text-pretty">
-                Antenna metrics will appear when{" "}
-                {prefix === "lte" ? "4G LTE" : "5G NR"} is active.
+                {emptyDescription}
               </EmptyDescription>
             </EmptyHeader>
           </Empty>
@@ -215,9 +222,9 @@ function TechCard({
             visible: { transition: { staggerChildren: 0.05 } },
           }}
         >
-          {ANTENNA_PORTS.map((ant, i) => (
+          {portMeta.map((port, i) => (
             <motion.div
-              key={ant.rx}
+              key={port.rx}
               className={i === 0 ? "pb-3" : "py-3"}
               variants={{
                 hidden: { opacity: 0, y: 6 },
@@ -226,8 +233,8 @@ function TechCard({
               transition={{ duration: 0.2, ease: "easeOut" }}
             >
               <AntennaSection
-                name={ant.name}
-                rx={ant.rx}
+                name={port.name}
+                rx={port.rx}
                 rsrp={rsrp[i] ?? null}
                 rsrq={rsrq[i] ?? null}
                 sinr={sinr[i] ?? null}
@@ -282,8 +289,35 @@ function AntennaStatsSkeleton() {
 // =============================================================================
 
 export default function AntennaStatistics() {
+  const { t } = useTranslation("cellular");
   const { data, isLoading } = useModemStatus();
   const signal = data?.signal_per_antenna;
+
+  const portMeta = useMemo(
+    () => [
+      {
+        name: t("antennas.ports.main_name"),
+        rx: ANTENNA_PORTS[0].rx,
+        description: t("antennas.ports.main_description"),
+      },
+      {
+        name: t("antennas.ports.diversity_name"),
+        rx: ANTENNA_PORTS[1].rx,
+        description: t("antennas.ports.diversity_description"),
+      },
+      {
+        name: t("antennas.ports.mimo3_name"),
+        rx: ANTENNA_PORTS[2].rx,
+        description: t("antennas.ports.mimo3_description"),
+      },
+      {
+        name: t("antennas.ports.mimo4_name"),
+        rx: ANTENNA_PORTS[3].rx,
+        description: t("antennas.ports.mimo4_description"),
+      },
+    ],
+    [t]
+  );
 
   const lteHasData = hasData(signal, "lte");
   const nrHasData = hasData(signal, "nr");
@@ -293,29 +327,36 @@ export default function AntennaStatistics() {
 
   const lteCard = (
     <TechCard
-      title="LTE Signal"
-      description="Per-antenna metrics for 4G LTE"
+      title={t("antennas.statistics.lte_card.title")}
+      description={t("antennas.statistics.lte_card.description")}
+      emptyTitle={t("antennas.statistics.lte_card.empty_title")}
+      emptyDescription={t("antennas.statistics.lte_card.empty_description")}
       signal={signal}
       prefix="lte"
+      portMeta={portMeta}
     />
   );
 
   const nrCard = (
     <TechCard
-      title="NR5G Signal"
-      description="Per-antenna metrics for 5G NR"
+      title={t("antennas.statistics.nr_card.title")}
+      description={t("antennas.statistics.nr_card.description")}
+      emptyTitle={t("antennas.statistics.nr_card.empty_title")}
+      emptyDescription={t("antennas.statistics.nr_card.empty_description")}
       signal={signal}
       prefix="nr"
+      portMeta={portMeta}
     />
   );
 
   return (
     <div className="@container/main mx-auto p-2">
       <div className="mb-6">
-        <h1 className="text-3xl font-bold mb-2">Antenna Statistics</h1>
+        <h1 className="text-3xl font-bold mb-2">
+          {t("antennas.statistics.page.title")}
+        </h1>
         <p className="text-muted-foreground">
-          Per-antenna signal metrics for each receiver chain. Compare signal
-          quality across Main, Diversity, and MIMO antenna ports.
+          {t("antennas.statistics.page.description")}
         </p>
       </div>
       {isLoading ? (
