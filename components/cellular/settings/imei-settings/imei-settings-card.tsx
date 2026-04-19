@@ -79,7 +79,7 @@ const IMEISettingsCard = ({
     if (!isValidImei) return;
 
     if (!hasChanged) {
-      toast.info(t("core_settings.imei.settings_card.toast.success"));
+      toast.info(t("core_settings.imei.settings_card.toast.no_changes"));
       return;
     }
 

@@ -1103,6 +1103,7 @@
           "rebooting": "Rebooting…"
         },
         "toast": {
+          "no_changes": "No changes to save",
           "success": "IMEI saved — reboot required to apply",
           "error": "Failed to save IMEI",
           "rebooting": "Device is rebooting…",

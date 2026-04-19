@@ -1103,6 +1103,7 @@
           "rebooting": "正在重启…"
         },
         "toast": {
+          "no_changes": "没有需要保存的更改",
           "success": "IMEI 已保存 — 需要重启才能应用",
           "error": "保存 IMEI 失败",
           "rebooting": "设备正在重启…",
