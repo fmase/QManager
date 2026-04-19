@@ -338,5 +338,577 @@
         "error": "Failed to send SMS"
       }
     }
+  },
+  "cell_locking": {
+    "band_locking": {
+      "page": {
+        "title": "Band Locking",
+        "description": "Restrict which LTE and NR bands the modem can use."
+      },
+      "scenario_override_banner": "Band configuration is managed by the {{scenario_name}} scenario.",
+      "settings_card": {
+        "title": "Band Locking Settings",
+        "description": "Restrict the modem to specific LTE and 5G bands. Enable failover to fall back to all bands if locked bands lose signal.",
+        "band_failover_label": "Band Failover",
+        "band_failover_tooltip": "When enabled, the device will automatically switch to the default bands if the locked bands are unavailable after 15 seconds.",
+        "band_failover_info_aria": "Band failover info",
+        "status_label": "Band Failover Status",
+        "status": {
+          "disabled": "Disabled",
+          "fallback_active": "Fallback Active",
+          "ready": "Ready"
+        },
+        "active_lte_bands": "Active LTE Bands",
+        "active_lte_channels": "Active LTE Channels",
+        "active_nr_bands": "Active 5G Bands",
+        "active_nr_channels": "Active 5G Channels",
+        "toast": {
+          "failover_enabled": "Band failover enabled",
+          "failover_disabled": "Band failover disabled",
+          "failover_error": "Failed to update band failover"
+        }
+      },
+      "cards": {
+        "lte": {
+          "title": "LTE Band Locking",
+          "description": "Select the LTE bands to lock for your device."
+        },
+        "nsa_nr5g": {
+          "title": "NSA Band Locking",
+          "description": "Select the 5G NSA bands to lock (5G via LTE anchor)."
+        },
+        "sa_nr5g": {
+          "title": "SA Band Locking",
+          "description": "Select the 5G SA bands to lock (standalone 5G)."
+        }
+      },
+      "card_badges": {
+        "scenario_controlled": "Scenario Controlled",
+        "all_unlocked": "All Unlocked",
+        "bands_locked": "{{locked}} / {{total}} Bands"
+      },
+      "card_empty": "No supported bands reported by the modem for this category.",
+      "card_buttons": {
+        "lock_selected": "Lock Selected Bands",
+        "select_all": "Select All",
+        "deselect_all": "Deselect All",
+        "unlock_all_aria": "Unlock all bands",
+        "unlock_all_title": "Unlock all bands (reset)"
+      },
+      "card_live_region": "Applying {{category_label}} band lock…",
+      "card_category_label": {
+        "lte": "LTE",
+        "nsa_nr5g": "NSA",
+        "sa_nr5g": "SA"
+      },
+      "toast": {
+        "select_one_band": "Select at least one band to lock",
+        "locked_success": "{{category_label}} bands locked successfully",
+        "lock_error": "Failed to apply band lock",
+        "unlocked_success": "{{category_label}} bands unlocked",
+        "unlock_error": "Failed to unlock bands"
+      }
+    },
+    "tower_locking": {
+      "page": {
+        "title": "Tower Locking",
+        "description": "Lock onto specific cell towers by PCI and EARFCN."
+      },
+      "settings": {
+        "title": "Tower Locking Settings",
+        "description_loading": "Lock the modem to a specific cell tower. Keeps your connection stable instead of roaming between towers.",
+        "description": "Lock the modem to a specific cell tower. Keeps your connection stable instead of roaming between towers. Not compatible with 5G NSA.",
+        "persist_label": "Keep Lock After Reboot",
+        "persist_tooltip": "When enabled, tower lock is restored automatically after a reboot.",
+        "persist_info_aria": "Keep Lock After Reboot info",
+        "failover_label": "Signal Failover",
+        "failover_tooltip": "When enabled, the device will unlock from the tower if signal quality degrades below a certain threshold or becomes unavailable.",
+        "failover_info_aria": "Signal Failover info",
+        "failover_no_lock": "No active lock",
+        "failover_hint": "Failover is off — enable it to auto-unlock on poor signal.",
+        "failover_toast_disabled": "Failover disabled",
+        "threshold_label": "Failover Threshold (%)",
+        "threshold_tooltip": "This will only take effect if Failover is enabled. Set the signal quality threshold below which the device will unlock from the tower.",
+        "threshold_info_aria": "Failover Threshold info",
+        "threshold_placeholder": "Enter threshold",
+        "threshold_update": "Update",
+        "threshold_error_range": "Threshold must be between 0 and 100",
+        "threshold_toast_success": "Failover threshold updated",
+        "signal_quality_label": "Current Signal Quality",
+        "failover_status_label": "Failover Status",
+        "connection_state_label": "Connection State",
+        "schedule_status_label": "Schedule Locking Status",
+        "earfcn_label": "Current Channel (EARFCN)",
+        "pci_label": "Current Cell ID (PCI)",
+        "failover_badge": {
+          "loading": "Loading",
+          "unknown": "Unknown",
+          "monitoring": "Monitoring",
+          "unlocked_poor_signal": "Unlocked due to Poor Signal",
+          "disabled": "Disabled",
+          "ready": "Ready"
+        },
+        "schedule_badge": {
+          "loading": "Loading",
+          "unknown": "Unknown",
+          "active": "Active",
+          "inactive": "Inactive"
+        },
+        "connection_badge": {
+          "loading": "Loading",
+          "unknown": "Unknown",
+          "connected": "Connected",
+          "limited": "Limited Service",
+          "searching": "Searching",
+          "no_service": "No Service"
+        },
+        "settings_unavailable_toast": "Settings unavailable — try refreshing the page"
+      },
+      "lte": {
+        "title": "LTE Tower Locking",
+        "description": "Lock to a specific LTE cell tower by entering its channel and cell ID.",
+        "enabled_label": "LTE Tower Locking Enabled",
+        "channel_label": "Channel (EARFCN)",
+        "channel_label_n": "Channel (EARFCN) {{n}}",
+        "channel_placeholder": "Enter EARFCN",
+        "channel_placeholder_n": "Enter EARFCN {{n}}",
+        "pci_label": "Cell ID (PCI)",
+        "pci_label_n": "Cell ID (PCI) {{n}}",
+        "pci_placeholder": "Enter PCI",
+        "pci_placeholder_n": "Enter PCI {{n}}",
+        "use_current": "Use Current",
+        "lock_dialog": {
+          "title": "Lock to LTE Tower?",
+          "description_single": "This will lock your modem to EARFCN {{earfcn}}, PCI {{pci}}. The modem will only connect to this tower and may briefly disconnect during the switch.",
+          "description_multi_one": "This will lock your modem to {{count}} cell target. The modem will only connect to these towers and may briefly disconnect during the switch.",
+          "description_multi_other": "This will lock your modem to {{count}} cell targets. The modem will only connect to these towers and may briefly disconnect during the switch.",
+          "confirm": "Lock Tower"
+        },
+        "unlock_dialog": {
+          "title": "Unlock LTE Tower?",
+          "description": "This will remove the LTE tower lock. The modem will be free to select any available tower and may briefly disconnect during the switch.",
+          "confirm": "Remove Lock"
+        },
+        "toast": {
+          "failover_in_progress_title": "Failover check in progress",
+          "failover_in_progress_description": "Signal quality check is running, please wait.",
+          "no_targets_title": "No cell targets",
+          "no_targets_description": "Enter a channel and cell ID first.",
+          "lock_success": "LTE tower lock applied",
+          "lock_error": "Failed to lock tower — check modem connection",
+          "unlock_success": "LTE tower lock cleared",
+          "unlock_error": "Failed to remove tower lock",
+          "filled_current": "Filled from current connected tower",
+          "no_active_connection": "No active LTE connection"
+        }
+      },
+      "nr_sa": {
+        "title": "NR-SA Tower Locking",
+        "description": "Lock to a specific 5G SA cell tower by entering its channel, cell ID, band, and subcarrier spacing.",
+        "description_suffix_nsa_mode": " Not compatible with NR5G-NSA mode.",
+        "description_suffix_lte_only": " No NR connection available.",
+        "enabled_label": "NR Tower Locking Enabled",
+        "arfcn_label": "Channel (ARFCN)",
+        "arfcn_placeholder": "Enter ARFCN",
+        "pci_label": "Cell ID (PCI)",
+        "pci_placeholder": "Enter PCI",
+        "band_label": "NR Band",
+        "band_placeholder": "Enter NR Band",
+        "scs_label": "Subcarrier Spacing",
+        "scs_placeholder": "SCS",
+        "use_current": "Use Current",
+        "lock_dialog": {
+          "title": "Lock to NR-SA Tower?",
+          "description": "This will lock your modem to NR ARFCN {{arfcn}}, PCI {{pci}} (Band {{band}}). The modem will only connect to this tower and may briefly disconnect during the switch.",
+          "confirm": "Lock Tower"
+        },
+        "unlock_dialog": {
+          "title": "Unlock NR-SA Tower?",
+          "description": "This will remove the NR-SA tower lock. The modem will be free to select any available tower and may briefly disconnect during the switch.",
+          "confirm": "Remove Lock"
+        },
+        "toast": {
+          "failover_in_progress_title": "Failover check in progress",
+          "failover_in_progress_description": "Signal quality check is running, please wait.",
+          "incomplete_title": "Incomplete fields",
+          "incomplete_description": "Please fill in all required tower fields before locking.",
+          "lock_success": "NR-SA tower lock applied",
+          "lock_error": "Failed to lock tower — check modem connection",
+          "unlock_success": "NR-SA tower lock cleared",
+          "unlock_error": "Failed to remove tower lock",
+          "filled_current": "Filled from current connected tower",
+          "no_active_connection": "No active 5G SA connection"
+        }
+      },
+      "schedule": {
+        "title": "Schedule Tower Locking",
+        "description": "Set specific times to enable or disable tower locking.",
+        "enable_label": "Enable Scheduled Locking",
+        "enable_tooltip": "Schedule tower locking to automatically enable or disable at specified times.",
+        "enable_info_aria": "Schedule info",
+        "start_time_label": "Start Time",
+        "end_time_label": "End Time",
+        "repeat_on_label": "Repeat On",
+        "repeat_on_aria": "Days of the week",
+        "day_labels": {
+          "sun": "Sun",
+          "mon": "Mon",
+          "tue": "Tue",
+          "wed": "Wed",
+          "thu": "Thu",
+          "fri": "Fri",
+          "sat": "Sat"
+        },
+        "toast_no_targets": "No lock targets configured"
+      }
+    },
+    "frequency_locking": {
+      "page": {
+        "title": "Frequency Locking",
+        "description": "Lock to specific EARFCNs/NR-ARFCNs. Experimental — use with caution."
+      },
+      "lte": {
+        "title": "LTE Frequency Locking",
+        "description_loading": "Lock to specific LTE channel frequencies.",
+        "description": "Lock to specific LTE channel frequencies. Maximum 2 channels.",
+        "tower_lock_active": "LTE Tower Lock is active. Disable it before using frequency locking.",
+        "experimental_warning": "Experimental Feature",
+        "enabled_label": "LTE Frequency Lock Enabled",
+        "enabled_tooltip": "Locking to an unsupported frequency may cause the modem to restart unexpectedly. Cannot be used while Tower Lock is active.",
+        "enabled_info_aria": "LTE frequency lock info",
+        "channel_label": "Channel (EARFCN)",
+        "channel_label_optional": "Channel 2 (Optional)",
+        "channel_placeholder": "Enter EARFCN",
+        "channel_placeholder_2": "Enter EARFCN 2",
+        "use_current": "Use Current",
+        "error_title": "Failed to load frequency lock status",
+        "lock_dialog": {
+          "title": "Lock LTE Frequency?",
+          "description_single": "This will lock your modem to EARFCN {{earfcn}}. The modem will only use this frequency and may briefly disconnect.",
+          "description_multi": "This will lock your modem to EARFCNs {{earfcns}}. The modem will only use these frequencies and may briefly disconnect.",
+          "confirm": "Lock Frequency"
+        },
+        "unsupported_dialog": {
+          "title": "Unsupported Frequency Warning",
+          "description_prefix": "The frequencies you entered match bands not supported by your modem. Locking to an unsupported frequency may cause the modem to restart unexpectedly.",
+          "matched_bands_label": "Matched bands:",
+          "supported_bands_label": "Supported bands:",
+          "confirm": "Lock Anyway",
+          "confirm_prompt": "Are you sure you want to proceed?",
+          "unknown": "Unknown"
+        },
+        "unlock_dialog": {
+          "title": "Unlock LTE Frequency?",
+          "description": "This will remove the LTE frequency lock. The modem will be free to use any available frequency and may briefly disconnect.",
+          "confirm": "Remove Lock"
+        },
+        "toast": {
+          "no_frequencies_title": "No frequencies entered",
+          "no_frequencies_description": "Enter at least one channel number before enabling.",
+          "lock_success": "LTE frequency lock applied",
+          "lock_error": "Failed to apply LTE frequency lock",
+          "unlock_success": "LTE frequency lock cleared",
+          "unlock_error": "Failed to clear LTE frequency lock",
+          "filled_current": "Filled from current connected tower",
+          "no_active_connection": "No active LTE connection"
+        }
+      },
+      "nr": {
+        "title": "NR5G Frequency Locking",
+        "description_loading": "Lock to specific NR frequencies (NR-ARFCNs).",
+        "description": "Lock to specific NR frequencies. Supports up to 32 entries (4 shown).",
+        "tower_lock_active": "NR Tower Lock is active. Disable it before using frequency locking.",
+        "experimental_warning": "Experimental Feature",
+        "enabled_label": "NR5G Frequency Lock Enabled",
+        "enabled_tooltip": "Cannot be used together with NR Tower Lock (AT+QNWLOCK). SCS is auto-detected from band type but can be overridden.",
+        "enabled_info_aria": "NR5G frequency lock info",
+        "arfcn_label": "NR-ARFCN",
+        "arfcn_label_n": "NR-ARFCN {{n}}",
+        "arfcn_placeholder": "Enter {{label}}",
+        "scs_label": "SCS",
+        "scs_label_n": "SCS {{n}}",
+        "scs_placeholder": "SCS",
+        "scs_slot_aria": "{{label}} slot {{n}}",
+        "use_current": "Use Current",
+        "error_title": "Failed to load frequency lock status",
+        "lock_dialog": {
+          "title": "Lock NR5G Frequency?",
+          "description_single": "This will lock your modem to NR-ARFCN {{arfcn}} (SCS {{scs}} kHz). The modem will only use this frequency and may briefly disconnect.",
+          "description_multi": "This will lock your modem to {{count}} NR frequencies. The modem will only use these frequencies and may briefly disconnect.",
+          "confirm": "Lock Frequency"
+        },
+        "unsupported_dialog": {
+          "title": "Unsupported Band Warning",
+          "description_prefix": "The NR-ARFCN(s) you entered map to bands not supported by your modem. Locking to an unsupported frequency may cause unexpected behavior.",
+          "matched_bands_label": "Matched bands:",
+          "supported_bands_label": "Supported bands:",
+          "confirm": "Lock Anyway",
+          "confirm_prompt": "Are you sure you want to proceed?",
+          "unknown": "Unknown"
+        },
+        "unlock_dialog": {
+          "title": "Unlock NR5G Frequency?",
+          "description": "This will remove the NR5G frequency lock. The modem will be free to use any available NR frequency and may briefly disconnect.",
+          "confirm": "Unlock"
+        },
+        "toast": {
+          "no_frequencies_title": "No frequencies entered",
+          "no_frequencies_description": "Enter at least one NR-ARFCN and SCS before enabling.",
+          "missing_scs_title": "Missing SCS",
+          "missing_scs_description": "Each NR-ARFCN requires an SCS value. Please select the sub-carrier spacing.",
+          "lock_success": "NR5G frequency lock applied",
+          "lock_error": "Failed to apply NR5G frequency lock",
+          "unlock_success": "NR5G frequency lock cleared",
+          "unlock_error": "Failed to clear NR5G frequency lock",
+          "filled_current": "Populated from active NR PCell",
+          "no_active_connection": "No active NR cell"
+        }
+      },
+      "band_match": {
+        "no_match": "No matching bands found for {{label}}",
+        "possible_prefix": "Possible bands: ",
+        "unsupported_suffix": " — unsupported",
+        "no_match_label": {
+          "this_channel": "this channel",
+          "this_nr_arfcn": "this NR-ARFCN",
+          "this_frequency": "this frequency"
+        }
+      }
+    }
+  },
+  "cell_scanner": {
+    "page": {
+      "title": "Cell Scanner",
+      "description": "Scan nearby towers across all carriers. Best results without an active SIM."
+    },
+    "scanner": {
+      "scanning": "Scanning...",
+      "start_new_scan": "Start New Scan",
+      "download_csv_aria": "Download CSV",
+      "empty_title": "No Scan Results",
+      "empty_description": "Discover nearby towers across all carriers and bands.",
+      "scanning_title": "Scanning nearby towers...",
+      "scanning_hint": "This usually takes 2-3 minutes. Other modem operations are paused during the scan.",
+      "scanning_nav_warning": "Please don't close the tab or refresh the page.",
+      "scanning_elapsed_aria": "Scan elapsed time: {{time}}",
+      "error_fallback": "Scan failed",
+      "error_description": "The modem may be busy or unreachable. Check your connection and try again.",
+      "retry_scan": "Retry Scan"
+    },
+    "result_table": {
+      "filter_placeholder": "Filter by provider...",
+      "columns_button": "Columns",
+      "column_headers": {
+        "network": "Network",
+        "provider": "Provider",
+        "band": "Band",
+        "earfcn": "EARFCN",
+        "pci": "PCI",
+        "cell_id": "Cell ID",
+        "tac": "TAC",
+        "bandwidth": "BW",
+        "bandwidth_full": "Bandwidth",
+        "signal": "Signal"
+      },
+      "mcc_mnc_aria": "MCC/MNC details",
+      "open_menu": "Open menu",
+      "lock_cell": "Lock Cell",
+      "empty_row": "No results found.",
+      "footer_of_total_one": "{{filtered}} of {{total}} cell",
+      "footer_of_total_other": "{{filtered}} of {{total}} cells",
+      "footer_total_one": "{{count}} cell found",
+      "footer_total_other": "{{count}} cells found",
+      "previous": "Previous",
+      "next": "Next"
+    },
+    "lock_dialog": {
+      "title": "Lock to Cell?",
+      "description": "This will lock the modem to the following cell. It will only connect to this specific cell until the lock is removed.",
+      "confirm": "Lock Cell",
+      "locking": "Locking..."
+    },
+    "toast": {
+      "lock_success_title": "Cell Locked",
+      "lock_success_description": "Locked to {{network_type}} PCI {{pci}} on EARFCN {{earfcn}}",
+      "lock_error_title": "Lock Failed",
+      "lock_error_unknown": "Unknown error",
+      "lock_error_connection": "Failed to connect to modem"
+    },
+    "signal_badge": {
+      "good": "Good",
+      "fair": "Fair",
+      "bad": "Bad",
+      "no_data": "No data"
+    },
+    "neighbour": {
+      "page": {
+        "title": "Neighbor Cell Scanner",
+        "description": "Analyze neighboring towers visible from the current serving cell."
+      },
+      "filter_placeholder": "Filter by cell type...",
+      "column_headers": {
+        "network": "Network",
+        "cell_type": "Cell Type",
+        "frequency": "Frequency",
+        "pci": "PCI",
+        "signal": "Signal"
+      },
+      "toast_lock_success_description": "Locked to LTE PCI {{pci}} on EARFCN {{earfcn}}",
+      "footer_count_one": "{{count}} cell found",
+      "footer_count_other": "{{count}} cells found"
+    },
+    "frequency_calculator": {
+      "page": {
+        "title": "Frequency Calculator",
+        "description": "Convert between EARFCN/NR-ARFCN, frequency, and band for LTE and 5G NR."
+      },
+      "calculator": {
+        "title": "E/ARFCN Calculator",
+        "description": "Enter a channel number to calculate frequency and band information.",
+        "tabs": {
+          "auto": "Auto",
+          "lte": "LTE",
+          "nr": "NR"
+        },
+        "input_label_lte": "E-ARFCN",
+        "input_label_nr": "NR-ARFCN",
+        "input_label_auto": "E/ARFCN Value",
+        "input_placeholder": "Enter channel number",
+        "calculate": "Calculate",
+        "error_no_input": "Please enter an E/ARFCN value",
+        "error_invalid": "Please enter a valid number",
+        "error_no_band": "Could not identify band for this E/ARFCN value",
+        "error_calculation": "Calculation error: {{message}}",
+        "result_heading": "Result",
+        "network_type_label": "Network Type",
+        "earfcn_label": "EARFCN",
+        "nr_arfcn_label": "NR-ARFCN",
+        "frequency_label": "Frequency",
+        "possible_bands_heading": "Possible Operating Bands",
+        "duplex_mode_label": "Duplex Mode",
+        "downlink_range_label": "Downlink Range",
+        "uplink_range_label": "Uplink Range",
+        "earfcn_range_label": "EARFCN Range",
+        "nr_arfcn_range_label": "NR-ARFCN Range",
+        "dl_frequency_label": "DL Frequency",
+        "ul_frequency_label": "UL Frequency",
+        "ul_earfcn_label": "UL EARFCN",
+        "downlink_only": "Downlink Only",
+        "calculation_method_prefix": "Calculation method: ",
+        "calculation_method_nr": "3GPP TS 38.104 Section 5.4.2.1",
+        "calculation_method_lte": "3GPP TS 36.101 Section 5.7"
+      },
+      "history": {
+        "title": "Calculation History",
+        "description": "Your recent calculations are saved locally.",
+        "clear": "Clear",
+        "empty": "No calculation history yet.",
+        "bands_label": "Bands: ",
+        "no_timestamp": "No timestamp",
+        "delete_aria": "Delete history entry"
+      }
+    }
+  },
+  "antennas": {
+    "statistics": {
+      "page": {
+        "title": "Antenna Statistics",
+        "description": "Per-antenna signal metrics for each receiver chain. Compare signal quality across Main, Diversity, and MIMO antenna ports."
+      },
+      "lte_card": {
+        "title": "LTE Signal",
+        "description": "Per-antenna metrics for 4G LTE",
+        "empty_title": "No LTE Signal",
+        "empty_description": "Antenna metrics will appear when 4G LTE is active."
+      },
+      "nr_card": {
+        "title": "NR5G Signal",
+        "description": "Per-antenna metrics for 5G NR",
+        "empty_title": "No NR5G Signal",
+        "empty_description": "Antenna metrics will appear when 5G NR is active."
+      },
+      "signal_strength_aria": "{{metric}} signal strength"
+    },
+    "ports": {
+      "main_name": "Main",
+      "main_description": "Main transmit/receive antenna (ANT0)",
+      "diversity_name": "Diversity",
+      "diversity_description": "Diversity / receive antenna (ANT1)",
+      "mimo3_name": "MIMO 3",
+      "mimo3_description": "MIMO spatial stream 1 (ANT2)",
+      "mimo4_name": "MIMO 4",
+      "mimo4_description": "MIMO spatial stream 2 (ANT3)"
+    },
+    "quality": {
+      "excellent": "Excellent",
+      "good": "Good",
+      "fair": "Fair",
+      "poor": "Poor",
+      "none": "None"
+    },
+    "alignment": {
+      "page": {
+        "title": "Antenna Alignment",
+        "description": "Per-antenna signal strength for each receiver chain. Record and compare positions to find the best aim or placement."
+      },
+      "stale_warning": "Signal data is stale — modem may be unresponsive.",
+      "error_warning": "Unable to reach the modem. Data shown may be outdated.",
+      "empty_title": "No Antenna Data",
+      "empty_description": "Antenna metrics will appear when the modem poller is running and reporting per-antenna signal data.",
+      "card": {
+        "active": "Active",
+        "inactive": "Inactive",
+        "lte_heading": "4G / LTE",
+        "lte_heading_anchor": "4G / LTE (Anchor)",
+        "nr_heading": "5G / NR",
+        "nr_heading_secondary": "5G / NR (Secondary)"
+      },
+      "meter": {
+        "title": "Alignment Meter",
+        "description_directional": "Record 3 angles to find the best aim. Each recording averages {{samples}} samples.",
+        "description_omni": "Record 3 positions to find the best placement. Each recording averages {{samples}} samples.",
+        "toggle_directional": "Directional",
+        "toggle_omni": "Omni",
+        "reset": "Reset",
+        "live_signal_heading": "Live Signal (Primary Antenna)",
+        "lte_rsrp": "LTE RSRP",
+        "lte_sinr": "LTE SINR",
+        "nr_rsrp": "NR RSRP",
+        "nr_sinr": "NR SINR",
+        "slot_aria": "Slot {{n}}: {{label}} — {{status}}",
+        "slot_status_recording": "recording",
+        "slot_status_recorded": "recorded",
+        "slot_status_recorded_best": "recorded, best result",
+        "slot_status_empty": "empty",
+        "angle_placeholder": "Angle…",
+        "location_placeholder": "Location…",
+        "best_badge": "Best",
+        "sample_progress": "Sample {{current}} of {{total}}",
+        "cancel": "Cancel",
+        "recorded_at": "Recorded {{time}}",
+        "not_recorded": "Not recorded",
+        "record_angle": "Record Angle",
+        "record_position": "Record Position",
+        "recommended_prefix": "Recommended: ",
+        "recommendation_directional": "This angle produced the strongest composite signal across your recorded positions.",
+        "recommendation_omni": "This location produced the strongest composite signal across your recorded positions.",
+        "recommendation_remaining_one": " Record the remaining {{count}} slot for a more complete comparison.",
+        "recommendation_remaining_other": " Record the remaining {{count}} slots for a more complete comparison.",
+        "lte_label": "LTE",
+        "nr_label": "NR",
+        "rsrp_label": "RSRP",
+        "sinr_label": "SINR",
+        "default_positions": {
+          "a": "Position A",
+          "b": "Position B",
+          "c": "Position C"
+        },
+        "radio_mode": {
+          "lte": "4G LTE",
+          "nr": "5G SA",
+          "endc": "5G NSA (EN-DC)"
+        }
+      }
+    }
   }
 }

@@ -338,5 +338,577 @@
         "error": "发送短信失败"
       }
     }
+  },
+  "cell_locking": {
+    "band_locking": {
+      "page": {
+        "title": "频段锁定",
+        "description": "限制调制解调器可使用的 LTE 和 NR 频段。"
+      },
+      "scenario_override_banner": "频段配置由 {{scenario_name}} 场景管理。",
+      "settings_card": {
+        "title": "频段锁定设置",
+        "description": "将调制解调器限制到特定的 LTE 和 5G 频段。启用故障转移，以便在锁定频段失去信号时回退到全部频段。",
+        "band_failover_label": "频段故障转移",
+        "band_failover_tooltip": "启用后，如果锁定的频段在 15 秒后不可用，设备将自动切换到默认频段。",
+        "band_failover_info_aria": "频段故障转移说明",
+        "status_label": "频段故障转移状态",
+        "status": {
+          "disabled": "已禁用",
+          "fallback_active": "回退生效中",
+          "ready": "就绪"
+        },
+        "active_lte_bands": "当前 LTE 频段",
+        "active_lte_channels": "当前 LTE 信道",
+        "active_nr_bands": "当前 5G 频段",
+        "active_nr_channels": "当前 5G 信道",
+        "toast": {
+          "failover_enabled": "频段故障转移已启用",
+          "failover_disabled": "频段故障转移已禁用",
+          "failover_error": "更新频段故障转移失败"
+        }
+      },
+      "cards": {
+        "lte": {
+          "title": "LTE 频段锁定",
+          "description": "选择要为您的设备锁定的 LTE 频段。"
+        },
+        "nsa_nr5g": {
+          "title": "NSA 频段锁定",
+          "description": "选择要锁定的 5G NSA 频段（通过 LTE 锚点的 5G）。"
+        },
+        "sa_nr5g": {
+          "title": "SA 频段锁定",
+          "description": "选择要锁定的 5G SA 频段（独立 5G）。"
+        }
+      },
+      "card_badges": {
+        "scenario_controlled": "场景控制",
+        "all_unlocked": "全部解锁",
+        "bands_locked": "{{locked}} / {{total}} 个频段"
+      },
+      "card_empty": "调制解调器未报告此类别的支持频段。",
+      "card_buttons": {
+        "lock_selected": "锁定所选频段",
+        "select_all": "全选",
+        "deselect_all": "全不选",
+        "unlock_all_aria": "解锁所有频段",
+        "unlock_all_title": "解锁所有频段（重置）"
+      },
+      "card_live_region": "正在应用 {{category_label}} 频段锁定…",
+      "card_category_label": {
+        "lte": "LTE",
+        "nsa_nr5g": "NSA",
+        "sa_nr5g": "SA"
+      },
+      "toast": {
+        "select_one_band": "请至少选择一个频段进行锁定",
+        "locked_success": "{{category_label}} 频段锁定成功",
+        "lock_error": "应用频段锁定失败",
+        "unlocked_success": "{{category_label}} 频段已解锁",
+        "unlock_error": "解锁频段失败"
+      }
+    },
+    "tower_locking": {
+      "page": {
+        "title": "基站锁定",
+        "description": "通过 PCI 和 EARFCN 锁定到特定的小区基站。"
+      },
+      "settings": {
+        "title": "基站锁定设置",
+        "description_loading": "将调制解调器锁定到特定的小区基站，保持连接稳定而不在基站间漫游。",
+        "description": "将调制解调器锁定到特定的小区基站，保持连接稳定而不在基站间漫游。不兼容 5G NSA。",
+        "persist_label": "重启后保持锁定",
+        "persist_tooltip": "启用后，重启后将自动恢复基站锁定。",
+        "persist_info_aria": "重启后保持锁定说明",
+        "failover_label": "信号故障转移",
+        "failover_tooltip": "启用后，如果信号质量下降到一定阈值以下或变得不可用，设备将从基站解锁。",
+        "failover_info_aria": "信号故障转移说明",
+        "failover_no_lock": "无活动锁定",
+        "failover_hint": "故障转移已关闭——启用它可在信号差时自动解锁。",
+        "failover_toast_disabled": "故障转移已禁用",
+        "threshold_label": "故障转移阈值 (%)",
+        "threshold_tooltip": "仅在启用故障转移时生效。设置信号质量阈值，低于该阈值时设备将从基站解锁。",
+        "threshold_info_aria": "故障转移阈值说明",
+        "threshold_placeholder": "输入阈值",
+        "threshold_update": "更新",
+        "threshold_error_range": "阈值必须在 0 到 100 之间",
+        "threshold_toast_success": "故障转移阈值已更新",
+        "signal_quality_label": "当前信号质量",
+        "failover_status_label": "故障转移状态",
+        "connection_state_label": "连接状态",
+        "schedule_status_label": "定时锁定状态",
+        "earfcn_label": "当前信道 (EARFCN)",
+        "pci_label": "当前小区 ID (PCI)",
+        "failover_badge": {
+          "loading": "加载中",
+          "unknown": "未知",
+          "monitoring": "监控中",
+          "unlocked_poor_signal": "因信号差已解锁",
+          "disabled": "已禁用",
+          "ready": "就绪"
+        },
+        "schedule_badge": {
+          "loading": "加载中",
+          "unknown": "未知",
+          "active": "活动",
+          "inactive": "非活动"
+        },
+        "connection_badge": {
+          "loading": "加载中",
+          "unknown": "未知",
+          "connected": "已连接",
+          "limited": "服务受限",
+          "searching": "搜索中",
+          "no_service": "无服务"
+        },
+        "settings_unavailable_toast": "设置不可用——请尝试刷新页面"
+      },
+      "lte": {
+        "title": "LTE 基站锁定",
+        "description": "通过输入信道和小区 ID 锁定到特定的 LTE 小区基站。",
+        "enabled_label": "已启用 LTE 基站锁定",
+        "channel_label": "信道 (EARFCN)",
+        "channel_label_n": "信道 (EARFCN) {{n}}",
+        "channel_placeholder": "输入 EARFCN",
+        "channel_placeholder_n": "输入 EARFCN {{n}}",
+        "pci_label": "小区 ID (PCI)",
+        "pci_label_n": "小区 ID (PCI) {{n}}",
+        "pci_placeholder": "输入 PCI",
+        "pci_placeholder_n": "输入 PCI {{n}}",
+        "use_current": "使用当前",
+        "lock_dialog": {
+          "title": "锁定到 LTE 基站？",
+          "description_single": "这将把您的调制解调器锁定到 EARFCN {{earfcn}}、PCI {{pci}}。调制解调器将只连接到此基站，切换过程中可能短暂断线。",
+          "description_multi_one": "这将把您的调制解调器锁定到 {{count}} 个小区目标。调制解调器将只连接到这些基站，切换过程中可能短暂断线。",
+          "description_multi_other": "这将把您的调制解调器锁定到 {{count}} 个小区目标。调制解调器将只连接到这些基站，切换过程中可能短暂断线。",
+          "confirm": "锁定基站"
+        },
+        "unlock_dialog": {
+          "title": "解锁 LTE 基站？",
+          "description": "这将移除 LTE 基站锁定。调制解调器将可以自由选择任何可用基站，切换过程中可能短暂断线。",
+          "confirm": "移除锁定"
+        },
+        "toast": {
+          "failover_in_progress_title": "故障转移检查进行中",
+          "failover_in_progress_description": "信号质量检查正在运行，请稍候。",
+          "no_targets_title": "无小区目标",
+          "no_targets_description": "请先输入信道和小区 ID。",
+          "lock_success": "LTE 基站锁定已应用",
+          "lock_error": "锁定基站失败——请检查调制解调器连接",
+          "unlock_success": "LTE 基站锁定已清除",
+          "unlock_error": "移除基站锁定失败",
+          "filled_current": "已从当前连接的基站填充",
+          "no_active_connection": "无活动 LTE 连接"
+        }
+      },
+      "nr_sa": {
+        "title": "NR-SA 基站锁定",
+        "description": "通过输入信道、小区 ID、频段和子载波间隔锁定到特定的 5G SA 小区基站。",
+        "description_suffix_nsa_mode": " 不兼容 NR5G-NSA 模式。",
+        "description_suffix_lte_only": " 无可用 NR 连接。",
+        "enabled_label": "已启用 NR 基站锁定",
+        "arfcn_label": "信道 (ARFCN)",
+        "arfcn_placeholder": "输入 ARFCN",
+        "pci_label": "小区 ID (PCI)",
+        "pci_placeholder": "输入 PCI",
+        "band_label": "NR 频段",
+        "band_placeholder": "输入 NR 频段",
+        "scs_label": "子载波间隔",
+        "scs_placeholder": "SCS",
+        "use_current": "使用当前",
+        "lock_dialog": {
+          "title": "锁定到 NR-SA 基站？",
+          "description": "这将把您的调制解调器锁定到 NR ARFCN {{arfcn}}、PCI {{pci}}（频段 {{band}}）。调制解调器将只连接到此基站，切换过程中可能短暂断线。",
+          "confirm": "锁定基站"
+        },
+        "unlock_dialog": {
+          "title": "解锁 NR-SA 基站？",
+          "description": "这将移除 NR-SA 基站锁定。调制解调器将可以自由选择任何可用基站，切换过程中可能短暂断线。",
+          "confirm": "移除锁定"
+        },
+        "toast": {
+          "failover_in_progress_title": "故障转移检查进行中",
+          "failover_in_progress_description": "信号质量检查正在运行，请稍候。",
+          "incomplete_title": "字段不完整",
+          "incomplete_description": "锁定前请填写所有必填基站字段。",
+          "lock_success": "NR-SA 基站锁定已应用",
+          "lock_error": "锁定基站失败——请检查调制解调器连接",
+          "unlock_success": "NR-SA 基站锁定已清除",
+          "unlock_error": "移除基站锁定失败",
+          "filled_current": "已从当前连接的基站填充",
+          "no_active_connection": "无活动 5G SA 连接"
+        }
+      },
+      "schedule": {
+        "title": "定时基站锁定",
+        "description": "设置特定时间以启用或禁用基站锁定。",
+        "enable_label": "启用定时锁定",
+        "enable_tooltip": "安排基站锁定在指定时间自动启用或禁用。",
+        "enable_info_aria": "定时说明",
+        "start_time_label": "开始时间",
+        "end_time_label": "结束时间",
+        "repeat_on_label": "重复",
+        "repeat_on_aria": "星期几",
+        "day_labels": {
+          "sun": "周日",
+          "mon": "周一",
+          "tue": "周二",
+          "wed": "周三",
+          "thu": "周四",
+          "fri": "周五",
+          "sat": "周六"
+        },
+        "toast_no_targets": "未配置锁定目标"
+      }
+    },
+    "frequency_locking": {
+      "page": {
+        "title": "频率锁定",
+        "description": "锁定到特定 EARFCN/NR-ARFCN。实验性功能——请谨慎使用。"
+      },
+      "lte": {
+        "title": "LTE 频率锁定",
+        "description_loading": "锁定到特定的 LTE 信道频率。",
+        "description": "锁定到特定的 LTE 信道频率。最多 2 个信道。",
+        "tower_lock_active": "LTE 基站锁定已激活。请先禁用它再使用频率锁定。",
+        "experimental_warning": "实验性功能",
+        "enabled_label": "已启用 LTE 频率锁定",
+        "enabled_tooltip": "锁定到不支持的频率可能导致调制解调器意外重启。基站锁定激活时无法使用。",
+        "enabled_info_aria": "LTE 频率锁定说明",
+        "channel_label": "信道 (EARFCN)",
+        "channel_label_optional": "信道 2（可选）",
+        "channel_placeholder": "输入 EARFCN",
+        "channel_placeholder_2": "输入 EARFCN 2",
+        "use_current": "使用当前",
+        "error_title": "加载频率锁定状态失败",
+        "lock_dialog": {
+          "title": "锁定 LTE 频率？",
+          "description_single": "这将把您的调制解调器锁定到 EARFCN {{earfcn}}。调制解调器将只使用此频率，可能短暂断线。",
+          "description_multi": "这将把您的调制解调器锁定到 EARFCN {{earfcns}}。调制解调器将只使用这些频率，可能短暂断线。",
+          "confirm": "锁定频率"
+        },
+        "unsupported_dialog": {
+          "title": "不支持的频率警告",
+          "description_prefix": "您输入的频率与调制解调器不支持的频段匹配。锁定到不支持的频率可能导致调制解调器意外重启。",
+          "matched_bands_label": "匹配频段：",
+          "supported_bands_label": "支持的频段：",
+          "confirm": "仍然锁定",
+          "confirm_prompt": "确定要继续吗？",
+          "unknown": "未知"
+        },
+        "unlock_dialog": {
+          "title": "解锁 LTE 频率？",
+          "description": "这将移除 LTE 频率锁定。调制解调器将可以自由使用任何可用频率，可能短暂断线。",
+          "confirm": "移除锁定"
+        },
+        "toast": {
+          "no_frequencies_title": "未输入频率",
+          "no_frequencies_description": "启用前请至少输入一个信道号。",
+          "lock_success": "LTE 频率锁定已应用",
+          "lock_error": "应用 LTE 频率锁定失败",
+          "unlock_success": "LTE 频率锁定已清除",
+          "unlock_error": "清除 LTE 频率锁定失败",
+          "filled_current": "已从当前连接的基站填充",
+          "no_active_connection": "无活动 LTE 连接"
+        }
+      },
+      "nr": {
+        "title": "NR5G 频率锁定",
+        "description_loading": "锁定到特定的 NR 频率（NR-ARFCN）。",
+        "description": "锁定到特定的 NR 频率。最多支持 32 条记录（显示 4 条）。",
+        "tower_lock_active": "NR 基站锁定已激活。请先禁用它再使用频率锁定。",
+        "experimental_warning": "实验性功能",
+        "enabled_label": "已启用 NR5G 频率锁定",
+        "enabled_tooltip": "不能与 NR 基站锁定 (AT+QNWLOCK) 同时使用。SCS 从频段类型自动检测，但可以覆盖。",
+        "enabled_info_aria": "NR5G 频率锁定说明",
+        "arfcn_label": "NR-ARFCN",
+        "arfcn_label_n": "NR-ARFCN {{n}}",
+        "arfcn_placeholder": "输入 {{label}}",
+        "scs_label": "SCS",
+        "scs_label_n": "SCS {{n}}",
+        "scs_placeholder": "SCS",
+        "scs_slot_aria": "{{label}} 槽位 {{n}}",
+        "use_current": "使用当前",
+        "error_title": "加载频率锁定状态失败",
+        "lock_dialog": {
+          "title": "锁定 NR5G 频率？",
+          "description_single": "这将把您的调制解调器锁定到 NR-ARFCN {{arfcn}}（SCS {{scs}} kHz）。调制解调器将只使用此频率，可能短暂断线。",
+          "description_multi": "这将把您的调制解调器锁定到 {{count}} 个 NR 频率。调制解调器将只使用这些频率，可能短暂断线。",
+          "confirm": "锁定频率"
+        },
+        "unsupported_dialog": {
+          "title": "不支持的频段警告",
+          "description_prefix": "您输入的 NR-ARFCN 映射到调制解调器不支持的频段。锁定到不支持的频率可能导致意外行为。",
+          "matched_bands_label": "匹配频段：",
+          "supported_bands_label": "支持的频段：",
+          "confirm": "仍然锁定",
+          "confirm_prompt": "确定要继续吗？",
+          "unknown": "未知"
+        },
+        "unlock_dialog": {
+          "title": "解锁 NR5G 频率？",
+          "description": "这将移除 NR5G 频率锁定。调制解调器将可以自由使用任何可用 NR 频率，可能短暂断线。",
+          "confirm": "解锁"
+        },
+        "toast": {
+          "no_frequencies_title": "未输入频率",
+          "no_frequencies_description": "启用前请至少输入一个 NR-ARFCN 和 SCS。",
+          "missing_scs_title": "缺少 SCS",
+          "missing_scs_description": "每个 NR-ARFCN 都需要 SCS 值。请选择子载波间隔。",
+          "lock_success": "NR5G 频率锁定已应用",
+          "lock_error": "应用 NR5G 频率锁定失败",
+          "unlock_success": "NR5G 频率锁定已清除",
+          "unlock_error": "清除 NR5G 频率锁定失败",
+          "filled_current": "已从活动 NR PCell 填充",
+          "no_active_connection": "无活动 NR 小区"
+        }
+      },
+      "band_match": {
+        "no_match": "未找到与 {{label}} 匹配的频段",
+        "possible_prefix": "可能的频段：",
+        "unsupported_suffix": " — 不支持",
+        "no_match_label": {
+          "this_channel": "此信道",
+          "this_nr_arfcn": "此 NR-ARFCN",
+          "this_frequency": "此频率"
+        }
+      }
+    }
+  },
+  "cell_scanner": {
+    "page": {
+      "title": "小区扫描",
+      "description": "扫描所有运营商的附近基站。无活动 SIM 时效果最佳。"
+    },
+    "scanner": {
+      "scanning": "扫描中...",
+      "start_new_scan": "开始新扫描",
+      "download_csv_aria": "下载 CSV",
+      "empty_title": "无扫描结果",
+      "empty_description": "发现所有运营商和频段的附近基站。",
+      "scanning_title": "正在扫描附近基站…",
+      "scanning_hint": "通常需要 2-3 分钟。扫描期间其他调制解调器操作将暂停。",
+      "scanning_nav_warning": "请不要关闭标签页或刷新页面。",
+      "scanning_elapsed_aria": "扫描已用时间：{{time}}",
+      "error_fallback": "扫描失败",
+      "error_description": "调制解调器可能繁忙或无法访问。请检查连接后重试。",
+      "retry_scan": "重试扫描"
+    },
+    "result_table": {
+      "filter_placeholder": "按运营商筛选...",
+      "columns_button": "列",
+      "column_headers": {
+        "network": "网络",
+        "provider": "运营商",
+        "band": "频段",
+        "earfcn": "EARFCN",
+        "pci": "PCI",
+        "cell_id": "小区 ID",
+        "tac": "TAC",
+        "bandwidth": "带宽",
+        "bandwidth_full": "带宽",
+        "signal": "信号"
+      },
+      "mcc_mnc_aria": "MCC/MNC 详情",
+      "open_menu": "打开菜单",
+      "lock_cell": "锁定小区",
+      "empty_row": "未找到结果。",
+      "footer_of_total_one": "{{total}} 个小区中的 {{filtered}} 个",
+      "footer_of_total_other": "{{total}} 个小区中的 {{filtered}} 个",
+      "footer_total_one": "找到 {{count}} 个小区",
+      "footer_total_other": "找到 {{count}} 个小区",
+      "previous": "上一页",
+      "next": "下一页"
+    },
+    "lock_dialog": {
+      "title": "锁定到此小区？",
+      "description": "这将把调制解调器锁定到以下小区。在移除锁定之前，它只会连接到此特定小区。",
+      "confirm": "锁定小区",
+      "locking": "锁定中..."
+    },
+    "toast": {
+      "lock_success_title": "小区已锁定",
+      "lock_success_description": "已锁定到 {{network_type}} PCI {{pci}}，EARFCN {{earfcn}}",
+      "lock_error_title": "锁定失败",
+      "lock_error_unknown": "未知错误",
+      "lock_error_connection": "连接调制解调器失败"
+    },
+    "signal_badge": {
+      "good": "良好",
+      "fair": "一般",
+      "bad": "较差",
+      "no_data": "无数据"
+    },
+    "neighbour": {
+      "page": {
+        "title": "邻区扫描",
+        "description": "分析当前服务小区可见的邻近基站。"
+      },
+      "filter_placeholder": "按小区类型筛选...",
+      "column_headers": {
+        "network": "网络",
+        "cell_type": "小区类型",
+        "frequency": "频率",
+        "pci": "PCI",
+        "signal": "信号"
+      },
+      "toast_lock_success_description": "已锁定到 LTE PCI {{pci}}，EARFCN {{earfcn}}",
+      "footer_count_one": "找到 {{count}} 个小区",
+      "footer_count_other": "找到 {{count}} 个小区"
+    },
+    "frequency_calculator": {
+      "page": {
+        "title": "频率计算器",
+        "description": "在 LTE 和 5G NR 的 EARFCN/NR-ARFCN、频率和频段之间转换。"
+      },
+      "calculator": {
+        "title": "E/ARFCN 计算器",
+        "description": "输入信道号以计算频率和频段信息。",
+        "tabs": {
+          "auto": "自动",
+          "lte": "LTE",
+          "nr": "NR"
+        },
+        "input_label_lte": "E-ARFCN",
+        "input_label_nr": "NR-ARFCN",
+        "input_label_auto": "E/ARFCN 值",
+        "input_placeholder": "输入信道号",
+        "calculate": "计算",
+        "error_no_input": "请输入 E/ARFCN 值",
+        "error_invalid": "请输入有效数字",
+        "error_no_band": "无法识别此 E/ARFCN 值对应的频段",
+        "error_calculation": "计算错误：{{message}}",
+        "result_heading": "结果",
+        "network_type_label": "网络类型",
+        "earfcn_label": "EARFCN",
+        "nr_arfcn_label": "NR-ARFCN",
+        "frequency_label": "频率",
+        "possible_bands_heading": "可能的工作频段",
+        "duplex_mode_label": "双工模式",
+        "downlink_range_label": "下行范围",
+        "uplink_range_label": "上行范围",
+        "earfcn_range_label": "EARFCN 范围",
+        "nr_arfcn_range_label": "NR-ARFCN 范围",
+        "dl_frequency_label": "下行频率",
+        "ul_frequency_label": "上行频率",
+        "ul_earfcn_label": "上行 EARFCN",
+        "downlink_only": "仅下行",
+        "calculation_method_prefix": "计算方法：",
+        "calculation_method_nr": "3GPP TS 38.104 Section 5.4.2.1",
+        "calculation_method_lte": "3GPP TS 36.101 Section 5.7"
+      },
+      "history": {
+        "title": "计算历史",
+        "description": "您最近的计算已保存在本地。",
+        "clear": "清除",
+        "empty": "暂无计算历史。",
+        "bands_label": "频段：",
+        "no_timestamp": "无时间戳",
+        "delete_aria": "删除历史记录"
+      }
+    }
+  },
+  "antennas": {
+    "statistics": {
+      "page": {
+        "title": "天线统计",
+        "description": "每条接收链的逐天线信号指标。比较主天线、分集天线和 MIMO 天线端口的信号质量。"
+      },
+      "lte_card": {
+        "title": "LTE 信号",
+        "description": "4G LTE 的逐天线指标",
+        "empty_title": "无 LTE 信号",
+        "empty_description": "4G LTE 活动时将显示天线指标。"
+      },
+      "nr_card": {
+        "title": "NR5G 信号",
+        "description": "5G NR 的逐天线指标",
+        "empty_title": "无 NR5G 信号",
+        "empty_description": "5G NR 活动时将显示天线指标。"
+      },
+      "signal_strength_aria": "{{metric}} 信号强度"
+    },
+    "ports": {
+      "main_name": "主天线",
+      "main_description": "主发射/接收天线 (ANT0)",
+      "diversity_name": "分集天线",
+      "diversity_description": "分集/接收天线 (ANT1)",
+      "mimo3_name": "MIMO 3",
+      "mimo3_description": "MIMO 空间流 1 (ANT2)",
+      "mimo4_name": "MIMO 4",
+      "mimo4_description": "MIMO 空间流 2 (ANT3)"
+    },
+    "quality": {
+      "excellent": "优秀",
+      "good": "良好",
+      "fair": "一般",
+      "poor": "较差",
+      "none": "无"
+    },
+    "alignment": {
+      "page": {
+        "title": "天线对准",
+        "description": "每条接收链的逐天线信号强度。记录并比较位置，找到最佳瞄准方向或摆放位置。"
+      },
+      "stale_warning": "信号数据已过期——调制解调器可能无响应。",
+      "error_warning": "无法连接到调制解调器，显示的数据可能已过时。",
+      "empty_title": "无天线数据",
+      "empty_description": "当调制解调器轮询器运行并报告逐天线信号数据时，天线指标将显示。",
+      "card": {
+        "active": "活动",
+        "inactive": "非活动",
+        "lte_heading": "4G / LTE",
+        "lte_heading_anchor": "4G / LTE（锚点）",
+        "nr_heading": "5G / NR",
+        "nr_heading_secondary": "5G / NR（辅助）"
+      },
+      "meter": {
+        "title": "对准仪",
+        "description_directional": "记录 3 个角度以找到最佳瞄准方向。每次记录平均 {{samples}} 个采样。",
+        "description_omni": "记录 3 个位置以找到最佳摆放位置。每次记录平均 {{samples}} 个采样。",
+        "toggle_directional": "定向",
+        "toggle_omni": "全向",
+        "reset": "重置",
+        "live_signal_heading": "实时信号（主天线）",
+        "lte_rsrp": "LTE RSRP",
+        "lte_sinr": "LTE SINR",
+        "nr_rsrp": "NR RSRP",
+        "nr_sinr": "NR SINR",
+        "slot_aria": "槽位 {{n}}：{{label}} — {{status}}",
+        "slot_status_recording": "记录中",
+        "slot_status_recorded": "已记录",
+        "slot_status_recorded_best": "已记录，最佳结果",
+        "slot_status_empty": "空",
+        "angle_placeholder": "角度…",
+        "location_placeholder": "位置…",
+        "best_badge": "最佳",
+        "sample_progress": "采样 {{current}} / {{total}}",
+        "cancel": "取消",
+        "recorded_at": "记录于 {{time}}",
+        "not_recorded": "未记录",
+        "record_angle": "记录角度",
+        "record_position": "记录位置",
+        "recommended_prefix": "推荐：",
+        "recommendation_directional": "此角度在您所记录的位置中产生了最强的综合信号。",
+        "recommendation_omni": "此位置在您所记录的位置中产生了最强的综合信号。",
+        "recommendation_remaining_one": " 记录剩余的 {{count}} 个槽位以获得更完整的比较。",
+        "recommendation_remaining_other": " 记录剩余的 {{count}} 个槽位以获得更完整的比较。",
+        "lte_label": "LTE",
+        "nr_label": "NR",
+        "rsrp_label": "RSRP",
+        "sinr_label": "SINR",
+        "default_positions": {
+          "a": "位置 A",
+          "b": "位置 B",
+          "c": "位置 C"
+        },
+        "radio_mode": {
+          "lte": "4G LTE",
+          "nr": "5G SA",
+          "endc": "5G NSA (EN-DC)"
+        }
+      }
+    }
   }
 }
