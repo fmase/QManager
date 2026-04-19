@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { authFetch } from "@/lib/auth-fetch";
 
 import { Card, CardContent } from "@/components/ui/card";
@@ -52,6 +53,7 @@ const CELL_SCAN_CSV_HEADER =
   "Network,Provider,MCC,MNC,Band,EARFCN,PCI,Cell ID,TAC,Bandwidth,Signal (dBm)";
 
 const FullScannerComponent = () => {
+  const { t } = useTranslation("cellular");
   const { status, results, error, elapsedSeconds, startScan } = useCellScanner();
   const [lockTarget, setLockTarget] = useState<CellScanResult | null>(null);
   const [isLocking, setIsLocking] = useState(false);
@@ -101,23 +103,27 @@ const FullScannerComponent = () => {
       const data = await res.json();
 
       if (data.success) {
-        toast.success("Cell Locked", {
-          description: `Locked to ${lockTarget.networkType} PCI ${lockTarget.pci} on EARFCN ${lockTarget.earfcn}`,
+        toast.success(t("cell_scanner.toast.lock_success_title"), {
+          description: t("cell_scanner.toast.lock_success_description", {
+            network_type: lockTarget.networkType,
+            pci: lockTarget.pci,
+            earfcn: lockTarget.earfcn,
+          }),
         });
       } else {
-        toast.error("Lock Failed", {
-          description: data.detail || data.error || "Unknown error",
+        toast.error(t("cell_scanner.toast.lock_error_title"), {
+          description: data.detail || data.error || t("cell_scanner.toast.lock_error_unknown"),
         });
       }
     } catch {
-      toast.error("Lock Failed", {
-        description: "Failed to connect to modem",
+      toast.error(t("cell_scanner.toast.lock_error_title"), {
+        description: t("cell_scanner.toast.lock_error_connection"),
       });
     } finally {
       setIsLocking(false);
       setLockTarget(null);
     }
-  }, [lockTarget]);
+  }, [lockTarget, t]);
 
   return (
     <>
@@ -135,16 +141,15 @@ const FullScannerComponent = () => {
                 </div>
                 <div className="max-w-xs space-y-1">
                   <p className="text-sm font-medium text-foreground">
-                    {error || "Scan failed"}
+                    {error || t("cell_scanner.scanner.error_fallback")}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    The modem may be busy or unreachable. Check your connection
-                    and try again.
+                    {t("cell_scanner.scanner.error_description")}
                   </p>
                 </div>
                 <Button onClick={startScan} variant="outline" size="sm">
                   <RefreshCcwIcon className="size-4" />
-                  Retry Scan
+                  {t("cell_scanner.scanner.retry_scan")}
                 </Button>
               </div>
             ) : (
@@ -154,7 +159,7 @@ const FullScannerComponent = () => {
           {(hasScanResults || isScanning) && (
             <div className="mt-4 flex items-center gap-x-2">
               <Button onClick={startScan} disabled={isScanning}>
-                {isScanning ? "Scanning..." : "Start New Scan"}
+                {isScanning ? t("cell_scanner.scanner.scanning") : t("cell_scanner.scanner.start_new_scan")}
               </Button>
               {hasScanResults && (
                 <Button
@@ -166,7 +171,7 @@ const FullScannerComponent = () => {
                       `cell_scan_${new Date().toISOString().slice(0, 10)}.csv`,
                     )
                   }
-                  aria-label="Download CSV"
+                  aria-label={t("cell_scanner.scanner.download_csv_aria")}
                 >
                   <DownloadIcon />
                 </Button>
@@ -183,10 +188,9 @@ const FullScannerComponent = () => {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Lock to Cell?</AlertDialogTitle>
+            <AlertDialogTitle>{t("cell_scanner.lock_dialog.title")}</AlertDialogTitle>
             <AlertDialogDescription>
-              This will lock the modem to the following cell. It will only
-              connect to this specific cell until the lock is removed.
+              {t("cell_scanner.lock_dialog.description")}
             </AlertDialogDescription>
             {lockTarget && (
               <p className="font-mono text-xs text-muted-foreground">
@@ -197,15 +201,17 @@ const FullScannerComponent = () => {
             )}
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isLocking}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={isLocking}>
+              {t("actions.cancel", { ns: "common" })}
+            </AlertDialogCancel>
             <AlertDialogAction onClick={(e) => { e.preventDefault(); confirmLockCell(); }} disabled={isLocking}>
               {isLocking ? (
                 <>
                   <LoaderCircleIcon className="size-4 animate-spin" />
-                  Locking...
+                  {t("cell_scanner.lock_dialog.locking")}
                 </>
               ) : (
-                "Lock Cell"
+                t("cell_scanner.lock_dialog.confirm")
               )}
             </AlertDialogAction>
           </AlertDialogFooter>
