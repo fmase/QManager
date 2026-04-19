@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 
 import {
   Card,
@@ -79,6 +80,8 @@ const NRSALockingComponent = ({
   onLock,
   onUnlock,
 }: NRSALockingProps) => {
+  const { t } = useTranslation("cellular");
+
   // Local form state
   const [arfcn, setArfcn] = useState("");
   const [pci, setPci] = useState("");
@@ -111,8 +114,8 @@ const NRSALockingComponent = ({
 
   const handleToggle = (checked: boolean) => {
     if (checked && isWatcherRunning) {
-      toast.warning("Failover check in progress", {
-        description: "Signal quality check is running, please wait.",
+      toast.warning(t("cell_locking.tower_locking.nr_sa.toast.failover_in_progress_title"), {
+        description: t("cell_locking.tower_locking.nr_sa.toast.failover_in_progress_description"),
       });
       return;
     }
@@ -128,8 +131,8 @@ const NRSALockingComponent = ({
         isNaN(parsedBand) ||
         isNaN(parsedScs)
       ) {
-        toast.warning("Incomplete fields", {
-          description: "Please fill in all required tower fields before locking.",
+        toast.warning(t("cell_locking.tower_locking.nr_sa.toast.incomplete_title"), {
+          description: t("cell_locking.tower_locking.nr_sa.toast.incomplete_description"),
         });
         return;
       }
@@ -152,9 +155,9 @@ const NRSALockingComponent = ({
     if (pendingCell) {
       const success = await onLock(pendingCell);
       if (success) {
-        toast.success("NR-SA tower lock applied");
+        toast.success(t("cell_locking.tower_locking.nr_sa.toast.lock_success"));
       } else {
-        toast.error("Failed to lock tower — check modem connection");
+        toast.error(t("cell_locking.tower_locking.nr_sa.toast.lock_error"));
       }
     }
   };
@@ -163,9 +166,9 @@ const NRSALockingComponent = ({
     setShowUnlockDialog(false);
     const success = await onUnlock();
     if (success) {
-      toast.success("NR-SA tower lock cleared");
+      toast.success(t("cell_locking.tower_locking.nr_sa.toast.unlock_success"));
     } else {
-      toast.error("Failed to remove tower lock");
+      toast.error(t("cell_locking.tower_locking.nr_sa.toast.unlock_error"));
     }
   };
 
@@ -181,9 +184,9 @@ const NRSALockingComponent = ({
       setPci(String(nrPci));
       if (nrBandNum != null) setBand(String(nrBandNum));
       if (nrScs != null) setScs(String(nrScs));
-      toast.info("Filled from current connected tower");
+      toast.info(t("cell_locking.tower_locking.nr_sa.toast.filled_current"));
     } else {
-      toast.warning("No active 5G SA connection");
+      toast.warning(t("cell_locking.tower_locking.nr_sa.toast.no_active_connection"));
     }
   };
 
@@ -194,9 +197,9 @@ const NRSALockingComponent = ({
     return (
       <Card className="@container/card">
         <CardHeader>
-          <CardTitle>NR-SA Tower Locking</CardTitle>
+          <CardTitle>{t("cell_locking.tower_locking.nr_sa.title")}</CardTitle>
           <CardDescription>
-            Lock to a specific 5G SA cell tower by entering its channel, cell ID, band, and subcarrier spacing.
+            {t("cell_locking.tower_locking.nr_sa.description")}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -239,11 +242,11 @@ const NRSALockingComponent = ({
     <>
       <Card className={`@container/card ${isCardDisabled ? "opacity-60" : ""}`}>
         <CardHeader>
-          <CardTitle>NR-SA Tower Locking</CardTitle>
+          <CardTitle>{t("cell_locking.tower_locking.nr_sa.title")}</CardTitle>
           <CardDescription>
-            Lock to a specific 5G SA cell tower by entering its channel, cell ID, band, and subcarrier spacing.
-            {isNsaMode && " Not compatible with NR5G-NSA mode."}
-            {isLteOnly && " No NR connection available."}
+            {t("cell_locking.tower_locking.nr_sa.description")}
+            {isNsaMode && t("cell_locking.tower_locking.nr_sa.description_suffix_nsa_mode")}
+            {isLteOnly && t("cell_locking.tower_locking.nr_sa.description_suffix_lte_only")}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -253,7 +256,7 @@ const NRSALockingComponent = ({
               <div className="flex items-center gap-1.5">
                 <TbInfoCircleFilled className="size-5 text-info" />
                 <p className="font-semibold text-muted-foreground text-sm">
-                  NR Tower Locking Enabled
+                  {t("cell_locking.tower_locking.nr_sa.enabled_label")}
                 </p>
               </div>
               <div className="flex items-center space-x-2">
@@ -267,7 +270,7 @@ const NRSALockingComponent = ({
                   disabled={isDisabled}
                 />
                 <Label htmlFor="nr-sa-tower-locking">
-                  {isEnabled ? "Enabled" : "Disabled"}
+                  {isEnabled ? t("state.enabled", { ns: "common" }) : t("state.disabled", { ns: "common" })}
                 </Label>
               </div>
             </div>
@@ -282,7 +285,7 @@ const NRSALockingComponent = ({
                     <div className="grid grid-cols-2 gap-4">
                       <Field>
                         <div className="flex items-center justify-between">
-                          <FieldLabel htmlFor="nrarfcn1">Channel (ARFCN)</FieldLabel>
+                          <FieldLabel htmlFor="nrarfcn1">{t("cell_locking.tower_locking.nr_sa.arfcn_label")}</FieldLabel>
                           <Button
                             type="button"
                             size="sm"
@@ -290,24 +293,24 @@ const NRSALockingComponent = ({
                             onClick={handleUseCurrent}
                             disabled={isDisabled || !hasActiveNrCell}
                           >
-                            Use Current
+                            {t("cell_locking.tower_locking.nr_sa.use_current")}
                           </Button>
                         </div>
                         <Input
                           id="nrarfcn1"
                           type="text"
-                          placeholder="Enter ARFCN"
+                          placeholder={t("cell_locking.tower_locking.nr_sa.arfcn_placeholder")}
                           value={arfcn}
                           onChange={(e) => setArfcn(e.target.value)}
                           disabled={isDisabled}
                         />
                       </Field>
                       <Field>
-                        <FieldLabel htmlFor="nrpci">Cell ID (PCI)</FieldLabel>
+                        <FieldLabel htmlFor="nrpci">{t("cell_locking.tower_locking.nr_sa.pci_label")}</FieldLabel>
                         <Input
                           id="nrpci"
                           type="text"
-                          placeholder="Enter PCI"
+                          placeholder={t("cell_locking.tower_locking.nr_sa.pci_placeholder")}
                           value={pci}
                           onChange={(e) => setPci(e.target.value)}
                           disabled={isDisabled}
@@ -316,25 +319,25 @@ const NRSALockingComponent = ({
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <Field>
-                        <FieldLabel htmlFor="nr-band">NR Band</FieldLabel>
+                        <FieldLabel htmlFor="nr-band">{t("cell_locking.tower_locking.nr_sa.band_label")}</FieldLabel>
                         <Input
                           id="nr-band"
                           type="text"
-                          placeholder="Enter NR Band"
+                          placeholder={t("cell_locking.tower_locking.nr_sa.band_placeholder")}
                           value={band}
                           onChange={(e) => setBand(e.target.value)}
                           disabled={isDisabled}
                         />
                       </Field>
                       <Field>
-                        <FieldLabel htmlFor="scs">Subcarrier Spacing</FieldLabel>
+                        <FieldLabel htmlFor="scs">{t("cell_locking.tower_locking.nr_sa.scs_label")}</FieldLabel>
                         <Select
                           value={scs}
                           onValueChange={setScs}
                           disabled={isDisabled}
                         >
                           <SelectTrigger>
-                            <SelectValue placeholder="SCS" />
+                            <SelectValue placeholder={t("cell_locking.tower_locking.nr_sa.scs_placeholder")} />
                           </SelectTrigger>
                           <SelectContent>
                             {SCS_OPTIONS.map((opt) => (
@@ -361,18 +364,19 @@ const NRSALockingComponent = ({
       <AlertDialog open={showLockDialog} onOpenChange={setShowLockDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Lock to NR-SA Tower?</AlertDialogTitle>
+            <AlertDialogTitle>{t("cell_locking.tower_locking.nr_sa.lock_dialog.title")}</AlertDialogTitle>
             <AlertDialogDescription>
-              This will lock your modem to NR ARFCN {pendingCell?.arfcn}, PCI{" "}
-              {pendingCell?.pci} (Band {pendingCell?.band}). The modem will only
-              connect to this tower and may briefly disconnect during the
-              switch.
+              {t("cell_locking.tower_locking.nr_sa.lock_dialog.description", {
+                arfcn: pendingCell?.arfcn,
+                pci: pendingCell?.pci,
+                band: pendingCell?.band,
+              })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t("actions.cancel", { ns: "common" })}</AlertDialogCancel>
             <AlertDialogAction onClick={confirmLock}>
-              Lock Tower
+              {t("cell_locking.tower_locking.nr_sa.lock_dialog.confirm")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -382,17 +386,15 @@ const NRSALockingComponent = ({
       <AlertDialog open={showUnlockDialog} onOpenChange={setShowUnlockDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Unlock NR-SA Tower?</AlertDialogTitle>
+            <AlertDialogTitle>{t("cell_locking.tower_locking.nr_sa.unlock_dialog.title")}</AlertDialogTitle>
             <AlertDialogDescription>
-              This will remove the NR-SA tower lock. The modem will be free to
-              select any available tower and may briefly disconnect during the
-              switch.
+              {t("cell_locking.tower_locking.nr_sa.unlock_dialog.description")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t("actions.cancel", { ns: "common" })}</AlertDialogCancel>
             <AlertDialogAction onClick={confirmUnlock}>
-              Remove Lock
+              {t("cell_locking.tower_locking.nr_sa.unlock_dialog.confirm")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

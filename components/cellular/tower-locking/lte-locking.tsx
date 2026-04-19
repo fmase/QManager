@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 
 import {
   Card,
@@ -59,6 +60,8 @@ const LTELockingComponent = ({
   onLock,
   onUnlock,
 }: LTELockingProps) => {
+  const { t } = useTranslation("cellular");
+
   // Local form state for the 3 input pairs
   const [earfcn1, setEarfcn1] = useState("");
   const [pci1, setPci1] = useState("");
@@ -114,16 +117,16 @@ const LTELockingComponent = ({
 
   const handleToggle = (checked: boolean) => {
     if (checked && isWatcherRunning) {
-      toast.warning("Failover check in progress", {
-        description: "Signal quality check is running, please wait.",
+      toast.warning(t("cell_locking.tower_locking.lte.toast.failover_in_progress_title"), {
+        description: t("cell_locking.tower_locking.lte.toast.failover_in_progress_description"),
       });
       return;
     }
     if (checked) {
       const cells = buildCells();
       if (cells.length === 0) {
-        toast.warning("No cell targets", {
-          description: "Enter a channel and cell ID first.",
+        toast.warning(t("cell_locking.tower_locking.lte.toast.no_targets_title"), {
+          description: t("cell_locking.tower_locking.lte.toast.no_targets_description"),
         });
         return;
       }
@@ -139,9 +142,9 @@ const LTELockingComponent = ({
     setShowLockDialog(false);
     const success = await onLock(pendingCells);
     if (success) {
-      toast.success("LTE tower lock applied");
+      toast.success(t("cell_locking.tower_locking.lte.toast.lock_success"));
     } else {
-      toast.error("Failed to lock tower — check modem connection");
+      toast.error(t("cell_locking.tower_locking.lte.toast.lock_error"));
     }
   };
 
@@ -149,9 +152,9 @@ const LTELockingComponent = ({
     setShowUnlockDialog(false);
     const success = await onUnlock();
     if (success) {
-      toast.success("LTE tower lock cleared");
+      toast.success(t("cell_locking.tower_locking.lte.toast.unlock_success"));
     } else {
-      toast.error("Failed to remove tower lock");
+      toast.error(t("cell_locking.tower_locking.lte.toast.unlock_error"));
     }
   };
 
@@ -162,9 +165,9 @@ const LTELockingComponent = ({
     if (earfcn != null && pci != null) {
       setEarfcn1(String(earfcn));
       setPci1(String(pci));
-      toast.info("Filled from current connected tower");
+      toast.info(t("cell_locking.tower_locking.lte.toast.filled_current"));
     } else {
-      toast.warning("No active LTE connection");
+      toast.warning(t("cell_locking.tower_locking.lte.toast.no_active_connection"));
     }
   };
 
@@ -175,9 +178,9 @@ const LTELockingComponent = ({
     return (
       <Card className="@container/card">
         <CardHeader>
-          <CardTitle>LTE Tower Locking</CardTitle>
+          <CardTitle>{t("cell_locking.tower_locking.lte.title")}</CardTitle>
           <CardDescription>
-            Lock to a specific LTE cell tower by entering its channel and cell ID.
+            {t("cell_locking.tower_locking.lte.description")}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -230,9 +233,9 @@ const LTELockingComponent = ({
     <>
       <Card className="@container/card">
         <CardHeader>
-          <CardTitle>LTE Tower Locking</CardTitle>
+          <CardTitle>{t("cell_locking.tower_locking.lte.title")}</CardTitle>
           <CardDescription>
-            Lock to a specific LTE cell tower by entering its channel and cell ID.
+            {t("cell_locking.tower_locking.lte.description")}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -242,7 +245,7 @@ const LTELockingComponent = ({
               <div className="flex items-center gap-1.5">
                 <TbInfoCircleFilled className="size-5 text-info" />
                 <p className="font-semibold text-muted-foreground text-sm">
-                  LTE Tower Locking Enabled
+                  {t("cell_locking.tower_locking.lte.enabled_label")}
                 </p>
               </div>
               <div className="flex items-center space-x-2">
@@ -256,7 +259,7 @@ const LTELockingComponent = ({
                   disabled={isLocking}
                 />
                 <Label htmlFor="lte-tower-locking">
-                  {isEnabled ? "Enabled" : "Disabled"}
+                  {isEnabled ? t("state.enabled", { ns: "common" }) : t("state.disabled", { ns: "common" })}
                 </Label>
               </div>
             </div>
@@ -271,7 +274,7 @@ const LTELockingComponent = ({
                     <div className="grid grid-cols-2 gap-4">
                       <Field>
                         <div className="flex items-center justify-between">
-                          <FieldLabel htmlFor="earfcn1">Channel (EARFCN)</FieldLabel>
+                          <FieldLabel htmlFor="earfcn1">{t("cell_locking.tower_locking.lte.channel_label")}</FieldLabel>
                           <Button
                             type="button"
                             size="sm"
@@ -279,24 +282,24 @@ const LTELockingComponent = ({
                             onClick={handleUseCurrent}
                             disabled={isLocking || !hasActiveLteCell}
                           >
-                            Use Current
+                            {t("cell_locking.tower_locking.lte.use_current")}
                           </Button>
                         </div>
                         <Input
                           id="earfcn1"
                           type="text"
-                          placeholder="Enter EARFCN"
+                          placeholder={t("cell_locking.tower_locking.lte.channel_placeholder")}
                           value={earfcn1}
                           onChange={(e) => setEarfcn1(e.target.value)}
                           disabled={isLocking}
                         />
                       </Field>
                       <Field>
-                        <FieldLabel htmlFor="pci1">Cell ID (PCI)</FieldLabel>
+                        <FieldLabel htmlFor="pci1">{t("cell_locking.tower_locking.lte.pci_label")}</FieldLabel>
                         <Input
                           id="pci1"
                           type="text"
-                          placeholder="Enter PCI"
+                          placeholder={t("cell_locking.tower_locking.lte.pci_placeholder")}
                           value={pci1}
                           onChange={(e) => setPci1(e.target.value)}
                           disabled={isLocking}
@@ -306,22 +309,22 @@ const LTELockingComponent = ({
                     {/* Optional locking entry 2 */}
                     <div className="grid grid-cols-2 gap-4">
                       <Field>
-                        <FieldLabel htmlFor="earfcn2">Channel (EARFCN) 2</FieldLabel>
+                        <FieldLabel htmlFor="earfcn2">{t("cell_locking.tower_locking.lte.channel_label_n", { n: 2 })}</FieldLabel>
                         <Input
                           id="earfcn2"
                           type="text"
-                          placeholder="Enter EARFCN 2"
+                          placeholder={t("cell_locking.tower_locking.lte.channel_placeholder_n", { n: 2 })}
                           value={earfcn2}
                           onChange={(e) => setEarfcn2(e.target.value)}
                           disabled={isLocking}
                         />
                       </Field>
                       <Field>
-                        <FieldLabel htmlFor="pci2">Cell ID (PCI) 2</FieldLabel>
+                        <FieldLabel htmlFor="pci2">{t("cell_locking.tower_locking.lte.pci_label_n", { n: 2 })}</FieldLabel>
                         <Input
                           id="pci2"
                           type="text"
-                          placeholder="Enter PCI 2"
+                          placeholder={t("cell_locking.tower_locking.lte.pci_placeholder_n", { n: 2 })}
                           value={pci2}
                           onChange={(e) => setPci2(e.target.value)}
                           disabled={isLocking}
@@ -331,22 +334,22 @@ const LTELockingComponent = ({
                     {/* Optional locking entry 3 */}
                     <div className="grid grid-cols-2 gap-4">
                       <Field>
-                        <FieldLabel htmlFor="earfcn3">Channel (EARFCN) 3</FieldLabel>
+                        <FieldLabel htmlFor="earfcn3">{t("cell_locking.tower_locking.lte.channel_label_n", { n: 3 })}</FieldLabel>
                         <Input
                           id="earfcn3"
                           type="text"
-                          placeholder="Enter EARFCN 3"
+                          placeholder={t("cell_locking.tower_locking.lte.channel_placeholder_n", { n: 3 })}
                           value={earfcn3}
                           onChange={(e) => setEarfcn3(e.target.value)}
                           disabled={isLocking}
                         />
                       </Field>
                       <Field>
-                        <FieldLabel htmlFor="pci3">Cell ID (PCI) 3</FieldLabel>
+                        <FieldLabel htmlFor="pci3">{t("cell_locking.tower_locking.lte.pci_label_n", { n: 3 })}</FieldLabel>
                         <Input
                           id="pci3"
                           type="text"
-                          placeholder="Enter PCI 3"
+                          placeholder={t("cell_locking.tower_locking.lte.pci_placeholder_n", { n: 3 })}
                           value={pci3}
                           onChange={(e) => setPci3(e.target.value)}
                           disabled={isLocking}
@@ -365,21 +368,22 @@ const LTELockingComponent = ({
       <AlertDialog open={showLockDialog} onOpenChange={setShowLockDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Lock to LTE Tower?</AlertDialogTitle>
+            <AlertDialogTitle>{t("cell_locking.tower_locking.lte.lock_dialog.title")}</AlertDialogTitle>
             <AlertDialogDescription>
-              This will lock your modem to{" "}
               {pendingCells.length === 1
-                ? `EARFCN ${pendingCells[0]?.earfcn}, PCI ${pendingCells[0]?.pci}`
-                : `${pendingCells.length} cell targets`}
-              . The modem will only connect to{" "}
-              {pendingCells.length === 1 ? "this tower" : "these towers"} and
-              may briefly disconnect during the switch.
+                ? t("cell_locking.tower_locking.lte.lock_dialog.description_single", {
+                    earfcn: pendingCells[0]?.earfcn,
+                    pci: pendingCells[0]?.pci,
+                  })
+                : t("cell_locking.tower_locking.lte.lock_dialog.description_multi", {
+                    count: pendingCells.length,
+                  })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t("actions.cancel", { ns: "common" })}</AlertDialogCancel>
             <AlertDialogAction onClick={confirmLock}>
-              Lock Tower
+              {t("cell_locking.tower_locking.lte.lock_dialog.confirm")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -389,17 +393,15 @@ const LTELockingComponent = ({
       <AlertDialog open={showUnlockDialog} onOpenChange={setShowUnlockDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Unlock LTE Tower?</AlertDialogTitle>
+            <AlertDialogTitle>{t("cell_locking.tower_locking.lte.unlock_dialog.title")}</AlertDialogTitle>
             <AlertDialogDescription>
-              This will remove the LTE tower lock. The modem will be free to
-              select any available tower and may briefly disconnect during the
-              switch.
+              {t("cell_locking.tower_locking.lte.unlock_dialog.description")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t("actions.cancel", { ns: "common" })}</AlertDialogCancel>
             <AlertDialogAction onClick={confirmUnlock}>
-              Remove Lock
+              {t("cell_locking.tower_locking.lte.unlock_dialog.confirm")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
