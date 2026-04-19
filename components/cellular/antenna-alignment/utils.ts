@@ -38,14 +38,8 @@ export const SIGNAL_KEYS = [
 export const SAMPLES_PER_RECORDING = 3;
 export const SLOT_COUNT = 3;
 
-export const RADIO_MODE_LABELS: Record<RadioMode, string> = {
-  lte: "4G LTE",
-  nr: "5G SA",
-  endc: "5G NSA (EN-DC)",
-};
-
 export const DEFAULT_ANGLES = ["0°", "45°", "90°"];
-export const DEFAULT_POSITIONS = ["Position A", "Position B", "Position C"];
+export const DEFAULT_POSITION_LETTERS = ["A", "B", "C"] as const;
 
 export const EMPTY_SNAPSHOT_ARRAYS = {
   lte_rsrp: [null, null, null, null] as (number | null)[],

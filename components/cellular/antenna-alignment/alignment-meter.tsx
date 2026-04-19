@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
   CheckCircle2Icon,
@@ -32,6 +32,7 @@ import {
   getSignalQuality,
 } from "@/types/modem-status";
 import type { SignalPerAntenna } from "@/types/modem-status";
+import { useTranslation } from "react-i18next";
 import {
   normalizeValue,
   getQualityColor,
@@ -42,9 +43,7 @@ import {
   SIGNAL_KEYS,
   SAMPLES_PER_RECORDING,
   SLOT_COUNT,
-  RADIO_MODE_LABELS,
   DEFAULT_ANGLES,
-  DEFAULT_POSITIONS,
   EMPTY_SNAPSHOT_ARRAYS,
   type RadioMode,
   type AntennaType,
@@ -214,6 +213,7 @@ function LiveSignalOverview({
   spa: SignalPerAntenna;
   mode: RadioMode;
 }) {
+  const { t } = useTranslation("cellular");
   const showLte = mode === "lte" || mode === "endc";
   const showNr = mode === "nr" || mode === "endc";
 
@@ -239,10 +239,10 @@ function LiveSignalOverview({
             thresholds={SINR_THRESHOLDS}
           />
           <span className="text-[10px] text-muted-foreground -mt-1">
-            LTE RSRP
+            {t("antennas.alignment.meter.lte_rsrp")}
           </span>
           <span className="text-[10px] text-muted-foreground -mt-1">
-            LTE SINR
+            {t("antennas.alignment.meter.lte_sinr")}
           </span>
         </>
       )}
@@ -261,10 +261,10 @@ function LiveSignalOverview({
             thresholds={SINR_THRESHOLDS}
           />
           <span className="text-[10px] text-muted-foreground -mt-1">
-            NR RSRP
+            {t("antennas.alignment.meter.nr_rsrp")}
           </span>
           <span className="text-[10px] text-muted-foreground -mt-1">
-            NR SINR
+            {t("antennas.alignment.meter.nr_sinr")}
           </span>
         </>
       )}
@@ -297,8 +297,14 @@ function RecordingSlotCard({
   onRecord: (label: string) => void;
   onCancel: () => void;
 }) {
-  const defaults =
-    antennaType === "directional" ? DEFAULT_ANGLES : DEFAULT_POSITIONS;
+  const { t } = useTranslation("cellular");
+  const defaultAngles = DEFAULT_ANGLES;
+  const defaultPositions = useMemo(() => [
+    t("antennas.alignment.meter.default_positions.a"),
+    t("antennas.alignment.meter.default_positions.b"),
+    t("antennas.alignment.meter.default_positions.c"),
+  ], [t]);
+  const defaults = antennaType === "directional" ? defaultAngles : defaultPositions;
   const defaultLabel = defaults[slotIndex];
   const [labelOverride, setLabelOverride] = useState<string | null>(null);
   const label = snapshot ? snapshot.label : (labelOverride ?? defaultLabel);
@@ -308,17 +314,15 @@ function RecordingSlotCard({
   const showNr = mode === "nr" || mode === "endc";
 
   const slotStatus = isRecording
-    ? "recording"
+    ? t("antennas.alignment.meter.slot_status_recording")
     : snapshot
-      ? isBest
-        ? "recorded, best result"
-        : "recorded"
-      : "empty";
+      ? (isBest ? t("antennas.alignment.meter.slot_status_recorded_best") : t("antennas.alignment.meter.slot_status_recorded"))
+      : t("antennas.alignment.meter.slot_status_empty");
 
   return (
     <div
       role="region"
-      aria-label={`Slot ${slotIndex + 1}: ${label} — ${slotStatus}`}
+      aria-label={t("antennas.alignment.meter.slot_aria", { n: slotIndex + 1, label, status: slotStatus })}
       className={cn(
         "relative rounded-xl border p-4 space-y-3 transition-all",
         isRecording && "ring-2 ring-primary border-primary",
@@ -329,7 +333,7 @@ function RecordingSlotCard({
         <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 z-10">
           <Badge className="gap-1 text-[10px]">
             <TrophyIcon className="size-3" />
-            Best
+            {t("antennas.alignment.meter.best_badge")}
           </Badge>
         </div>
       )}
@@ -346,7 +350,9 @@ function RecordingSlotCard({
           disabled={isRecording || !!snapshot}
           className="h-7 text-sm font-medium px-2"
           placeholder={
-            antennaType === "directional" ? "Angle…" : "Location…"
+            antennaType === "directional"
+              ? t("antennas.alignment.meter.angle_placeholder")
+              : t("antennas.alignment.meter.location_placeholder")
           }
         />
       </div>
@@ -357,7 +363,7 @@ function RecordingSlotCard({
           <div className="flex items-center justify-center gap-2 py-1" aria-live="polite">
             <Loader2Icon className="size-4 text-info animate-spin" aria-hidden="true" />
             <span className="text-xs text-muted-foreground">
-              Sample {samplesCollected} of {SAMPLES_PER_RECORDING}
+              {t("antennas.alignment.meter.sample_progress", { current: samplesCollected, total: SAMPLES_PER_RECORDING })}
             </span>
           </div>
           <div className="flex items-center justify-center gap-1.5">
@@ -379,7 +385,7 @@ function RecordingSlotCard({
             onClick={onCancel}
             className="w-full h-7 text-xs"
           >
-            Cancel
+            {t("actions.cancel", { ns: "common" })}
           </Button>
         </div>
       )}
@@ -391,7 +397,7 @@ function RecordingSlotCard({
             <div className="space-y-1">
               {mode === "endc" && (
                 <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-                  LTE
+                  {t("antennas.alignment.meter.lte_label")}
                 </p>
               )}
               <div className="grid grid-cols-2 gap-2">
@@ -403,7 +409,7 @@ function RecordingSlotCard({
                     thresholds={RSRP_THRESHOLDS}
                   />
                   <span className="text-[10px] text-muted-foreground">
-                    RSRP
+                    {t("antennas.alignment.meter.rsrp_label")}
                   </span>
                 </div>
                 <div>
@@ -414,7 +420,7 @@ function RecordingSlotCard({
                     thresholds={SINR_THRESHOLDS}
                   />
                   <span className="text-[10px] text-muted-foreground">
-                    SINR
+                    {t("antennas.alignment.meter.sinr_label")}
                   </span>
                 </div>
               </div>
@@ -424,7 +430,7 @@ function RecordingSlotCard({
             <div className="space-y-1">
               {mode === "endc" && (
                 <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-                  NR
+                  {t("antennas.alignment.meter.nr_label")}
                 </p>
               )}
               <div className="grid grid-cols-2 gap-2">
@@ -436,7 +442,7 @@ function RecordingSlotCard({
                     thresholds={RSRP_THRESHOLDS}
                   />
                   <span className="text-[10px] text-muted-foreground">
-                    RSRP
+                    {t("antennas.alignment.meter.rsrp_label")}
                   </span>
                 </div>
                 <div>
@@ -447,7 +453,7 @@ function RecordingSlotCard({
                     thresholds={SINR_THRESHOLDS}
                   />
                   <span className="text-[10px] text-muted-foreground">
-                    SINR
+                    {t("antennas.alignment.meter.sinr_label")}
                   </span>
                 </div>
               </div>
@@ -455,7 +461,7 @@ function RecordingSlotCard({
           )}
           <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
             <CheckCircle2Icon className="h-3 w-3 text-success" />
-            Recorded {new Date(snapshot.ts).toLocaleTimeString()}
+            {t("antennas.alignment.meter.recorded_at", { time: new Date(snapshot.ts).toLocaleTimeString() })}
           </div>
         </div>
       )}
@@ -465,14 +471,16 @@ function RecordingSlotCard({
         <div className="space-y-2">
           <div className="flex items-center gap-2 py-3 justify-center">
             <CircleDotIcon className="h-4 w-4 text-muted-foreground/50" />
-            <span className="text-xs text-muted-foreground">Not recorded</span>
+            <span className="text-xs text-muted-foreground">{t("antennas.alignment.meter.not_recorded")}</span>
           </div>
           <Button
             size="sm"
             onClick={() => onRecord(label)}
             className="w-full h-7 text-xs"
           >
-            Record {antennaType === "directional" ? "Angle" : "Position"}
+            {antennaType === "directional"
+              ? t("antennas.alignment.meter.record_angle")
+              : t("antennas.alignment.meter.record_position")}
           </Button>
         </div>
       )}
@@ -491,6 +499,7 @@ export default function AlignmentMeterSection({
   spa: SignalPerAntenna;
   mode: RadioMode;
 }) {
+  const { t } = useTranslation("cellular");
   const {
     state: recorderState,
     startRecording,
@@ -508,13 +517,11 @@ export default function AlignmentMeterSection({
       <CardHeader>
         <div className="flex flex-col gap-3 @lg/main:flex-row @lg/main:items-center @lg/main:justify-between">
           <div>
-            <CardTitle className="text-base">Alignment Meter</CardTitle>
+            <CardTitle className="text-base">{t("antennas.alignment.meter.title")}</CardTitle>
             <CardDescription className="text-xs">
-              Record{" "}
-              {antennaType === "directional" ? "3 angles" : "3 positions"} to
-              find the best{" "}
-              {antennaType === "directional" ? "aim" : "placement"}. Each
-              recording averages {SAMPLES_PER_RECORDING} samples.
+              {antennaType === "directional"
+                ? t("antennas.alignment.meter.description_directional", { samples: SAMPLES_PER_RECORDING })
+                : t("antennas.alignment.meter.description_omni", { samples: SAMPLES_PER_RECORDING })}
             </CardDescription>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
@@ -532,14 +539,14 @@ export default function AlignmentMeterSection({
                 className="gap-1 text-xs h-7 px-2"
               >
                 <CompassIcon className="h-3 w-3" />
-                Directional
+                {t("antennas.alignment.meter.toggle_directional")}
               </ToggleGroupItem>
               <ToggleGroupItem
                 value="omni"
                 className="gap-1 text-xs h-7 px-2"
               >
                 <MapPinIcon className="h-3 w-3" />
-                Omni
+                {t("antennas.alignment.meter.toggle_omni")}
               </ToggleGroupItem>
             </ToggleGroup>
             <Button
@@ -550,18 +557,18 @@ export default function AlignmentMeterSection({
               disabled={activeSlot !== null}
             >
               <RotateCcwIcon className="h-3 w-3" />
-              Reset
+              {t("antennas.alignment.meter.reset")}
             </Button>
           </div>
         </div>
       </CardHeader>
 
       <CardContent className="space-y-4">
-                    <Badge>{RADIO_MODE_LABELS[mode]}</Badge>
+                    <Badge>{t(`antennas.alignment.meter.radio_mode.${mode}`)}</Badge>
         {/* Live signal preview */}
         <div className="rounded-lg border bg-muted/30 p-3 space-y-2">
           <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-            Live Signal (Primary Antenna)
+            {t("antennas.alignment.meter.live_signal_heading")}
           </p>
           <LiveSignalOverview spa={spa} mode={mode} />
         </div>
@@ -597,17 +604,17 @@ export default function AlignmentMeterSection({
                 <TrophyIcon className="h-5 w-5 text-primary shrink-0 mt-0.5" />
                 <div className="space-y-1">
                   <p className="text-sm font-semibold">
-                    Recommended:{" "}
+                    {t("antennas.alignment.meter.recommended_prefix")}
                     <span className="text-primary">
                       {slots[bestSlot]!.label}
                     </span>
                   </p>
                   <p className="text-xs text-muted-foreground">
                     {antennaType === "directional"
-                      ? "This angle produced the strongest composite signal across your recorded positions."
-                      : "This location produced the strongest composite signal across your recorded positions."}
+                      ? t("antennas.alignment.meter.recommendation_directional")
+                      : t("antennas.alignment.meter.recommendation_omni")}
                     {filledCount < SLOT_COUNT &&
-                      ` Record the remaining ${SLOT_COUNT - filledCount} slot${SLOT_COUNT - filledCount > 1 ? "s" : ""} for a more complete comparison.`}
+                      t("antennas.alignment.meter.recommendation_remaining", { count: SLOT_COUNT - filledCount })}
                   </p>
                 </div>
               </div>
