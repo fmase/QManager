@@ -3,6 +3,7 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { toast } from "sonner";
+import { useTranslation, Trans } from "react-i18next";
 import { authFetch } from "@/lib/auth-fetch";
 import {
   Card,
@@ -31,6 +32,7 @@ import { Button } from "@/components/ui/button";
 const CGI_ENDPOINT = "/cgi-bin/quecmanager/cellular/fplmn.sh";
 
 const FPLMNCard = () => {
+  const { t } = useTranslation("cellular");
   const [hasEntries, setHasEntries] = useState<boolean | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isClearing, setIsClearing] = useState(false);
@@ -93,14 +95,14 @@ const FPLMNCard = () => {
       if (!mountedRef.current) return;
 
       if (data.success) {
-        toast.success("Blocked networks cleared");
+        toast.success(t("core_settings.fplmn.toast.success"));
         await fetchStatus(true);
       } else {
-        toast.error(data.detail || "Failed to clear blocked networks");
+        toast.error(data.detail || t("core_settings.fplmn.toast.error_fallback"));
       }
     } catch {
       if (mountedRef.current) {
-        toast.error("Failed to clear blocked networks");
+        toast.error(t("core_settings.fplmn.toast.error_fallback"));
       }
     } finally {
       if (mountedRef.current) {
@@ -110,28 +112,33 @@ const FPLMNCard = () => {
   };
 
   // ---------------------------------------------------------------------------
-  // Render
+  // Shared card header (same across all states)
   // ---------------------------------------------------------------------------
   const cardHeader = (
     <CardHeader>
-      <CardTitle>Blocked Networks</CardTitle>
+      <CardTitle>{t("core_settings.fplmn.card.title")}</CardTitle>
       <CardDescription>
-        Your SIM stores a list of networks that previously rejected your
-        device. Clearing this list may restore connectivity and improve
-        roaming.
-        <a
-          href="https://onomondo.com/blog/how-to-clear-the-fplmn-list-on-a-sim/"
-          target="_blank"
-          rel="noreferrer"
-          className="underline ml-1 text-primary hover:text-primary/80"
-        >
-          Learn more
-        </a>
-        .
+        <Trans
+          i18nKey="core_settings.fplmn.card.description"
+          ns="cellular"
+          components={{
+            link: (
+              <a
+                href="https://onomondo.com/blog/how-to-clear-the-fplmn-list-on-a-sim/"
+                target="_blank"
+                rel="noreferrer"
+                className="underline ml-1 text-primary hover:text-primary/80"
+              />
+            ),
+          }}
+        />
       </CardDescription>
     </CardHeader>
   );
 
+  // ---------------------------------------------------------------------------
+  // Render
+  // ---------------------------------------------------------------------------
   if (isLoading) {
     return (
       <Card className="@container/card">
@@ -158,7 +165,7 @@ const FPLMNCard = () => {
               <EmptyMedia variant="icon" className="bg-destructive rounded-xl">
                 <AlertTriangleIcon className="text-destructive-foreground size-6" />
               </EmptyMedia>
-              <EmptyTitle>Unable to Check</EmptyTitle>
+              <EmptyTitle>{t("core_settings.fplmn.states.error_title")}</EmptyTitle>
               <EmptyDescription className="max-w-xs text-pretty">
                 {fetchError}
               </EmptyDescription>
@@ -166,7 +173,7 @@ const FPLMNCard = () => {
             <EmptyContent>
               <Button variant="outline" onClick={() => fetchStatus()}>
                 <RefreshCcwIcon />
-                Retry
+                {t("common:actions.retry")}
               </Button>
             </EmptyContent>
           </Empty>
@@ -193,10 +200,9 @@ const FPLMNCard = () => {
                   <EmptyMedia variant="icon" className="bg-destructive rounded-xl">
                     <AlertTriangleIcon className="text-destructive-foreground size-6" />
                   </EmptyMedia>
-                  <EmptyTitle>Blocked Networks Found</EmptyTitle>
+                  <EmptyTitle>{t("core_settings.fplmn.states.found_title")}</EmptyTitle>
                   <EmptyDescription className="max-w-xs text-pretty">
-                    Your SIM has blocked one or more networks, which may prevent
-                    connection. Clearing the list is recommended.
+                    {t("core_settings.fplmn.states.found_description")}
                   </EmptyDescription>
                 </EmptyHeader>
                 <EmptyContent>
@@ -208,10 +214,10 @@ const FPLMNCard = () => {
                     {isClearing ? (
                       <>
                         <Loader2 className="size-4 animate-spin" />
-                        Clearing...
+                        {t("core_settings.fplmn.states.found_clearing")}
                       </>
                     ) : (
-                      "Clear Blocked Networks"
+                      t("core_settings.fplmn.states.found_clear")
                     )}
                   </Button>
                 </EmptyContent>
@@ -230,15 +236,15 @@ const FPLMNCard = () => {
                   <EmptyMedia variant="icon" className="bg-primary rounded-xl">
                     <CircleCheckIcon className="text-primary-foreground size-6" />
                   </EmptyMedia>
-                  <EmptyTitle>No Blocked Networks</EmptyTitle>
+                  <EmptyTitle>{t("core_settings.fplmn.states.none_title")}</EmptyTitle>
                   <EmptyDescription className="max-w-xs text-pretty">
-                    Your SIM has no blocked networks. No action needed.
+                    {t("core_settings.fplmn.states.none_description")}
                   </EmptyDescription>
                 </EmptyHeader>
                 <EmptyContent>
                   <Button variant="outline" onClick={() => fetchStatus()}>
                     <RefreshCcwIcon />
-                    Refresh Status
+                    {t("core_settings.fplmn.states.none_refresh")}
                   </Button>
                 </EmptyContent>
               </Empty>
