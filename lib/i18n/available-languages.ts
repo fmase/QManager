@@ -17,11 +17,38 @@ export const AVAILABLE_LANGUAGES: readonly LanguageMeta[] = [
     rtl: false,
     bundled: true,
   },
+  // Downloadable placeholders — Plan 11. `bundled: false` means the pack is NOT
+  // shipped in the firmware tarball; the Languages card downloads it from the
+  // remote manifest on demand. These entries let the LanguageSwitcher render
+  // a native name before the manifest has been fetched.
+  {
+    code: "fr",
+    native_name: "Français",
+    english_name: "French",
+    rtl: false,
+    bundled: false,
+  },
+  {
+    code: "de",
+    native_name: "Deutsch",
+    english_name: "German",
+    rtl: false,
+    bundled: false,
+  },
+  {
+    code: "ar",
+    native_name: "العربية",
+    english_name: "Arabic",
+    rtl: true,
+    bundled: false,
+  },
 ];
 
 export const BUNDLED_CODES: readonly LanguageCode[] = AVAILABLE_LANGUAGES
   .filter((l) => l.bundled)
   .map((l) => l.code);
+
+export const ALL_CATALOG_CODES: readonly LanguageCode[] = AVAILABLE_LANGUAGES.map((l) => l.code);
 
 export function getLanguage(code: LanguageCode): LanguageMeta | undefined {
   return AVAILABLE_LANGUAGES.find((l) => l.code === code);

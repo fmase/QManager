@@ -12,11 +12,12 @@ describe("available-languages", () => {
     expect(BUNDLED_CODES).toEqual(["en", "zh-CN"]);
   });
 
-  it("has exactly the two bundled entries for now", () => {
-    expect(AVAILABLE_LANGUAGES).toHaveLength(2);
-    for (const lang of AVAILABLE_LANGUAGES) {
-      expect(lang.bundled).toBe(true);
-    }
+  it("has 5 catalog entries (2 bundled + 3 downloadable placeholders)", () => {
+    expect(AVAILABLE_LANGUAGES).toHaveLength(5);
+    const bundled = AVAILABLE_LANGUAGES.filter((l) => l.bundled);
+    const downloadable = AVAILABLE_LANGUAGES.filter((l) => !l.bundled);
+    expect(bundled).toHaveLength(2);
+    expect(downloadable).toHaveLength(3);
   });
 
   it("default language is English", () => {
@@ -39,8 +40,11 @@ describe("available-languages", () => {
     expect(getLanguage("xx")).toBeUndefined();
   });
 
-  it("isRtl returns false for all seeded languages", () => {
+  it("isRtl returns correct direction for each language", () => {
     expect(isRtl("en")).toBe(false);
     expect(isRtl("zh-CN")).toBe(false);
+    expect(isRtl("fr")).toBe(false);
+    expect(isRtl("de")).toBe(false);
+    expect(isRtl("ar")).toBe(true);
   });
 });
