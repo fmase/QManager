@@ -4,6 +4,7 @@ A targeted reliability release that hardens VPN setup on multi-WAN modems, adds 
 
 ## ✨ New Features
 
+- **Language Packs** — Install additional translations for the QManager UI from the `/system-settings/languages` page. English and Simplified Chinese ship built-in; other languages download from the community manifest on demand. Includes sha256 verification, cancellable installs, and one-click removal.
 - **Change SSH password from the web UI.** A new **System Settings → SSH Password** page lets you rotate the `root` password used for SSH and console access. Requires your current password, offers an optional strong-password policy (uppercase, lowercase, number, 5+ chars), and leaves your QManager web login untouched — the two credentials are fully independent.
 
 ## ✅ Improvements
@@ -45,9 +46,7 @@ Your existing tower lock and Signal Failover settings are preserved across the u
 
 Thanks to everyone who tested the Tailscale/Netbird workarounds on mwan3 builds and confirmed the simplification works end-to-end on real hardware. Bug reports and feature requests are always welcome on [GitHub Issues](https://github.com/dr-dolomite/QManager/issues).
 
-If you find QManager useful, consider sponsoring or sending GCash via Remitly to **Russel Yasol** (+639544817486).
-
-<iframe src="https://github.com/sponsors/dr-dolomite/button" title="Sponsor dr-dolomite" height="32" width="114" style="border: 0; border-radius: 6px;"></iframe>
+If you find QManager useful, consider [sponsoring on GitHub](https://github.com/sponsors/dr-dolomite) or sending GCash via Remitly to **Russel Yasol** (+639544817486).
 
 **License:** MIT + Commons Clause
 
