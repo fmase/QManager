@@ -14,17 +14,10 @@ import {
 // DonateDialog — Donation links triggered from sidebar
 // =============================================================================
 
-// Brand icons — not available in lucide-react
-
-const PayPalIcon = ({ className }: { className?: string }) => (
+// GitHub Sponsors icon — not available in lucide-react
+const GitHubSponsorsIcon = ({ className }: { className?: string }) => (
   <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true">
-    <path d="M7.076 21.337H2.47a.641.641 0 0 1-.633-.74L4.944.901C5.026.382 5.474 0 5.998 0h7.46c2.57 0 4.578.543 5.69 1.81 1.01 1.15 1.304 2.42 1.012 4.287-.023.143-.047.288-.077.437-.983 5.05-4.349 6.797-8.647 6.797h-2.19c-.524 0-.968.382-1.05.9l-1.12 7.106zm14.146-14.42a3.35 3.35 0 0 0-.607-.541c-.013.076-.026.175-.041.254-.93 4.778-4.005 7.201-9.138 7.201h-2.19a.563.563 0 0 0-.556.479l-1.187 7.527h-.506l-.24 1.516a.56.56 0 0 0 .554.647h3.882c.46 0 .85-.334.922-.788.06-.26.76-4.852.816-5.09a.932.932 0 0 1 .923-.788h.58c3.76 0 6.705-1.528 7.565-5.946.36-1.847.174-3.388-.777-4.471z" />
-  </svg>
-);
-
-const KofiIcon = ({ className }: { className?: string }) => (
-  <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true">
-    <path d="M23.881 8.948c-.773-4.085-4.859-4.593-4.859-4.593H.723c-.604 0-.679.798-.679.798s-.082 7.324-.022 11.822c.164 2.424 2.586 2.672 2.586 2.672s8.267-.023 11.966-.049c2.438-.426 2.683-2.566 2.658-3.734 4.352.24 7.422-2.831 6.649-6.916zm-11.062 3.511c-1.246 1.453-4.011 3.976-4.011 3.976s-.121.119-.31.023c-.076-.057-.108-.09-.108-.09-.443-.441-3.368-3.049-4.034-3.954-.709-.965-1.041-2.7-.091-3.71.951-1.01 3.005-1.086 4.363.407 0 0 1.565-1.782 3.468-.963 1.904.82 1.832 3.011.723 4.311zm6.173.478c-.928.116-1.682.028-1.682.028V7.284h1.77s1.971.551 1.971 2.638c0 1.913-.985 2.667-2.059 3.015z" />
+    <path d="M12 2C6.477 2 2 6.477 2 12c0 4.418 2.865 8.166 6.839 9.489.5.092.682-.217.682-.482 0-.237-.009-.868-.013-1.703-2.782.603-3.369-1.342-3.369-1.342-.454-1.155-1.11-1.462-1.11-1.462-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.578 9.578 0 0 1 12 6.836a9.59 9.59 0 0 1 2.504.337c1.909-1.294 2.747-1.025 2.747-1.025.546 1.377.203 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.743 0 .267.18.579.688.481C19.138 20.163 22 16.418 22 12c0-5.523-4.477-10-10-10z" />
   </svg>
 );
 
@@ -55,39 +48,28 @@ const DonateDialog = ({ open, onOpenChange }: DonateDialogProps) => {
           </p>
           <p>Thanks so much for being awesome! 💙</p>
         </div>
-        <div className="mt-2">
-          <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
-            GCash via Remitly
-          </h3>
-          <p className="text-sm font-semibold tabular-nums">+639544817486</p>
+        <div className="mt-2 grid gap-3">
+          <div>
+            <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
+              GCash via Remitly
+            </h3>
+            <p className="text-sm font-semibold">Russel Yasol</p>
+            <p className="text-sm font-semibold tabular-nums">+639544817486</p>
+          </div>
         </div>
         <DialogFooter className="flex flex-row items-start gap-2 sm:justify-start">
           <Button
             asChild
             size="sm"
-            className="bg-[#0070BA] hover:bg-[#005ea6] text-white"
+            className="bg-[#EA4AAA] hover:bg-[#d03d97] text-white"
           >
             <a
-              href="https://paypal.me/iamrusss"
+              href="https://github.com/sponsors/dr-dolomite"
               target="_blank"
               rel="noopener noreferrer"
             >
-              <PayPalIcon className="size-4" />
-              PayPal
-            </a>
-          </Button>
-          <Button
-            asChild
-            size="sm"
-            className="bg-[#FF5E5B] hover:bg-[#e54e4b] text-white"
-          >
-            <a
-              href="https://ko-fi.com/P5P7TQKGH"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <KofiIcon className="size-4" />
-              Ko-fi
+              <GitHubSponsorsIcon className="size-4" />
+              Sponsor on GitHub
             </a>
           </Button>
         </DialogFooter>

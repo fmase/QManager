@@ -72,7 +72,7 @@ components/
 ├── nav-secondary.tsx           # Secondary nav (About, Support, Donate)
 ├── nav-system.tsx              # System nav section
 ├── nav-user.tsx                # User menu (change password, theme, reboot, logout)
-├── donate-dialog.tsx           # Ko-fi/PayPal donation dialog
+├── donate-dialog.tsx           # GitHub Sponsors / GCash donation dialog
 ├── auth/                       # Login form, setup form
 ├── cellular/                   # Cellular components (57 files)
 ├── dashboard/                  # Dashboard cards
