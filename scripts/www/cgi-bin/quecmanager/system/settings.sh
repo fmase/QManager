@@ -167,11 +167,16 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
         fi
 
         # --- Hostname (display name) ---
+        # system_dirty flags when any system.@system[0].* key changes so we can
+        # republish /tmp/TZ, /tmp/localtime, and kernel hostname via
+        # /etc/init.d/system reload after commit.
+        system_dirty=0
+        tz_dirty=0
+
         val=$(printf '%s' "$POST_DATA" | jq -r '.hostname // empty')
         if [ -n "$val" ]; then
             uci set system.@system[0].hostname="$val"
-            # Apply immediately so /proc/sys/kernel/hostname reflects the change
-            echo "$val" > /proc/sys/kernel/hostname 2>/dev/null
+            system_dirty=1
         fi
 
         # --- Temperature unit ---
@@ -199,19 +204,43 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
         fi
 
         # --- Timezone ---
+        # tz_dirty additionally triggers crond restart — busybox crond caches
+        # TZ at startup, so Scheduled Reboot / Low Power cron fires at stale
+        # wall time until restart.
         val=$(printf '%s' "$POST_DATA" | jq -r '.timezone // empty')
         if [ -n "$val" ]; then
             uci set system.@system[0].timezone="$val"
+            system_dirty=1
+            tz_dirty=1
         fi
 
         val=$(printf '%s' "$POST_DATA" | jq -r '.zonename // empty')
         if [ -n "$val" ]; then
             uci set system.@system[0].zonename="$val"
+            system_dirty=1
+            tz_dirty=1
         fi
 
         # Commit changes
         uci commit quecmanager
         uci commit system
+
+        # Republish system config to /tmp/TZ, /tmp/localtime, kernel hostname,
+        # syslogd. Backgrounded so the HTTP response returns promptly; matches
+        # the pattern used by ip_passthrough.sh reboot-on-apply and
+        # qmanager_low_power exit handler in this same file.
+        if [ "$system_dirty" = "1" ]; then
+            qlog_info "system dirty — scheduling /etc/init.d/system reload"
+            ( /etc/init.d/system reload </dev/null >/dev/null 2>&1 & )
+
+            # crond is NOT restarted by /etc/init.d/system reload. On TZ
+            # change, restart it so qmanager_scheduled_reboot and
+            # qmanager_low_power cron entries fire at the new wall time.
+            if [ "$tz_dirty" = "1" ]; then
+                qlog_info "TZ changed — scheduling /etc/init.d/cron restart"
+                ( /etc/init.d/cron restart </dev/null >/dev/null 2>&1 & )
+            fi
+        fi
 
         qlog_info "System settings saved"
         echo '{"success":true}'
