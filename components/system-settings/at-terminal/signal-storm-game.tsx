@@ -64,6 +64,7 @@ export default function SignalStormGame({ onExit }: { onExit: () => void }) {
     wrapperRef.current?.focus();
 
     return () => {
+      engineRef.current?.dispose?.();
       cancelAnimationFrame(animFrameRef.current);
       observer.disconnect();
     };

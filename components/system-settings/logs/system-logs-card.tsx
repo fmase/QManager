@@ -3,6 +3,7 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { toast } from "sonner";
 import { authFetch } from "@/lib/auth-fetch";
+import { useTranslation, Trans } from "react-i18next";
 
 import {
   Card,
@@ -103,6 +104,8 @@ const getLevelBadgeVariant = (
 };
 
 const SystemLogsCard = () => {
+  const { t } = useTranslation("system-settings");
+
   // Data state
   const [entries, setEntries] = useState<LogEntry[]>([]);
   const [stats, setStats] = useState<LogStats | null>(null);
@@ -171,7 +174,7 @@ const SystemLogsCard = () => {
         }
       } catch {
         if (mountedRef.current && !silent) {
-          toast.error("Failed to load system logs");
+          toast.error(t("system_logs.toast_load_failed"));
         }
       } finally {
         if (mountedRef.current && !silent) {
@@ -179,7 +182,7 @@ const SystemLogsCard = () => {
         }
       }
     },
-    [level, component, search, lines, includeRotated]
+    [level, component, search, lines, includeRotated, t]
   );
 
   // Initial fetch + re-fetch on filter change
@@ -224,15 +227,15 @@ const SystemLogsCard = () => {
       if (!mountedRef.current) return;
 
       if (data.success) {
-        toast.success("Log files cleared");
+        toast.success(t("system_logs.toast_cleared"));
         setShowClearDialog(false);
         await fetchLogs(true);
       } else {
-        toast.error(data.detail || "Failed to clear log files");
+        toast.error(data.detail || t("system_logs.toast_clear_failed"));
       }
     } catch {
       if (mountedRef.current) {
-        toast.error("Failed to clear log files");
+        toast.error(t("system_logs.toast_clear_failed"));
       }
     } finally {
       if (mountedRef.current) {
@@ -248,10 +251,8 @@ const SystemLogsCard = () => {
     return (
       <Card className="@container/card">
         <CardHeader>
-          <CardTitle>System Logs</CardTitle>
-          <CardDescription>
-            QManager application logs from all components.
-          </CardDescription>
+          <CardTitle>{t("system_logs.card_title")}</CardTitle>
+          <CardDescription>{t("system_logs.card_description")}</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
@@ -282,10 +283,8 @@ const SystemLogsCard = () => {
     <>
       <Card className="@container/card">
         <CardHeader>
-          <CardTitle>System Logs</CardTitle>
-          <CardDescription>
-            QManager application logs from all components.
-          </CardDescription>
+          <CardTitle>{t("system_logs.card_title")}</CardTitle>
+          <CardDescription>{t("system_logs.card_description")}</CardDescription>
         </CardHeader>
         <CardContent>
           {/* Toolbar */}
@@ -294,10 +293,10 @@ const SystemLogsCard = () => {
             <div className="grid grid-cols-2 @md/card:flex @md/card:flex-wrap items-center gap-2">
               <Select value={level} onValueChange={setLevel}>
                 <SelectTrigger>
-                  <SelectValue placeholder="All Levels" />
+                  <SelectValue placeholder={t("system_logs.filter_all_levels")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Levels</SelectItem>
+                  <SelectItem value="all">{t("system_logs.filter_all_levels")}</SelectItem>
                   <SelectItem value="DEBUG">DEBUG</SelectItem>
                   <SelectItem value="INFO">INFO</SelectItem>
                   <SelectItem value="WARN">WARN</SelectItem>
@@ -307,10 +306,10 @@ const SystemLogsCard = () => {
 
               <Select value={component} onValueChange={setComponent}>
                 <SelectTrigger>
-                  <SelectValue placeholder="All Components" />
+                  <SelectValue placeholder={t("system_logs.filter_all_components")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Components</SelectItem>
+                  <SelectItem value="all">{t("system_logs.filter_all_components")}</SelectItem>
                   {availableComponents.map((c) => (
                     <SelectItem key={c} value={c}>
                       {c}
@@ -321,12 +320,12 @@ const SystemLogsCard = () => {
 
               <div className="relative col-span-2 @md/card:flex-1 @md/card:min-w-48">
                 <label htmlFor="log-search" className="sr-only">
-                  Search logs
+                  {t("system_logs.filter_search_label")}
                 </label>
                 <SearchIcon className="absolute left-2.5 top-2.5 size-4 text-muted-foreground" />
                 <Input
                   id="log-search"
-                  placeholder="Search logs..."
+                  placeholder={t("system_logs.filter_search_placeholder")}
                   value={searchInput}
                   onChange={(e) => handleSearchChange(e.target.value)}
                   className="pl-8"
@@ -358,7 +357,7 @@ const SystemLogsCard = () => {
                   htmlFor="include-rotated"
                   className="text-sm text-muted-foreground whitespace-nowrap"
                 >
-                  Include archived
+                  {t("system_logs.filter_include_archived")}
                 </label>
               </div>
 
@@ -366,7 +365,7 @@ const SystemLogsCard = () => {
                 <Button
                   variant="outline"
                   size="icon"
-                  aria-label="Refresh system logs"
+                  aria-label={t("system_logs.actions_refresh_aria")}
                   onClick={() => fetchLogs()}
                 >
                   <RefreshCcwIcon className="size-4" />
@@ -378,7 +377,7 @@ const SystemLogsCard = () => {
                   onClick={() => setShowClearDialog(true)}
                 >
                   <Trash2Icon className="size-4 mr-1" />
-                  Clear
+                  {t("system_logs.actions_clear")}
                 </Button>
               </div>
             </div>
@@ -389,12 +388,12 @@ const SystemLogsCard = () => {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-44">Timestamp</TableHead>
-                  <TableHead className="w-20">Level</TableHead>
+                  <TableHead className="w-44">{t("system_logs.table_col_timestamp")}</TableHead>
+                  <TableHead className="w-20">{t("system_logs.table_col_level")}</TableHead>
                   <TableHead className="w-32 hidden @md/card:table-cell">
-                    Component
+                    {t("system_logs.table_col_component")}
                   </TableHead>
-                  <TableHead>Message</TableHead>
+                  <TableHead>{t("system_logs.table_col_message")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -404,7 +403,7 @@ const SystemLogsCard = () => {
                       <div className="flex flex-col items-center gap-2">
                         <LogsIcon className="h-8 w-8 text-muted-foreground" />
                         <p className="text-sm text-muted-foreground">
-                          No log entries found
+                          {t("system_logs.table_empty")}
                         </p>
                       </div>
                     </TableCell>
@@ -444,19 +443,28 @@ const SystemLogsCard = () => {
         </CardContent>
         <CardFooter className="flex justify-between items-center">
           <div className="text-xs text-muted-foreground">
-            Showing <strong>{entries.length}</strong> of{" "}
-            <strong>{totalEntries}</strong> entries
+            <Trans
+              i18nKey="system_logs.footer_showing"
+              ns="system-settings"
+              values={{ count: entries.length, total: totalEntries }}
+              components={{ strong: <strong /> }}
+            />
             {stats && (
               <span className="ml-2">
-                ({stats.current_size_kb}KB, {stats.rotated_files} rotated file
-                {stats.rotated_files !== 1 ? "s" : ""})
+                {t("system_logs.footer_stats", {
+                  count: stats.rotated_files,
+                  kb: stats.current_size_kb,
+                  rotated: stats.rotated_files,
+                })}
               </span>
             )}
           </div>
           {lastFetched && (
             <div className="flex items-center text-xs text-muted-foreground">
               <Clock className="h-3 w-3 mr-1" />
-              Last updated: {lastFetched.toLocaleTimeString()}
+              {t("system_logs.footer_last_updated", {
+                time: lastFetched.toLocaleTimeString(),
+              })}
             </div>
           )}
         </CardFooter>
@@ -466,14 +474,15 @@ const SystemLogsCard = () => {
       <AlertDialog open={showClearDialog} onOpenChange={setShowClearDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Clear System Logs</AlertDialogTitle>
+            <AlertDialogTitle>{t("system_logs.clear_dialog_title")}</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete all log entries including rotated
-              files. This action cannot be undone.
+              {t("system_logs.clear_dialog_description")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isClearing}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={isClearing}>
+              {t("actions.cancel", { ns: "common" })}
+            </AlertDialogCancel>
             <AlertDialogAction
               disabled={isClearing}
               onClick={handleClearLogs}
@@ -482,10 +491,10 @@ const SystemLogsCard = () => {
               {isClearing ? (
                 <>
                   <Loader2 className="size-4 animate-spin mr-1" />
-                  Clearing...
+                  {t("system_logs.clear_dialog_clearing")}
                 </>
               ) : (
-                "Clear All Logs"
+                t("system_logs.clear_dialog_clear_all")
               )}
             </AlertDialogAction>
           </AlertDialogFooter>

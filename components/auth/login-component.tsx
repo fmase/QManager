@@ -58,7 +58,7 @@ export default function LoginComponent() {
           if (result.retry_after) {
             setRetryAfter(result.retry_after);
             setError(
-              `Too many failed attempts. Try again in ${result.retry_after} seconds.`
+              `Too many failed attempts. Try again in ${result.retry_after} seconds.`,
             );
           } else {
             setError(result.error || "Invalid password.");
@@ -68,7 +68,7 @@ export default function LoginComponent() {
         setIsSubmitting(false);
       }
     },
-    [password, login]
+    [password, login],
   );
 
   // Show spinner while detecting setup status or during redirect to /setup/
@@ -133,7 +133,11 @@ export default function LoginComponent() {
                 tabIndex={-1}
                 aria-label={showPassword ? "Hide password" : "Show password"}
               >
-                {showPassword ? <EyeOffIcon className="size-4" /> : <EyeIcon className="size-4" />}
+                {showPassword ? (
+                  <EyeOffIcon className="size-4" />
+                ) : (
+                  <EyeIcon className="size-4" />
+                )}
               </Button>
             </div>
           </Field>
@@ -165,7 +169,7 @@ export default function LoginComponent() {
         </FieldGroup>
       </form>
       <FieldDescription className="px-6 text-center">
-        QManager — Quectel Modem Management
+        © {new Date().getFullYear()} QManager. All rights reserved.
       </FieldDescription>
     </motion.div>
   );

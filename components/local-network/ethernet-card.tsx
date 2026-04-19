@@ -1,10 +1,10 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import Image from "next/image";
 import { toast } from "sonner";
 import { authFetch } from "@/lib/auth-fetch";
-import deviceIcon from "@/public/device-icon.svg";
 
 import {
   Card,
@@ -25,7 +25,14 @@ import {
 } from "@/components/ui/select";
 
 import { CgEthernet } from "react-icons/cg";
-import { RefreshCcwIcon, Loader2, AlertCircle, CheckIcon, CheckCircle2Icon, XCircleIcon } from "lucide-react";
+import {
+  RefreshCcwIcon,
+  Loader2,
+  AlertCircle,
+  CheckIcon,
+  CheckCircle2Icon,
+  XCircleIcon,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useSaveFlash } from "@/components/ui/save-button";
 import { Badge } from "@/components/ui/badge";
@@ -45,6 +52,7 @@ interface EthernetStatus {
 }
 
 const EthernetStatusCard = () => {
+  const { t } = useTranslation("local-network");
   const [status, setStatus] = useState<EthernetStatus | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -92,14 +100,14 @@ const EthernetStatusCard = () => {
     } catch {
       // Only surface errors when we have no data to show
       if (mountedRef.current && !hasDataRef.current) {
-        setError("Unable to reach device");
+        setError(t("ethernet.error_unable_to_reach"));
       }
     } finally {
       if (mountedRef.current && !silent) {
         setIsLoading(false);
       }
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     fetchStatus();
@@ -131,7 +139,7 @@ const EthernetStatusCard = () => {
 
       if (data.success) {
         markSaved();
-        toast.success("Link speed limit updated");
+        toast.success(t("ethernet.toast_speed_updated"));
 
         // Recovery delay for link renegotiation
         await new Promise((resolve) => setTimeout(resolve, 3000));
@@ -139,11 +147,11 @@ const EthernetStatusCard = () => {
         // Silent re-fetch to get new negotiated speed
         await fetchStatus(true);
       } else {
-        toast.error(data.detail || "Failed to set link speed limit");
+        toast.error(data.detail || t("ethernet.toast_error_set_speed"));
       }
     } catch {
       if (mountedRef.current) {
-        toast.error("Failed to set link speed limit");
+        toast.error(t("ethernet.toast_error_set_speed"));
       }
     } finally {
       if (mountedRef.current) {
@@ -207,7 +215,9 @@ const EthernetStatusCard = () => {
 
   const formatAutoNeg = (autoNeg: string) => {
     if (!autoNeg || autoNeg === "Unknown") return "N/A";
-    return autoNeg === "on" ? "Active" : "Inactive";
+    return autoNeg === "on"
+      ? t("shared.status_active")
+      : t("shared.status_inactive");
   };
 
   // ---------------------------------------------------------------------------
@@ -217,9 +227,9 @@ const EthernetStatusCard = () => {
     return (
       <Card className="@container/card">
         <CardHeader>
-          <CardTitle>Ethernet Status</CardTitle>
+          <CardTitle>{t("ethernet.card_title")}</CardTitle>
           <CardDescription>
-            Current Ethernet link status, speed, and duplex settings.
+            {t("ethernet.card_description")}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -249,9 +259,9 @@ const EthernetStatusCard = () => {
     return (
       <Card className="@container/card">
         <CardHeader>
-          <CardTitle>Ethernet Status</CardTitle>
+          <CardTitle>{t("ethernet.card_title")}</CardTitle>
           <CardDescription>
-            Current Ethernet link status, speed, and duplex settings.
+            {t("ethernet.card_description")}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -260,12 +270,12 @@ const EthernetStatusCard = () => {
             <div className="space-y-1">
               <p className="font-medium">{error}</p>
               <p className="text-sm text-muted-foreground">
-                Could not load ethernet status from the device.
+                {t("ethernet.error_load_failed")}
               </p>
             </div>
             <Button variant="outline" onClick={() => fetchStatus()}>
               <RefreshCcwIcon className="mr-2 size-4" />
-              Retry
+              {t("actions.retry", { ns: "common" })}
             </Button>
           </div>
         </CardContent>
@@ -281,15 +291,15 @@ const EthernetStatusCard = () => {
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle>Ethernet Status</CardTitle>
+            <CardTitle>{t("ethernet.card_title")}</CardTitle>
             <CardDescription>
-              Current Ethernet link status, speed, and duplex settings.
+              {t("ethernet.card_description")}
             </CardDescription>
           </div>
           <Button
             variant="outline"
             size="icon"
-            aria-label="Refresh ethernet status"
+            aria-label={t("ethernet.aria_refresh")}
             onClick={() => fetchStatus()}
             disabled={isSaving}
           >
@@ -307,11 +317,11 @@ const EthernetStatusCard = () => {
               ref={deviceRef}
               className="size-16 @xs/card:size-24 bg-primary/15 rounded-full p-3 @xs/card:p-4 flex items-center justify-center"
             >
-              <Image
-                src={deviceIcon}
-                alt="Device Icon"
+              <img
+                src="/device-icon.png"
+                alt={t("ethernet.alt_device_icon")}
                 className="size-full drop-shadow-md object-contain"
-                priority
+                loading="lazy"
               />
             </div>
 
@@ -380,24 +390,30 @@ const EthernetStatusCard = () => {
             <Separator />
             <div className="flex items-center justify-between">
               <p className="font-semibold text-muted-foreground @sm/card:text-base text-sm">
-                Link Status
+                {t("ethernet.label_link_status")}
               </p>
               {isConnected ? (
-                <Badge variant="outline" className="bg-success/15 text-success hover:bg-success/20 border-success/30">
+                <Badge
+                  variant="outline"
+                  className="bg-success/15 text-success hover:bg-success/20 border-success/30"
+                >
                   <CheckCircle2Icon className="h-3 w-3" />
-                  Connected
+                  {t("ethernet.badge_connected")}
                 </Badge>
               ) : (
-                <Badge variant="outline" className="bg-destructive/15 text-destructive hover:bg-destructive/20 border-destructive/30">
+                <Badge
+                  variant="outline"
+                  className="bg-destructive/15 text-destructive hover:bg-destructive/20 border-destructive/30"
+                >
                   <XCircleIcon className="h-3 w-3" />
-                  Disconnected
+                  {t("ethernet.badge_disconnected")}
                 </Badge>
               )}
             </div>
             <Separator />
             <div className="flex items-center justify-between">
               <p className="font-semibold text-muted-foreground @sm/card:text-base text-sm">
-                Auto-negotiation
+                {t("ethernet.label_auto_negotiation")}
               </p>
               <p className="font-semibold @sm/card:text-base text-sm">
                 {formatAutoNeg(status?.auto_negotiation ?? "")}
@@ -406,7 +422,7 @@ const EthernetStatusCard = () => {
             <Separator />
             <div className="flex items-center justify-between">
               <p className="font-semibold text-muted-foreground @sm/card:text-base text-sm">
-                Active Link Speed
+                {t("ethernet.label_active_link_speed")}
               </p>
               <p className="font-semibold @sm/card:text-base text-sm">
                 {isConnected ? formatSpeed(status?.speed ?? "") : "N/A"}
@@ -415,7 +431,7 @@ const EthernetStatusCard = () => {
             <Separator />
             <div className="flex items-center justify-between">
               <p className="font-semibold text-muted-foreground @sm/card:text-base text-sm">
-                Duplex
+                {t("ethernet.label_duplex")}
               </p>
               <p className="font-semibold @sm/card:text-base text-sm">
                 {isConnected ? formatDuplex(status?.duplex ?? "") : "N/A"}
@@ -424,35 +440,38 @@ const EthernetStatusCard = () => {
             <Separator />
             <div className="flex items-center justify-between">
               <p className="font-semibold text-muted-foreground @sm/card:text-base text-sm">
-                Set Link Speed
+                {t("ethernet.label_set_link_speed")}
               </p>
               <Select
                 value={status?.speed_limit ?? "auto"}
                 onValueChange={handleSpeedChange}
                 disabled={isSaving}
               >
-                <SelectTrigger aria-label="Set Link Speed" className="w-full max-w-[50%] font-semibold text-muted-foreground @sm/card:text-base text-sm">
+                <SelectTrigger
+                  aria-label={t("ethernet.aria_set_link_speed")}
+                  className="w-full max-w-[50%] font-semibold text-muted-foreground @sm/card:text-base text-sm"
+                >
                   {isSaving ? (
                     <span className="flex items-center gap-2">
                       <Loader2 className="h-3 w-3 animate-spin" />
-                      Applying...
+                      {t("state.applying", { ns: "common" })}
                     </span>
                   ) : saved ? (
                     <span className="flex items-center gap-2">
                       <CheckIcon className="h-3 w-3" />
-                      Saved!
+                      {t("ethernet.badge_saved")}
                     </span>
                   ) : (
-                    <SelectValue placeholder="Select a link speed" />
+                    <SelectValue placeholder={t("ethernet.placeholder_link_speed")} />
                   )}
                 </SelectTrigger>
                 <SelectContent>
                   <SelectGroup className="font-semibold text-muted-foreground @sm/card:text-base text-sm">
-                    <SelectLabel>Link Speed Limit</SelectLabel>
-                    <SelectItem value="auto">Auto (Max Speed)</SelectItem>
-                    <SelectItem value="10">10 Mbps</SelectItem>
-                    <SelectItem value="100">100 Mbps</SelectItem>
-                    <SelectItem value="1000">1000 Mbps</SelectItem>
+                    <SelectLabel>{t("ethernet.select_label_link_speed")}</SelectLabel>
+                    <SelectItem value="auto">{t("ethernet.option_auto_max_speed")}</SelectItem>
+                    <SelectItem value="10">{t("ethernet.option_speed_10")}</SelectItem>
+                    <SelectItem value="100">{t("ethernet.option_speed_100")}</SelectItem>
+                    <SelectItem value="1000">{t("ethernet.option_speed_1000")}</SelectItem>
                   </SelectGroup>
                 </SelectContent>
               </Select>

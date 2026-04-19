@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 
 import CustomProfileFormComponent from "@/components/cellular/custom-profiles/custom-profile-form";
 import CustomProfileViewComponent from "@/components/cellular/custom-profiles/custom-profile-view";
@@ -8,6 +9,7 @@ import { ApplyProgressDialog } from "@/components/cellular/custom-profiles/apply
 import { useSimProfiles, type ProfileFormData } from "@/hooks/use-sim-profiles";
 import { useProfileApply } from "@/hooks/use-profile-apply";
 import { useCurrentSettings } from "@/hooks/use-current-settings";
+import { useModemStatus } from "@/hooks/use-modem-status";
 import type { SimProfile } from "@/types/sim-profile";
 import {
   AlertDialog,
@@ -32,6 +34,8 @@ import {
 // =============================================================================
 
 const CustomProfileComponent = () => {
+  const { t } = useTranslation("cellular");
+
   const {
     profiles,
     activeProfileId,
@@ -54,6 +58,9 @@ const CustomProfileComponent = () => {
 
   const { settings: currentSettings, refresh: refreshCurrentSettings } =
     useCurrentSettings(false);
+
+  const { data: modemStatus } = useModemStatus();
+  const currentIccid = modemStatus?.device?.iccid ?? null;
 
   const [editingProfile, setEditingProfile] = useState<SimProfile | null>(null);
 
@@ -173,9 +180,9 @@ const CustomProfileComponent = () => {
   return (
     <div className="@container/main mx-auto p-2">
       <div className="mb-6">
-        <h1 className="text-3xl font-bold mb-2">Custom SIM Profile</h1>
+        <h1 className="text-3xl font-bold mb-2">{t("custom_profiles.page.title")}</h1>
         <p className="text-muted-foreground">
-          Bundle APN, IMEI, and TTL/HL settings into one-click profiles.
+          {t("custom_profiles.page.description")}
         </p>
       </div>
       <div className="grid grid-cols-1 @3xl/main:grid-cols-2 grid-flow-row gap-4">
@@ -196,6 +203,7 @@ const CustomProfileComponent = () => {
           onActivate={handleActivateRequest}
           onDeactivate={handleDeactivateRequest}
           onRefresh={refresh}
+          currentIccid={currentIccid}
         />
       </div>
 
@@ -206,17 +214,15 @@ const CustomProfileComponent = () => {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Activate Profile</AlertDialogTitle>
+            <AlertDialogTitle>{t("custom_profiles.activate_dialog.title")}</AlertDialogTitle>
             <AlertDialogDescription>
-              Apply &ldquo;{activateTarget?.name}&rdquo; to the modem? This will
-              update APN, TTL/HL, and IMEI settings as configured in the
-              profile. Unchanged settings will be skipped.
+              {t("custom_profiles.activate_dialog.description", { name: activateTarget?.name ?? "" })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t("cancel", { ns: "common" })}</AlertDialogCancel>
             <AlertDialogAction onClick={handleActivateConfirm}>
-              Activate
+              {t("custom_profiles.activate_dialog.confirm")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -229,22 +235,20 @@ const CustomProfileComponent = () => {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Deactivate Profile</AlertDialogTitle>
+            <AlertDialogTitle>{t("custom_profiles.deactivate_dialog.title")}</AlertDialogTitle>
             <AlertDialogDescription>
-              Clear the active profile marker? The modem&apos;s current settings
-              (APN, IMEI, TTL) will not be reverted — only the &ldquo;Active&rdquo;
-              badge will be removed.
+              {t("custom_profiles.deactivate_dialog.description")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isDeactivating}>
-              Cancel
+              {t("cancel", { ns: "common" })}
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDeactivateConfirm}
               disabled={isDeactivating}
             >
-              {isDeactivating ? "Deactivating…" : "Deactivate"}
+              {isDeactivating ? t("custom_profiles.deactivate_dialog.deactivating") : t("custom_profiles.deactivate_dialog.confirm")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

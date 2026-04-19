@@ -1,5 +1,7 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import { motion } from "motion/react";
 import {
   Card,
@@ -23,7 +25,8 @@ const MotionTableRow = motion.create(TableRow);
 
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { UsersIcon, ShieldIcon, AlertCircle, CheckCircle2Icon, MinusCircleIcon } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { RefreshCcwIcon, UsersIcon, ShieldIcon, AlertCircle, CheckCircle2Icon, MinusCircleIcon } from "lucide-react";
 import type { TailscaleStatus, TailscalePeer } from "@/hooks/use-tailscale";
 
 // =============================================================================
@@ -34,11 +37,12 @@ interface TailscalePeersCardProps {
   status: TailscaleStatus | null;
   isLoading: boolean;
   error?: string | null;
+  refresh?: () => void;
 }
 
-function formatLastSeen(lastSeen: string, online: boolean): string {
-  if (online) return "Now";
-  if (!lastSeen) return "Unknown";
+function formatLastSeen(lastSeen: string, online: boolean, t: TFunction): string {
+  if (online) return t("time.now", { ns: "common" });
+  if (!lastSeen) return t("time.unknown", { ns: "common" });
 
   const date = new Date(lastSeen);
   const now = Date.now();
@@ -47,27 +51,26 @@ function formatLastSeen(lastSeen: string, online: boolean): string {
   if (diffMs < 0 || isNaN(diffMs)) return lastSeen;
 
   const diffMin = Math.floor(diffMs / 60_000);
-  if (diffMin < 1) return "Just now";
-  if (diffMin < 60) return `${diffMin}m ago`;
+  if (diffMin < 1) return t("time.just_now", { ns: "common" });
+  if (diffMin < 60) return t("time.minutes_ago", { ns: "common", count: diffMin });
 
   const diffHr = Math.floor(diffMin / 60);
-  if (diffHr < 24) return `${diffHr}h ago`;
+  if (diffHr < 24) return t("time.hours_ago", { ns: "common", count: diffHr });
 
   const diffDay = Math.floor(diffHr / 24);
-  return `${diffDay}d ago`;
+  return t("time.days_ago", { ns: "common", count: diffDay });
 }
 
-function capitalizeOS(os: string): string {
-  if (!os) return "—";
-  // Common OS name formatting
+function capitalizeOS(os: string, t: TFunction): string {
+  if (!os) return t("shared.os_unknown", { ns: "monitoring" });
   const map: Record<string, string> = {
-    linux: "Linux",
-    windows: "Windows",
-    macos: "macOS",
-    darwin: "macOS",
-    ios: "iOS",
-    android: "Android",
-    freebsd: "FreeBSD",
+    linux: t("shared.os_linux", { ns: "monitoring" }),
+    windows: t("shared.os_windows", { ns: "monitoring" }),
+    macos: t("shared.os_macos", { ns: "monitoring" }),
+    darwin: t("shared.os_macos", { ns: "monitoring" }),
+    ios: t("shared.os_ios", { ns: "monitoring" }),
+    android: t("shared.os_android", { ns: "monitoring" }),
+    freebsd: t("shared.os_freebsd", { ns: "monitoring" }),
   };
   return map[os.toLowerCase()] || os.charAt(0).toUpperCase() + os.slice(1);
 }
@@ -76,7 +79,9 @@ export function TailscalePeersCard({
   status,
   isLoading,
   error,
+  refresh,
 }: TailscalePeersCardProps) {
+  const { t } = useTranslation("monitoring");
   const isConnected = status?.backend_state === "Running";
   const peers: TailscalePeer[] = (isConnected && status?.peers) || [];
   const hasExitNode = peers.some((p) => p.exit_node);
@@ -86,9 +91,9 @@ export function TailscalePeersCard({
     return (
       <Card className="@container/card">
         <CardHeader>
-          <CardTitle>Network Peers</CardTitle>
+          <CardTitle>{t("tailscale.peers_title")}</CardTitle>
           <CardDescription>
-            Devices on your Tailscale network.
+            {t("tailscale.peers_description")}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -122,17 +127,23 @@ export function TailscalePeersCard({
     return (
       <Card className="@container/card">
         <CardHeader>
-          <CardTitle>Network Peers</CardTitle>
+          <CardTitle>{t("tailscale.peers_title")}</CardTitle>
           <CardDescription>
-            Devices on your Tailscale network.
+            {t("tailscale.peers_description")}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex flex-col items-center justify-center py-8 gap-3">
             <AlertCircle className="size-10 text-destructive" />
             <p className="text-sm text-muted-foreground text-center">
-              Failed to load peer data.
+              {t("tailscale.peers_error_load")}
             </p>
+            {refresh && (
+              <Button variant="outline" size="sm" onClick={refresh}>
+                <RefreshCcwIcon className="size-3.5" />
+                {t("actions.retry", { ns: "common" })}
+              </Button>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -142,15 +153,15 @@ export function TailscalePeersCard({
   // --- Empty / not connected state -------------------------------------------
   if (!isConnected || peers.length === 0) {
     const message = !isConnected
-      ? "Connect to Tailscale to see your network peers."
-      : "No peers found on your Tailscale network.";
+      ? t("tailscale.peers_not_connected_message")
+      : t("tailscale.peers_no_peers_message");
 
     return (
       <Card className="@container/card">
         <CardHeader>
-          <CardTitle>Network Peers</CardTitle>
+          <CardTitle>{t("tailscale.peers_title")}</CardTitle>
           <CardDescription>
-            Devices on your Tailscale network.
+            {t("tailscale.peers_description")}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -169,9 +180,9 @@ export function TailscalePeersCard({
   return (
     <Card className="@container/card">
       <CardHeader>
-        <CardTitle>Network Peers</CardTitle>
+        <CardTitle>{t("tailscale.peers_title")}</CardTitle>
         <CardDescription>
-          Devices on your Tailscale network.
+          {t("tailscale.peers_description")}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -179,12 +190,12 @@ export function TailscalePeersCard({
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Device</TableHead>
-                <TableHead>IP Address</TableHead>
-                <TableHead className="hidden @sm/card:table-cell">OS</TableHead>
-                <TableHead className="w-20">Status</TableHead>
+                <TableHead>{t("tailscale.peers_header_name")}</TableHead>
+                <TableHead>{t("tailscale.peers_header_ip")}</TableHead>
+                <TableHead className="hidden @sm/card:table-cell">{t("tailscale.peers_header_os")}</TableHead>
+                <TableHead className="w-20">{t("tailscale.peers_header_status")}</TableHead>
                 <TableHead className="hidden @md/card:table-cell w-24">
-                  Last Seen
+                  {t("tailscale.peers_header_last_seen")}
                 </TableHead>
               </TableRow>
             </TableHeader>
@@ -200,7 +211,7 @@ export function TailscalePeersCard({
                     <div className="min-w-0">
                       <div className="flex items-center gap-1.5">
                         <span className="font-medium text-sm truncate">
-                          {peer.hostname || "Unknown"}
+                          {peer.hostname || t("shared.os_unknown")}
                         </span>
                         {peer.exit_node && (
                           <Badge
@@ -208,7 +219,7 @@ export function TailscalePeersCard({
                             className="text-xs shrink-0"
                           >
                             <ShieldIcon className="size-3 mr-1" />
-                            Exit Node
+                            {t("tailscale.peers_exit_node_badge")}
                           </Badge>
                         )}
                       </div>
@@ -223,23 +234,23 @@ export function TailscalePeersCard({
                     {peer.tailscale_ips?.[0] || "—"}
                   </TableCell>
                   <TableCell className="hidden @sm/card:table-cell text-sm">
-                    {capitalizeOS(peer.os)}
+                    {capitalizeOS(peer.os, t)}
                   </TableCell>
                   <TableCell>
                     {peer.online ? (
                       <Badge variant="outline" className="bg-success/15 text-success hover:bg-success/20 border-success/30">
                         <CheckCircle2Icon className="h-3 w-3" />
-                        Online
+                        {t("tailscale.peers_status_online")}
                       </Badge>
                     ) : (
                       <Badge variant="outline" className="bg-muted/50 text-muted-foreground border-muted-foreground/30">
                         <MinusCircleIcon className="h-3 w-3" />
-                        Offline
+                        {t("tailscale.peers_status_offline")}
                       </Badge>
                     )}
                   </TableCell>
                   <TableCell className="hidden @md/card:table-cell text-xs text-muted-foreground">
-                    {formatLastSeen(peer.last_seen, peer.online)}
+                    {formatLastSeen(peer.last_seen, peer.online, t)}
                   </TableCell>
                 </MotionTableRow>
               ))}
@@ -249,13 +260,15 @@ export function TailscalePeersCard({
       </CardContent>
       <CardFooter className="flex justify-between items-center">
         <div className="text-xs text-muted-foreground">
-          Showing <strong>{peers.length}</strong>{" "}
-          {peers.length === 1 ? "peer" : "peers"}
+          {t("tailscale.peers_showing_count", {
+            count: peers.length,
+            total: peers.length,
+          })}
         </div>
         {hasExitNode && (
           <div className="flex items-center gap-1 text-xs text-muted-foreground">
             <ShieldIcon className="size-3" />
-            Exit node active
+            {t("tailscale.peers_exit_node_active")}
           </div>
         )}
       </CardFooter>

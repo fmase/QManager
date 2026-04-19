@@ -66,9 +66,6 @@ if [ "$REQUEST_METHOD" = "GET" ]; then
         fi
     fi
 
-    # --- SMS tool device override ---
-    sms_tool_device=$(uci_get sms_tool_device "")
-
     # --- Unit preferences ---
     temp_unit=$(uci_get temp_unit "celsius")
     distance_unit=$(uci_get distance_unit "km")
@@ -105,7 +102,6 @@ if [ "$REQUEST_METHOD" = "GET" ]; then
         --arg distance_unit "$distance_unit" \
         --arg timezone "$timezone" \
         --arg zonename "$zonename" \
-        --arg sms_tool_device "$sms_tool_device" \
         --argjson sched_enabled "$sched_enabled" \
         --arg sched_time "$sched_time" \
         --argjson sched_days "$sched_days_json" \
@@ -121,8 +117,7 @@ if [ "$REQUEST_METHOD" = "GET" ]; then
                 temp_unit: $temp_unit,
                 distance_unit: $distance_unit,
                 timezone: $timezone,
-                zonename: $zonename,
-                sms_tool_device: $sms_tool_device
+                zonename: $zonename
             },
             scheduled_reboot: {
                 enabled: ($sched_enabled == 1),
@@ -172,11 +167,19 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
         fi
 
         # --- Hostname (display name) ---
+        # system_dirty flags when any system.@system[0].* key changes so we can
+        # republish /tmp/TZ, /tmp/localtime, and kernel hostname via
+        # /etc/init.d/system reload after commit.
+        system_dirty=0
+        tz_dirty=0
+
         val=$(printf '%s' "$POST_DATA" | jq -r '.hostname // empty')
         if [ -n "$val" ]; then
-            uci set system.@system[0].hostname="$val"
-            # Apply immediately so /proc/sys/kernel/hostname reflects the change
-            echo "$val" > /proc/sys/kernel/hostname 2>/dev/null
+            cur=$(uci -q get system.@system[0].hostname 2>/dev/null)
+            if [ "$val" != "$cur" ]; then
+                uci set system.@system[0].hostname="$val"
+                system_dirty=1
+            fi
         fi
 
         # --- Temperature unit ---
@@ -204,35 +207,49 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
         fi
 
         # --- Timezone ---
+        # tz_dirty additionally triggers crond restart — busybox crond caches
+        # TZ at startup, so Scheduled Reboot / Low Power cron fires at stale
+        # wall time until restart.
         val=$(printf '%s' "$POST_DATA" | jq -r '.timezone // empty')
         if [ -n "$val" ]; then
-            uci set system.@system[0].timezone="$val"
+            cur=$(uci -q get system.@system[0].timezone 2>/dev/null)
+            if [ "$val" != "$cur" ]; then
+                uci set system.@system[0].timezone="$val"
+                system_dirty=1
+                tz_dirty=1
+            fi
         fi
 
         val=$(printf '%s' "$POST_DATA" | jq -r '.zonename // empty')
         if [ -n "$val" ]; then
-            uci set system.@system[0].zonename="$val"
-        fi
-
-        # --- SMS tool device override ---
-        # Two-step: check if field exists, then read value.
-        # Empty string is a valid "disable" value, so [ -n ] would skip it.
-        _has_sms_dev=$(printf '%s' "$POST_DATA" | jq -r 'if has("sms_tool_device") then "yes" else "no" end')
-        if [ "$_has_sms_dev" = "yes" ]; then
-            val=$(printf '%s' "$POST_DATA" | jq -r '.sms_tool_device')
-            case "$val" in
-                /dev/smd7) uci set quecmanager.settings.sms_tool_device="$val" ;;
-                ""|null)   uci -q delete quecmanager.settings.sms_tool_device 2>/dev/null ;;
-                *)
-                    cgi_error "invalid_sms_tool_device" "sms_tool_device must be '/dev/smd7' or empty"
-                    exit 0
-                    ;;
-            esac
+            cur=$(uci -q get system.@system[0].zonename 2>/dev/null)
+            if [ "$val" != "$cur" ]; then
+                uci set system.@system[0].zonename="$val"
+                system_dirty=1
+                tz_dirty=1
+            fi
         fi
 
         # Commit changes
         uci commit quecmanager
         uci commit system
+
+        # Republish system config to /tmp/TZ, /tmp/localtime, kernel hostname,
+        # syslogd. Backgrounded so the HTTP response returns promptly; matches
+        # the pattern used by ip_passthrough.sh reboot-on-apply and
+        # qmanager_low_power exit handler in this same file.
+        if [ "$system_dirty" = "1" ]; then
+            qlog_info "system dirty: scheduling /etc/init.d/system reload"
+            ( /etc/init.d/system reload </dev/null >/dev/null 2>&1 & )
+
+            # crond is NOT restarted by /etc/init.d/system reload. On TZ
+            # change, restart it so qmanager_scheduled_reboot and
+            # qmanager_low_power cron entries fire at the new wall time.
+            if [ "$tz_dirty" = "1" ]; then
+                qlog_info "TZ changed: scheduling /etc/init.d/cron restart"
+                ( /etc/init.d/cron restart </dev/null >/dev/null 2>&1 & )
+            fi
+        fi
 
         qlog_info "System settings saved"
         echo '{"success":true}'

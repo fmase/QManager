@@ -113,6 +113,14 @@ export interface NetworkStatus {
   primary_dns: string;
   /** Secondary DNS server from AT+CGCONTRDP */
   secondary_dns: string;
+  /** Primary DNS IPv4 address (populated for both single-stack and dual-stack APNs) */
+  primary_dns_v4: string;
+  /** Primary DNS IPv6 address (empty for single-stack IPv4-only APNs) */
+  primary_dns_v6: string;
+  /** Secondary DNS IPv4 address (populated for both single-stack and dual-stack APNs) */
+  secondary_dns_v4: string;
+  /** Secondary DNS IPv6 address (empty for single-stack IPv4-only APNs) */
+  secondary_dns_v6: string;
   /** Per-carrier component details from AT+QCAINFO (PCC + all SCCs) */
   carrier_components: CarrierComponent[];
 }
@@ -218,8 +226,6 @@ export interface DeviceStatus {
   firmware: string;
   /** Firmware build date, e.g. "Jun 25 2025" (from AT+CVERSION) */
   build_date: string;
-  /** Modem manufacturer, e.g. "Quectel" (from AT+CVERSION) */
-  manufacturer: string;
   /** Modem model name, e.g. "RM551E-GL" (from AT+CGMM) */
   model: string;
   /** Device IMEI (15-digit) */
@@ -240,6 +246,8 @@ export interface DeviceStatus {
   supported_nsa_nr5g_bands: string;
   /** Hardware-supported SA NR5G bands, colon-delimited (boot-only) */
   supported_sa_nr5g_bands: string;
+  /** QManager version string */
+  qmanager_version: string;
 }
 
 export interface TrafficStatus {
@@ -293,7 +301,7 @@ export const SINR_THRESHOLDS: SignalThresholds = {
  */
 export function getSignalQuality(
   value: number | null,
-  thresholds: SignalThresholds
+  thresholds: SignalThresholds,
 ): "excellent" | "good" | "fair" | "poor" | "none" {
   if (value === null || value === undefined) return "none";
   if (value >= thresholds.excellent) return "excellent";
@@ -380,8 +388,16 @@ export interface SimSwapStatus {
  * Shared across antenna-statistics, antenna-alignment, and any future per-port UI.
  */
 export const ANTENNA_PORTS = [
-  { name: "Main", rx: "PRX", description: "Main transmit/receive antenna (ANT0)" },
-  { name: "Diversity", rx: "DRX", description: "Diversity / receive antenna (ANT1)" },
+  {
+    name: "Main",
+    rx: "PRX",
+    description: "Main transmit/receive antenna (ANT0)",
+  },
+  {
+    name: "Diversity",
+    rx: "DRX",
+    description: "Diversity / receive antenna (ANT1)",
+  },
   { name: "MIMO 3", rx: "RX2", description: "MIMO spatial stream 1 (ANT2)" },
   { name: "MIMO 4", rx: "RX3", description: "MIMO spatial stream 2 (ANT3)" },
 ] as const;
@@ -452,7 +468,7 @@ export const LATENCY_THRESHOLDS = {
  * Lower latency = better quality.
  */
 export function getLatencyQuality(
-  latencyMs: number | null
+  latencyMs: number | null,
 ): "excellent" | "good" | "fair" | "poor" | "none" {
   if (latencyMs === null || latencyMs === undefined) return "none";
   if (latencyMs <= LATENCY_THRESHOLDS.excellent) return "excellent";
@@ -484,24 +500,33 @@ export function formatJitter(jitterMs: number | null): string {
 
 /** Event types emitted by the poller's change detection */
 export type NetworkEventType =
-  | "network_mode"        // Network mode changed (LTE → 5G-NSA, etc.)
-  | "band_change"         // LTE or NR band changed
-  | "pci_change"          // PCC cell handoff (PCI changed)
-  | "scc_pci_change"      // SCC cell handoff (secondary carrier PCI changed)
-  | "ca_change"           // Carrier Aggregation activated/deactivated/count changed
-  | "nr_anchor"           // 5G NR anchor gained or lost
-  | "signal_lost"         // Modem became unreachable
-  | "signal_restored"     // Modem signal restored
-  | "internet_lost"       // Internet connectivity lost
-  | "internet_restored"   // Internet connectivity restored
-  | "high_latency"        // Latency exceeded 90ms threshold
-  | "latency_recovered"   // Latency returned below threshold
-  | "high_packet_loss"    // Packet loss exceeded 20% threshold
+  | "network_mode" // Network mode changed (LTE → 5G-NSA, etc.)
+  | "band_change" // LTE or NR band changed
+  | "pci_change" // PCC cell handoff (PCI changed)
+  | "scc_pci_change" // SCC cell handoff (secondary carrier PCI changed)
+  | "ca_change" // Carrier Aggregation activated/deactivated/count changed
+  | "nr_anchor" // 5G NR anchor gained or lost
+  | "signal_lost" // Modem became unreachable
+  | "signal_restored" // Modem signal restored
+  | "internet_lost" // Internet connectivity lost
+  | "internet_restored" // Internet connectivity restored
+  | "high_latency" // Latency exceeded 90ms threshold
+  | "latency_recovered" // Latency returned below threshold
+  | "high_packet_loss" // Packet loss exceeded 20% threshold
   | "packet_loss_recovered" // Packet loss returned below threshold
-  | "watchcat_recovery"   // Watchcat executed a recovery action (Tier 1-4)
-  | "sim_failover"        // SIM failover event (Tier 3 switch/fallback)
-  | "sim_swap_detected"   // Physical SIM card swap detected at boot
-  | "airplane_mode";      // Airplane mode enabled/disabled (CFUN changed)
+  | "watchcat_recovery" // Watchcat executed a recovery action (Tier 1-4)
+  | "sim_failover" // SIM failover event (Tier 3 switch/fallback)
+  | "sim_swap_detected" // Physical SIM card swap detected at boot
+  | "airplane_mode" // Airplane mode enabled/disabled (CFUN changed)
+  | "profile_applied" // Custom SIM Profile applied (complete or partial)
+  | "profile_failed" // Custom SIM Profile apply failed (all steps)
+  | "profile_deactivated" // Custom SIM Profile deactivated by user
+  | "config_backup_collected" // Configuration backup collected
+  | "config_restore_started" // Configuration restore started
+  | "config_restore_section_success" // Single section restored
+  | "config_restore_section_failed" // Single section failed after retries
+  | "config_restore_section_skipped" // Single section skipped (incompatible or sim_mismatch)
+  | "config_restore_completed"; // Configuration restore completed
 
 /** Severity level for UI icon coloring */
 export type EventSeverity = "info" | "warning" | "error";
@@ -644,7 +669,7 @@ export function formatTemperature(
  */
 export function signalToProgress(
   value: number | null,
-  thresholds: SignalThresholds
+  thresholds: SignalThresholds,
 ): number {
   if (value === null || value === undefined) return 0;
   // Map from [poor, excellent] → [0, 100]

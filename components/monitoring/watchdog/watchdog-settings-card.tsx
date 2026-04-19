@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { SaveButton, useSaveFlash } from "@/components/ui/save-button";
 import {
@@ -60,15 +61,16 @@ export function WatchdogSettingsCard({
   error,
   saveSettings,
 }: WatchdogSettingsCardProps) {
+  const { t } = useTranslation("monitoring");
 
   // Loading skeleton
   if (isLoading) {
     return (
       <Card className="@container/card">
         <CardHeader>
-          <CardTitle>Watchdog Settings</CardTitle>
+          <CardTitle>{t("watchdog.settings_title")}</CardTitle>
           <CardDescription>
-            Configure connection health monitoring and recovery.
+            {t("watchdog.settings_description")}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -115,6 +117,7 @@ function WatchdogSettingsForm({
   error,
   saveSettings,
 }: Omit<WatchdogSettingsCardProps, "isLoading">) {
+  const { t } = useTranslation("monitoring");
   const { saved, markSaved } = useSaveFlash();
 
   // --- Local form state (initialized from settings prop) ---
@@ -151,13 +154,13 @@ function WatchdogSettingsForm({
     (isNaN(Number(maxFailures)) ||
       Number(maxFailures) < 1 ||
       Number(maxFailures) > 20)
-      ? "Must be 1\u201320"
+      ? t("watchdog.failure_threshold_error")
       : null;
 
   const cooldownError =
     cooldown &&
     (isNaN(Number(cooldown)) || Number(cooldown) < 10 || Number(cooldown) > 300)
-      ? "Must be 10\u2013300 seconds"
+      ? t("watchdog.cooldown_error")
       : null;
 
   const maxRebootsError =
@@ -165,7 +168,7 @@ function WatchdogSettingsForm({
     (isNaN(Number(maxRebootsPerHour)) ||
       Number(maxRebootsPerHour) < 1 ||
       Number(maxRebootsPerHour) > 10)
-      ? "Must be 1\u201310"
+      ? t("watchdog.max_reboots_error")
       : null;
 
   const hasValidationErrors = !!(
@@ -231,9 +234,9 @@ function WatchdogSettingsForm({
       const success = await saveSettings(payload);
       if (success) {
         markSaved();
-        toast.success("Watchdog settings saved");
+        toast.success(t("watchdog.toast_save_success"));
       } else {
-        toast.error(error || "Failed to save watchdog settings");
+        toast.error(error || t("watchdog.toast_save_error"));
       }
     },
     [
@@ -257,9 +260,9 @@ function WatchdogSettingsForm({
   return (
     <Card className="@container/card">
       <CardHeader>
-        <CardTitle>Watchdog Settings</CardTitle>
+        <CardTitle>{t("watchdog.settings_title")}</CardTitle>
         <CardDescription>
-          Configure connection health monitoring and recovery.
+          {t("watchdog.settings_description")}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -267,8 +270,7 @@ function WatchdogSettingsForm({
           <Alert variant="destructive" className="mb-4">
             <AlertTriangleIcon className="size-4" />
             <AlertDescription>
-              Watchdog disabled itself after too many reboots in one hour.
-              Re-enable it below once your connection is stable.
+              <p>{t("watchdog.auto_disabled_alert")}</p>
             </AlertDescription>
           </Alert>
         )}
@@ -279,7 +281,7 @@ function WatchdogSettingsForm({
               {/* Master toggle */}
               <Field orientation="horizontal" className="w-fit">
                 <FieldLabel htmlFor="watchdog-enabled">
-                  Enable Watchdog
+                  {t("watchdog.enable_label")}
                 </FieldLabel>
                 <Switch
                   id="watchdog-enabled"
@@ -292,14 +294,14 @@ function WatchdogSettingsForm({
                 {/* Max Failures */}
                 <Field>
                   <FieldLabel htmlFor="max-failures">
-                    Failure Threshold
+                    {t("watchdog.failure_threshold_label")}
                   </FieldLabel>
                   <Input
                     id="max-failures"
                     type="number"
                     min="1"
                     max="20"
-                    placeholder="5"
+                    placeholder={t("watchdog.failure_threshold_placeholder")}
                     className="max-w-sm"
                     value={maxFailures}
                     onChange={(e) => setMaxFailures(e.target.value)}
@@ -317,8 +319,7 @@ function WatchdogSettingsForm({
                     </FieldError>
                   ) : (
                     <FieldDescription id="max-failures-desc">
-                      How many failed connectivity checks in a row before
-                      recovery begins.
+                      {t("watchdog.failure_threshold_description")}
                     </FieldDescription>
                   )}
                 </Field>
@@ -326,7 +327,7 @@ function WatchdogSettingsForm({
                 {/* Check Interval */}
                 <Field>
                   <FieldLabel htmlFor="check-interval">
-                    Check Interval
+                    {t("watchdog.check_interval_label")}
                   </FieldLabel>
                   <Select
                     value={checkInterval}
@@ -334,31 +335,31 @@ function WatchdogSettingsForm({
                     disabled={!isEnabled}
                   >
                     <SelectTrigger id="check-interval" className="max-w-sm">
-                      <SelectValue placeholder="Select interval" />
+                      <SelectValue placeholder={t("watchdog.check_interval_label")} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="5">5 seconds</SelectItem>
-                      <SelectItem value="10">10 seconds</SelectItem>
-                      <SelectItem value="15">15 seconds</SelectItem>
-                      <SelectItem value="30">30 seconds</SelectItem>
+                      <SelectItem value="5">{t("watchdog.check_interval_5s")}</SelectItem>
+                      <SelectItem value="10">{t("watchdog.check_interval_10s")}</SelectItem>
+                      <SelectItem value="15">{t("watchdog.check_interval_15s")}</SelectItem>
+                      <SelectItem value="30">{t("watchdog.check_interval_30s")}</SelectItem>
                     </SelectContent>
                   </Select>
                   <FieldDescription>
-                    How often the watchdog checks your internet connection.
+                    {t("watchdog.check_interval_description")}
                   </FieldDescription>
                 </Field>
 
                 {/* Cooldown */}
                 <Field>
                   <FieldLabel htmlFor="cooldown">
-                    Cooldown Period (seconds)
+                    {t("watchdog.cooldown_label")}
                   </FieldLabel>
                   <Input
                     id="cooldown"
                     type="number"
                     min="10"
                     max="300"
-                    placeholder="60"
+                    placeholder={t("watchdog.cooldown_placeholder")}
                     className="max-w-sm"
                     value={cooldown}
                     onChange={(e) => setCooldown(e.target.value)}
@@ -372,8 +373,7 @@ function WatchdogSettingsForm({
                     <FieldError id="cooldown-error">{cooldownError}</FieldError>
                   ) : (
                     <FieldDescription id="cooldown-desc">
-                      Wait time after each recovery step before checking
-                      connectivity again.
+                      {t("watchdog.cooldown_description")}
                     </FieldDescription>
                   )}
                 </Field>
@@ -381,14 +381,14 @@ function WatchdogSettingsForm({
                 {tier4Enabled && (
                   <Field>
                     <FieldLabel htmlFor="max-reboots">
-                      Max Reboots Per Hour
+                      {t("watchdog.max_reboots_label")}
                     </FieldLabel>
                     <Input
                       id="max-reboots"
                       type="number"
                       min="1"
                       max="10"
-                      placeholder="3"
+                      placeholder={t("watchdog.max_reboots_placeholder")}
                       className="max-w-sm"
                       value={maxRebootsPerHour}
                       onChange={(e) => setMaxRebootsPerHour(e.target.value)}
@@ -406,8 +406,7 @@ function WatchdogSettingsForm({
                       </FieldError>
                     ) : (
                       <FieldDescription id="max-reboots-desc">
-                        Safety limit. The watchdog disables itself if this many
-                        reboots happen in one hour.
+                        {t("watchdog.max_reboots_description")}
                       </FieldDescription>
                     )}
                   </Field>
@@ -417,7 +416,7 @@ function WatchdogSettingsForm({
                   {tier3Enabled && (
                     <Field>
                       <FieldLabel htmlFor="backup-sim-slot">
-                        Backup SIM Slot
+                        {t("watchdog.backup_sim_label")}
                       </FieldLabel>
                       <Select
                         value={backupSimSlot}
@@ -428,16 +427,15 @@ function WatchdogSettingsForm({
                           id="backup-sim-slot"
                           className="max-w-sm"
                         >
-                          <SelectValue placeholder="Select slot" />
+                          <SelectValue placeholder={t("watchdog.backup_sim_placeholder")} />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="1">Slot 1</SelectItem>
-                          <SelectItem value="2">Slot 2</SelectItem>
+                          <SelectItem value="1">{t("watchdog.backup_sim_slot_1")}</SelectItem>
+                          <SelectItem value="2">{t("watchdog.backup_sim_slot_2")}</SelectItem>
                         </SelectContent>
                       </Select>
                       <FieldDescription>
-                        The SIM slot to switch to when the primary SIM loses
-                        connectivity. Must differ from the current active slot.
+                        {t("watchdog.backup_sim_description")}
                       </FieldDescription>
                     </Field>
                   )}
@@ -446,16 +444,16 @@ function WatchdogSettingsForm({
 
               <Separator />
               <div className="grid gap-2">
-                <CardTitle>Recovery Steps</CardTitle>
+                <CardTitle>{t("watchdog.recovery_steps_title")}</CardTitle>
                 <CardDescription>
-                  Tried in order, from gentlest to most disruptive.
+                  {t("watchdog.recovery_steps_description")}
                 </CardDescription>
               </div>
 
               <div className="grid grid-cols-1 @sm/card:grid-cols-2 gap-4">
                 <Field orientation="horizontal" className="w-fit">
                   <FieldLabel htmlFor="tier1-enabled">
-                    Restart Network Interface
+                    {t("watchdog.tier_1_enable_label")}
                   </FieldLabel>
                   <Switch
                     id="tier1-enabled"
@@ -472,20 +470,17 @@ function WatchdogSettingsForm({
                         <button
                           type="button"
                           className="inline-flex"
-                          aria-label="More info"
+                          aria-label={t("watchdog.tier_2_more_info_aria")}
                         >
                           <TbInfoCircleFilled className="size-5 text-info" />
                         </button>
                       </TooltipTrigger>
                       <TooltipContent>
-                        <p>
-                          Automatically skipped when tower lock is active <br />{" "}
-                          to preserve your locked cells.
-                        </p>
+                        <p>{t("watchdog.tier_2_tooltip")}</p>
                       </TooltipContent>
                     </Tooltip>
                     <FieldLabel htmlFor="tier2-enabled">
-                      Restart Modem Radio
+                      {t("watchdog.tier_2_enable_label")}
                     </FieldLabel>
                     <Switch
                       id="tier2-enabled"
@@ -499,7 +494,7 @@ function WatchdogSettingsForm({
 
                 <Field orientation="horizontal" className="w-fit">
                   <FieldLabel htmlFor="tier3-enabled">
-                    Switch to Backup SIM
+                    {t("watchdog.tier_3_enable_label")}
                   </FieldLabel>
                   <Switch
                     id="tier3-enabled"
@@ -510,7 +505,9 @@ function WatchdogSettingsForm({
                 </Field>
 
                 <Field orientation="horizontal" className="w-fit">
-                  <FieldLabel htmlFor="tier4-enabled">Reboot Device</FieldLabel>
+                  <FieldLabel htmlFor="tier4-enabled">
+                    {t("watchdog.tier_4_enable_label")}
+                  </FieldLabel>
                   <Switch
                     id="tier4-enabled"
                     checked={tier4Enabled}

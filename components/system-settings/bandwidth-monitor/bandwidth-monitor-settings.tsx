@@ -1,6 +1,7 @@
 "use client";
 
-import { motion, type Variants } from "motion/react";
+import { motion } from "motion/react";
+import { containerVariants, itemVariants } from "@/lib/motion";
 import { toast } from "sonner";
 
 import {
@@ -32,26 +33,16 @@ import { TbInfoCircleFilled } from "react-icons/tb";
 import { AlertTriangleIcon } from "lucide-react";
 
 import { useBandwidthSettings } from "@/hooks/use-bandwidth-settings";
-
-// ─── Animation variants ────────────────────────────────────────────────────
-
-const containerVariants: Variants = {
-  hidden: {},
-  visible: { transition: { staggerChildren: 0.06 } },
-};
-
-const itemVariants: Variants = {
-  hidden: { opacity: 0, y: 8 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.25, ease: "easeOut" } },
-};
+import { useTranslation } from "react-i18next";
 
 const BandwidthMonitorSettings = () => {
+  const { t } = useTranslation("system-settings");
   const bandwidth = useBandwidthSettings();
 
   return (
     <div className="@container/main mx-auto p-2">
       <div className="mb-6">
-        <h1 className="text-3xl font-bold mb-2">Bandwidth Monitor</h1>
+        <h1 className="text-3xl font-bold mb-2">{t("bandwidth_monitor.page_title")}</h1>
       </div>
       <div className="grid grid-cols-1 @3xl/main:grid-cols-2 grid-flow-row gap-4">
         <Card className="@container/card">
@@ -62,23 +53,19 @@ const BandwidthMonitorSettings = () => {
                   <button
                     type="button"
                     className="inline-flex"
-                    aria-label="Bandwidth monitor info"
+                    aria-label={t("bandwidth_monitor.info_aria")}
                   >
                     <TbInfoCircleFilled className="size-5 text-info" />
                   </button>
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>
-                    Monitors real-time network throughput across multiple <br />
-                    interfaces using a dedicated binary and WebSocket stream. <br />
-                    Requires <code>websocat</code> package.
-                  </p>
+                  <p>{t("bandwidth_monitor.info_tooltip")}</p>
                 </TooltipContent>
               </Tooltip>
-              <CardTitle>Settings</CardTitle>
+              <CardTitle>{t("bandwidth_monitor.card_title")}</CardTitle>
             </div>
             <CardDescription>
-              Configure the live bandwidth monitoring service.
+              {t("bandwidth_monitor.card_description")}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -104,7 +91,7 @@ const BandwidthMonitorSettings = () => {
                     <Alert>
                       <AlertTriangleIcon className="size-4" />
                       <AlertDescription>
-                        <code>websocat</code> is not installed. Install with:{" "}
+                        {t("bandwidth_monitor.dependency_warning")}{" "}
                         <code className="text-xs">opkg install websocat</code>
                       </AlertDescription>
                     </Alert>
@@ -114,7 +101,7 @@ const BandwidthMonitorSettings = () => {
                 {/* Enable toggle */}
                 <motion.div variants={itemVariants} className="flex items-center justify-between">
                   <p className="font-semibold text-muted-foreground text-sm">
-                    Enable Bandwidth Monitor
+                    {t("bandwidth_monitor.enable_label")}
                   </p>
                   <div className="flex items-center space-x-2">
                     <Switch
@@ -129,16 +116,16 @@ const BandwidthMonitorSettings = () => {
                         if (success) {
                           toast.success(
                             checked
-                              ? "Bandwidth monitor enabled"
-                              : "Bandwidth monitor disabled",
+                              ? t("bandwidth_monitor.toast_enabled")
+                              : t("bandwidth_monitor.toast_disabled"),
                           );
                         } else {
-                          toast.error("Failed to update bandwidth monitor");
+                          toast.error(t("bandwidth_monitor.toast_update_failed"));
                         }
                       }}
                     />
                     <Label htmlFor="bandwidth-monitor">
-                      {bandwidth.settings?.enabled ? "Enabled" : "Disabled"}
+                      {bandwidth.settings?.enabled ? t("state.enabled", { ns: "common" }) : t("state.disabled", { ns: "common" })}
                     </Label>
                   </div>
                 </motion.div>
@@ -149,7 +136,7 @@ const BandwidthMonitorSettings = () => {
                   <>
                     <motion.div variants={itemVariants} className="flex items-center justify-between mt-4">
                       <Label className="font-semibold text-muted-foreground text-sm">
-                        Refresh Rate
+                        {t("bandwidth_monitor.refresh_rate_label")}
                       </Label>
                       <Select
                         value={String(bandwidth.settings.refresh_rate_ms)}
@@ -159,21 +146,21 @@ const BandwidthMonitorSettings = () => {
                             refresh_rate_ms: Number(value),
                           });
                           if (success) {
-                            toast.success("Refresh rate updated");
+                            toast.success(t("bandwidth_monitor.toast_refresh_updated"));
                           } else {
-                            toast.error("Failed to update refresh rate");
+                            toast.error(t("bandwidth_monitor.toast_refresh_failed"));
                           }
                         }}
                         disabled={bandwidth.isSaving}
                       >
-                        <SelectTrigger className="w-32 h-8" aria-label="Refresh rate">
+                        <SelectTrigger className="w-32 h-8" aria-label={t("bandwidth_monitor.refresh_rate_aria")}>
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent className="rounded-xl">
-                          <SelectItem value="500" className="rounded-lg">500 ms</SelectItem>
-                          <SelectItem value="1000" className="rounded-lg">1 second</SelectItem>
-                          <SelectItem value="2000" className="rounded-lg">2 seconds</SelectItem>
-                          <SelectItem value="3000" className="rounded-lg">3 seconds</SelectItem>
+                          <SelectItem value="500" className="rounded-lg">{t("bandwidth_monitor.refresh_500ms")}</SelectItem>
+                          <SelectItem value="1000" className="rounded-lg">{t("bandwidth_monitor.refresh_1s")}</SelectItem>
+                          <SelectItem value="2000" className="rounded-lg">{t("bandwidth_monitor.refresh_2s")}</SelectItem>
+                          <SelectItem value="3000" className="rounded-lg">{t("bandwidth_monitor.refresh_3s")}</SelectItem>
                         </SelectContent>
                       </Select>
                     </motion.div>
@@ -182,7 +169,7 @@ const BandwidthMonitorSettings = () => {
                     {/* Status indicators */}
                     <motion.div variants={itemVariants} className="flex items-center justify-between mt-4">
                       <p className="font-semibold text-muted-foreground text-sm">
-                        Service Status
+                        {t("bandwidth_monitor.status_label")}
                       </p>
                       <div className="flex items-center gap-2">
                         <Badge
@@ -193,7 +180,7 @@ const BandwidthMonitorSettings = () => {
                               : "text-muted-foreground"
                           }
                         >
-                          WebSocket {bandwidth.status?.websocat_running ? "Running" : "Stopped"}
+                          {bandwidth.status?.websocat_running ? t("bandwidth_monitor.status_websocket_running") : t("bandwidth_monitor.status_websocket_stopped")}
                         </Badge>
                         <Badge
                           variant="outline"
@@ -203,7 +190,7 @@ const BandwidthMonitorSettings = () => {
                               : "text-muted-foreground"
                           }
                         >
-                          Monitor {bandwidth.status?.monitor_running ? "Running" : "Stopped"}
+                          {bandwidth.status?.monitor_running ? t("bandwidth_monitor.status_monitor_running") : t("bandwidth_monitor.status_monitor_stopped")}
                         </Badge>
                       </div>
                     </motion.div>

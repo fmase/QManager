@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslation, Trans } from "react-i18next";
 import { useTailscale } from "@/hooks/use-tailscale";
 import { TailscaleConnectionCard } from "./tailscale-connection-card";
 import { TailscalePeersCard } from "./tailscale-peers-card";
@@ -18,6 +19,7 @@ import Link from "next/link";
 import { TriangleAlertIcon } from "lucide-react";
 
 const TailscaleComponent = () => {
+  const { t } = useTranslation("monitoring");
   const hookData = useTailscale();
 
   // Mutual exclusion guard — other VPN is installed
@@ -25,9 +27,9 @@ const TailscaleComponent = () => {
     return (
       <div className="@container/main mx-auto p-2">
         <div className="mb-6">
-          <h1 className="text-3xl font-bold mb-2">Tailscale VPN</h1>
+          <h1 className="text-3xl font-bold mb-2">{t("tailscale.page_title")}</h1>
           <p className="text-muted-foreground">
-            Manage your Tailscale mesh VPN connection and network peers.
+            {t("tailscale.page_description")}
           </p>
         </div>
         <div className="grid grid-cols-1 @3xl/main:grid-cols-2 grid-flow-row gap-4">
@@ -39,18 +41,17 @@ const TailscaleComponent = () => {
                     <TriangleAlertIcon />
                   </EmptyMedia>
                   <EmptyTitle>
-                    {hookData.status.other_vpn_name} is already installed
+                    {t("tailscale.mutex_title")}
                   </EmptyTitle>
                   <EmptyDescription className="max-w-xs text-pretty">
-                    Only one VPN can be installed at a time. Uninstall{" "}
-                    {hookData.status.other_vpn_name} from the{" "}
-                    <Link
-                      href="/monitoring/netbird"
-                      className="underline font-medium"
-                    >
-                      {hookData.status.other_vpn_name} page
-                    </Link>{" "}
-                    first.
+                    <Trans
+                      i18nKey="tailscale.mutex_description"
+                      ns="monitoring"
+                      values={{ other_vpn: hookData.status.other_vpn_name }}
+                      components={{
+                        link: <Link href="/monitoring/netbird" className="underline font-medium" />,
+                      }}
+                    />
                   </EmptyDescription>
                 </EmptyHeader>
               </Empty>
@@ -64,9 +65,9 @@ const TailscaleComponent = () => {
   return (
     <div className="@container/main mx-auto p-2">
       <div className="mb-6">
-        <h1 className="text-3xl font-bold mb-2">Tailscale VPN</h1>
+        <h1 className="text-3xl font-bold mb-2">{t("tailscale.page_title")}</h1>
         <p className="text-muted-foreground">
-          Manage your Tailscale mesh VPN connection and network peers.
+          {t("tailscale.page_description")}
         </p>
       </div>
       <div className="grid grid-cols-1 @3xl/main:grid-cols-2 grid-flow-row gap-4">

@@ -52,6 +52,25 @@ uci_get() {
     fi
 }
 
+# Validate numeric field: returns 0 if valid int in [min,max], else 1
+validate_int() {
+    local val="$1" min="$2" max="$3"
+    case "$val" in
+        ''|*[!0-9]*) return 1 ;;
+    esac
+    [ "$val" -ge "$min" ] 2>/dev/null && [ "$val" -le "$max" ] 2>/dev/null
+}
+
+# Reject the request with a structured error and exit.
+# Frontend checks .success === false; HTTP status remains 200 (headers
+# already emitted by cgi_headers at file top — project convention).
+reject_field() {
+    local field="$1" reason="$2"
+    jq -n --arg field "$field" --arg reason "$reason" \
+        '{success:false, error:"invalid_field", field:$field, reason:$reason}'
+    exit 0
+}
+
 # =============================================================================
 # GET — Fetch settings + live status
 # =============================================================================
@@ -165,13 +184,22 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
         fi
 
         val=$(printf '%s' "$POST_DATA" | jq -r '.max_failures // empty')
-        [ -n "$val" ] && uci set quecmanager.watchcat.max_failures="$val"
+        if [ -n "$val" ]; then
+            validate_int "$val" 1 20 || reject_field "max_failures" "must be integer 1-20"
+            uci set quecmanager.watchcat.max_failures="$val"
+        fi
 
         val=$(printf '%s' "$POST_DATA" | jq -r '.check_interval // empty')
-        [ -n "$val" ] && uci set quecmanager.watchcat.check_interval="$val"
+        if [ -n "$val" ]; then
+            validate_int "$val" 5 60 || reject_field "check_interval" "must be integer 5-60"
+            uci set quecmanager.watchcat.check_interval="$val"
+        fi
 
         val=$(printf '%s' "$POST_DATA" | jq -r '.cooldown // empty')
-        [ -n "$val" ] && uci set quecmanager.watchcat.cooldown="$val"
+        if [ -n "$val" ]; then
+            validate_int "$val" 10 300 || reject_field "cooldown" "must be integer 10-300"
+            uci set quecmanager.watchcat.cooldown="$val"
+        fi
 
         val=$(printf '%s' "$POST_DATA" | jq -r '.tier1_enabled | if . == null then empty else tostring end')
         if [ -n "$val" ]; then
@@ -195,13 +223,19 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
 
         val=$(printf '%s' "$POST_DATA" | jq -r '.backup_sim_slot // empty')
         if [ -n "$val" ] && [ "$val" != "null" ]; then
-            uci set quecmanager.watchcat.backup_sim_slot="$val"
+            case "$val" in
+                1|2) uci set quecmanager.watchcat.backup_sim_slot="$val" ;;
+                *) reject_field "backup_sim_slot" "must be 1 or 2" ;;
+            esac
         else
             uci set quecmanager.watchcat.backup_sim_slot=""
         fi
 
         val=$(printf '%s' "$POST_DATA" | jq -r '.max_reboots_per_hour // empty')
-        [ -n "$val" ] && uci set quecmanager.watchcat.max_reboots_per_hour="$val"
+        if [ -n "$val" ]; then
+            validate_int "$val" 1 10 || reject_field "max_reboots_per_hour" "must be integer 1-10"
+            uci set quecmanager.watchcat.max_reboots_per_hour="$val"
+        fi
 
         uci commit quecmanager
 

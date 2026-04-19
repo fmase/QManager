@@ -1,60 +1,99 @@
 #!/bin/sh
 # =============================================================================
-# QManager Installation Script
+# QManager Installer (v2) — filesystem-driven, crash-resilient
 # =============================================================================
-# Installs QManager frontend and backend onto an OpenWRT device.
+# Installs QManager frontend + backend onto a barebone OpenWRT device running
+# RM551E-GL modem firmware. Designed to work without extra opkg dependencies
+# beyond what this script installs itself.
 #
-# Expected archive layout (tar.gz extracted to /tmp/qmanager_install/):
-#   out/                    — Next.js static export (frontend)
-#   scripts/                — Backend shell scripts
-#     etc/init.d/           — Init.d service scripts
-#     usr/bin/              — Daemons and utilities
-#     usr/lib/qmanager/     — Shared shell libraries
-#     www/cgi-bin/          — CGI API endpoints
-#   install.sh              — This script
+# Design invariants:
+#   1. POSIX /bin/sh only (no bashisms, no arrays, no [[ ]])
+#   2. curl-only HTTP (no wget, no uclient-fetch fallbacks)
+#   3. Service lists are filesystem-driven — zero hardcoded script names
+#      except for the small UCI-gated list (user-controlled services).
+#   4. Two-phase VERSION write (pending -> final) so partial installs leave
+#      the old VERSION intact and the update CGI can detect the failure.
+#   5. Every visible line also goes to /tmp/qmanager_install.log with a
+#      timestamp and severity, for easy post-mortem debugging.
+#
+# Archive layout at INSTALL_DIR:
+#   out/                        Next.js static export (frontend)
+#   scripts/                    Backend shell tree
+#     etc/init.d/               Init.d service scripts
+#     etc/qmanager/             Default config files
+#     usr/bin/                  Daemons and utilities (qmanager_*, qcmd, ...)
+#     usr/lib/qmanager/         Shared shell libraries
+#     www/cgi-bin/quecmanager/  CGI API endpoints
+#   dependencies/               Bundled binaries (atcli_smd11, sms_tool)
+#   install.sh                  This script
 #
 # Usage:
-#   1. Transfer qmanager.tar.gz to /tmp/ on the device
-#   2. cd /tmp && tar xzf qmanager.tar.gz
-#   3. cd /tmp/qmanager_install && sh install.sh
+#   cd /tmp && tar xzf qmanager.tar.gz
+#   cd qmanager_install && sh install.sh
 #
 # Flags:
 #   --frontend-only    Only install frontend files
 #   --backend-only     Only install backend scripts
-#   --no-enable        Don't enable init.d services
-#   --no-start         Don't start services after install
-#   --skip-packages    Skip opkg package installation
-#   --no-reboot        Don't reboot after installation (useful for scripted/OTA updates)
-#   --uninstall        Remove QManager completely
-#   --help             Show this help
-#
+#   --skip-packages    Skip opkg package install (OTA path uses this)
+#   --no-enable        Do not enable init.d services
+#   --no-start         Do not start services after install
+#   --no-reboot        Do not reboot after install (OTA path uses this)
+#   --force            Skip modem firmware detection
+#   --help, -h         Show this help
 # =============================================================================
 
 set -e
 
 # --- Configuration -----------------------------------------------------------
 
-VERSION="v0.1.10"
+VERSION="v0.0.0-dev"
 INSTALL_DIR="$(cd "$(dirname "$0")" && pwd)"
+LOG_FILE="/tmp/qmanager_install.log"
 
-# Destinations
+# Target filesystem paths
 WWW_ROOT="/www"
 CGI_DIR="/www/cgi-bin/quecmanager"
 LIB_DIR="/usr/lib/qmanager"
 BIN_DIR="/usr/bin"
 INITD_DIR="/etc/init.d"
 CONF_DIR="/etc/qmanager"
+UPDATES_DIR="/etc/qmanager/updates"
 SESSION_DIR="/tmp/qmanager_sessions"
 BACKUP_DIR="/etc/qmanager/backups"
+VERSION_FILE="/etc/qmanager/VERSION"
+VERSION_PENDING="/etc/qmanager/VERSION.pending"
 
-# Source directories (relative to INSTALL_DIR)
+# Source directories inside the tarball
 SRC_FRONTEND="$INSTALL_DIR/out"
 SRC_SCRIPTS="$INSTALL_DIR/scripts"
+SRC_DEPS="$INSTALL_DIR/dependencies"
 
-# Required packages
-REQUIRED_PACKAGES="jq sms-tool coreutils-timeout websocat"
-# Optional packages (installed if available, non-fatal if missing)
-OPTIONAL_PACKAGES="msmtp ethtool ookla-speedtest"
+# Packages
+# Note: coreutils-timeout is required even though BusyBox ships a `timeout`
+# applet — barebone OpenWRT builds (like OEM modem firmware) often strip
+# applets at compile time, so we can't assume BusyBox `timeout` is present.
+# qcmd wraps atcli_smd11 with `timeout` as a last-ditch safety net, and the
+# installer's run_capture_timeout helper uses it too. Cheap guarantee.
+REQUIRED_PACKAGES="jq curl coreutils-timeout websocat ethtool"
+OPTIONAL_PACKAGES="msmtp ookla-speedtest"
+# Removed before install to avoid /dev/smd11 conflicts and sms_tool collision
+CONFLICT_PACKAGES="sms-tool socat-at-bridge socat"
+
+# UCI-gated services — only enabled if a prior install had them enabled.
+# Everything else is enabled unconditionally. This is the ONLY hardcoded
+# service list in this script.
+UCI_GATED_SERVICES="qmanager_tower_failover qmanager_watchcat qmanager_bandwidth qmanager_dpi qmanager_wan_guard"
+
+# Expected modem firmware signature (after normalization: upper + alnum only)
+REQUIRED_FIRMWARE="RM551EGL"
+
+# Watchcat maintenance lock — touched at the start of stop_services and
+# released at the end of install (or on EXIT trap). When this file exists,
+# qmanager_watchcat enters LOCKED state and skips all connectivity checks,
+# which prevents it from observing install-induced disruption (services
+# stopping, modem state changes) and escalating to a Tier 4 system reboot
+# mid-install.
+WATCHCAT_LOCK="/tmp/qmanager_watchcat.lock"
 
 # --- Colors & Icons ----------------------------------------------------------
 
@@ -68,7 +107,14 @@ if [ -t 1 ]; then
     DIM='\033[2m'
     NC='\033[0m'
 else
-    RED='' GREEN='' YELLOW='' BLUE='' CYAN='' BOLD='' DIM='' NC=''
+    RED=''
+    GREEN=''
+    YELLOW=''
+    BLUE=''
+    CYAN=''
+    BOLD=''
+    DIM=''
+    NC=''
 fi
 
 ICO_OK='✓'
@@ -76,40 +122,48 @@ ICO_WARN='⚠'
 ICO_ERR='✗'
 ICO_STEP='▶'
 
-# --- Progress Tracking -------------------------------------------------------
+# --- Logging -----------------------------------------------------------------
+# All user-visible output mirrors to LOG_FILE with timestamps. The log is
+# truncated at the start of each install run so it always reflects the most
+# recent attempt.
 
-# TOTAL_STEPS is calculated dynamically in main() based on active flags.
-# Each function that calls step() counts as one step.
-TOTAL_STEPS=9
-CURRENT_STEP=0
+log_init() {
+    mkdir -p "$(dirname "$LOG_FILE")" 2>/dev/null || true
+    : > "$LOG_FILE" 2>/dev/null || true
+    _log_raw "=== QManager install started at $(date '+%Y-%m-%d %H:%M:%S') (version=$VERSION) ==="
+}
 
-# --- Helper Functions --------------------------------------------------------
+_log_raw() {
+    printf '[%s] %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$1" >> "$LOG_FILE" 2>/dev/null || true
+}
 
-info()  { printf "    ${GREEN}${ICO_OK}${NC}  %s\n" "$1"; }
-warn()  { printf "    ${YELLOW}${ICO_WARN}${NC}  %s\n" "$1"; }
-error() { printf "    ${RED}${ICO_ERR}${NC}  %s\n" "$1"; }
+info() {
+    _log_raw "[INFO ] $1"
+    printf "    ${GREEN}${ICO_OK}${NC}  %s\n" "$1"
+}
+
+warn() {
+    _log_raw "[WARN ] $1"
+    printf "    ${YELLOW}${ICO_WARN}${NC}  %s\n" "$1"
+}
+
+error() {
+    _log_raw "[ERROR] $1"
+    printf "    ${RED}${ICO_ERR}${NC}  %s\n" "$1"
+}
 
 die() {
     error "$1"
+    printf "\n  ${RED}${BOLD}Installation failed.${NC}\n" >&2
+    printf "  See %s for details.\n\n" "$LOG_FILE" >&2
     exit 1
 }
 
-# Get the binary name for a package (handles pkg name != binary name)
-pkg_binary() {
-    case "$1" in
-        ookla-speedtest) echo "speedtest" ;;
-        sms-tool)        echo "sms_tool" ;;
-        *)               echo "$1" ;;
-    esac
-}
+# --- Progress Tracking -------------------------------------------------------
 
-# Count files in a directory (POSIX-safe)
-count_files() {
-    find "$1" -type f 2>/dev/null | wc -l | tr -d ' '
-}
+TOTAL_STEPS=1
+CURRENT_STEP=0
 
-# Draw a Unicode block progress bar.
-# Args: current, total, [width=20]
 _draw_bar() {
     local curr="$1" tot="$2" w="${3:-20}"
     local fill=$(( curr * w / tot ))
@@ -125,10 +179,11 @@ _draw_bar() {
     printf "%s" "$bar"
 }
 
-# Print a step header with progress bar.
 step() {
     CURRENT_STEP=$(( CURRENT_STEP + 1 ))
     local pct=$(( CURRENT_STEP * 100 / TOTAL_STEPS ))
+    _log_raw ""
+    _log_raw "=== Step $CURRENT_STEP/$TOTAL_STEPS: $1 ==="
     printf "\n"
     if [ -t 1 ]; then
         printf "  ${DIM}[%s  %3d%%  Step %d/%d]${NC}\n" \
@@ -138,21 +193,21 @@ step() {
     printf "  ${BLUE}${BOLD}${ICO_STEP}${NC}${BOLD} %s${NC}\n" "$1"
 }
 
-# Run a command with a rotating spinner (TTY only).
-# Usage: run_with_spinner "label" cmd [args...]
+# --- Shell Helpers -----------------------------------------------------------
+
+# Run a command with a rotating spinner on TTY, silent otherwise. Output and
+# errors are always appended to LOG_FILE.
 run_with_spinner() {
     local label="$1"; shift
-    local i=0 rc=0 f
+    local rc=0
 
-    # No spinner when not a TTY — just run silently
     if [ ! -t 1 ]; then
-        "$@" >/dev/null 2>&1 || rc=$?
+        "$@" >>"$LOG_FILE" 2>&1 || rc=$?
         return "$rc"
     fi
 
-    "$@" >/tmp/qm_spin_out 2>&1 &
-    local cpid=$!
-
+    "$@" >>"$LOG_FILE" 2>&1 &
+    local cpid=$! i=0 f
     while kill -0 "$cpid" 2>/dev/null; do
         case $(( i % 3 )) in
             0) f='|' ;; 1) f='/' ;; *) f='-' ;;
@@ -161,46 +216,341 @@ run_with_spinner() {
         i=$(( i + 1 ))
         sleep 1
     done
-
     wait "$cpid"
     rc=$?
     printf "\r\033[2K"
-    rm -f /tmp/qm_spin_out
     return "$rc"
 }
 
-# --- Pre-flight Checks -------------------------------------------------------
+# Capture stdout of a command with a hard timeout. Uses `timeout` when
+# available, otherwise a simple poll loop.
+run_capture_timeout() {
+    local seconds="$1"; shift
+    local out_file="/tmp/qm_tmo_out.$$"
+    local rc=0 pid="" i=0
+
+    rm -f "$out_file"
+
+    if command -v timeout >/dev/null 2>&1; then
+        timeout "$seconds" "$@" >"$out_file" 2>/dev/null || rc=$?
+    else
+        "$@" >"$out_file" 2>/dev/null &
+        pid=$!
+        while kill -0 "$pid" 2>/dev/null; do
+            if [ "$i" -ge "$seconds" ]; then
+                kill "$pid" 2>/dev/null || true
+                wait "$pid" 2>/dev/null || true
+                rc=124
+                break
+            fi
+            i=$(( i + 1 ))
+            sleep 1
+        done
+        if [ "$rc" -ne 124 ]; then
+            wait "$pid" 2>/dev/null
+            rc=$?
+        fi
+    fi
+
+    [ -f "$out_file" ] && cat "$out_file"
+    rm -f "$out_file"
+    return "$rc"
+}
+
+pkg_binary() {
+    case "$1" in
+        ookla-speedtest)    echo "speedtest" ;;
+        coreutils-timeout)  echo "timeout" ;;
+        *) echo "$1" ;;
+    esac
+}
+
+count_files() {
+    find "$1" -type f 2>/dev/null | wc -l | tr -d ' '
+}
+
+# --- Atomic File Install -----------------------------------------------------
+# Copy src to dst with CRLF strip + chmod + atomic rename. This replaces
+# separate passes for line endings and permissions in the current installer.
+#
+# Returns 0 on success, 1 on failure (caller decides whether to die).
+
+install_file() {
+    local src="$1" dst="$2" mode="${3:-755}"
+
+    if [ ! -f "$src" ]; then
+        _log_raw "install_file: source missing: $src"
+        return 1
+    fi
+
+    mkdir -p "$(dirname "$dst")" 2>/dev/null || true
+
+    local tmp="$dst.qm_install.$$"
+
+    if ! cp "$src" "$tmp" 2>>"$LOG_FILE"; then
+        _log_raw "install_file: cp failed: $src -> $tmp"
+        rm -f "$tmp"
+        return 1
+    fi
+
+    # CRLF safety net for shell scripts. Build.sh should prevent CRLF in
+    # the tarball but Windows-side editors and SMB shares can re-introduce
+    # it. CRLF stripping must NEVER run on binary files — ELF binaries
+    # contain 0x0D bytes throughout their machine code, and stripping them
+    # corrupts the binary (manifests as "Segmentation fault" on first run).
+    # Detect ELF via magic bytes (\x7fELF at offset 0) and skip the strip.
+    if ! head -c 4 "$tmp" 2>/dev/null | grep -q ELF; then
+        if grep -q "$(printf '\r')" "$tmp" 2>/dev/null; then
+            if tr -d '\r' < "$tmp" > "$tmp.lf"; then
+                mv "$tmp.lf" "$tmp"
+                _log_raw "install_file: stripped CRLF from $(basename "$src")"
+            else
+                rm -f "$tmp.lf"
+            fi
+        fi
+    else
+        _log_raw "install_file: $(basename "$src") is ELF — skipping CRLF strip"
+    fi
+
+    chmod "$mode" "$tmp" 2>/dev/null || true
+
+    # Atomic replacement. Requires caller to have stopped any running process
+    # that has $dst open, otherwise this will fail with ETXTBSY.
+    if ! mv "$tmp" "$dst" 2>>"$LOG_FILE"; then
+        _log_raw "install_file: atomic rename failed: $tmp -> $dst"
+        rm -f "$tmp"
+        return 1
+    fi
+
+    return 0
+}
+
+# Install every file in a flat source directory. Returns the count of files
+# installed. Dies on any individual failure.
+install_dir_flat() {
+    local src="$1" dst="$2" mode="${3:-755}" count=0 fname
+
+    [ -d "$src" ] || { _log_raw "install_dir_flat: missing source $src"; return 1; }
+    mkdir -p "$dst"
+
+    for f in "$src"/*; do
+        [ -f "$f" ] || continue
+        fname="$(basename "$f")"
+        if install_file "$f" "$dst/$fname" "$mode"; then
+            count=$(( count + 1 ))
+        else
+            die "Failed to install $fname to $dst"
+        fi
+    done
+
+    printf '%d' "$count"
+    return 0
+}
+
+# Recursively install a directory tree (used for CGI which has subdirs).
+# Wipes the destination first for a clean replacement. Applies 755 to all
+# .sh files and 644 to everything else.
+install_tree() {
+    local src="$1" dst="$2"
+
+    [ -d "$src" ] || { _log_raw "install_tree: missing source $src"; return 1; }
+
+    rm -rf "$dst"
+    mkdir -p "$dst"
+    cp -r "$src"/. "$dst"/ || die "Failed to copy $src to $dst"
+
+    # CRLF strip across the whole tree
+    find "$dst" -type f -name "*.sh" | while IFS= read -r f; do
+        if grep -q "$(printf '\r')" "$f" 2>/dev/null; then
+            tr -d '\r' < "$f" > "$f.lf" && mv "$f.lf" "$f"
+        fi
+    done
+
+    find "$dst" -type f -name "*.sh" -exec chmod 755 {} \;
+    find "$dst" -type f ! -name "*.sh" -exec chmod 644 {} \;
+
+    return 0
+}
+
+# --- Pre-flight --------------------------------------------------------------
+
+detect_modem_firmware() {
+    local atcli="" raw="" detected="" cache
+
+    # Prefer an existing atcli binary, fall back to the bundled one.
+    if [ -x "$BIN_DIR/atcli_smd11" ]; then
+        atcli="$BIN_DIR/atcli_smd11"
+    elif [ -f "$SRC_DEPS/atcli_smd11" ]; then
+        chmod 755 "$SRC_DEPS/atcli_smd11" 2>/dev/null || true
+        [ -x "$SRC_DEPS/atcli_smd11" ] && atcli="$SRC_DEPS/atcli_smd11"
+    fi
+
+    if [ -n "$atcli" ]; then
+        raw=$(run_capture_timeout 8 "$atcli" 'ATI' 2>/dev/null || true)
+
+        detected=$(printf '%s\n' "$raw" \
+            | tr -d '\r' \
+            | sed -n 's/^VERSION:[[:space:]]*//p' \
+            | head -n1)
+
+        if [ -z "$detected" ]; then
+            detected=$(printf '%s\n' "$raw" | tr -d '\r' | grep -E 'RM[0-9]{3,}' | head -n1)
+        fi
+
+        if [ -z "$detected" ]; then
+            raw=$(run_capture_timeout 8 "$atcli" 'AT+GMR' 2>/dev/null || true)
+            detected=$(printf '%s\n' "$raw" | tr -d '\r' | grep -E 'RM[0-9]{3,}' | head -n1)
+        fi
+    fi
+
+    # Cache fallback: on upgrade, /dev/smd11 may be temporarily busy, but the
+    # poller's cache file already contains the firmware string.
+    if [ -z "$detected" ]; then
+        for cache in /tmp/qmanager_status.json /etc/qmanager/status.json; do
+            [ -f "$cache" ] || continue
+            detected=$(tr -d '\r\n' < "$cache" \
+                | sed -n 's/.*"device"[[:space:]]*:[[:space:]]*{[^}]*"firmware"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
+            [ -n "$detected" ] && break
+        done
+    fi
+
+    [ -n "$detected" ] || return 1
+    printf '%s' "$detected"
+    return 0
+}
 
 preflight() {
-    step "Running pre-flight checks"
+    step "Pre-flight checks"
 
-    # Must run as root
-    if [ "$(id -u)" -ne 0 ]; then
-        die "This script must be run as root"
-    fi
+    [ "$(id -u)" -eq 0 ] || die "This script must be run as root"
 
-    # Check we're on OpenWRT
-    if [ ! -f /etc/openwrt_release ]; then
-        warn "Cannot detect OpenWRT — proceeding anyway"
-    else
+    if [ -f /etc/openwrt_release ]; then
         local distro
         distro=$(. /etc/openwrt_release && echo "$DISTRIB_DESCRIPTION")
-        info "Detected: $distro"
+        info "OpenWRT detected: $distro"
+    else
+        warn "Cannot detect OpenWRT — proceeding anyway"
     fi
 
-    # Check source directories exist
-    if [ "$DO_FRONTEND" = "1" ] && [ ! -d "$SRC_FRONTEND" ]; then
-        die "Frontend source not found at $SRC_FRONTEND"
+    # Source dir sanity
+    [ "$DO_FRONTEND" = "1" ] && [ ! -d "$SRC_FRONTEND" ] \
+        && die "Frontend source not found: $SRC_FRONTEND"
+    [ "$DO_BACKEND" = "1" ]  && [ ! -d "$SRC_SCRIPTS" ] \
+        && die "Backend source not found: $SRC_SCRIPTS"
+    [ "$DO_BACKEND" = "1" ]  && [ ! -d "$SRC_DEPS" ] \
+        && die "Bundled deps not found: $SRC_DEPS"
+
+    # Modem firmware detection
+    if [ "$DO_FORCE" = "1" ]; then
+        warn "Skipping modem firmware check (--force)"
+        info "Pre-flight checks passed"
+        return 0
     fi
 
-    if [ "$DO_BACKEND" = "1" ] && [ ! -d "$SRC_SCRIPTS" ]; then
-        die "Backend scripts not found at $SRC_SCRIPTS"
+    local fw
+    fw=$(detect_modem_firmware || true)
+
+    if [ -z "$fw" ]; then
+        warn "Could not detect modem firmware (tried ATI/AT+GMR and cache)"
+        warn "This usually means /dev/smd11 is busy or the modem is not responsive"
+        if [ -t 0 ]; then
+            printf "\n    Continue installation anyway? [y/N] "
+            read -r answer
+            case "$answer" in
+                y|Y|yes|YES)
+                    warn "Proceeding without firmware verification"
+                    ;;
+                *)
+                    die "Installation aborted by user"
+                    ;;
+            esac
+        else
+            die "Firmware detection failed and shell is non-interactive. Use --force to override."
+        fi
+        info "Pre-flight checks passed"
+        return 0
     fi
 
+    local fw_norm
+    fw_norm=$(printf '%s' "$fw" | tr '[:lower:]' '[:upper:]' | tr -cd 'A-Z0-9')
+    if ! printf '%s' "$fw_norm" | grep -q "$REQUIRED_FIRMWARE"; then
+        die "Unsupported modem firmware: $fw (expected token: $REQUIRED_FIRMWARE)"
+    fi
+
+    info "Modem firmware: $fw"
+    info "Signature check passed ($REQUIRED_FIRMWARE)"
     info "Pre-flight checks passed"
 }
 
-# --- Install Required Packages -----------------------------------------------
+# --- Version Markers ---------------------------------------------------------
+
+mark_version_pending() {
+    # Writing the pending marker BEFORE touching the filesystem means that a
+    # partial install leaves VERSION unchanged (old value) and VERSION.pending
+    # present, which is a clear signal of an aborted upgrade for debugging.
+    mkdir -p "$CONF_DIR"
+    printf '%s' "$VERSION" > "$VERSION_PENDING"
+    _log_raw "Marked pending version: $VERSION"
+}
+
+finalize_version() {
+    if [ -f "$VERSION_PENDING" ]; then
+        mv "$VERSION_PENDING" "$VERSION_FILE" 2>/dev/null \
+            || printf '%s' "$VERSION" > "$VERSION_FILE"
+    else
+        printf '%s' "$VERSION" > "$VERSION_FILE"
+    fi
+    _log_raw "Finalized version file: $VERSION_FILE = $VERSION"
+}
+
+# --- Package Management ------------------------------------------------------
+
+remove_conflicts() {
+    step "Removing conflicting packages"
+
+    conflict_pkg_installed() {
+        local pkg="$1"
+        local installed
+
+        installed=$(opkg list-installed 2>>"$LOG_FILE") \
+            || die "Failed to query installed packages via opkg"
+
+        printf '%s\n' "$installed" | awk '{print $1}' | grep -qx "$pkg"
+    }
+
+    local any=0
+    local failed=0
+    for pkg in $CONFLICT_PACKAGES; do
+        if conflict_pkg_installed "$pkg"; then
+            any=1
+            if opkg remove "$pkg" >>"$LOG_FILE" 2>&1; then
+                info "Removed: $pkg"
+            else
+                warn "Could not remove $pkg normally, retrying with forced dependency removal"
+                if opkg remove --force-removal-of-dependent-packages "$pkg" >>"$LOG_FILE" 2>&1; then
+                    info "Removed with force-removal-of-dependent-packages: $pkg"
+                elif opkg remove --force-depends "$pkg" >>"$LOG_FILE" 2>&1; then
+                    info "Removed with force-depends: $pkg"
+                else
+                    warn "Could not remove $pkg even with force flags"
+                    failed=1
+                fi
+            fi
+
+            if conflict_pkg_installed "$pkg"; then
+                warn "$pkg is still installed after removal attempts"
+                failed=1
+            fi
+        fi
+    done
+    [ "$any" = "0" ] && info "No conflicting packages found"
+
+    if [ "$failed" != "0" ]; then
+        die "Conflicting packages must be removed before install can continue. Remove manually with: opkg remove sms-tool socat-at-bridge socat"
+    fi
+
+    return 0
+}
 
 install_packages() {
     step "Installing required packages"
@@ -211,20 +561,16 @@ install_packages() {
         warn "opkg update failed — will try installing from cache"
     fi
 
-    # Install required packages (fatal if missing)
     for pkg in $REQUIRED_PACKAGES; do
         if command -v "$(pkg_binary "$pkg")" >/dev/null 2>&1; then
-            info "$pkg is already installed"
+            info "$pkg already installed"
+        elif run_with_spinner "Installing $pkg" opkg install "$pkg"; then
+            info "$pkg installed"
         else
-            if run_with_spinner "Installing $pkg" opkg install "$pkg"; then
-                info "$pkg installed successfully"
-            else
-                die "Failed to install required package: $pkg"
-            fi
+            die "Failed to install required package: $pkg"
         fi
     done
 
-    # Install optional packages (ask user first)
     printf "\n"
     info "Optional packages available:"
     for pkg in $OPTIONAL_PACKAGES; do
@@ -235,248 +581,348 @@ install_packages() {
             *)               printf "    %-18s\n" "$pkg" ;;
         esac
     done
-    printf "\n  Install optional packages? [Y/n] "
-    read -r answer
+
+    local answer=""
+    if [ -t 0 ]; then
+        printf "\n  Install optional packages? [Y/n] "
+        read -r answer || answer=""
+    else
+        info "Non-interactive shell — installing optional packages by default"
+    fi
+
     case "$answer" in
         n|N|no|NO)
             info "Skipping optional packages"
-            info "  Install later with: opkg install <package>"
             ;;
         *)
             for pkg in $OPTIONAL_PACKAGES; do
                 if command -v "$(pkg_binary "$pkg")" >/dev/null 2>&1; then
-                    info "$pkg is already installed"
+                    info "$pkg already installed"
+                elif run_with_spinner "Installing $pkg" opkg install "$pkg"; then
+                    info "$pkg installed"
                 else
-                    if run_with_spinner "Installing $pkg" opkg install "$pkg"; then
-                        info "$pkg installed successfully"
-                    else
-                        warn "$pkg not available — feature will be disabled"
-                        warn "  Install later with: opkg install $pkg"
-                    fi
+                    warn "$pkg not available — feature will be disabled"
                 fi
             done
             ;;
     esac
 }
 
-# --- Stop Running Services ---------------------------------------------------
+# --- Service Management (filesystem-driven) ----------------------------------
 
+# Stop all QManager services. Order matters here:
+#
+#   1. Touch the watchcat lock file FIRST. Watchcat checks this at the top
+#      of its main loop and enters LOCKED state, skipping all escalation
+#      tiers. Without this guard, watchcat would observe the disruption
+#      caused by stopping the poller / DPI / etc, fail its connectivity
+#      checks, and could escalate to Tier 4 (system reboot) mid-install.
+#
+#   2. Hard-kill watchcat (SIGKILL) BEFORE anything else. SIGKILL bypasses
+#      the trap handler so even if watchcat was mid-execute_tier4 it can't
+#      spawn the detached `( sleep 1 && reboot ) &` subshell.
+#
+#   3. Kill ALL other qmanager_* daemons (SIGTERM, brief drain, then
+#      SIGKILL stragglers) BEFORE calling init.d stop. This is the key
+#      fix: if procd's stop_service has to wait for a daemon that's
+#      mid-AT-command, it can stall for tens of seconds per service. With
+#      11 init.d scripts in series, the cumulative stall starves the
+#      kernel hardware watchdog and the device reboots spontaneously
+#      ~1-2 minutes into the install.
+#
+#   4. THEN call init.d stop on every qmanager* script. With daemons
+#      already dead, procd's stop_service returns immediately — it just
+#      runs the cleanup hooks (rm -f state files).
 stop_services() {
     step "Stopping QManager services"
 
-    # Stop main service (poller + ping)
-    if [ -x "$INITD_DIR/qmanager" ]; then
-        "$INITD_DIR/qmanager" stop 2>/dev/null || true
-        info "Stopped qmanager (poller, ping)"
+    # Step 1: Pause watchcat for the entire install window.
+    # Note: the lock file mechanism was added in v0.1.15 — any pre-v0.1.15
+    # watchcat binary on disk will ignore this file. That's why step 2 uses
+    # init.d stop (to disable procd respawn) instead of relying on the lock.
+    touch "$WATCHCAT_LOCK" 2>/dev/null || true
+    info "Watchcat locked for install window"
+
+    # Step 2: Stop watchcat FIRST via init.d so procd marks it stopped and
+    # won't respawn it mid-install. Critical on upgrade paths where the
+    # currently-running watchcat may be an older version that doesn't honour
+    # the maintenance lock file — a respawned old-version instance can
+    # observe the install disruption, fail its connectivity checks, and
+    # escalate to Tier 4 (system reboot) before we've finished installing.
+    if [ -x "$INITD_DIR/qmanager_watchcat" ]; then
+        "$INITD_DIR/qmanager_watchcat" stop 2>>"$LOG_FILE" || true
+    fi
+    killall -9 qmanager_watchcat 2>/dev/null || true
+    # Re-assert the lock in case an older init.d stop_service() hook
+    # (pre-v0.1.15) removed /tmp/qmanager_watchcat.lock on the way out.
+    touch "$WATCHCAT_LOCK" 2>/dev/null || true
+
+    # Step 3: Stop every other qmanager* init.d service BEFORE killall'ing
+    # daemons. procd-managed services (poller, ping, dpi, tower_failover,
+    # bandwidth, etc.) would otherwise be respawned by procd after we kill
+    # them, opening the same race window as watchcat. Running init.d stop
+    # first tells procd the service should be stopped — it won't respawn.
+    if [ -d "$INITD_DIR" ]; then
+        for svc in "$INITD_DIR"/qmanager*; do
+            [ -x "$svc" ] || continue
+            # Watchcat was already stopped in step 2
+            [ "$(basename "$svc")" = "qmanager_watchcat" ] && continue
+            "$svc" stop 2>>"$LOG_FILE" || true
+        done
+        info "Stopped all init.d services"
     fi
 
-    # Stop auxiliary services
-    for svc in qmanager_eth_link qmanager_mtu qmanager_imei_check \
-               qmanager_wan_guard qmanager_watchcat qmanager_tower_failover \
-               qmanager_ttl qmanager_low_power_check qmanager_bandwidth \
-               qmanager_dpi; do
-        if [ -x "$INITD_DIR/$svc" ]; then
-            "$INITD_DIR/$svc" stop 2>/dev/null || true
-        fi
+    # Step 4: SIGTERM any qmanager_* daemons that slipped past init.d stop
+    # (e.g. non-procd one-shot scripts, or processes that ignored SIGTERM).
+    if [ -d "$BIN_DIR" ]; then
+        for f in "$BIN_DIR"/qmanager_*; do
+            [ -f "$f" ] || continue
+            local pname
+            pname="$(basename "$f")"
+            # Never kill updater workers during OTA installs. If qmanager_update
+            # (or qmanager_auto_update -> qmanager_update chain) is terminated
+            # here, OTA status can be left stuck at "installing" with no reboot.
+            case "$pname" in
+                qmanager_update|qmanager_auto_update) continue ;;
+            esac
+            killall "$pname" 2>/dev/null || true
+        done
+    fi
+    for p in bridge_traffic_monitor_rm551 websocat nfqws; do
+        killall "$p" 2>/dev/null || true
     done
 
-    # Kill any lingering qmanager processes
-    for proc in qmanager_poller qmanager_ping qmanager_watchcat \
-                qmanager_band_failover qmanager_tower_failover \
-                qmanager_tower_schedule qmanager_cell_scanner \
-                qmanager_neighbour_scanner qmanager_mtu_apply \
-                qmanager_profile_apply qmanager_imei_check \
-                qmanager_wan_guard qmanager_low_power \
-                qmanager_low_power_check qmanager_scheduled_reboot \
-                qmanager_update qmanager_auto_update \
-                bridge_traffic_monitor_rm551 websocat nfqws; do
-        killall "$proc" 2>/dev/null || true
-    done
-
+    # Brief drain so daemons can flush state files via their EXIT traps
     sleep 1
+
+    # Step 5: SIGKILL stragglers — anything still alive after the drain
+    if [ -d "$BIN_DIR" ]; then
+        for f in "$BIN_DIR"/qmanager_*; do
+            [ -f "$f" ] || continue
+            local pname
+            pname="$(basename "$f")"
+            case "$pname" in
+                qmanager_update|qmanager_auto_update) continue ;;
+            esac
+            killall -9 "$pname" 2>/dev/null || true
+        done
+    fi
+    for p in bridge_traffic_monitor_rm551 websocat nfqws; do
+        killall -9 "$p" 2>/dev/null || true
+    done
+
     info "All services stopped"
 }
 
-# --- Backup Original Files ---------------------------------------------------
+enable_services() {
+    step "Enabling init.d services"
+
+    # Every qmanager* service gets enabled unconditionally UNLESS it is in
+    # UCI_GATED_SERVICES. Gated services are only enabled if a prior install
+    # had them enabled (detected via /etc/rc.d symlink presence).
+    for svc in "$INITD_DIR"/qmanager*; do
+        [ -x "$svc" ] || continue
+        local name
+        name="$(basename "$svc")"
+
+        local gated=0
+        for g in $UCI_GATED_SERVICES; do
+            [ "$name" = "$g" ] && gated=1 && break
+        done
+
+        if [ "$gated" = "0" ]; then
+            "$svc" enable >>"$LOG_FILE" 2>&1 || warn "Failed to enable $name"
+            info "Enabled $name"
+            continue
+        fi
+
+        local was_enabled=0
+        for rc in /etc/rc.d/*"$name"*; do
+            [ -e "$rc" ] && was_enabled=1 && break
+        done
+
+        if [ "$was_enabled" = "1" ]; then
+            "$svc" enable >>"$LOG_FILE" 2>&1 || warn "Failed to enable $name"
+            info "Enabled $name (preserving previous state)"
+        else
+            info "Skipped $name (UCI-gated, enable manually if needed)"
+        fi
+    done
+}
+
+start_services() {
+    step "Starting QManager services"
+
+    if [ -x "$INITD_DIR/qmanager" ]; then
+        "$INITD_DIR/qmanager" start >>"$LOG_FILE" 2>&1 \
+            || warn "Failed to start main qmanager service"
+        info "Started main qmanager service"
+    fi
+}
+
+# --- File Install Steps ------------------------------------------------------
 
 backup_originals() {
     step "Backing up original files"
 
     mkdir -p "$BACKUP_DIR"
 
-    # Backup original index.html in-place (first install only)
-    # On upgrades, index.html.old already exists — don't overwrite it
     if [ ! -f "$WWW_ROOT/index.html.old" ] && [ -f "$WWW_ROOT/index.html" ]; then
-        if ! grep -q "QManager" "$WWW_ROOT/index.html" 2>/dev/null; then
-            mv "$WWW_ROOT/index.html" "$WWW_ROOT/index.html.old"
-            info "Backed up original index.html → index.html.old"
-        else
+        if grep -q "QManager" "$WWW_ROOT/index.html" 2>/dev/null; then
             info "Existing index.html is already QManager — skipping backup"
+        else
+            mv "$WWW_ROOT/index.html" "$WWW_ROOT/index.html.old"
+            info "Backed up /www/index.html -> index.html.old"
         fi
     elif [ -f "$WWW_ROOT/index.html.old" ]; then
-        info "Original index.html.old already preserved — skipping"
+        info "Original index.html.old already preserved"
     else
-        info "No existing index.html to backup"
+        info "No existing index.html to back up"
     fi
 
-    # Backup existing QManager config if upgrading
-    if [ -f "$CONF_DIR/shadow" ]; then
+    if [ -f "$CONF_DIR/auth.json" ]; then
         local ts
         ts=$(date +%Y%m%d_%H%M%S)
-        cp "$CONF_DIR/shadow" "$BACKUP_DIR/shadow.$ts" 2>/dev/null || true
-        info "Backed up password hash"
+        cp "$CONF_DIR/auth.json" "$BACKUP_DIR/auth.json.$ts" 2>/dev/null || true
+        info "Backed up password hash ($BACKUP_DIR/auth.json.$ts)"
     fi
-
-    info "Backups complete"
 }
-
-# --- Install Frontend --------------------------------------------------------
 
 install_frontend() {
     step "Installing frontend"
 
-    local file_count
-    file_count=$(count_files "$SRC_FRONTEND")
-    info "Deploying $file_count frontend files"
-
-    # Clean /www/ — remove everything except preserved items
+    # Wipe /www/* except preserved items (intentional per project decision)
     for item in "$WWW_ROOT"/*; do
-        name=$(basename "$item")
+        [ -e "$item" ] || continue
+        local name
+        name="$(basename "$item")"
         case "$name" in
             cgi-bin|luci-static|index.html.old) continue ;;
             *) rm -rf "$item" ;;
         esac
     done
 
-    # Copy new frontend
-    cp -r "$SRC_FRONTEND"/* "$WWW_ROOT/"
+    cp -r "$SRC_FRONTEND"/. "$WWW_ROOT"/ || die "Failed to copy frontend to $WWW_ROOT"
 
-    info "Frontend installed ($file_count files)"
+    local n
+    n=$(count_files "$SRC_FRONTEND")
+    info "Frontend installed ($n files)"
 }
-
-# --- Install Backend ---------------------------------------------------------
 
 install_backend() {
     step "Installing backend scripts"
 
-    # --- Shared libraries ---
-    info "Installing shared libraries to $LIB_DIR"
-    mkdir -p "$LIB_DIR"
-
+    # --- Libraries (flat directory) ---
     if [ -d "$SRC_SCRIPTS/usr/lib/qmanager" ]; then
-        cp "$SRC_SCRIPTS/usr/lib/qmanager"/* "$LIB_DIR/"
-        find "$LIB_DIR" -maxdepth 1 -name "*.sh" -exec chmod 644 {} \;
         local lib_count
-        lib_count=$(count_files "$LIB_DIR")
-        info "  $lib_count library files installed"
+        lib_count=$(install_dir_flat "$SRC_SCRIPTS/usr/lib/qmanager" "$LIB_DIR" 755)
+        # Non-.sh files in the lib dir should be 644
+        find "$LIB_DIR" -maxdepth 1 -type f ! -name "*.sh" -exec chmod 644 {} \; 2>/dev/null
+        info "Libraries: $lib_count files -> $LIB_DIR"
     fi
 
-    # --- Daemons and utilities ---
-    info "Installing daemons to $BIN_DIR"
-
-    local fname bin_count=0
+    # --- Daemons and utilities (flat) ---
     if [ -d "$SRC_SCRIPTS/usr/bin" ]; then
-        for f in "$SRC_SCRIPTS/usr/bin"/*; do
-            [ -f "$f" ] || continue
-            fname=$(basename "$f")
-            cp "$f" "$BIN_DIR/$fname"
-            chmod +x "$BIN_DIR/$fname"
-            bin_count=$(( bin_count + 1 ))
-        done
-        info "  $bin_count daemon/utility files installed"
+        local bin_count
+        bin_count=$(install_dir_flat "$SRC_SCRIPTS/usr/bin" "$BIN_DIR" 755)
+        info "Daemons: $bin_count files -> $BIN_DIR"
     fi
 
-    # --- CGI endpoints ---
-    info "Installing CGI endpoints to $CGI_DIR"
-
+    # --- CGI endpoints (recursive) ---
     if [ -d "$SRC_SCRIPTS/www/cgi-bin/quecmanager" ]; then
-        # Recreate CGI directory structure
-        rm -rf "$CGI_DIR"
-        mkdir -p "$CGI_DIR"
-        cp -r "$SRC_SCRIPTS/www/cgi-bin/quecmanager"/* "$CGI_DIR/"
-
-        # Make all .sh files executable
-        find "$CGI_DIR" -name "*.sh" -exec chmod +x {} \;
-
-        # JSON data files should be readable
-        find "$CGI_DIR" -name "*.json" -exec chmod 644 {} \;
-
+        install_tree "$SRC_SCRIPTS/www/cgi-bin/quecmanager" "$CGI_DIR"
         local cgi_count
-        cgi_count=$(find "$CGI_DIR" -name "*.sh" -type f | wc -l | tr -d ' ')
-        info "  $cgi_count CGI scripts installed"
+        cgi_count=$(find "$CGI_DIR" -name "*.sh" -type f 2>/dev/null | wc -l | tr -d ' ')
+        info "CGI endpoints: $cgi_count scripts -> $CGI_DIR"
     fi
 
-    # --- Init.d services ---
-    info "Installing init.d services to $INITD_DIR"
-
-    local initd_count=0
+    # --- Init.d services (flat) ---
     if [ -d "$SRC_SCRIPTS/etc/init.d" ]; then
-        for f in "$SRC_SCRIPTS/etc/init.d"/*; do
-            [ -f "$f" ] || continue
-            fname=$(basename "$f")
-            cp "$f" "$INITD_DIR/$fname"
-            chmod +x "$INITD_DIR/$fname"
-            initd_count=$(( initd_count + 1 ))
-        done
-        info "  $initd_count init.d scripts installed"
+        local svc_count
+        svc_count=$(install_dir_flat "$SRC_SCRIPTS/etc/init.d" "$INITD_DIR" 755)
+        info "Init.d: $svc_count services -> $INITD_DIR"
     fi
 
-    # --- Create required directories ---
-    mkdir -p "$CONF_DIR/profiles"
-    mkdir -p "$SESSION_DIR"
-    mkdir -p /var/lock
+    # --- Required runtime directories ---
+    mkdir -p "$CONF_DIR/profiles" "$SESSION_DIR" "$UPDATES_DIR" /var/lock
 
-    # --- Config files (deploy new, don't overwrite existing) ---
+    # --- Default config files (deploy ONLY if missing, never overwrite) ---
     if [ -d "$SRC_SCRIPTS/etc/qmanager" ]; then
+        local deployed=0
         for f in "$SRC_SCRIPTS/etc/qmanager"/*; do
             [ -f "$f" ] || continue
-            fname=$(basename "$f")
-            # Don't overwrite user-modified config files
+            local fname
+            fname="$(basename "$f")"
             if [ ! -f "$CONF_DIR/$fname" ]; then
                 cp "$f" "$CONF_DIR/$fname"
-                info "  Deployed config: $fname"
+                deployed=$(( deployed + 1 ))
+                info "  Deployed default config: $fname"
             fi
         done
+        [ "$deployed" = "0" ] && info "  All default configs already present"
     fi
 
-    # --- Create UCI config file if missing ---
+    # UCI config stub
     [ -f /etc/config/quecmanager ] || touch /etc/config/quecmanager
 
     info "Backend installed"
 }
 
-# --- Clean Up Legacy Scripts -------------------------------------------------
-# Compares scripts on the device against the current package. Anything on
-# the device that is NOT in the package is a leftover from a previous version
-# and gets removed. This keeps the device clean across upgrades.
+install_bundled_binaries() {
+    step "Installing bundled binaries (atcli_smd11, sms_tool)"
+
+    [ -d "$SRC_DEPS" ] || die "Bundled dependencies not found: $SRC_DEPS"
+
+    for bin in atcli_smd11 sms_tool; do
+        local src="$SRC_DEPS/$bin"
+        local dst="$BIN_DIR/$bin"
+
+        [ -f "$src" ] || die "Missing required binary: dependencies/$bin"
+
+        if ! install_file "$src" "$dst" 755; then
+            die "Failed to install $bin (file busy? Ensure stop_services ran first)"
+        fi
+        info "Installed $bin -> $dst"
+    done
+
+    # Smoke test (warn-only — modem may not be ready yet on fresh hardware)
+    local smoke
+    smoke=$(run_capture_timeout 5 atcli_smd11 'AT' 2>/dev/null || true)
+    if printf '%s\n' "$smoke" | grep -q OK; then
+        info "atcli_smd11 smoke test passed"
+    else
+        warn "atcli_smd11 smoke test did not return OK — check /dev/smd11"
+    fi
+}
+
+# --- Cleanup Legacy ----------------------------------------------------------
+# Removes qmanager_* files on disk that are NOT in the fresh source tree.
+# This is the ONLY place where legacy cleanup happens — integrated into the
+# install path rather than a separate pass.
 
 cleanup_legacy_scripts() {
     step "Cleaning up legacy scripts"
 
-    local removed=0
+    local removed=0 fname
 
-    # --- /usr/bin/ daemons (qmanager_*, qcmd, bridge_traffic_monitor_*) ---
-    for f in "$BIN_DIR"/qmanager_* "$BIN_DIR/qcmd" \
-             "$BIN_DIR"/bridge_traffic_monitor_*; do
+    # Daemons: /usr/bin/qmanager_*, qcmd, bridge_traffic_monitor_*
+    for f in "$BIN_DIR"/qmanager_* "$BIN_DIR/qcmd" "$BIN_DIR"/bridge_traffic_monitor_*; do
         [ -f "$f" ] || continue
-        fname=$(basename "$f")
-        # Keep if this file exists in the current package
+        fname="$(basename "$f")"
         [ -f "$SRC_SCRIPTS/usr/bin/$fname" ] && continue
         rm -f "$f"
         info "  Removed legacy daemon: $fname"
         removed=$(( removed + 1 ))
     done
 
-    # --- /etc/init.d/ services (qmanager*) ---
+    # Init.d services
     for f in "$INITD_DIR"/qmanager*; do
         [ -f "$f" ] || continue
-        fname=$(basename "$f")
+        fname="$(basename "$f")"
         [ -f "$SRC_SCRIPTS/etc/init.d/$fname" ] && continue
-        # Disable and stop before removing
         "$f" disable 2>/dev/null || true
         "$f" stop 2>/dev/null || true
         rm -f "$f"
-        # Clean up rc.d symlinks for this service
         for _link in /etc/rc.d/*"$fname"*; do
             [ -e "$_link" ] && rm -f "$_link"
         done
@@ -484,11 +930,11 @@ cleanup_legacy_scripts() {
         removed=$(( removed + 1 ))
     done
 
-    # --- /usr/lib/qmanager/ libraries ---
+    # Libraries
     if [ -d "$LIB_DIR" ]; then
         for f in "$LIB_DIR"/*; do
             [ -f "$f" ] || continue
-            fname=$(basename "$f")
+            fname="$(basename "$f")"
             [ -f "$SRC_SCRIPTS/usr/lib/qmanager/$fname" ] && continue
             rm -f "$f"
             info "  Removed legacy library: $fname"
@@ -496,295 +942,90 @@ cleanup_legacy_scripts() {
         done
     fi
 
-    if [ "$removed" -gt 0 ]; then
-        info "Removed $removed legacy file(s)"
-    else
+    if [ "$removed" = "0" ]; then
         info "No legacy scripts found"
-    fi
-}
-
-# --- Fix Line Endings --------------------------------------------------------
-
-fix_line_endings() {
-    step "Fixing line endings (CRLF → LF)"
-
-    local tmplist=/tmp/qm_fixed_list
-    local scanlist=/tmp/qm_scan_list
-    local fixed=0
-    rm -f "$tmplist" "$scanlist"
-
-    for dir in "$LIB_DIR" "$BIN_DIR" "$INITD_DIR" "$CGI_DIR"; do
-        [ -d "$dir" ] || continue
-        find "$dir" -type f \( -name "*.sh" -o -name "qmanager*" -o -name "qcmd" \) \
-            > "$scanlist"
-        while IFS= read -r f; do
-            # grep for literal CR byte — portable, no 'file' command needed
-            if grep -q "$(printf '\r')" "$f" 2>/dev/null; then
-                tr -d '\r' < "$f" > "$f.lf_tmp" && mv "$f.lf_tmp" "$f"
-                echo "$f" >> "$tmplist"
-            fi
-        done < "$scanlist"
-    done
-
-    rm -f "$scanlist"
-    [ -f "$tmplist" ] && fixed=$(wc -l < "$tmplist" | tr -d ' ')
-    rm -f "$tmplist"
-
-    if [ "$fixed" -gt 0 ]; then
-        warn "Fixed $fixed files with CRLF line endings"
     else
-        info "All files already have correct LF line endings"
+        info "Removed $removed legacy file(s)"
     fi
 }
 
-# --- Fix Permissions ---------------------------------------------------------
-# Ensures correct permissions on ALL qmanager scripts on the device,
-# including any that were already installed from a previous version.
+# --- Post-install Health Check -----------------------------------------------
 
-fix_permissions() {
-    step "Verifying file permissions"
+health_check() {
+    step "Post-install health check"
 
-    # Daemons and utilities — must be executable (755)
-    for f in "$BIN_DIR"/qmanager_* "$BIN_DIR/qcmd" \
-             "$BIN_DIR"/bridge_traffic_monitor_*; do
-        [ -f "$f" ] && chmod 755 "$f"
-    done
-    info "Daemons and utilities: 755"
-
-    # Init.d services — must be executable (755)
-    for f in "$INITD_DIR"/qmanager*; do
-        [ -f "$f" ] && chmod 755 "$f"
-    done
-    info "Init.d services: 755"
-
-    # CGI endpoints — .sh executable (755), .json readable (644)
-    if [ -d "$CGI_DIR" ]; then
-        find "$CGI_DIR" -name "*.sh" -exec chmod 755 {} \;
-        find "$CGI_DIR" -name "*.json" -exec chmod 644 {} \;
-        info "CGI scripts: 755, JSON data: 644"
-    fi
-
-    # Shared libraries — readable, not executable (644)
-    if [ -d "$LIB_DIR" ]; then
-        find "$LIB_DIR" -maxdepth 1 -type f -exec chmod 644 {} \;
-        info "Shared libraries: 644"
-    fi
-
-    info "All permissions verified"
-}
-
-# --- Enable Services ---------------------------------------------------------
-
-enable_services() {
-    step "Enabling init.d services"
-
-    # Main service (poller + ping + watchcat)
-    if [ -x "$INITD_DIR/qmanager" ]; then
-        "$INITD_DIR/qmanager" enable
-        info "Enabled qmanager (main service)"
-    fi
-
-    # Auxiliary services (always enabled)
-    for svc in qmanager_eth_link qmanager_ttl qmanager_mtu \
-               qmanager_imei_check qmanager_wan_guard \
-               qmanager_low_power_check; do
-        if [ -x "$INITD_DIR/$svc" ]; then
-            "$INITD_DIR/$svc" enable
-            info "Enabled $svc"
-        fi
-    done
-
-    # UCI-gated / optional services — only enable if previously enabled
-    for svc in qmanager_tower_failover qmanager_watchcat qmanager_bandwidth qmanager_dpi; do
-        if [ -x "$INITD_DIR/$svc" ]; then
-            local was_enabled=0
-            for _rc in /etc/rc.d/*"$svc"*; do
-                [ -e "$_rc" ] && was_enabled=1 && break
-            done
-            if [ "$was_enabled" = "1" ]; then
-                "$INITD_DIR/$svc" enable
-                info "Enabled $svc (was previously enabled)"
-            else
-                info "Skipped $svc (enable manually if needed)"
-            fi
-        fi
-    done
-}
-
-# --- Start Services ----------------------------------------------------------
-
-start_services() {
-    step "Starting QManager services"
-
-    if [ -x "$INITD_DIR/qmanager" ]; then
-        "$INITD_DIR/qmanager" start
-        info "Started qmanager (poller + ping)"
-    fi
-
-    # Give poller a moment to initialize
     sleep 2
 
-    # Verify poller is running
     local poller_pid ping_pid
     poller_pid=$(pidof qmanager_poller 2>/dev/null || true)
     ping_pid=$(pidof qmanager_ping 2>/dev/null || true)
 
     if [ -n "$poller_pid" ]; then
-        info "Poller is running (PID: $poller_pid)"
+        info "Poller running (PID: $poller_pid)"
     else
-        warn "Poller does not appear to be running — check /tmp/qmanager.log"
+        warn "Poller does not appear to be running"
     fi
 
     if [ -n "$ping_pid" ]; then
-        info "Ping daemon is running (PID: $ping_pid)"
+        info "Ping daemon running (PID: $ping_pid)"
     else
         warn "Ping daemon does not appear to be running"
     fi
+
+    # Wait up to 10s for the poller to produce its status cache. Stronger
+    # health signal than just pidof.
+    local i=0
+    while [ "$i" -lt 10 ]; do
+        if [ -f /tmp/qmanager_status.json ]; then
+            info "Poller status cache is live (/tmp/qmanager_status.json)"
+            return 0
+        fi
+        sleep 1
+        i=$(( i + 1 ))
+    done
+
+    warn "Poller did not produce /tmp/qmanager_status.json within 10s"
+    warn "Service may still be initializing — check /tmp/qmanager.log"
 }
 
-# --- Uninstall (via --uninstall flag) ----------------------------------------
-# For a richer uninstall experience use the standalone uninstall.sh script.
+# --- AT Stack Verification ---------------------------------------------------
+# Runs at the very end of install, before reboot, to confirm that the full AT
+# command pipeline (qcmd → atcli_smd11 → /dev/smd11) is working. This catches
+# the scenario where install "succeeds" but AT commands are silently broken
+# (e.g., leftover conflicting process holding /dev/smd11, wrong binary, perms).
+# Warn-only with retries — fresh hardware may need a few seconds after services
+# start before the modem accepts AT traffic on /dev/smd11.
 
-uninstall() {
-    step "Uninstalling QManager"
+at_stack_check() {
+    step "Verifying AT command stack (qcmd ATI)"
 
-    # Stop services (inline — stop_services() also calls step(), so we inline here)
-    info "Stopping services"
-    if [ -x "$INITD_DIR/qmanager" ]; then
-        "$INITD_DIR/qmanager" stop 2>/dev/null || true
+    if ! command -v qcmd >/dev/null 2>&1; then
+        warn "qcmd not found on PATH — skipping AT stack check"
+        return 0
     fi
-    for svc in qmanager_eth_link qmanager_mtu qmanager_imei_check \
-               qmanager_wan_guard qmanager_watchcat qmanager_tower_failover \
-               qmanager_ttl qmanager_low_power_check qmanager_bandwidth \
-               qmanager_dpi; do
-        if [ -x "$INITD_DIR/$svc" ]; then
-            "$INITD_DIR/$svc" stop 2>/dev/null || true
+
+    local out="" i=0
+    while [ "$i" -lt 3 ]; do
+        out=$(run_capture_timeout 8 qcmd 'ATI' 2>/dev/null || true)
+        if printf '%s\n' "$out" | grep -q '^OK'; then
+            info "qcmd ATI → OK (AT stack verified)"
+            local model
+            model=$(printf '%s\n' "$out" | grep -iE 'quectel|RM[0-9]+|EG[0-9]+' | head -n1 | tr -d '\r')
+            [ -n "$model" ] && info "Modem reports: $model"
+            return 0
         fi
-    done
-    for proc in qmanager_poller qmanager_ping qmanager_watchcat \
-                qmanager_band_failover qmanager_tower_failover \
-                qmanager_tower_schedule qmanager_cell_scanner \
-                qmanager_neighbour_scanner qmanager_mtu_apply \
-                qmanager_profile_apply qmanager_imei_check \
-                qmanager_wan_guard qmanager_low_power \
-                qmanager_low_power_check qmanager_scheduled_reboot \
-                qmanager_update qmanager_auto_update \
-                bridge_traffic_monitor_rm551 websocat nfqws; do
-        killall "$proc" 2>/dev/null || true
-    done
-    sleep 1
-    info "All services stopped"
-
-    # Disable and remove init.d services
-    for svc in qmanager qmanager_eth_link qmanager_ttl qmanager_mtu \
-               qmanager_wan_guard qmanager_watchcat qmanager_imei_check \
-               qmanager_tower_failover qmanager_low_power_check \
-               qmanager_bandwidth qmanager_dpi; do
-        if [ -x "$INITD_DIR/$svc" ]; then
-            "$INITD_DIR/$svc" disable 2>/dev/null || true
-            rm -f "$INITD_DIR/$svc"
-        fi
-    done
-    info "Removed init.d services"
-
-    # Remove daemons
-    rm -f "$BIN_DIR/qcmd"
-    rm -f "$BIN_DIR"/qmanager_*
-    rm -f "$BIN_DIR/bridge_traffic_monitor_rm551"
-    rm -f "$BIN_DIR/nfqws"
-    info "Removed daemons from $BIN_DIR"
-
-    # Remove libraries
-    rm -rf "$LIB_DIR"
-    info "Removed $LIB_DIR"
-
-    # Remove CGI endpoints
-    rm -rf "$CGI_DIR"
-    info "Removed $CGI_DIR"
-
-    # Remove UCI config
-    if uci -q get quecmanager >/dev/null 2>&1; then
-        uci -q delete quecmanager 2>/dev/null || true
-        uci commit 2>/dev/null || true
-        info "Removed UCI config"
-    fi
-
-    # Remove frontend — clean /www/ except preserved directories and backup
-    for item in "$WWW_ROOT"/*; do
-        name=$(basename "$item")
-        case "$name" in
-            cgi-bin|luci-static|index.html.old) continue ;;
-            *) rm -rf "$item" ;;
-        esac
+        i=$(( i + 1 ))
+        [ "$i" -lt 3 ] && sleep 2
     done
 
-    # Restore original index.html from in-place backup
-    if [ -f "$WWW_ROOT/index.html.old" ]; then
-        mv "$WWW_ROOT/index.html.old" "$WWW_ROOT/index.html"
-        info "Restored original index.html"
-    fi
-    info "Removed frontend files"
-
-    # Remove firewall rules
-    rm -f /etc/firewall.user.ttl /etc/firewall.user.mtu 2>/dev/null || true
-
-    # Remove bandwidth SSL certs
-    rm -rf /etc/qmanager/bandwidth_certs 2>/dev/null || true
-
-    # Remove runtime state
-    rm -f /tmp/qmanager_*.json /tmp/qmanager.log* 2>/dev/null || true
-    rm -f /tmp/qmanager_update.pid /tmp/qmanager_update.log 2>/dev/null || true
-    rm -f /tmp/qmanager_dpi_install.pid /tmp/qmanager_watchcat.pid 2>/dev/null || true
-    rm -f /tmp/qmanager_*.lock /tmp/qmanager_long_running 2>/dev/null || true
-    rm -f /tmp/qmanager_email_reload /tmp/qmanager_imei_check_done 2>/dev/null || true
-    rm -f /tmp/qmanager_low_power_active /tmp/qmanager_recovery_active 2>/dev/null || true
-    rm -f /tmp/qmanager_staged.tar.gz /tmp/qmanager_staged_version 2>/dev/null || true
-    rm -rf /tmp/quecmanager 2>/dev/null || true
-    rm -rf "$SESSION_DIR"
-    info "Removed runtime state from /tmp"
-
-    # Remove cron jobs
-    if crontab -l 2>/dev/null | grep -q qmanager; then
-        crontab -l 2>/dev/null | grep -v qmanager | crontab - 2>/dev/null || true
-        info "Removed cron jobs"
-    fi
-
-    # Ask about config
-    if [ -d "$CONF_DIR" ]; then
-        printf "\n"
-        warn "Configuration directory $CONF_DIR still exists."
-        warn "It contains: password, profiles, tower/band lock configs, IMEI backup, backups."
-        printf "  Remove it? [y/N] "
-        read -r answer
-        case "$answer" in
-            y|Y|yes|YES)
-                rm -rf "$CONF_DIR"
-                info "Removed $CONF_DIR"
-                ;;
-            *)
-                info "Kept $CONF_DIR (configs preserved for reinstall)"
-                ;;
-        esac
-    fi
-
-    printf "\n"
-    info "QManager has been uninstalled"
-
-    printf "  Rebooting in 5 seconds — press Ctrl+C to cancel...\n\n"
-    sleep 5
-    reboot
-}
-
-# --- Version Check -----------------------------------------------------------
-
-check_existing() {
-    # Try to detect existing installation
-    if [ -f "$LIB_DIR/cgi_base.sh" ]; then
-        info "Existing installation detected — will upgrade in place"
-        info "Configuration in $CONF_DIR will be preserved"
-    else
-        info "Fresh installation"
-    fi
+    warn "qcmd ATI did not return OK after 3 attempts"
+    warn "  Troubleshooting:"
+    warn "    1. Check /dev/smd11 exists: ls -la /dev/smd11"
+    warn "    2. Test directly:           atcli_smd11 'AT'"
+    warn "    3. Check for conflicts:     opkg list-installed | grep -E 'sms-tool|socat'"
+    warn "    4. Review install log:      $LOG_FILE"
+    warn "  AT commands may start working once the modem finishes initializing."
+    return 1
 }
 
 # --- Summary -----------------------------------------------------------------
@@ -792,124 +1033,121 @@ check_existing() {
 print_summary() {
     printf "\n"
     if [ -t 1 ]; then
-        printf "  [%s  100%%  Complete]\n" \
-            "$(_draw_bar "$TOTAL_STEPS" "$TOTAL_STEPS")"
+        printf "  [%s  100%%  Complete]\n" "$(_draw_bar "$TOTAL_STEPS" "$TOTAL_STEPS")"
     fi
     printf "\n"
     printf "  ══════════════════════════════════════════\n"
     printf "  ${GREEN}${BOLD}  QManager - Installation Complete${NC}\n"
     printf "  ══════════════════════════════════════════\n\n"
 
-    if [ "$DO_FRONTEND" = "1" ]; then
-        printf "  ${DIM}Frontend:  ${NC}%s\n" "$WWW_ROOT"
-    fi
+    printf "  ${DIM}Version:     ${NC}%s\n" "$VERSION"
+    [ "$DO_FRONTEND" = "1" ] && printf "  ${DIM}Frontend:    ${NC}%s\n" "$WWW_ROOT"
     if [ "$DO_BACKEND" = "1" ]; then
-        printf "  ${DIM}CGI:       ${NC}%s\n" "$CGI_DIR"
-        printf "  ${DIM}Libraries: ${NC}%s\n" "$LIB_DIR"
-        printf "  ${DIM}Daemons:   ${NC}%s/qmanager_*\n" "$BIN_DIR"
-        printf "  ${DIM}Init.d:    ${NC}%s/qmanager*\n" "$INITD_DIR"
-        printf "  ${DIM}Config:    ${NC}%s\n" "$CONF_DIR"
-        printf "  ${DIM}Backups:   ${NC}%s\n" "$BACKUP_DIR"
-        printf "  ${DIM}Logs:      ${NC}/tmp/qmanager.log\n"
-        printf "  ${DIM}Status:    ${NC}/tmp/qmanager_status.json\n"
+        printf "  ${DIM}CGI:         ${NC}%s\n" "$CGI_DIR"
+        printf "  ${DIM}Libraries:   ${NC}%s\n" "$LIB_DIR"
+        printf "  ${DIM}Daemons:     ${NC}%s/qmanager_*\n" "$BIN_DIR"
+        printf "  ${DIM}Init.d:      ${NC}%s/qmanager*\n" "$INITD_DIR"
+        printf "  ${DIM}Config:      ${NC}%s\n" "$CONF_DIR"
+        printf "  ${DIM}Install log: ${NC}%s\n" "$LOG_FILE"
     fi
 
     printf "\n"
     printf "  ${DIM}Packages:${NC}\n"
     for pkg in $REQUIRED_PACKAGES $OPTIONAL_PACKAGES; do
         if command -v "$(pkg_binary "$pkg")" >/dev/null 2>&1; then
-            printf "    ${GREEN}${ICO_OK}${NC}  %-12s installed\n" "$pkg"
+            printf "    ${GREEN}${ICO_OK}${NC}  %-18s installed\n" "$pkg"
         else
-            printf "    ${YELLOW}${ICO_WARN}${NC}  %-12s missing\n" "$pkg"
+            printf "    ${YELLOW}${ICO_WARN}${NC}  %-18s missing\n" "$pkg"
         fi
     done
 
     printf "\n"
-
-    # Detect device IP
     local device_ip
-    device_ip=$(uci get network.lan.ipaddr 2>/dev/null || echo "192.168.1.1")
+    device_ip=$(uci get network.lan.ipaddr 2>/dev/null | cut -d'/' -f1 || echo "192.168.1.1")
     printf "  Open in browser:  ${BOLD}http://%s${NC}\n\n" "$device_ip"
 
-    if [ ! -f "$CONF_DIR/shadow" ]; then
+    if [ ! -f "$CONF_DIR/auth.json" ]; then
         info "First-time setup: you will be prompted to create a password"
     fi
-
-    if [ -f "$BACKUP_DIR/index.html.orig" ]; then
-        info "Original index.html backed up to $BACKUP_DIR/index.html.orig"
-        info "  Restore with: cp $BACKUP_DIR/index.html.orig $WWW_ROOT/index.html"
-    fi
-
     printf "\n"
+}
+
+# --- Reboot ------------------------------------------------------------------
+
+reboot_system() {
+    if command -v reboot >/dev/null 2>&1; then
+        reboot
+        return $?
+    fi
+    if [ -x /sbin/reboot ]; then
+        /sbin/reboot
+        return $?
+    fi
+    if command -v busybox >/dev/null 2>&1; then
+        busybox reboot
+        return $?
+    fi
+    die "Cannot find reboot command"
 }
 
 # --- Usage -------------------------------------------------------------------
 
 usage() {
-    printf "QManager Installer v%s\n\n" "$VERSION"
-    printf "Usage: sh install.sh [OPTIONS]\n\n"
-    printf "Options:\n"
-    printf "  --frontend-only    Only install frontend files\n"
-    printf "  --backend-only     Only install backend scripts\n"
-    printf "  --no-enable        Don't enable init.d services\n"
-    printf "  --no-start         Don't start services after install\n"
-    printf "  --skip-packages    Skip opkg package installation\n"
-    printf "  --no-reboot        Don't reboot after installation\n"
-    printf "  --uninstall        Remove QManager completely\n"
-    printf "  --help             Show this help\n\n"
-    printf "Expected archive layout:\n"
-    printf "  qmanager_install/\n"
-    printf "    ├── install.sh        (this script)\n"
-    printf "    ├── out/              (frontend build)\n"
-    printf "    └── scripts/          (backend scripts)\n\n"
-    printf "Example:\n"
-    printf "  cd /tmp && tar xzf qmanager.tar.gz\n"
-    printf "  cd qmanager_install && sh install.sh\n\n"
-    printf "For a standalone uninstall: sh uninstall.sh --help\n\n"
+    cat <<EOF
+QManager Installer $VERSION
+
+Usage: sh install.sh [OPTIONS]
+
+Options:
+  --frontend-only    Only install frontend files
+  --backend-only     Only install backend scripts
+  --skip-packages    Skip opkg package install (used by OTA)
+  --no-enable        Do not enable init.d services
+  --no-start         Do not start services after install
+  --no-reboot        Do not reboot after install (used by OTA)
+  --force            Skip modem firmware detection
+  --help, -h         Show this help
+
+Archive layout:
+  qmanager_install/
+    install.sh         (this script)
+    out/               (Next.js static export)
+    scripts/           (backend tree)
+    dependencies/      (bundled binaries)
+
+Example:
+  cd /tmp && tar xzf qmanager.tar.gz
+  cd qmanager_install && sh install.sh
+EOF
 }
 
 # --- Main --------------------------------------------------------------------
 
 main() {
-    # Defaults
+    # Always release the watchcat lock on exit so a failed install doesn't
+    # leave watchcat permanently in LOCKED state. /tmp clears on reboot but
+    # if the user retries without rebooting, a stale lock would brick
+    # connectivity monitoring until next boot.
+    trap 'rm -f "$WATCHCAT_LOCK" 2>/dev/null || true' EXIT INT TERM
+
     DO_FRONTEND=1
     DO_BACKEND=1
     DO_ENABLE=1
     DO_START=1
-    DO_UNINSTALL=0
     DO_PACKAGES=1
     DO_REBOOT=1
+    DO_FORCE=0
 
-    # Parse arguments
     while [ $# -gt 0 ]; do
         case "$1" in
-            --frontend-only)
-                DO_FRONTEND=1
-                DO_BACKEND=0
-                ;;
-            --backend-only)
-                DO_FRONTEND=0
-                DO_BACKEND=1
-                ;;
-            --no-enable)
-                DO_ENABLE=0
-                ;;
-            --no-start)
-                DO_START=0
-                ;;
-            --skip-packages)
-                DO_PACKAGES=0
-                ;;
-            --no-reboot)
-                DO_REBOOT=0
-                ;;
-            --uninstall)
-                DO_UNINSTALL=1
-                ;;
-            --help|-h)
-                usage
-                exit 0
-                ;;
+            --frontend-only) DO_FRONTEND=1; DO_BACKEND=0 ;;
+            --backend-only)  DO_FRONTEND=0; DO_BACKEND=1 ;;
+            --skip-packages) DO_PACKAGES=0 ;;
+            --no-enable)     DO_ENABLE=0 ;;
+            --no-start)      DO_START=0 ;;
+            --no-reboot)     DO_REBOOT=0 ;;
+            --force)         DO_FORCE=1 ;;
+            --help|-h)       usage; exit 0 ;;
             *)
                 error "Unknown option: $1"
                 usage
@@ -919,37 +1157,40 @@ main() {
         shift
     done
 
-    # Header banner
+    log_init
+
+    # Compute total step count for the progress bar
+    TOTAL_STEPS=1  # preflight
+    TOTAL_STEPS=$(( TOTAL_STEPS + 1 ))                                # remove_conflicts (always)
+    [ "$DO_PACKAGES" = "1" ] && TOTAL_STEPS=$(( TOTAL_STEPS + 1 ))    # install_packages
+    TOTAL_STEPS=$(( TOTAL_STEPS + 1 ))                                # stop_services
+    if [ "$DO_FRONTEND" = "1" ]; then
+        TOTAL_STEPS=$(( TOTAL_STEPS + 2 ))                            # backup + frontend
+    fi
+    if [ "$DO_BACKEND" = "1" ]; then
+        TOTAL_STEPS=$(( TOTAL_STEPS + 3 ))                            # backend + bundled + cleanup
+        [ "$DO_ENABLE" = "1" ] && TOTAL_STEPS=$(( TOTAL_STEPS + 1 ))  # enable
+        if [ "$DO_START" = "1" ]; then
+            TOTAL_STEPS=$(( TOTAL_STEPS + 3 ))                        # start + health + at_stack_check
+        fi
+    fi
+
+    # Banner
     printf "\n"
     printf "  ══════════════════════════════════════════\n"
     printf "  ${BOLD}  QManager - Installation Script${NC}\n"
     printf "  ${DIM}  Version: %s${NC}\n" "$VERSION"
     printf "  ══════════════════════════════════════════\n"
 
-    # Handle uninstall path (2 steps: preflight + uninstall)
-    if [ "$DO_UNINSTALL" = "1" ]; then
-        TOTAL_STEPS=2
-        preflight
-        uninstall
-        exit 0
-    fi
-
-    # Calculate total steps for the selected install mode
-    TOTAL_STEPS=1                                    # preflight always
-    [ "$DO_PACKAGES" = "1" ]  && TOTAL_STEPS=$(( TOTAL_STEPS + 1 ))  # install_packages
-    TOTAL_STEPS=$(( TOTAL_STEPS + 1 ))               # stop_services always
-    if [ "$DO_FRONTEND" = "1" ]; then
-        TOTAL_STEPS=$(( TOTAL_STEPS + 2 ))           # backup_originals + install_frontend
-    fi
-    if [ "$DO_BACKEND" = "1" ]; then
-        TOTAL_STEPS=$(( TOTAL_STEPS + 4 ))           # install_backend + cleanup_legacy + fix_line_endings + fix_permissions
-        [ "$DO_ENABLE" = "1" ] && TOTAL_STEPS=$(( TOTAL_STEPS + 1 ))  # enable_services
-        [ "$DO_START"  = "1" ] && TOTAL_STEPS=$(( TOTAL_STEPS + 1 ))  # start_services
-    fi
-
-    # Normal install flow
     preflight
-    check_existing
+
+    mark_version_pending
+
+    # Always run conflict removal — the conflicting opkg packages (sms-tool,
+    # socat-at-bridge, socat) clobber /dev/smd11 and collide with our bundled
+    # sms_tool binary regardless of whether we're installing opkg packages.
+    # --skip-packages must not leave conflicts in place.
+    remove_conflicts
 
     if [ "$DO_PACKAGES" = "1" ]; then
         install_packages
@@ -964,27 +1205,29 @@ main() {
 
     if [ "$DO_BACKEND" = "1" ]; then
         install_backend
+        install_bundled_binaries
         cleanup_legacy_scripts
-        fix_line_endings
-        fix_permissions
 
-        if [ "$DO_ENABLE" = "1" ]; then
-            enable_services
+        [ "$DO_ENABLE" = "1" ] && enable_services
+
+        if [ "$DO_START" = "1" ]; then
+            start_services
+            health_check
+            at_stack_check || true
+            # Release watchcat from maintenance mode now that install is
+            # past the disruptive phases. Watchcat will exit LOCKED state
+            # on its next loop iteration and resume normal monitoring.
+            rm -f "$WATCHCAT_LOCK" 2>/dev/null || true
         fi
     fi
 
-    if [ "$DO_START" = "1" ] && [ "$DO_BACKEND" = "1" ]; then
-        start_services
-    fi
-
+    finalize_version
     print_summary
-
-    mkdir -p /etc/qmanager && echo "$VERSION" > /etc/qmanager/VERSION
 
     if [ "$DO_REBOOT" = "1" ]; then
         printf "  Rebooting in 5 seconds — press Ctrl+C to cancel...\n\n"
         sleep 5
-        reboot
+        reboot_system
     fi
 }
 

@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 import {
   Card,
   CardContent,
@@ -47,80 +48,88 @@ interface WatchdogStatusCardProps {
   settingsEnabled?: boolean;
 }
 
-const STATE_BADGE_CONFIG: Record<
+const STATE_BADGE_STYLES: Record<
   WatchcatState,
-  { label: string; variant: "outline"; className: string; icon: React.ReactNode }
+  { variant: "outline"; className: string; icon: React.ReactNode }
 > = {
   monitor: {
-    label: "Monitoring",
     variant: "outline",
     className: "bg-success/15 text-success hover:bg-success/20 border-success/30",
     icon: <CheckCircle2Icon className="h-3 w-3" />,
   },
   suspect: {
-    label: "Detecting Issue",
     variant: "outline",
     className: "bg-warning/15 text-warning hover:bg-warning/20 border-warning/30",
     icon: <TriangleAlertIcon className="h-3 w-3" />,
   },
   recovery: {
-    label: "Recovering",
     variant: "outline",
     className: "bg-destructive/15 text-destructive hover:bg-destructive/20 border-destructive/30 animate-pulse motion-reduce:animate-none",
     icon: <AlertCircleIcon className="h-3 w-3" />,
   },
   cooldown: {
-    label: "Cooldown",
     variant: "outline",
     className: "bg-info/15 text-info hover:bg-info/20 border-info/30",
     icon: <ClockIcon className="h-3 w-3" />,
   },
   locked: {
-    label: "Locked",
     variant: "outline",
     className: "bg-muted/50 text-muted-foreground border-muted-foreground/30",
     icon: <LockIcon className="h-3 w-3" />,
   },
   disabled: {
-    label: "Disabled",
     variant: "outline",
     className: "bg-muted/50 text-muted-foreground border-muted-foreground/30",
     icon: <MinusCircleIcon className="h-3 w-3" />,
   },
 };
 
-const TIER_LABELS: Record<number, string> = {
-  0: "\u2014",
-  1: "Restart Network Interface",
-  2: "Restart Modem Radio",
-  3: "Switch to Backup SIM",
-  4: "Reboot Device",
-};
-
 export function WatchdogStatusCard({
   revertSim,
   settingsEnabled,
 }: WatchdogStatusCardProps) {
+  const { t } = useTranslation("monitoring");
   const { data: modemStatus, isLoading } = useModemStatus({
     pollInterval: 5000,
   });
   const [isReverting, setIsReverting] = useState(false);
+
+  const tierLabels = useMemo<Record<number, string>>(
+    () => ({
+      0: t("watchdog.tier_label_none"),
+      1: t("watchdog.tier_label_1"),
+      2: t("watchdog.tier_label_2"),
+      3: t("watchdog.tier_label_3"),
+      4: t("watchdog.tier_label_4"),
+    }),
+    [t],
+  );
+
+  const stateBadgeLabels = useMemo<Record<string, string>>(
+    () => ({
+      monitor: t("watchdog.status_badge_monitoring"),
+      suspect: t("watchdog.status_badge_suspect"),
+      recovery: t("watchdog.status_badge_recovery"),
+      cooldown: t("watchdog.status_badge_cooldown"),
+      locked: t("watchdog.status_badge_locked"),
+      disabled: t("watchdog.status_badge_disabled"),
+    }),
+    [t],
+  );
 
   const handleRevertSim = useCallback(async () => {
     setIsReverting(true);
     try {
       const success = await revertSim();
       if (success) {
-        toast.success(
-          "SIM revert requested. The watchdog will process this shortly.",
-        );
+        toast.success(t("watchdog.toast_sim_revert_success"));
       } else {
-        toast.error("Failed to request SIM revert");
+        toast.error(t("watchdog.toast_sim_revert_error"));
       }
     } finally {
       setIsReverting(false);
     }
-  }, [revertSim]);
+  }, [revertSim, t]);
 
   const watchcat = modemStatus?.watchcat;
   const simFailover = modemStatus?.sim_failover;
@@ -130,8 +139,8 @@ export function WatchdogStatusCard({
     return (
       <Card className="@container/card">
         <CardHeader>
-          <CardTitle>Watchdog Status</CardTitle>
-          <CardDescription>Live connection health status.</CardDescription>
+          <CardTitle>{t("watchdog.status_title")}</CardTitle>
+          <CardDescription>{t("watchdog.status_description")}</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
@@ -153,15 +162,14 @@ export function WatchdogStatusCard({
     return (
       <Card className="@container/card">
         <CardHeader>
-          <CardTitle>Watchdog Status</CardTitle>
-          <CardDescription>Live connection health status.</CardDescription>
+          <CardTitle>{t("watchdog.status_title")}</CardTitle>
+          <CardDescription>{t("watchdog.status_description")}</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex flex-col items-center justify-center py-8 gap-3">
             <DogIcon className="size-10 text-muted-foreground" />
             <p className="text-sm text-muted-foreground text-center">
-              Watchdog is not active. Enable it in Settings to begin monitoring
-              connection health.
+              {t("watchdog.status_empty")}
             </p>
           </div>
         </CardContent>
@@ -174,14 +182,14 @@ export function WatchdogStatusCard({
     return (
       <Card className="@container/card">
         <CardHeader>
-          <CardTitle>Watchdog Status</CardTitle>
-          <CardDescription>Live connection health status.</CardDescription>
+          <CardTitle>{t("watchdog.status_title")}</CardTitle>
+          <CardDescription>{t("watchdog.status_description")}</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex flex-col items-center justify-center py-8 gap-3">
             <Loader2 className="size-10 text-muted-foreground animate-spin" />
             <p className="text-sm text-muted-foreground text-center">
-              Watchdog is starting up. It will begin monitoring shortly.
+              {t("watchdog.status_starting")}
             </p>
           </div>
         </CardContent>
@@ -194,42 +202,43 @@ export function WatchdogStatusCard({
   if (!watchcat) return null;
 
   const stateKey = (watchcat.state as WatchcatState) || "disabled";
-  const badge = STATE_BADGE_CONFIG[stateKey] || STATE_BADGE_CONFIG.disabled;
-  const tierLabel = TIER_LABELS[watchcat.current_tier] || TIER_LABELS[0];
+  const badgeStyle = STATE_BADGE_STYLES[stateKey] || STATE_BADGE_STYLES.disabled;
+  const badgeLabel = stateBadgeLabels[stateKey] ?? stateBadgeLabels.disabled;
+  const tierLabel = tierLabels[watchcat.current_tier] || tierLabels[0];
 
   const statusRows: { label: string; value: React.ReactNode }[] = [
-    { label: "Current Step", value: tierLabel },
+    { label: t("watchdog.status_row_current_step"), value: tierLabel },
     {
-      label: "Failed Checks",
+      label: t("watchdog.status_row_failed_checks"),
       value: <span className="font-mono">{watchcat.failure_count}</span>,
     },
     ...(watchcat.cooldown_remaining > 0
       ? [
           {
-            label: "Cooldown",
+            label: t("watchdog.status_row_cooldown"),
             value: (
               <span className="font-mono">
-                {watchcat.cooldown_remaining}s remaining
+                {t("watchdog.status_cooldown_remaining", { count: watchcat.cooldown_remaining })}
               </span>
             ),
           },
         ]
       : []),
     {
-      label: "Total Recoveries",
+      label: t("watchdog.status_row_total_recoveries"),
       value: <span className="font-mono">{watchcat.total_recoveries}</span>,
     },
     {
-      label: "Reboots This Hour",
+      label: t("watchdog.status_row_reboots_this_hour"),
       value: <span className="font-mono">{watchcat.reboots_this_hour}</span>,
     },
     ...(watchcat.last_recovery_time != null
       ? [
           {
-            label: "Last Recovery",
+            label: t("watchdog.status_row_last_recovery"),
             value: (
               <span>
-                {TIER_LABELS[watchcat.last_recovery_tier ?? 0]}{" "}
+                {tierLabels[watchcat.last_recovery_tier ?? 0]}{" "}
                 <span className="text-muted-foreground">
                   ({formatTimeAgo(watchcat.last_recovery_time)})
                 </span>
@@ -243,14 +252,14 @@ export function WatchdogStatusCard({
   return (
     <Card className="@container/card">
       <CardHeader>
-        <CardTitle>Watchdog Status</CardTitle>
-        <CardDescription>Live connection health status.</CardDescription>
+        <CardTitle>{t("watchdog.status_title")}</CardTitle>
+        <CardDescription>{t("watchdog.status_description")}</CardDescription>
       </CardHeader>
       <CardContent>
         <div className="grid gap-2">
           {/* State badge — animates when state changes */}
           <div className="flex items-center justify-between">
-            <p className="text-sm font-semibold text-muted-foreground">State</p>
+            <p className="text-sm font-semibold text-muted-foreground">{t("watchdog.status_row_state")}</p>
             <AnimatePresence mode="wait">
               <motion.div
                 key={stateKey}
@@ -259,7 +268,7 @@ export function WatchdogStatusCard({
                 exit={{ opacity: 0, scale: 0.88 }}
                 transition={{ duration: 0.18, type: "spring", stiffness: 400, damping: 24 }}
               >
-                <Badge variant={badge.variant} className={badge.className}>{badge.icon}{badge.label}</Badge>
+                <Badge variant={badgeStyle.variant} className={badgeStyle.className}>{badgeStyle.icon}{badgeLabel}</Badge>
               </motion.div>
             </AnimatePresence>
           </div>
@@ -294,11 +303,15 @@ export function WatchdogStatusCard({
               <Alert className="mb-3">
                 <InfoIcon className="size-4" />
                 <AlertDescription>
-                  Running on backup SIM (slot {simFailover.current_slot}) since{" "}
-                  {simFailover.switched_at
-                    ? formatTimeAgo(simFailover.switched_at)
-                    : "recently"}
-                  . Original SIM was in slot {simFailover.original_slot}.
+                  <p>
+                    {t("watchdog.status_sim_failover_message", {
+                      current_slot: simFailover.current_slot,
+                      switched_at: simFailover.switched_at
+                        ? formatTimeAgo(simFailover.switched_at)
+                        : t("watchdog.status_sim_failover_recently"),
+                      original_slot: simFailover.original_slot,
+                    })}
+                  </p>
                 </AlertDescription>
               </Alert>
 
@@ -313,26 +326,26 @@ export function WatchdogStatusCard({
                     {isReverting ? (
                       <>
                         <Loader2 className="size-4 animate-spin" />
-                        Reverting…
+                        {t("watchdog.status_sim_reverting")}
                       </>
                     ) : (
-                      "Revert to Original SIM"
+                      t("watchdog.status_sim_revert_button")
                     )}
                   </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent>
                   <AlertDialogHeader>
-                    <AlertDialogTitle>Revert to Original SIM?</AlertDialogTitle>
+                    <AlertDialogTitle>{t("watchdog.status_sim_revert_dialog_title")}</AlertDialogTitle>
                     <AlertDialogDescription>
-                      This will switch back to SIM slot{" "}
-                      {simFailover.original_slot}. Your internet will briefly
-                      disconnect while the modem reconnects.
+                      {t("watchdog.status_sim_revert_dialog_description", {
+                        original_slot: simFailover.original_slot,
+                      })}
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogCancel>{t("watchdog.status_sim_revert_cancel")}</AlertDialogCancel>
                     <AlertDialogAction onClick={handleRevertSim}>
-                      Revert SIM
+                      {t("watchdog.status_sim_revert_confirm")}
                     </AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>

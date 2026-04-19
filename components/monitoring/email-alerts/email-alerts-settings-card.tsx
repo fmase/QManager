@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { toast } from "sonner";
+import { useTranslation, Trans } from "react-i18next";
 
 import {
   Card,
@@ -57,6 +58,7 @@ interface EmailAlertsSettingsCardProps {
 }
 
 const EmailAlertsSettingsCard = ({ onTestEmailSent }: EmailAlertsSettingsCardProps) => {
+  const { t } = useTranslation("monitoring");
   const {
     settings,
     msmtpInstalled,
@@ -96,12 +98,12 @@ const EmailAlertsSettingsCard = ({ onTestEmailSent }: EmailAlertsSettingsCardPro
   // --- Validation ------------------------------------------------------------
   const senderEmailError =
     senderEmail && !EMAIL_REGEX.test(senderEmail)
-      ? "Enter a valid email address"
+      ? t("email_alerts.validation_email")
       : null;
 
   const recipientEmailError =
     recipientEmail && !EMAIL_REGEX.test(recipientEmail)
-      ? "Enter a valid email address"
+      ? t("email_alerts.validation_email")
       : null;
 
   const thresholdError =
@@ -109,7 +111,7 @@ const EmailAlertsSettingsCard = ({ onTestEmailSent }: EmailAlertsSettingsCardPro
     (isNaN(Number(thresholdMinutes)) ||
       Number(thresholdMinutes) < 1 ||
       Number(thresholdMinutes) > 60)
-      ? "Duration must be 1\u201360 minutes"
+      ? t("email_alerts.validation_threshold")
       : null;
 
   const hasValidationErrors = !!(
@@ -154,18 +156,18 @@ const EmailAlertsSettingsCard = ({ onTestEmailSent }: EmailAlertsSettingsCardPro
     const success = await saveSettings(payload);
     if (success) {
       markSaved();
-      toast.success("Email alert settings saved");
+      toast.success(t("email_alerts.toast_save_success"));
     } else {
-      toast.error(error || "Failed to save email alert settings");
+      toast.error(error || t("email_alerts.toast_save_error"));
     }
   };
 
   const handleSendTest = async () => {
     const success = await sendTestEmail();
     if (success) {
-      toast.success("Test email sent successfully");
+      toast.success(t("email_alerts.toast_test_success"));
     } else {
-      toast.error("Failed to send test email — check your configuration");
+      toast.error(t("email_alerts.toast_test_error"));
     }
     // Refresh log on both success and failure — backend logs both outcomes
     onTestEmailSent?.();
@@ -185,9 +187,9 @@ const EmailAlertsSettingsCard = ({ onTestEmailSent }: EmailAlertsSettingsCardPro
     return (
       <Card className="@container/card">
         <CardHeader>
-          <CardTitle>Email Alert Settings</CardTitle>
+          <CardTitle>{t("email_alerts.card_title")}</CardTitle>
           <CardDescription>
-            Sends via Gmail SMTP using an app password.
+            {t("email_alerts.card_description")}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -212,15 +214,15 @@ const EmailAlertsSettingsCard = ({ onTestEmailSent }: EmailAlertsSettingsCardPro
     return (
       <Card className="@container/card">
         <CardHeader>
-          <CardTitle>Email Alert Settings</CardTitle>
+          <CardTitle>{t("email_alerts.card_title")}</CardTitle>
           <CardDescription>
-            Sends via Gmail SMTP using an app password.
+            {t("email_alerts.card_description")}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <Alert variant="destructive">
             <AlertCircle className="size-4" />
-            <AlertTitle>Failed to load settings</AlertTitle>
+            <AlertTitle>{t("email_alerts.error_load_settings")}</AlertTitle>
             <AlertDescription className="flex items-center justify-between">
               <span>{error}</span>
               <Button
@@ -229,7 +231,7 @@ const EmailAlertsSettingsCard = ({ onTestEmailSent }: EmailAlertsSettingsCardPro
                 onClick={() => refresh()}
               >
                 <RefreshCcwIcon className="size-3.5" />
-                Retry
+                {t("actions.retry", { ns: "common" })}
               </Button>
             </AlertDescription>
           </Alert>
@@ -243,9 +245,9 @@ const EmailAlertsSettingsCard = ({ onTestEmailSent }: EmailAlertsSettingsCardPro
     return (
       <Card className="@container/card">
         <CardHeader>
-          <CardTitle>Email Alert Settings</CardTitle>
+          <CardTitle>{t("email_alerts.card_title")}</CardTitle>
           <CardDescription>
-            Sends via Gmail SMTP using an app password.
+            {t("email_alerts.card_description")}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -253,10 +255,10 @@ const EmailAlertsSettingsCard = ({ onTestEmailSent }: EmailAlertsSettingsCardPro
             <PackageIcon className="size-10 text-muted-foreground" />
             <div className="text-center space-y-1.5">
               <p className="text-sm font-medium">
-                <code>msmtp</code> is not installed on this device.
+                {t("email_alerts.not_installed_title")}
               </p>
               <p className="text-xs text-muted-foreground">
-                Install automatically or run the command manually.
+                {t("email_alerts.not_installed_helper")}
               </p>
             </div>
 
@@ -293,12 +295,12 @@ const EmailAlertsSettingsCard = ({ onTestEmailSent }: EmailAlertsSettingsCardPro
                 {installResult.status === "running" ? (
                   <>
                     <Loader2 className="size-4 animate-spin" />
-                    {installResult.message || "Installing..."}
+                    {installResult.message || t("email_alerts.install_running_label")}
                   </>
                 ) : (
                   <>
                     <PackageIcon className="size-4" />
-                    Install msmtp
+                    {t("email_alerts.install_button")}
                   </>
                 )}
               </Button>
@@ -309,17 +311,17 @@ const EmailAlertsSettingsCard = ({ onTestEmailSent }: EmailAlertsSettingsCardPro
                 disabled={installResult.status === "running"}
               >
                 <RefreshCcwIcon className="size-3.5" />
-                Check Again
+                {t("email_alerts.check_again_button")}
               </Button>
             </div>
 
             <div className="w-full flex items-center gap-3 text-xs text-muted-foreground">
               <div className="h-px flex-1 bg-border" />
-              <span>or install manually</span>
+              <span>{t("email_alerts.install_manually_label")}</span>
               <div className="h-px flex-1 bg-border" />
             </div>
 
-            <CopyableCommand command="opkg update && opkg install msmtp" />
+            <CopyableCommand command={t("email_alerts.install_command")} />
           </div>
         </CardContent>
       </Card>
@@ -330,9 +332,9 @@ const EmailAlertsSettingsCard = ({ onTestEmailSent }: EmailAlertsSettingsCardPro
   return (
     <Card className="@container/card">
       <CardHeader>
-        <CardTitle>Email Alert Settings</CardTitle>
+        <CardTitle>{t("email_alerts.card_title")}</CardTitle>
         <CardDescription>
-          Sends via Gmail SMTP using an app password.
+          {t("email_alerts.card_description")}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -342,7 +344,7 @@ const EmailAlertsSettingsCard = ({ onTestEmailSent }: EmailAlertsSettingsCardPro
               {/* Enable toggle */}
               <Field orientation="horizontal" className="w-fit">
                 <FieldLabel htmlFor="email-alerts-enabled">
-                  Enable Email Alerts
+                  {t("email_alerts.enable_label")}
                 </FieldLabel>
                 <Switch
                   id="email-alerts-enabled"
@@ -353,11 +355,11 @@ const EmailAlertsSettingsCard = ({ onTestEmailSent }: EmailAlertsSettingsCardPro
 
               {/* Sender email */}
               <Field>
-                <FieldLabel htmlFor="sender-email">Sender Email</FieldLabel>
+                <FieldLabel htmlFor="sender-email">{t("email_alerts.sender_email_label")}</FieldLabel>
                 <Input
                   id="sender-email"
                   type="email"
-                  placeholder="alerts@gmail.com"
+                  placeholder={t("email_alerts.sender_email_placeholder")}
                   className="max-w-sm"
                   value={senderEmail}
                   onChange={(e) => setSenderEmail(e.target.value)}
@@ -375,7 +377,7 @@ const EmailAlertsSettingsCard = ({ onTestEmailSent }: EmailAlertsSettingsCardPro
                   </FieldError>
                 ) : (
                   <FieldDescription id="sender-email-desc">
-                    The Gmail account that will send the alert.
+                    {t("email_alerts.sender_email_description")}
                   </FieldDescription>
                 )}
               </Field>
@@ -383,12 +385,12 @@ const EmailAlertsSettingsCard = ({ onTestEmailSent }: EmailAlertsSettingsCardPro
               {/* Recipient email */}
               <Field>
                 <FieldLabel htmlFor="recipient-email">
-                  Recipient Email
+                  {t("email_alerts.recipient_email_label")}
                 </FieldLabel>
                 <Input
                   id="recipient-email"
                   type="email"
-                  placeholder="you@example.com"
+                  placeholder={t("email_alerts.recipient_email_placeholder")}
                   className="max-w-sm"
                   value={recipientEmail}
                   onChange={(e) => setRecipientEmail(e.target.value)}
@@ -408,7 +410,7 @@ const EmailAlertsSettingsCard = ({ onTestEmailSent }: EmailAlertsSettingsCardPro
                   </FieldError>
                 ) : (
                   <FieldDescription id="recipient-email-desc">
-                    Where alerts will be delivered.
+                    {t("email_alerts.recipient_email_description")}
                   </FieldDescription>
                 )}
               </Field>
@@ -416,13 +418,13 @@ const EmailAlertsSettingsCard = ({ onTestEmailSent }: EmailAlertsSettingsCardPro
               {/* Gmail App Password */}
               <Field>
                 <FieldLabel htmlFor="app-password">
-                  Gmail App Password
+                  {t("email_alerts.app_password_label")}
                 </FieldLabel>
                 <div className="relative max-w-sm">
                   <Input
                     id="app-password"
                     type={showPassword ? "text" : "password"}
-                    placeholder="xxxx xxxx xxxx xxxx"
+                    placeholder={t("email_alerts.app_password_placeholder")}
                     className="pr-10"
                     value={appPassword}
                     onChange={(e) => setAppPassword(e.target.value)}
@@ -433,7 +435,7 @@ const EmailAlertsSettingsCard = ({ onTestEmailSent }: EmailAlertsSettingsCardPro
                   />
                   <button
                     type="button"
-                    aria-label={showPassword ? "Hide password" : "Show password"}
+                    aria-label={showPassword ? t("email_alerts.app_password_hide") : t("email_alerts.app_password_show")}
                     className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
                     onClick={() => setShowPassword((v) => !v)}
                   >
@@ -445,30 +447,34 @@ const EmailAlertsSettingsCard = ({ onTestEmailSent }: EmailAlertsSettingsCardPro
                   </button>
                 </div>
                 <FieldDescription id="app-password-desc">
-                  Generate an{" "}
-                  <a
-                    href="https://myaccount.google.com/apppasswords"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-info underline underline-offset-2 hover:text-info/80"
-                  >
-                    App Password
-                  </a>{" "}
-                  in your Google Account.
+                  <Trans
+                    i18nKey="email_alerts.app_password_description"
+                    ns="monitoring"
+                    components={{
+                      link: (
+                        <a
+                          href="https://myaccount.google.com/apppasswords"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-info underline underline-offset-2 hover:text-info/80"
+                        />
+                      ),
+                    }}
+                  />
                 </FieldDescription>
               </Field>
 
               {/* Threshold duration */}
               <Field>
                 <FieldLabel htmlFor="threshold-minutes">
-                  Alert After (minutes)
+                  {t("email_alerts.threshold_label")}
                 </FieldLabel>
                 <Input
                   id="threshold-minutes"
                   type="number"
                   min="1"
                   max="60"
-                  placeholder="5"
+                  placeholder={t("email_alerts.threshold_placeholder")}
                   className="max-w-sm"
                   value={thresholdMinutes}
                   onChange={(e) => setThresholdMinutes(e.target.value)}
@@ -483,8 +489,7 @@ const EmailAlertsSettingsCard = ({ onTestEmailSent }: EmailAlertsSettingsCardPro
                   <FieldError id="threshold-error">{thresholdError}</FieldError>
                 ) : (
                   <FieldDescription id="threshold-desc">
-                    How long the connection must be down before an alert is sent.
-                    Prevents alerts for brief, transient outages.
+                    {t("email_alerts.threshold_description")}
                   </FieldDescription>
                 )}
               </Field>
@@ -508,19 +513,19 @@ const EmailAlertsSettingsCard = ({ onTestEmailSent }: EmailAlertsSettingsCardPro
                     {isSendingTest ? (
                       <>
                         <Loader2 className="size-4 animate-spin" />
-                        Sending…
+                        {t("email_alerts.test_email_sending")}
                       </>
                     ) : (
                       <>
                         <SendIcon className="size-4" />
-                        Send Test Email
+                        {t("email_alerts.test_email_button")}
                       </>
                     )}
                   </Button>
                 </div>
                 {isDirty && !canSendTest && isEnabled && (
                   <p className="text-xs text-muted-foreground">
-                    Save your changes before sending a test email.
+                    {t("email_alerts.save_before_test_hint")}
                   </p>
                 )}
               </div>
@@ -533,9 +538,9 @@ const EmailAlertsSettingsCard = ({ onTestEmailSent }: EmailAlertsSettingsCardPro
             <Separator className="mt-4" />
             <div className="flex items-center justify-between pt-4">
               <div>
-                <p className="text-sm font-medium">Remove msmtp</p>
+                <p className="text-sm font-medium">{t("email_alerts.uninstall_section_label")}</p>
                 <p className="text-xs text-muted-foreground">
-                  Uninstall the msmtp package from this device.
+                  {t("email_alerts.uninstall_section_description")}
                 </p>
               </div>
               <AlertDialog>
@@ -548,42 +553,40 @@ const EmailAlertsSettingsCard = ({ onTestEmailSent }: EmailAlertsSettingsCardPro
                     {isUninstalling ? (
                       <>
                         <Loader2 className="size-4 animate-spin" />
-                        Removing…
+                        {t("email_alerts.uninstall_button")}
                       </>
                     ) : (
                       <>
                         <Trash2Icon className="size-4" />
-                        Uninstall
+                        {t("email_alerts.uninstall_button")}
                       </>
                     )}
                   </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent>
                   <AlertDialogHeader>
-                    <AlertDialogTitle>Uninstall msmtp?</AlertDialogTitle>
+                    <AlertDialogTitle>{t("email_alerts.uninstall_confirm_title")}</AlertDialogTitle>
                     <AlertDialogDescription>
-                      This will remove the msmtp package from this device. Your
-                      email alert settings will be preserved, but alerts will
-                      not be sent until msmtp is reinstalled.
+                      {t("email_alerts.uninstall_confirm_description")}
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogCancel>{t("actions.cancel", { ns: "common" })}</AlertDialogCancel>
                     <AlertDialogAction
                       className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                       onClick={async () => {
                         const success = await uninstall();
                         if (success) {
-                          toast.success("msmtp uninstalled");
+                          toast.success(t("email_alerts.toast_uninstalled"));
                           refresh();
                         } else {
                           toast.error(
-                            error || "Failed to uninstall msmtp",
+                            error || t("email_alerts.toast_uninstall_error"),
                           );
                         }
                       }}
                     >
-                      Uninstall
+                      {t("email_alerts.uninstall_confirm_button")}
                     </AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>

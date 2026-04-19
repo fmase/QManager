@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Card,
   CardContent,
@@ -22,31 +23,21 @@ import type { MasqueradeTestResult } from "@/types/video-optimizer";
 
 type TestStep = "idle" | "reading_before" | "sending_request" | "reading_after";
 
-const STEPS: { key: TestStep; label: string; duration: number }[] = [
-  { key: "reading_before", label: "Reading packet counter", duration: 500 },
-  {
-    key: "sending_request",
-    label: "Sending HTTPS request to CDN",
-    duration: 5000,
-  },
-  {
-    key: "reading_after",
-    label: "Reading packet counter again",
-    duration: 1500,
-  },
-];
+type TestStepDef = { key: TestStep; label: string; duration: number };
 
 function StepIndicator({
   step,
+  steps,
   currentStep,
   isComplete,
 }: {
-  step: (typeof STEPS)[number];
+  step: TestStepDef;
+  steps: TestStepDef[];
   currentStep: TestStep;
   isComplete: boolean;
 }) {
-  const stepIndex = STEPS.findIndex((s) => s.key === step.key);
-  const currentIndex = STEPS.findIndex((s) => s.key === currentStep);
+  const stepIndex = steps.findIndex((s) => s.key === step.key);
+  const currentIndex = steps.findIndex((s) => s.key === currentStep);
 
   const isDone = isComplete || stepIndex < currentIndex;
   const isActive = !isComplete && step.key === currentStep;
@@ -86,7 +77,17 @@ export default function TestInjectionCard({
   runTest,
   serviceRunning,
 }: TestInjectionCardProps) {
+  const { t } = useTranslation("local-network");
   const [activeStep, setActiveStep] = useState<TestStep>("idle");
+
+  const steps: TestStepDef[] = useMemo(
+    () => [
+      { key: "reading_before", label: t("masquerade.test_step_reading_before"), duration: 500 },
+      { key: "sending_request", label: t("masquerade.test_step_sending_request"), duration: 5000 },
+      { key: "reading_after", label: t("masquerade.test_step_reading_after"), duration: 1500 },
+    ],
+    [t],
+  );
 
   // Only "idle" when not running — derived, not set in effect
   const currentStep =
@@ -99,7 +100,7 @@ export default function TestInjectionCard({
     const timers: ReturnType<typeof setTimeout>[] = [];
     let cumulativeDelay = 0;
 
-    for (const step of STEPS) {
+    for (const step of steps) {
       const timer = setTimeout(() => {
         setActiveStep(step.key);
       }, cumulativeDelay);
@@ -111,7 +112,7 @@ export default function TestInjectionCard({
       timers.forEach(clearTimeout);
       setActiveStep("idle");
     };
-  }, [testResult.status]);
+  }, [testResult.status, steps]);
 
   const handleRunTest = useCallback(() => {
     runTest();
@@ -128,20 +129,20 @@ export default function TestInjectionCard({
   return (
     <Card className="@container/card">
       <CardHeader>
-        <CardTitle>Test Injection</CardTitle>
+        <CardTitle>{t("masquerade.test_title")}</CardTitle>
         <CardDescription>
-          Make an HTTPS request to a CDN and verify that fake SNI packets are
-          being injected by comparing nftables counters before and after
+          {t("masquerade.test_description")}
         </CardDescription>
       </CardHeader>
       <CardContent className="grid gap-4">
         {/* Step-by-step progress */}
         {isRunning && currentStep !== "idle" && (
           <div className="space-y-2 rounded-lg border p-3">
-            {STEPS.map((step) => (
+            {steps.map((step) => (
               <StepIndicator
                 key={step.key}
                 step={step}
+                steps={steps}
                 currentStep={currentStep}
                 isComplete={false}
               />
@@ -153,10 +154,11 @@ export default function TestInjectionCard({
         {testResult.status === "complete" && (
           <div className="space-y-3">
             <div className="space-y-2 rounded-lg border p-3">
-              {STEPS.map((step) => (
+              {steps.map((step) => (
                 <StepIndicator
                   key={step.key}
                   step={step}
+                  steps={steps}
                   currentStep={currentStep}
                   isComplete
                 />
@@ -199,12 +201,12 @@ export default function TestInjectionCard({
           {isRunning ? (
             <>
               <Loader2 className="animate-spin" />
-              Testing...
+              {t("masquerade.state_testing")}
             </>
           ) : (
             <>
               <Zap />
-              Run Test
+              {t("masquerade.button_run_test")}
             </>
           )}
         </Button>

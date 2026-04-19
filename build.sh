@@ -2,10 +2,11 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "$0")" && pwd)"
-INSTALL_DIR="$ROOT_DIR/qmanager_install"
 OUT_DIR="$ROOT_DIR/out"
 SCRIPTS_DIR="$ROOT_DIR/scripts"
+DEPS_DIR="$ROOT_DIR/dependencies"
 BUILD_DIR="$ROOT_DIR/qmanager-build"
+STAGING_DIR="$BUILD_DIR/qmanager_install"
 ARCHIVE="$BUILD_DIR/qmanager.tar.gz"
 
 # Colors
@@ -19,32 +20,100 @@ step() { printf "${GREEN}[%s]${NC} %s\n" "$(date +%H:%M:%S)" "$1"; }
 fail() { printf "${RED}[%s] ERROR:${NC} %s\n" "$(date +%H:%M:%S)" "$1"; exit 1; }
 
 [ -d "$OUT_DIR" ] || fail "'out/' not found — run 'bun run build' first"
+[ -d "$DEPS_DIR" ] || fail "'dependencies/' not found at repo root"
+[ -f "$DEPS_DIR/atcli_smd11" ] || fail "Missing required binary: dependencies/atcli_smd11"
+[ -f "$DEPS_DIR/sms_tool" ] || fail "Missing required binary: dependencies/sms_tool"
 
-step "Cleaning qmanager_install/..."
-rm -rf "$INSTALL_DIR/out" "$INSTALL_DIR/scripts" "$INSTALL_DIR/install.sh" "$INSTALL_DIR/uninstall.sh"
-mkdir -p "$INSTALL_DIR"
+step "Preparing staging directory..."
+mkdir -p "$BUILD_DIR"
+rm -rf "$STAGING_DIR"
+mkdir -p "$STAGING_DIR"
 
 step "Copying frontend build output..."
-cp -r "$OUT_DIR" "$INSTALL_DIR/out"
+cp -r "$OUT_DIR" "$STAGING_DIR/out"
 
 step "Copying backend scripts..."
-mkdir -p "$INSTALL_DIR/scripts"
+mkdir -p "$STAGING_DIR/scripts"
 for item in "$SCRIPTS_DIR"/*; do
   name="$(basename "$item")"
   case "$name" in install.sh|uninstall.sh) continue ;; esac
-  cp -r "$item" "$INSTALL_DIR/scripts/$name"
+  cp -r "$item" "$STAGING_DIR/scripts/$name"
 done
 
 step "Copying install & uninstall scripts..."
-cp "$SCRIPTS_DIR/install.sh" "$INSTALL_DIR/install.sh"
-cp "$SCRIPTS_DIR/uninstall.sh" "$INSTALL_DIR/uninstall.sh"
+cp "$SCRIPTS_DIR/install.sh" "$STAGING_DIR/install.sh"
+cp "$SCRIPTS_DIR/uninstall.sh" "$STAGING_DIR/uninstall.sh"
+
+step "Stamping version from package.json..."
+PKG_VERSION=$(sed -n 's/.*"version":[[:space:]]*"\([^"]*\)".*/\1/p' "$ROOT_DIR/package.json" | head -n1)
+[ -n "$PKG_VERSION" ] || fail "Could not read version from package.json"
+for script in "$STAGING_DIR/install.sh" "$STAGING_DIR/uninstall.sh"; do
+  tmp="$script.tmp"
+  sed "s|^VERSION=\"[^\"]*\"|VERSION=\"$PKG_VERSION\"|" "$script" > "$tmp" && mv "$tmp" "$script"
+  chmod +x "$script"
+done
+grep -q "^VERSION=\"$PKG_VERSION\"" "$STAGING_DIR/install.sh" || fail "Failed to stamp install.sh with version $PKG_VERSION"
+grep -q "^VERSION=\"$PKG_VERSION\"" "$STAGING_DIR/uninstall.sh" || fail "Failed to stamp uninstall.sh with version $PKG_VERSION"
+step "Stamped install.sh + uninstall.sh with version: $PKG_VERSION"
+
+step "Linting install.sh (filesystem-driven design)..."
+# install.sh v2 is filesystem-driven: it iterates $INITD_DIR/qmanager* instead
+# of hardcoding service names. The only hardcoded list is UCI_GATED_SERVICES.
+# This lint ensures:
+#   1. The filesystem iteration pattern is present (not replaced by hardcoding)
+#   2. Every service listed in UCI_GATED_SERVICES actually exists in the tarball
+#   3. The main 'qmanager' init.d service exists (required for start_services)
+LINT_ERRORS=0
+
+# Check 1: filesystem iteration pattern must be present
+if ! grep -q 'for svc in "\$INITD_DIR"/qmanager\*' "$STAGING_DIR/install.sh"; then
+  printf "  ${RED}BROKEN:${NC} install.sh is missing the filesystem-driven service iteration pattern\n"
+  LINT_ERRORS=$((LINT_ERRORS + 1))
+fi
+
+# Check 2: the main qmanager init.d service must exist
+if [ ! -f "$SCRIPTS_DIR/etc/init.d/qmanager" ]; then
+  printf "  ${RED}MISSING:${NC} scripts/etc/init.d/qmanager (main service) does not exist\n"
+  LINT_ERRORS=$((LINT_ERRORS + 1))
+fi
+
+# Check 3: every service in UCI_GATED_SERVICES must exist as a real init.d file
+UCI_GATED_LINE=$(grep '^UCI_GATED_SERVICES=' "$STAGING_DIR/install.sh" || true)
+if [ -z "$UCI_GATED_LINE" ]; then
+  printf "  ${RED}MISSING:${NC} UCI_GATED_SERVICES constant not found in install.sh\n"
+  LINT_ERRORS=$((LINT_ERRORS + 1))
+else
+  UCI_GATED_VALUE=$(printf '%s' "$UCI_GATED_LINE" | sed 's/^UCI_GATED_SERVICES="\(.*\)"$/\1/')
+  for svc in $UCI_GATED_VALUE; do
+    if [ ! -f "$SCRIPTS_DIR/etc/init.d/$svc" ]; then
+      printf "  ${RED}STALE:${NC} UCI_GATED_SERVICES references '%s' but scripts/etc/init.d/%s does not exist\n" "$svc" "$svc"
+      LINT_ERRORS=$((LINT_ERRORS + 1))
+    fi
+  done
+fi
+
+if [ "$LINT_ERRORS" -gt 0 ]; then
+  fail "install.sh lint failed with $LINT_ERRORS error(s)"
+fi
+step "install.sh lint passed (filesystem iteration + UCI_GATED_SERVICES valid)"
+
+step "Copying bundled binaries (dependencies/)..."
+mkdir -p "$STAGING_DIR/dependencies"
+cp "$DEPS_DIR/atcli_smd11" "$STAGING_DIR/dependencies/atcli_smd11"
+cp "$DEPS_DIR/sms_tool" "$STAGING_DIR/dependencies/sms_tool"
+chmod 755 "$STAGING_DIR/dependencies/atcli_smd11" "$STAGING_DIR/dependencies/sms_tool"
 
 step "Creating qmanager.tar.gz..."
-mkdir -p "$BUILD_DIR"
-tar czf "$ARCHIVE" -C "$ROOT_DIR" qmanager_install
+tar czf "$ARCHIVE" -C "$BUILD_DIR" qmanager_install
 
 step "Generating sha256sum.txt..."
 (cd "$BUILD_DIR" && sha256sum qmanager.tar.gz > sha256sum.txt)
+
+# Cleanup staging only after both release artifacts exist.
+if [ -f "$ARCHIVE" ] && [ -f "$BUILD_DIR/sha256sum.txt" ]; then
+  step "Cleaning up staging directory..."
+  rm -rf "$STAGING_DIR"
+fi
 
 ARCHIVE_SIZE=$(du -h "$ARCHIVE" | cut -f1)
 FILE_COUNT=$(tar tzf "$ARCHIVE" | wc -l)

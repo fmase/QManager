@@ -156,7 +156,7 @@ export function useWatchdogSettings(): UseWatchdogSettingsReturn {
         if (!mountedRef.current) return false;
 
         if (!json.success) {
-          setError(json.error || "Failed to save watchdog settings");
+          setError(json.reason || json.error || "Failed to save watchdog settings");
           return false;
         }
 

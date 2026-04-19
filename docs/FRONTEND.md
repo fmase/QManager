@@ -52,6 +52,7 @@ app/                            # Next.js App Router
 │   ├── page.tsx                # Network events hub
 │   ├── latency/                # Latency monitoring
 │   ├── email-alerts/           # Email alert settings
+│   ├── sms-alerts/             # SMS alert settings and log
 │   ├── watchdog/               # Watchdog settings
 │   ├── logs/                   # System logs
 │   └── tailscale/              # Tailscale VPN
@@ -71,7 +72,7 @@ components/
 ├── nav-secondary.tsx           # Secondary nav (About, Support, Donate)
 ├── nav-system.tsx              # System nav section
 ├── nav-user.tsx                # User menu (change password, theme, reboot, logout)
-├── donate-dialog.tsx           # Ko-fi/PayPal donation dialog
+├── donate-dialog.tsx           # GitHub Sponsors / GCash donation dialog
 ├── auth/                       # Login form, setup form
 ├── cellular/                   # Cellular components (57 files)
 ├── dashboard/                  # Dashboard cards
@@ -101,7 +102,7 @@ constants/                      # Static configuration data
 | `/cellular` | CellularInformation | Cellular info cards |
 | `/cellular/settings` | CellularSettings | Mode, roaming, AMBR settings |
 | `/cellular/settings/apn-management` | APNSettings | APN profile CRUD |
-| `/cellular/settings/imei-settings` | IMEISettings | IMEI read/write/backup |
+| `/cellular/settings/imei-settings` | IMEISettings | IMEI read/write/backup + toolkit |
 | `/cellular/settings/network-priority` | NetworkPriority | LTE/NR mode preferences |
 | `/cellular/settings/fplmn-settings` | FPLMNSettings | Forbidden network cleanup |
 | `/cellular/cell-locking` | BandLocking | LTE/NR band selection |
@@ -122,6 +123,7 @@ constants/                      # Static configuration data
 | `/monitoring` | NetworkEvents | Event log hub |
 | `/monitoring/latency` | LatencyMonitoring | Real-time + history charts |
 | `/monitoring/email-alerts` | EmailAlerts | Downtime alert settings |
+| `/monitoring/sms-alerts` | SmsAlerts | SMS alert settings and send log |
 | `/monitoring/watchdog` | Watchdog | Connection health |
 | `/monitoring/logs` | SystemLogs | Log viewer |
 | `/monitoring/tailscale` | Tailscale | VPN status |
@@ -209,6 +211,7 @@ if (result.success) { /* toast success */ }
 | `useDNSSettings` | `/network/dns.sh` | — |
 | `useIPPassthrough` | `/network/ip_passthrough.sh` | `ip-passthrough.ts` |
 | `useEmailAlerts` | `/monitoring/email_alerts.sh` | In hook file |
+| `useSmsAlerts` | `/monitoring/sms_alerts.sh` | In hook file |
 | `useWatchdogSettings` | `/monitoring/watchdog.sh` | In hook file |
 | `useSystemSettings` | `/system/settings.sh` | `system-settings.ts` |
 | `useTailscale` | `/vpn/tailscale.sh` | — |
@@ -223,6 +226,15 @@ For long-running operations that run in the background:
 | `useCellScanner` | `POST /at_cmd/cell_scan_start.sh` | `GET /at_cmd/cell_scan_status.sh` |
 | `useNeighbourScanner` | `POST /at_cmd/neighbour_scan_start.sh` | `GET /at_cmd/neighbour_scan_status.sh` |
 | `useSpeedtest` | `POST /at_cmd/speedtest_start.sh` | `GET /at_cmd/speedtest_status.sh` |
+| `useConfigBackup` | `GET /system/config-backup/collect.sh` | (none — encrypts and downloads in browser) |
+| `useConfigRestore` | `POST /system/config-backup/apply.sh` | `GET /system/config-backup/apply_status.sh` |
+
+**Configuration Backup specifics:**
+
+- `useConfigBackup` is a 4-stage pipeline: `idle → collecting → encrypting → downloading → done` (or `error`). It calls `collect.sh` for plaintext sections JSON, runs WebCrypto AES-256-GCM in the browser via `lib/config-backup/crypto.ts`, builds the envelope via `lib/config-backup/format.ts`, and triggers a blob download. The passphrase never leaves the browser.
+- `useConfigRestore` is a `useReducer`-driven state machine with 10 UI states (`idle`, `reading`, `password_required`, `password_incorrect`, `model_warning`, `ready`, `applying`, `success`, `partial_success`, `failed`). Polling at 500ms only runs in the `applying` state and stops on `done`/`cancelled`. Wrong passphrase decrypt failures map to `password_incorrect` (not `failed`) so the user can retry without re-uploading.
+- Both hooks share `lib/config-backup/{crypto,format,sections,pending-reboot}.ts` and `types/config-backup.ts`. Pure-TS modules have `*.test.ts` files run via `bun test` (the project's first Bun test setup; `tsconfig.json` excludes `**/*.test.ts` so `bun tsc --noEmit` doesn't choke on `bun:test` imports).
+- `lib/config-backup/pending-reboot.ts` exports `usePendingReboot()` plus `setPendingReboot`/`clearPendingReboot`/`readPendingReboot` helpers, backed by a `qmanager_pending_reboot` localStorage key. Used by both the post-restore AlertDialog and the persistent banner on the Configuration Backup page; both routes survive navigation/reload until the user reboots or dismisses.
 
 ### Utility Hooks
 
@@ -356,9 +368,17 @@ CSV export helper for data tables.
 
 Carrier-specific APN and TTL/HL preset configurations.
 
+### `constants/imei-presets.ts`
+
+IMEI TAC preset catalog used by the IMEI Toolkit generator UI.
+
 ### `constants/network-events.ts`
 
 Event type labels, descriptions, and severity mappings for the events UI.
+
+### `lib/imei-utils.ts`
+
+IMEI generation, validation, and structural parsing helpers (Luhn-based).
 
 ---
 
@@ -428,7 +448,7 @@ The sidebar (`app-sidebar.tsx`) defines the full navigation structure:
 | **Main** | Home (Dashboard) |
 | **Cellular** | Cellular Info, SMS, Custom Profiles (+ Connection Scenarios), Band Locking (+ Tower, Frequency), Cell Scanner (+ Neighbor, Calculator), Settings (+ APN, Network Priority, IMEI, FPLMN) |
 | **Local Network** | Ethernet Status, IP Passthrough, Custom DNS, TTL & MTU Settings |
-| **Monitoring** | Network Events (+ Latency), Email Alerts, Tailscale, Watchdog, Logs |
+| **Monitoring** | Network Events (+ Latency), Email Alerts, SMS Alerts, Tailscale, Watchdog, Logs |
 | **System** | System Settings |
 | **Secondary** | About Device, Support, Donate |
 | **Footer** | User menu (Change Password, Toggle Theme, Reboot Device, Logout) |

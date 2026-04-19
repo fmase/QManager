@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { motion, AnimatePresence } from "motion/react";
 import { BarChart, CartesianGrid, XAxis, Bar } from "recharts";
 import { useModemStatus } from "@/hooks/use-modem-status";
@@ -50,36 +51,6 @@ interface ChartDataPoint {
   latency: number;
   packet_loss: number;
 }
-
-// =============================================================================
-// Chart Config
-// =============================================================================
-
-const chartConfig = {
-  latency: {
-    label: "Latency",
-    color: "var(--chart-3)",
-  },
-  packet_loss: {
-    label: "Packet Loss",
-    color: "var(--chart-6)",
-  },
-} satisfies ChartConfig;
-
-const VIEW_INFO: Record<ViewMode, string> = {
-  realtime:
-    "Real-time ping results from the last 50 seconds. Each bar represents a single ping.",
-  hourly: "Hourly averages of latency and packet loss over the last 24 hours.",
-  twelvehour: "12-hour period averages of latency and packet loss.",
-  daily: "Daily averages of latency and packet loss.",
-};
-
-const EMPTY_MESSAGES: Record<ViewMode, string> = {
-  realtime: "No real-time data available.",
-  hourly: "No hourly data available.",
-  twelvehour: "No 12-hour data available.",
-  daily: "No daily data available.",
-};
 
 /** Max entries shown in the chart and table for real-time view */
 const REALTIME_LIMIT = 10;
@@ -180,12 +151,23 @@ export interface LatencyMonitoringData {
 }
 
 export function useLatencyMonitoring() {
+  const { t } = useTranslation("monitoring");
   const [viewMode, setViewMode] = useState<ViewMode>("realtime");
 
   const { data: modemStatus } = useModemStatus({ pollInterval: 5000 });
   const { data: pingHistory } = useLatencyHistory({
     enabled: viewMode !== "realtime",
   });
+
+  const emptyMessages = useMemo<Record<ViewMode, string>>(
+    () => ({
+      realtime: t("latency.empty_realtime"),
+      hourly: t("latency.empty_hourly"),
+      twelvehour: t("latency.empty_12hour"),
+      daily: t("latency.empty_daily"),
+    }),
+    [t],
+  );
 
   const realtimeData = useMemo<RealtimeDataPoint[]>(() => {
     if (!modemStatus?.connectivity) return [];
@@ -266,10 +248,10 @@ export function useLatencyMonitoring() {
 
     return {
       entries,
-      emptyMessage: EMPTY_MESSAGES[viewMode],
+      emptyMessage: emptyMessages[viewMode],
       isRealtime,
     };
-  }, [viewMode, realtimeData, hourlyData, twelveHourData, dailyData]);
+  }, [viewMode, realtimeData, hourlyData, twelveHourData, dailyData, emptyMessages]);
 
   return { viewMode, setViewMode, chartData, total, tableData };
 }
@@ -291,16 +273,41 @@ const LatencyMonitoringCard = ({
   chartData,
   total,
 }: LatencyMonitoringCardProps) => {
+  const { t } = useTranslation("monitoring");
   const [activeChart, setActiveChart] = useState<"latency" | "packet_loss">(
     "latency",
+  );
+
+  const chartConfig = useMemo<ChartConfig>(
+    () => ({
+      latency: {
+        label: t("latency.chart_label_latency"),
+        color: "var(--chart-3)",
+      },
+      packet_loss: {
+        label: t("latency.chart_label_packet_loss"),
+        color: "var(--chart-6)",
+      },
+    }),
+    [t],
+  );
+
+  const viewInfo = useMemo<Record<ViewMode, string>>(
+    () => ({
+      realtime: t("latency.view_info_realtime"),
+      hourly: t("latency.view_info_hourly"),
+      twelvehour: t("latency.view_info_12hour"),
+      daily: t("latency.view_info_daily"),
+    }),
+    [t],
   );
 
   return (
     <Card>
       <CardHeader className="flex flex-col items-stretch border-b p-0 sm:flex-row">
         <div className="flex flex-1 flex-col justify-center gap-1 px-6 pt-4 pb-3 sm:py-6">
-          <CardTitle>Internet Quality Monitor</CardTitle>
-          <CardDescription>{VIEW_INFO[viewMode]}</CardDescription>
+          <CardTitle>{t("latency.card_title")}</CardTitle>
+          <CardDescription>{viewInfo[viewMode]}</CardDescription>
         </div>
         <div className="flex">
           {(["latency", "packet_loss"] as const).map((key) => (
@@ -308,7 +315,7 @@ const LatencyMonitoringCard = ({
               key={key}
               type="button"
               aria-pressed={activeChart === key}
-              aria-label={`Show ${chartConfig[key].label} chart`}
+              aria-label={`${t("latency.card_title")} — ${chartConfig[key].label}`}
               data-active={activeChart === key}
               className="data-[active=true]:bg-muted/50 relative z-30 flex flex-1 flex-col justify-center gap-1 border-t px-6 py-4 text-left even:border-l sm:border-t-0 sm:border-l sm:px-8 sm:py-6"
               onClick={() => setActiveChart(key)}
@@ -339,10 +346,10 @@ const LatencyMonitoringCard = ({
           onValueChange={(value) => setViewMode(value as ViewMode)}
         >
           <TabsList>
-            <TabsTrigger value="realtime">Real Time</TabsTrigger>
-            <TabsTrigger value="hourly">Hourly</TabsTrigger>
-            <TabsTrigger value="twelvehour">12 Hours</TabsTrigger>
-            <TabsTrigger value="daily">Daily</TabsTrigger>
+            <TabsTrigger value="realtime">{t("latency.tab_realtime")}</TabsTrigger>
+            <TabsTrigger value="hourly">{t("latency.tab_hourly")}</TabsTrigger>
+            <TabsTrigger value="twelvehour">{t("latency.tab_12hour")}</TabsTrigger>
+            <TabsTrigger value="daily">{t("latency.tab_daily")}</TabsTrigger>
           </TabsList>
         </Tabs>
         <ChartContainer

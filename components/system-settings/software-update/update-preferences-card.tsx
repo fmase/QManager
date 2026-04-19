@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from "react";
-import { motion, type Variants } from "motion/react";
+import { useTranslation, Trans } from "react-i18next";
+import { motion } from "motion/react";
+import { containerVariants, itemVariants } from "@/lib/motion";
 import {
   Card,
   CardContent,
@@ -12,7 +14,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
+import { Field, FieldLabel } from "@/components/ui/field";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -53,16 +55,6 @@ interface UpdatePreferencesCardProps {
 
 const AUTO_UPDATE_DEBOUNCE = 800;
 
-const containerVariants: Variants = {
-  hidden: {},
-  visible: { transition: { staggerChildren: 0.06 } },
-};
-
-const itemVariants: Variants = {
-  hidden: { opacity: 0, y: 8 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.25, ease: "easeOut" } },
-};
-
 export function UpdatePreferencesCard({
   updateInfo,
   isLoading,
@@ -72,6 +64,7 @@ export function UpdatePreferencesCard({
   togglePrerelease,
   saveAutoUpdate,
 }: UpdatePreferencesCardProps) {
+  const { t } = useTranslation("system-settings");
   const [showInstallDialog, setShowInstallDialog] = useState(false);
   const [selectedVersion, setSelectedVersion] = useState<string>("");
   const [prereleaseToggling, setPrereleaseToggling] = useState(false);
@@ -93,16 +86,16 @@ export function UpdatePreferencesCard({
         await togglePrerelease(checked);
         toast.success(
           checked
-            ? "Pre-release updates enabled"
-            : "Pre-release updates disabled",
+            ? t("software_update.toast_prerelease_enabled")
+            : t("software_update.toast_prerelease_disabled"),
         );
       } catch {
-        toast.error("Failed to update preference");
+        toast.error(t("software_update.toast_preference_failed"));
       } finally {
         setPrereleaseToggling(false);
       }
     },
-    [togglePrerelease],
+    [togglePrerelease, t],
   );
 
   const handleVersionInstall = useCallback(async () => {
@@ -111,9 +104,9 @@ export function UpdatePreferencesCard({
     try {
       await downloadUpdate(selectedVersion);
     } catch {
-      toast.error("Failed to start download");
+      toast.error(t("software_update.toast_download_failed"));
     }
-  }, [selectedVersion, downloadUpdate]);
+  }, [selectedVersion, downloadUpdate, t]);
 
   const handleAutoUpdateToggle = useCallback(
     async (checked: boolean) => {
@@ -121,15 +114,17 @@ export function UpdatePreferencesCard({
       try {
         await saveAutoUpdate(checked, autoUpdateTime);
         toast.success(
-          checked ? "Automatic updates enabled" : "Automatic updates disabled",
+          checked
+            ? t("software_update.toast_auto_update_enabled")
+            : t("software_update.toast_auto_update_disabled"),
         );
       } catch {
-        toast.error("Failed to update preference");
+        toast.error(t("software_update.toast_preference_failed"));
       } finally {
         setAutoUpdateToggling(false);
       }
     },
-    [saveAutoUpdate, autoUpdateTime],
+    [saveAutoUpdate, autoUpdateTime, t],
   );
 
   const handleAutoUpdateTimeChange = useCallback(
@@ -142,13 +137,13 @@ export function UpdatePreferencesCard({
       autoTimerRef.current = setTimeout(async () => {
         try {
           await saveAutoUpdate(true, newTime);
-          toast.success("Update schedule saved");
+          toast.success(t("software_update.toast_schedule_saved"));
         } catch {
-          toast.error("Failed to save schedule");
+          toast.error(t("software_update.toast_schedule_failed"));
         }
       }, AUTO_UPDATE_DEBOUNCE);
     },
-    [saveAutoUpdate, updateInfo?.auto_update_enabled],
+    [saveAutoUpdate, updateInfo?.auto_update_enabled, t],
   );
 
   // Clean up debounce timer
@@ -163,9 +158,9 @@ export function UpdatePreferencesCard({
     return (
       <Card className="@container/card">
         <CardHeader>
-          <CardTitle>Update Preferences</CardTitle>
+          <CardTitle>{t("software_update.prefs_card_title")}</CardTitle>
           <CardDescription>
-            Configure update channel and version management.
+            {t("software_update.prefs_card_description")}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -189,13 +184,16 @@ export function UpdatePreferencesCard({
     );
   }
 
+  const isReinstall = !!selectedVersion && selectedVersion === updateInfo?.current_version;
+  const currentVersion = updateInfo?.current_version ?? "";
+
   return (
     <>
       <Card className="@container/card">
         <CardHeader>
-          <CardTitle>Update Preferences</CardTitle>
+          <CardTitle>{t("software_update.prefs_card_title")}</CardTitle>
           <CardDescription>
-            Configure update channel and version management.
+            {t("software_update.prefs_card_description")}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -207,42 +205,34 @@ export function UpdatePreferencesCard({
           >
             {/* ── Pre-release toggle ──────────────────────────────── */}
             <Separator />
-            <motion.div variants={itemVariants} className="flex items-center justify-between">
-              <p className="font-semibold text-muted-foreground text-sm">
-                Include pre-releases
-              </p>
-              <div className="flex items-center space-x-2">
+            <motion.div variants={itemVariants}>
+              <Field orientation="horizontal">
+                <FieldLabel htmlFor="include-prerelease">
+                  {t("software_update.prerelease_label")}
+                </FieldLabel>
                 <Switch
                   id="include-prerelease"
                   checked={updateInfo?.include_prerelease ?? false}
                   onCheckedChange={handleTogglePrerelease}
                   disabled={prereleaseToggling || isUpdating}
                 />
-                <Label htmlFor="include-prerelease">
-                  {updateInfo?.include_prerelease ? "Enabled" : "Disabled"}
-                </Label>
-              </div>
+              </Field>
             </motion.div>
 
             {/* ── Automatic updates ─────────────────────────────── */}
             <Separator />
-            <motion.div variants={itemVariants} className="flex flex-col gap-2">
-              <div className="flex items-center justify-between">
-                <p className="font-semibold text-muted-foreground text-sm">
-                  Automatic updates
-                </p>
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    id="auto-update"
-                    checked={updateInfo?.auto_update_enabled ?? false}
-                    onCheckedChange={handleAutoUpdateToggle}
-                    disabled={autoUpdateToggling || isUpdating}
-                  />
-                  <Label htmlFor="auto-update">
-                    {updateInfo?.auto_update_enabled ? "Enabled" : "Disabled"}
-                  </Label>
-                </div>
-              </div>
+            <motion.div variants={itemVariants}>
+              <Field orientation="horizontal">
+                <FieldLabel htmlFor="auto-update">
+                  {t("software_update.auto_update_label")}
+                </FieldLabel>
+                <Switch
+                  id="auto-update"
+                  checked={updateInfo?.auto_update_enabled ?? false}
+                  onCheckedChange={handleAutoUpdateToggle}
+                  disabled={autoUpdateToggling || isUpdating}
+                />
+              </Field>
             </motion.div>
 
             {/* Time Configuration for Automatic Updates */}
@@ -251,17 +241,16 @@ export function UpdatePreferencesCard({
                 <Separator />
                 <motion.div variants={itemVariants} className="flex flex-col gap-2">
                   <p className="font-semibold text-sm">
-                    Update Installation Time
+                    {t("software_update.update_time_title")}
                   </p>
 
                   <div className="flex flex-col @sm/card:flex-row @sm/card:items-center gap-2 @sm/card:justify-between rounded-lg border bg-muted/50 p-3">
                     <div className="flex flex-col gap-0.5 min-w-0">
-                      <span className="text-xs text-muted-foreground">
-                        Update at
-                      </span>
+                      <label htmlFor="auto-update-time" className="text-xs font-medium text-muted-foreground">
+                        {t("software_update.update_at_label")}
+                      </label>
                       <p className="text-xs text-muted-foreground">
-                        Checks for updates and installs automatically. The
-                        device will reboot if an update is found.
+                        {t("software_update.update_at_description")}
                       </p>
                     </div>
                     <Input
@@ -272,7 +261,7 @@ export function UpdatePreferencesCard({
                         handleAutoUpdateTimeChange(e.target.value)
                       }
                       disabled={isUpdating || autoUpdateToggling}
-                      aria-label="Automatic update time"
+                      aria-label={t("software_update.update_time_aria")}
                       className="w-28 shrink-0"
                     />
                   </div>
@@ -283,10 +272,10 @@ export function UpdatePreferencesCard({
             {/* ── Version Management ──────────────────────────────── */}
             <Separator />
             <motion.div variants={itemVariants} className="flex flex-col gap-2">
-              <p className="font-semibold text-sm">Version Management</p>
+              <p className="font-semibold text-sm">{t("software_update.version_mgmt_title")}</p>
               <div className="flex flex-col gap-2 rounded-lg border bg-muted/50 p-3">
                 <span className="text-xs text-muted-foreground">
-                  Select a version to install, reinstall, or rollback.
+                  {t("software_update.version_select_hint")}
                 </span>
                 <div className="flex items-center gap-2">
                   <Select
@@ -294,8 +283,8 @@ export function UpdatePreferencesCard({
                     onValueChange={setSelectedVersion}
                     disabled={isUpdating || isDownloading}
                   >
-                    <SelectTrigger className="flex-1" aria-label="Select version to install">
-                      <SelectValue placeholder="Select version..." />
+                    <SelectTrigger className="flex-1" aria-label={t("software_update.version_select_aria")}>
+                      <SelectValue placeholder={t("software_update.version_placeholder")} />
                     </SelectTrigger>
                     <SelectContent>
                       {(updateInfo?.available_versions ?? []).map((v) => (
@@ -308,11 +297,11 @@ export function UpdatePreferencesCard({
                             <span>{v.tag}</span>
                             {v.is_current ? (
                               <span className="text-[10px] font-medium text-primary bg-primary/10 px-1.5 py-0.5 rounded">
-                                current
+                                {t("software_update.version_current_tag")}
                               </span>
                             ) : !v.has_assets ? (
                               <span className="text-[10px] text-muted-foreground">
-                                no binary
+                                {t("software_update.version_no_binary_tag")}
                               </span>
                             ) : v.asset_size ? (
                               <span className="text-[10px] text-muted-foreground">
@@ -332,7 +321,7 @@ export function UpdatePreferencesCard({
                     className="shrink-0"
                   >
                     <DownloadIcon className="size-4" />
-                    Install
+                    {t("software_update.install_button")}
                   </Button>
                 </div>
               </div>
@@ -349,33 +338,40 @@ export function UpdatePreferencesCard({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {selectedVersion === updateInfo?.current_version
-                ? "Reinstall Current Version"
-                : `Install ${selectedVersion}`}
+              {isReinstall
+                ? t("software_update.install_dialog_reinstall_title")
+                : t("software_update.install_dialog_install_title", { version: selectedVersion })}
             </AlertDialogTitle>
-            <AlertDialogDescription>
-              {selectedVersion === updateInfo?.current_version ? (
-                <>
-                  This will reinstall <strong>{selectedVersion}</strong> to repair the
-                  current installation. The device will reboot after installation.
-                </>
-              ) : (
-                <>
-                  This will install <strong>{selectedVersion}</strong>, replacing the
-                  current version (<strong>{updateInfo?.current_version}</strong>).
-                  The device will reboot after installation.
-                </>
-              )}
-              {" "}Do not power off the device during this process.
+            <AlertDialogDescription asChild>
+              <div>
+                <p>
+                  {isReinstall ? (
+                    <Trans
+                      i18nKey="software_update.install_dialog_reinstall_description"
+                      ns="system-settings"
+                      values={{ version: selectedVersion }}
+                      components={{ strong: <strong /> }}
+                    />
+                  ) : (
+                    <Trans
+                      i18nKey="software_update.install_dialog_install_description"
+                      ns="system-settings"
+                      values={{ version: selectedVersion, current: currentVersion }}
+                      components={{ strong: <strong /> }}
+                    />
+                  )}
+                </p>
+                <p>{t("software_update.install_dialog_do_not_power_off")}</p>
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t("actions.cancel", { ns: "common" })}</AlertDialogCancel>
             <AlertDialogAction onClick={handleVersionInstall}>
               <DownloadIcon className="size-4" />
-              {selectedVersion === updateInfo?.current_version
-                ? "Reinstall Now"
-                : "Install Now"}
+              {isReinstall
+                ? t("software_update.install_dialog_reinstall_now")
+                : t("software_update.install_dialog_install_now")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useEffect, useMemo, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { authFetch } from "@/lib/auth-fetch";
 
 import { CartesianGrid, Line, LineChart, XAxis } from "recharts";
@@ -58,18 +59,23 @@ interface LiveLatencyComponentProps {
   isLoading: boolean;
 }
 
-const chartConfig = {
-  latency: {
-    label: "Latency",
-    color: "var(--chart-1)",
-  },
-  packetloss: {
-    label: "Packetloss",
-    color: "var(--chart-2)",
-  },
-} satisfies ChartConfig;
-
 const LiveLatencyComponent = ({ connectivity }: LiveLatencyComponentProps) => {
+  const { t } = useTranslation("dashboard");
+
+  const chartConfig = useMemo<ChartConfig>(
+    () => ({
+      latency: {
+        label: t("latency.chart_latency"),
+        color: "var(--chart-1)",
+      },
+      packetloss: {
+        label: t("latency.chart_packetloss"),
+        color: "var(--chart-2)",
+      },
+    }),
+    [t],
+  );
+
   const [speedtestOpen, setSpeedtestOpen] = useState(false);
   const [cachedResult, setCachedResult] = useState<SpeedtestFinalResult | null>(
     null,
@@ -151,7 +157,7 @@ const LiveLatencyComponent = ({ connectivity }: LiveLatencyComponentProps) => {
   // Build the footer description from cached result
   const footerDescription = useMemo(() => {
     if (!cachedResult) {
-      return "Start a speed test to measure your current network speed.";
+      return t("speedtest.idle_description");
     }
     const dl = formatSpeed(cachedResult.download.bandwidth);
     const ul = formatSpeed(cachedResult.upload.bandwidth);
@@ -159,7 +165,7 @@ const LiveLatencyComponent = ({ connectivity }: LiveLatencyComponentProps) => {
     return (
       <div className="flex items-center gap-x-3">
         <p className="font-medium text-sm text-muted-foreground xl:mr-2 mr-0">
-          Speedtest result:
+          {t("speedtest.result_label")}
         </p>
         <div className="flex items-center gap-x-0.5">
           <TbCircleArrowDownFilled className="text-info size-5" />
@@ -178,7 +184,7 @@ const LiveLatencyComponent = ({ connectivity }: LiveLatencyComponentProps) => {
       <Card className="@container/card">
         <CardHeader className="-mb-4">
           <CardTitle className="text-lg font-semibold">
-            Live Latency and Speed Test
+            {t("latency.title")}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -246,14 +252,14 @@ const LiveLatencyComponent = ({ connectivity }: LiveLatencyComponentProps) => {
           <div className="flex w-full items-start gap-2 text-sm">
             <div className="grid gap-2">
               <div className="flex items-center gap-2 leading-none font-medium">
-                Speed Test
+                {t("speedtest.section_label")}
               </div>
               <div className="text-muted-foreground flex items-center gap-2 leading-none">
                 <Button
                   variant="default"
                   size="icon-sm"
                   className="p-0.5 rounded-full"
-                  aria-label="Start speed test"
+                  aria-label={t("speedtest.start_button_aria")}
                   onClick={handleSpeedtestOpen}
                 >
                   <TbPlayerPlayFilled className="size-4" />

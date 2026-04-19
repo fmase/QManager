@@ -2,21 +2,36 @@
 # =============================================================================
 # vpn_firewall.sh — Shared VPN Firewall & Routing Management
 # =============================================================================
-# Sourced by VPN CGI scripts (tailscale.sh, netbird.sh) to:
-#   1. Create/remove fw4 firewall zones for VPN interfaces
-#   2. Add/remove mwan3 ipset exception for VPN CGNAT range
+# Sourced by VPN CGI scripts (tailscale.sh, netbird.sh) and the boot-time
+# self-heal init script (qmanager_vpn_zone) to:
+#   1. Create/remove fw4 firewall zones for VPN interfaces (UCI-persistent)
+#   2. Add/remove the VPN CGNAT range to mwan3's connected-routes ipset
+#      (ephemeral — must be re-applied on every install AND every boot)
 #
-# Without the zone, fw4's default DROP policy blocks inbound VPN traffic.
-# Without the ipset exception, mwan3 marks VPN reply packets for WAN routing
-# instead of sending them back through the VPN tunnel.
+# Why both pieces are required:
+#   - fw4's default input policy is DROP, and its input chain only jumps on
+#     iifname matches (lo, br-lan, rmnet_data0, mhi_swip0). Without an explicit
+#     zone for tailscale0 / wt0, inbound packets on the VPN interface fall
+#     through to the policy and are silently dropped.
+#   - mwan3 marks outbound traffic for WAN egress unless its source/dest is in
+#     mwan3_connected_ipv4. mwan3 only auto-scans connected routes at startup,
+#     and the VPN interfaces (tailscale0 / wt0) are not UCI-managed netifd
+#     interfaces, so mwan3 does NOT pick them up via hotplug when the daemon
+#     comes up later. On a fresh VPN install, the modem's reply packets to
+#     100.x peers get marked for WAN egress and never make it back through
+#     the tunnel — symptom: tailscale ping works (TS protocol), regular IP
+#     ping/SSH/HTTPS time out. The explicit ipset add fixes this.
 #
-# Zones persist across reboots (UCI config). The ipset entry is ephemeral
-# and must be re-applied on each service start.
+# Persistence:
+#   Zones live in UCI (/etc/config/firewall) and survive reboot. The mwan3
+#   ipset entry is in-kernel only and is cleared on every reboot, so the
+#   boot self-heal must re-add it. The ensure functions are idempotent.
 #
 # Usage:
 #   . /usr/lib/qmanager/vpn_firewall.sh
 #   vpn_fw_ensure_zone "tailscale" "tailscale0"
 #   vpn_fw_remove_zone "tailscale"
+#   vpn_fw_zone_exists "tailscale"   # exit 0 if exists, 1 otherwise
 # =============================================================================
 
 [ -n "$_VPN_FW_LOADED" ] && return 0
@@ -27,6 +42,9 @@ _VPN_FW_LOADED=1
     qlog_info()  { :; }
     qlog_error() { :; }
 }
+
+# Tailscale CGNAT range (RFC 6598). Both Tailscale and Netbird use this range.
+VPN_CGNAT_RANGE="100.64.0.0/10"
 
 # -----------------------------------------------------------------------------
 # vpn_fw_zone_exists <zone_name>
@@ -43,8 +61,60 @@ vpn_fw_zone_exists() {
 }
 
 # -----------------------------------------------------------------------------
+# vpn_fw_ensure_mwan3_exception
+#   Adds the VPN CGNAT range (100.64.0.0/10) to the mwan3_connected_ipv4
+#   ipset so mwan3 skips marking VPN-bound traffic. Without this, mwan3 marks
+#   reply packets from the modem for WAN egress and they never reach the VPN
+#   tunnel.
+#   Idempotent — safe to call multiple times. Ephemeral (cleared on reboot),
+#   so must be called on every install AND on every boot.
+# -----------------------------------------------------------------------------
+vpn_fw_ensure_mwan3_exception() {
+    if ! command -v ipset >/dev/null 2>&1; then
+        qlog_info "ipset not available, skipping mwan3 exception"
+        return 0
+    fi
+
+    # Check if the ipset exists (mwan3 may not be installed)
+    if ! ipset list mwan3_connected_ipv4 >/dev/null 2>&1; then
+        qlog_info "mwan3_connected_ipv4 ipset not found, skipping"
+        return 0
+    fi
+
+    # Check if already present
+    if ipset test mwan3_connected_ipv4 "$VPN_CGNAT_RANGE" 2>/dev/null; then
+        qlog_info "mwan3 exception for $VPN_CGNAT_RANGE already present"
+        return 0
+    fi
+
+    ipset add mwan3_connected_ipv4 "$VPN_CGNAT_RANGE" 2>/dev/null
+    qlog_info "Added $VPN_CGNAT_RANGE to mwan3_connected_ipv4 ipset"
+    return 0
+}
+
+# -----------------------------------------------------------------------------
+# vpn_fw_remove_mwan3_exception
+#   Removes the VPN CGNAT range from mwan3 ipset. Only called when BOTH
+#   VPNs are being removed (if either is still installed, keep the exception).
+# -----------------------------------------------------------------------------
+vpn_fw_remove_mwan3_exception() {
+    if ! command -v ipset >/dev/null 2>&1; then
+        return 0
+    fi
+
+    if ! ipset list mwan3_connected_ipv4 >/dev/null 2>&1; then
+        return 0
+    fi
+
+    ipset del mwan3_connected_ipv4 "$VPN_CGNAT_RANGE" 2>/dev/null
+    qlog_info "Removed $VPN_CGNAT_RANGE from mwan3_connected_ipv4 ipset"
+    return 0
+}
+
+# -----------------------------------------------------------------------------
 # vpn_fw_ensure_zone <zone_name> <device>
 #   Idempotent: creates firewall zone + forwarding rules if they don't exist.
+#   Always re-asserts the mwan3 exception (ephemeral, lost on reboot).
 #   Zone: input=ACCEPT, output=ACCEPT, forward=ACCEPT, device=<device>
 #   Forwarding: <zone>→lan and lan→<zone>
 # -----------------------------------------------------------------------------
@@ -94,61 +164,11 @@ vpn_fw_ensure_zone() {
 }
 
 # -----------------------------------------------------------------------------
-# vpn_fw_ensure_mwan3_exception
-#   Adds the VPN CGNAT range (100.64.0.0/10) to the mwan3_connected_ipv4
-#   ipset so mwan3 skips marking VPN-bound traffic. Without this, mwan3
-#   marks reply packets for WAN routing and they never reach the VPN tunnel.
-#   Idempotent — safe to call multiple times. Ephemeral (cleared on reboot),
-#   so must be called on every service start.
-# -----------------------------------------------------------------------------
-VPN_CGNAT_RANGE="100.64.0.0/10"
-
-vpn_fw_ensure_mwan3_exception() {
-    if ! command -v ipset >/dev/null 2>&1; then
-        qlog_info "ipset not available, skipping mwan3 exception"
-        return 0
-    fi
-
-    # Check if the ipset exists (mwan3 may not be installed)
-    if ! ipset list mwan3_connected_ipv4 >/dev/null 2>&1; then
-        qlog_info "mwan3_connected_ipv4 ipset not found, skipping"
-        return 0
-    fi
-
-    # Check if already present
-    if ipset test mwan3_connected_ipv4 "$VPN_CGNAT_RANGE" 2>/dev/null; then
-        qlog_info "mwan3 exception for $VPN_CGNAT_RANGE already present"
-        return 0
-    fi
-
-    ipset add mwan3_connected_ipv4 "$VPN_CGNAT_RANGE" 2>/dev/null
-    qlog_info "Added $VPN_CGNAT_RANGE to mwan3_connected_ipv4 ipset"
-    return 0
-}
-
-# -----------------------------------------------------------------------------
-# vpn_fw_remove_mwan3_exception
-#   Removes the VPN CGNAT range from mwan3 ipset. Only called when BOTH
-#   VPNs are being removed (if either is still installed, keep the exception).
-# -----------------------------------------------------------------------------
-vpn_fw_remove_mwan3_exception() {
-    if ! command -v ipset >/dev/null 2>&1; then
-        return 0
-    fi
-
-    if ! ipset list mwan3_connected_ipv4 >/dev/null 2>&1; then
-        return 0
-    fi
-
-    ipset del mwan3_connected_ipv4 "$VPN_CGNAT_RANGE" 2>/dev/null
-    qlog_info "Removed $VPN_CGNAT_RANGE from mwan3_connected_ipv4 ipset"
-    return 0
-}
-
-# -----------------------------------------------------------------------------
 # vpn_fw_remove_zone <zone_name>
 #   Removes the firewall zone and all associated forwarding rules.
 #   Deletes forwarding indices in reverse order to avoid index shifting.
+#   Removes the mwan3 ipset exception only if the OTHER VPN is also not
+#   installed (both VPNs share the same CGNAT range).
 # -----------------------------------------------------------------------------
 vpn_fw_remove_zone() {
     local zone_name="$1"
@@ -216,6 +236,8 @@ vpn_fw_remove_zone() {
 # -----------------------------------------------------------------------------
 # vpn_check_other_installed <binary_name>
 #   Echoes "true" if the given binary is found, "false" otherwise.
+#   Emitted as a JSON literal — consumed by VPN CGI GET handlers via
+#   jq --argjson to report whether the "other" VPN is present.
 # -----------------------------------------------------------------------------
 vpn_check_other_installed() {
     if command -v "$1" >/dev/null 2>&1; then

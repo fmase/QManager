@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { motion, type Variants } from "motion/react";
+import { motion } from "motion/react";
+import { containerVariants, itemVariants } from "@/lib/motion";
 import { toast } from "sonner";
 
 import {
@@ -26,25 +27,14 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { TbInfoCircleFilled } from "react-icons/tb";
 import { AlertTriangleIcon, CircleIcon } from "lucide-react";
 
+import { useTranslation } from "react-i18next";
+
 import type {
   UseSystemSettingsReturn,
   SaveScheduledRebootPayload,
   SaveLowPowerPayload,
 } from "@/hooks/use-system-settings";
 import type { ScheduleConfig, LowPowerConfig } from "@/types/system-settings";
-import { DAY_LABELS } from "@/types/system-settings";
-
-// ─── Animation variants ────────────────────────────────────────────────────
-
-const containerVariants: Variants = {
-  hidden: {},
-  visible: { transition: { staggerChildren: 0.06 } },
-};
-
-const itemVariants: Variants = {
-  hidden: { opacity: 0, y: 8 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.25, ease: "easeOut" } },
-};
 
 type ScheduledOperationsCardProps = Pick<
   UseSystemSettingsReturn,
@@ -64,6 +54,18 @@ const ScheduledOperationsCard = ({
   saveScheduledReboot,
   saveLowPower,
 }: ScheduledOperationsCardProps) => {
+  const { t } = useTranslation("system-settings");
+
+  const dayLabels = [
+    t("scheduled_operations.day_sun"),
+    t("scheduled_operations.day_mon"),
+    t("scheduled_operations.day_tue"),
+    t("scheduled_operations.day_wed"),
+    t("scheduled_operations.day_thu"),
+    t("scheduled_operations.day_fri"),
+    t("scheduled_operations.day_sat"),
+  ];
+
   // ─── Scheduled Reboot local state ──────────────────────────────────────────
   const [rebootEnabled, setRebootEnabled] = useState(false);
   const [rebootTime, setRebootTime] = useState("04:00");
@@ -114,13 +116,13 @@ const ScheduledOperationsCard = ({
       rebootSaveTimerRef.current = setTimeout(async () => {
         const success = await saveScheduledReboot(payload);
         if (success) {
-          toast.success("Reboot schedule saved");
+          toast.success(t("scheduled_operations.reboot_toast_saved"));
         } else {
-          toast.error("Failed to save reboot schedule");
+          toast.error(t("scheduled_operations.reboot_toast_save_failed"));
         }
       }, 800);
     },
-    [saveScheduledReboot],
+    [saveScheduledReboot, t],
   );
 
   const debouncedLpSave = useCallback(
@@ -131,13 +133,13 @@ const ScheduledOperationsCard = ({
       lpSaveTimerRef.current = setTimeout(async () => {
         const success = await saveLowPower(payload);
         if (success) {
-          toast.success("Low power schedule saved");
+          toast.success(t("scheduled_operations.low_power_toast_saved"));
         } else {
-          toast.error("Failed to save low power schedule");
+          toast.error(t("scheduled_operations.low_power_toast_save_failed"));
         }
       }, 800);
     },
-    [saveLowPower],
+    [saveLowPower, t],
   );
 
   // ===========================================================================
@@ -159,12 +161,12 @@ const ScheduledOperationsCard = ({
     if (success) {
       toast.success(
         checked
-          ? "Scheduled reboot enabled"
-          : "Scheduled reboot disabled",
+          ? t("scheduled_operations.reboot_toast_enabled")
+          : t("scheduled_operations.reboot_toast_disabled"),
       );
     } else {
       setRebootEnabled(!checked);
-      toast.error("Failed to update reboot schedule");
+      toast.error(t("scheduled_operations.reboot_toast_update_failed"));
     }
   };
 
@@ -216,12 +218,12 @@ const ScheduledOperationsCard = ({
     if (success) {
       toast.success(
         checked
-          ? "Low power mode enabled"
-          : "Low power mode disabled",
+          ? t("scheduled_operations.low_power_toast_enabled")
+          : t("scheduled_operations.low_power_toast_disabled"),
       );
     } else {
       setLpEnabled(!checked);
-      toast.error("Failed to update low power schedule");
+      toast.error(t("scheduled_operations.low_power_toast_update_failed"));
     }
   };
 
@@ -276,9 +278,9 @@ const ScheduledOperationsCard = ({
     return (
       <Card className="@container/card">
         <CardHeader>
-          <CardTitle>Scheduled Operations</CardTitle>
+          <CardTitle>{t("scheduled_operations.card_title")}</CardTitle>
           <CardDescription>
-            Set up automated system tasks on a schedule.
+            {t("scheduled_operations.card_description")}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -324,9 +326,9 @@ const ScheduledOperationsCard = ({
     return (
       <Card className="@container/card">
         <CardHeader>
-          <CardTitle>Scheduled Operations</CardTitle>
+          <CardTitle>{t("scheduled_operations.card_title")}</CardTitle>
           <CardDescription>
-            Set up automated system tasks on a schedule.
+            {t("scheduled_operations.card_description")}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -342,9 +344,9 @@ const ScheduledOperationsCard = ({
   return (
     <Card className="@container/card">
       <CardHeader>
-        <CardTitle>Scheduled Operations</CardTitle>
+        <CardTitle>{t("scheduled_operations.card_title")}</CardTitle>
         <CardDescription>
-          Set up automated system tasks on a schedule.
+          {t("scheduled_operations.card_description")}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -355,13 +357,13 @@ const ScheduledOperationsCard = ({
           animate="visible"
         >
           {/* ─── Section A: Scheduled Reboot ─────────────────────────────── */}
-          <motion.p variants={itemVariants} className="font-semibold text-sm">Scheduled Reboot</motion.p>
+          <motion.p variants={itemVariants} className="font-semibold text-sm">{t("scheduled_operations.reboot_section_title")}</motion.p>
           <Separator />
 
           {/* Enable toggle */}
           <motion.div variants={itemVariants} className="flex items-center justify-between">
             <p className="font-semibold text-muted-foreground text-sm">
-              Enable Scheduled Reboot
+              {t("scheduled_operations.reboot_enable_label")}
             </p>
             <div className="flex items-center space-x-2">
               <Switch
@@ -370,7 +372,7 @@ const ScheduledOperationsCard = ({
                 onCheckedChange={handleRebootEnabledChange}
               />
               <Label htmlFor="scheduled-reboot">
-                {rebootEnabled ? "Enabled" : "Disabled"}
+                {rebootEnabled ? t("state.enabled", { ns: "common" }) : t("state.disabled", { ns: "common" })}
               </Label>
             </div>
           </motion.div>
@@ -379,7 +381,7 @@ const ScheduledOperationsCard = ({
           {/* Reboot Time */}
           <motion.div variants={itemVariants} className="flex items-center justify-between mt-4">
             <Label className="font-semibold text-muted-foreground text-sm">
-              Reboot Time
+              {t("scheduled_operations.reboot_time_label")}
             </Label>
             <Input
               type="time"
@@ -393,14 +395,14 @@ const ScheduledOperationsCard = ({
           {/* Repeat On (reboot) */}
           <motion.fieldset variants={itemVariants} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-4">
             <legend className="font-semibold text-muted-foreground text-sm">
-              Repeat On
+              {t("scheduled_operations.reboot_repeat_label")}
             </legend>
             <div
-              className="flex flex-wrap gap-2"
+              className="flex flex-wrap gap-2 mt-2"
               role="group"
-              aria-label="Reboot days of the week"
+              aria-label={t("scheduled_operations.reboot_repeat_aria")}
             >
-              {DAY_LABELS.map((day, index) => (
+              {dayLabels.map((day, index) => (
                 <Toggle
                   aria-label={day}
                   key={day}
@@ -427,27 +429,23 @@ const ScheduledOperationsCard = ({
                 <button
                   type="button"
                   className="inline-flex"
-                  aria-label="Low power mode info"
+                  aria-label={t("scheduled_operations.low_power_info_aria")}
                 >
                   <TbInfoCircleFilled className="size-5 text-info" />
                 </button>
               </TooltipTrigger>
               <TooltipContent>
-                <p>
-                  Disables the modem radio during the scheduled window. <br />
-                  Watchdog, email alerts, and network events are automatically <br />
-                  suspended for the duration.
-                </p>
+                <p>{t("scheduled_operations.low_power_tooltip")}</p>
               </TooltipContent>
             </Tooltip>
-            <p className="font-semibold text-sm">Low Power Mode</p>
+            <p className="font-semibold text-sm">{t("scheduled_operations.low_power_section_title")}</p>
           </motion.div>
           <Separator />
 
           {/* Enable toggle */}
           <motion.div variants={itemVariants} className="flex items-center justify-between">
             <p className="font-semibold text-muted-foreground text-sm">
-              Enable Low Power Mode
+              {t("scheduled_operations.low_power_enable_label")}
             </p>
             <div className="flex items-center space-x-2">
               <Switch
@@ -456,7 +454,7 @@ const ScheduledOperationsCard = ({
                 onCheckedChange={handleLpEnabledChange}
               />
               <Label htmlFor="low-power-mode">
-                {lpEnabled ? "Enabled" : "Disabled"}
+                {lpEnabled ? t("state.enabled", { ns: "common" }) : t("state.disabled", { ns: "common" })}
               </Label>
             </div>
           </motion.div>
@@ -466,7 +464,7 @@ const ScheduledOperationsCard = ({
           <motion.div variants={itemVariants} className="flex flex-col gap-4 mt-4">
             <div className="flex items-center justify-between">
               <Label className="font-semibold text-muted-foreground text-sm">
-                Start Time
+                {t("scheduled_operations.low_power_start_label")}
               </Label>
               <Input
                 type="time"
@@ -479,7 +477,7 @@ const ScheduledOperationsCard = ({
             {/* End Time */}
             <div className="flex items-center justify-between">
               <Label className="font-semibold text-muted-foreground text-sm">
-                End Time
+                {t("scheduled_operations.low_power_end_label")}
               </Label>
               <Input
                 type="time"
@@ -494,14 +492,14 @@ const ScheduledOperationsCard = ({
           {/* Repeat On (low power) */}
           <motion.fieldset variants={itemVariants} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-4">
             <legend className="font-semibold text-muted-foreground text-sm">
-              Repeat On
+              {t("scheduled_operations.low_power_repeat_label")}
             </legend>
             <div
-              className="flex flex-wrap gap-2"
+              className="flex flex-wrap gap-2 mt-2"
               role="group"
-              aria-label="Low power mode days of the week"
+              aria-label={t("scheduled_operations.low_power_repeat_aria")}
             >
-              {DAY_LABELS.map((day, index) => (
+              {dayLabels.map((day, index) => (
                 <Toggle
                   aria-label={day}
                   key={day}

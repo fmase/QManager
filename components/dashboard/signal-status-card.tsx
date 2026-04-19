@@ -15,6 +15,7 @@ import {
   MdSignalCellularOff,
   MdOutlineSignalCellularConnectedNoInternet0Bar,
 } from "react-icons/md";
+import { useTranslation } from "react-i18next";
 
 import {
   RSRP_THRESHOLDS,
@@ -48,20 +49,36 @@ function getSignalBarIcon(quality: string) {
 }
 
 // --- Connection state display ---
-function getStateDisplay(state: string) {
+function getStateColor(state: string): string {
   switch (state) {
     case "connected":
-      return { color: "text-success", label: "Connected" };
+      return "text-success";
     case "disconnected":
-      return { color: "text-destructive", label: "Disconnected" };
+      return "text-destructive";
     case "searching":
-      return { color: "text-warning", label: "Searching" };
     case "limited":
-      return { color: "text-warning", label: "Limited Service" };
+      return "text-warning";
     case "inactive":
-      return { color: "text-muted-foreground", label: "Inactive" };
     default:
-      return { color: "text-muted-foreground", label: "Unknown" };
+      return "text-muted-foreground";
+  }
+}
+
+function getStateKey(state: string): string {
+  switch (state) {
+    case "connected":
+      return "signal_card.connected";
+    case "disconnected":
+      return "signal_card.disconnected";
+    case "searching":
+      return "signal_card.searching";
+    case "limited":
+    case "limited_service":
+      return "signal_card.limited_service";
+    case "inactive":
+      return "signal_card.inactive";
+    default:
+      return "signal_card.unknown";
   }
 }
 
@@ -89,7 +106,9 @@ export function SignalStatusCard({
   rows,
   isLoading,
 }: SignalStatusCardProps) {
-  const stateDisplay = getStateDisplay(state);
+  const { t } = useTranslation("dashboard");
+  const stateColor = getStateColor(state);
+  const stateLabel = t(getStateKey(state));
   const isInactive = state === "inactive";
   const signalQuality = getSignalQuality(rsrp, RSRP_THRESHOLDS);
 
@@ -134,14 +153,14 @@ export function SignalStatusCard({
         <div className="grid gap-4">
           <div className="flex items-center justify-between">
             <div className="grid gap-0.5">
-              <h3 className="text-sm font-semibold">Signal Strength</h3>
+              <h3 className="text-sm font-semibold">{t("signal_card.strength_heading")}</h3>
               <div className="flex items-center gap-x-1">
                 <FaCircle
-                  className={`${stateDisplay.color} w-2 h-2`}
+                  className={`${stateColor} w-2 h-2`}
                   aria-hidden
                 />
                 <p className="text-muted-foreground text-xs">
-                  {stateDisplay.label}
+                  {stateLabel}
                 </p>
               </div>
             </div>

@@ -114,8 +114,12 @@ fo_val=$(printf '%s' "$config_json" | jq -r '.failover.enabled' 2>/dev/null)
 # Check activation flag
 [ -f "$TOWER_FAILOVER_FLAG" ] && failover_activated="true"
 
-# Check watcher PID
-if [ -f "$TOWER_FAILOVER_PID" ]; then
+# Check watcher PID (must be live and match failover daemon command)
+if command -v tower_get_running_failover_pid >/dev/null 2>&1; then
+    if watcher_pid=$(tower_get_running_failover_pid); then
+        [ -n "$watcher_pid" ] && watcher_running="true"
+    fi
+elif [ -f "$TOWER_FAILOVER_PID" ]; then
     watcher_pid=$(cat "$TOWER_FAILOVER_PID" 2>/dev/null | tr -d ' \n\r')
     if [ -n "$watcher_pid" ] && kill -0 "$watcher_pid" 2>/dev/null; then
         watcher_running="true"

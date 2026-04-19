@@ -191,6 +191,18 @@ Downtime email alert logic (sourced by poller):
 - Alert triggering on recovery (not during downtime)
 - Log writing to `/tmp/qmanager_email_log.json`
 
+### sms_alerts.sh
+
+Downtime SMS alert logic (sourced by poller):
+- Config management (`/etc/qmanager/sms_alerts.json`; recipient stored as raw digits, no leading `+`)
+- Alert triggering during active downtime after threshold (pending path) and on recovery
+- `_sa_is_registered()` short-circuits on `conn_internet_available=true` so the recovery branch is never blocked by stale `lte_state`/`nr_state`
+- `check_sms_alert` skips entirely while `/tmp/qmanager_recovery_active` is set (mirrors `events.sh` recovery guard); downtime tracking state persists across the guard
+- `sms_tool send` runs under the shared `/var/lock/qmanager.lock` so it serializes against `qcmd`/`atcli_smd11`
+- Test-send helper for CGI (`send_test` action)
+- Log writing to `/tmp/qmanager_sms_log.json`
+- Failures are logged via `qlog_error` (full context: `modem_reachable`, `lte_state`, `nr_state`, `conn`, and the cleaned `sms_tool` stderr). No breadcrumb file.
+
 ### ethtool_helper.sh
 
 Ethernet negotiation helpers:
@@ -262,6 +274,7 @@ The core daemon — runs forever, polls the modem at tiered intervals.
 - Manage signal/ping history NDJSON files
 - Read ping daemon and watchcat status
 - Trigger email alerts on recovery via `email_alerts.sh`
+- Trigger SMS alerts during active outages via `sms_alerts.sh`
 
 **Tier System:**
 
@@ -317,6 +330,8 @@ On-demand cell scanning daemons started by CGI endpoints.
 ### qmanager_band_failover / qmanager_tower_failover
 
 Signal-based automatic failover daemons for bands and towers.
+
+Tower failover is an **explicit user toggle** (v0.1.18+) — applying a cell lock does not auto-enable the watcher. The user must flip the **Signal Failover** switch on the Tower Locking page for the daemon to spawn. Unlocking still stops and disables the daemon automatically. The init.d `stop()` escalates SIGTERM → 2 s wait → SIGKILL and always clears the PID file + activation flag, and `failover_status.sh` self-heals any orphan daemon it detects during the frontend's status poll.
 
 ### qmanager_tower_schedule
 
@@ -599,6 +614,8 @@ All auth endpoints set `_SKIP_AUTH=1`.
 |--------|--------|-------------|
 | `email_alerts.sh` | GET/POST | Email alert settings |
 | `email_alert_log.sh` | GET | Email alert history |
+| `sms_alerts.sh` | GET/POST | SMS alert settings + test send |
+| `sms_alert_log.sh` | GET | SMS alert history |
 | `watchdog.sh` | GET/POST | Watchdog settings and status |
 
 #### Device (`device/`)
@@ -639,6 +656,8 @@ All auth endpoints set `_SKIP_AUTH=1`.
 | `qmanager_pci_state.json` | poller (events) | SCC PCI tracking |
 | `qmanager_email_log.json` | poller (email) | Email log NDJSON |
 | `qmanager_email_reload` | CGI | Trigger file for config reload |
+| `qmanager_sms_log.json` | poller (sms) | SMS log NDJSON |
+| `qmanager_sms_reload` | CGI | Trigger file for SMS config reload |
 | `qmanager_low_power_active` | low_power | Low power mode flag (timestamp; suppresses events + alerts) |
 | `qmanager_watchcat.lock` | low_power | Watchdog pause lock (forces LOCKED state) |
 | `qmanager_dpi_install.json` | dpi_install | nfqws installer progress/result |
@@ -658,6 +677,7 @@ All auth endpoints set `_SKIP_AUTH=1`.
 | `tower_lock.json` | Tower lock configuration |
 | `band_lock.json` | Band lock configuration |
 | `imei_backup.json` | IMEI backup config (`{ enabled, imei }`) |
+| `sms_alerts.json` | SMS alert settings (`{ enabled, recipient_phone, threshold_minutes }`). `recipient_phone` is stored as raw digits with no leading `+` — the CGI save handler normalizes input before writing. |
 | `last_iccid` | Last seen SIM ICCID (for swap detection) |
 | `msmtprc` | Gmail SMTP config (chmod 600) |
 | `imei_check_pending` | Flag for boot-time IMEI check |

@@ -12,6 +12,10 @@ import { useModemStatus } from "@/hooks/use-modem-status";
 const TowerLockingComponent = () => {
   const tower = useTowerLocking();
   const { data: modemData } = useModemStatus();
+  const failoverConfig = tower.config?.failover ?? {
+    enabled: false,
+    threshold: 20,
+  };
 
   return (
     <div className="@container/main mx-auto p-2">
@@ -33,7 +37,7 @@ const TowerLockingComponent = () => {
                 toast.error("Settings unavailable — try refreshing the page");
                 return;
               }
-              tower.updateSettings(persist, tower.config.failover);
+              tower.updateSettings(persist, failoverConfig);
             }}
             onFailoverChange={(enabled) => {
               if (!tower.config) {
@@ -41,7 +45,7 @@ const TowerLockingComponent = () => {
                 return;
               }
               tower.updateSettings(tower.config.persist, {
-                ...tower.config.failover,
+                ...failoverConfig,
                 enabled,
               });
             }}
@@ -51,7 +55,7 @@ const TowerLockingComponent = () => {
                 return false;
               }
               return tower.updateSettings(tower.config.persist, {
-                ...tower.config.failover,
+                ...failoverConfig,
                 threshold,
               });
             }}

@@ -1,5 +1,8 @@
+"use client";
+
 import React from "react";
 import { Settings } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -24,6 +27,8 @@ export const ActiveConfigCard = ({
   onEdit,
   onActivate,
 }: ActiveConfigCardProps) => {
+  const { t } = useTranslation("cellular");
+
   if (!scenario) return null;
   const Icon = scenario.icon;
   const isCustom = !scenario.isDefault;
@@ -43,14 +48,16 @@ export const ActiveConfigCard = ({
               <Icon className="size-6" />
             </div>
             <div className="grid">
-              <h4 className="font-semibold">{scenario.name} Configuration</h4>
+              <h4 className="font-semibold">
+                {t("scenarios.active_config_card.configuration", { name: scenario.name })}
+              </h4>
               {isActivating ? (
                 <Badge
                   variant="outline"
                   className="bg-info/15 text-info hover:bg-info/20 border-info/30"
                 >
                   <Spinner className="h-2 w-2" />
-                  Applying…
+                  {t("state.applying", { ns: "common" })}
                 </Badge>
               ) : isActive ? (
                 <Badge
@@ -58,7 +65,7 @@ export const ActiveConfigCard = ({
                   className="bg-success/15 text-success hover:bg-success/20 border-success/30"
                 >
                   <div className="w-2 h-2 rounded-full bg-success" />
-                  Active
+                  {t("scenarios.active_config_card.status.active")}
                 </Badge>
               ) : (
                 <Badge
@@ -66,14 +73,19 @@ export const ActiveConfigCard = ({
                   className="bg-muted text-muted-foreground hover:bg-muted border-border"
                 >
                   <div className="w-2 h-2 rounded-full bg-muted-foreground/50" />
-                  Not Active
+                  {t("scenarios.active_config_card.status.not_active")}
                 </Badge>
               )}
             </div>
           </div>
           <div className="flex items-center gap-1">
             {isCustom && (
-              <Button variant="ghost" size="icon" aria-label="Edit scenario settings" onClick={onEdit}>
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label={t("scenarios.active_config_card.edit_aria")}
+                onClick={onEdit}
+              >
                 <Settings className="size-4" />
               </Button>
             )}
@@ -83,7 +95,7 @@ export const ActiveConfigCard = ({
                 onClick={onActivate}
                 className="gap-1.5"
               >
-                Activate
+                {t("scenarios.active_config_card.activate")}
               </Button>
             )}
           </div>
@@ -92,23 +104,29 @@ export const ActiveConfigCard = ({
         {/* Config Details */}
         <div className="grid gap-2">
           <Separator />
-          <ConfigRow label="Network Mode" value={scenario.config.mode} />
-          <Separator />
-          <ConfigRow label="Optimization" value={scenario.config.optimization} />
-          <Separator />
           <ConfigRow
-            label="LTE Bands"
-            value={bandsToDisplay(scenario.config.lte_bands)}
+            label={t("scenarios.active_config_card.config_labels.network_mode")}
+            value={scenario.config.mode}
           />
           <Separator />
           <ConfigRow
-            label="NR5G-SA Bands"
-            value={bandsToDisplay(scenario.config.sa_nr_bands)}
+            label={t("scenarios.active_config_card.config_labels.optimization")}
+            value={scenario.config.optimization}
           />
           <Separator />
           <ConfigRow
-            label="NR5G-NSA Bands"
-            value={bandsToDisplay(scenario.config.nsa_nr_bands)}
+            label={t("scenarios.active_config_card.config_labels.lte_bands")}
+            value={bandsToDisplay(scenario.config.lte_bands, t)}
+          />
+          <Separator />
+          <ConfigRow
+            label={t("scenarios.active_config_card.config_labels.nrsa_bands")}
+            value={bandsToDisplay(scenario.config.sa_nr_bands, t)}
+          />
+          <Separator />
+          <ConfigRow
+            label={t("scenarios.active_config_card.config_labels.nrsa_nsa_bands")}
+            value={bandsToDisplay(scenario.config.nsa_nr_bands, t)}
           />
           <Separator />
         </div>

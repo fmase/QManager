@@ -38,9 +38,13 @@ start_service() {
 }
 
 stop_service() {
-    # Clean up state files
+    # Clean up state files.
+    # Note: /tmp/qmanager_watchcat.lock is intentionally NOT removed here.
+    # install.sh touches it at the start of stop_services() as a maintenance
+    # lock that must survive the entire install window — including the
+    # procd-driven stop of this service. /tmp is tmpfs and clears on reboot
+    # anyway, so there's nothing to clean up.
     rm -f /tmp/qmanager_watchcat.pid
-    rm -f /tmp/qmanager_watchcat.lock
     rm -f /tmp/qmanager_recovery_active
 }
 

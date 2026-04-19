@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { motion } from "motion/react";
 import { Gamepad2, Play, Zap, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -33,7 +34,6 @@ import { ScenarioItem, Scenario } from "./scenario-item";
 import { useConnectionScenarios } from "@/hooks/use-connection-scenarios";
 import {
   NETWORK_MODE_OPTIONS,
-  modeValueToLabel,
   inputToBands,
   bandsToInput,
 } from "@/types/connection-scenario";
@@ -57,66 +57,93 @@ const gradientOptions = [
   { id: "sunset", value: "from-orange-400 via-red-500 to-pink-600" },
 ];
 
-// Default (built-in) scenarios — icons are UI-only, not stored in backend
-const DEFAULT_SCENARIOS: Scenario[] = [
-  {
-    id: "balanced",
-    name: "Balanced",
-    description: "Auto band selection",
-    icon: Zap,
-    gradient: "from-emerald-500 via-teal-500 to-cyan-500",
-    pattern: "balanced",
-    isDefault: true,
-    config: {
-      atModeValue: "AUTO",
-      mode: "Auto",
-      optimization: "Balanced",
-      lte_bands: "",
-      nsa_nr_bands: "",
-      sa_nr_bands: "",
-    },
-  },
-  {
-    id: "gaming",
-    name: "Gaming",
-    description: "Low latency, SA priority",
-    icon: Gamepad2,
-    gradient: "from-violet-600 via-purple-600 to-indigo-700",
-    pattern: "gaming",
-    isDefault: true,
-    config: {
-      atModeValue: "NR5G",
-      mode: "5G SA Only",
-      optimization: "Latency",
-      lte_bands: "",
-      nsa_nr_bands: "",
-      sa_nr_bands: "",
-    },
-  },
-  {
-    id: "streaming",
-    name: "Streaming",
-    description: "High bandwidth, stable connection",
-    icon: Play,
-    gradient: "from-rose-500 via-pink-500 to-orange-400",
-    pattern: "streaming",
-    isDefault: true,
-    config: {
-      atModeValue: "LTE:NR5G",
-      mode: "5G SA / NSA",
-      optimization: "Throughput",
-      lte_bands: "",
-      nsa_nr_bands: "",
-      sa_nr_bands: "",
-    },
-  },
-];
-
 // =============================================================================
 // Main Component
 // =============================================================================
 
 const ConnectionScenariosCard = () => {
+  const { t } = useTranslation("cellular");
+
+  // ---------------------------------------------------------------------------
+  // Translated default scenarios (built-in, icons are UI-only)
+  // ---------------------------------------------------------------------------
+  const defaultScenarios = useMemo<Scenario[]>(
+    () => [
+      {
+        id: "balanced",
+        name: t("scenarios.default_balanced_name"),
+        description: t("scenarios.default_balanced_description"),
+        icon: Zap,
+        gradient: "from-emerald-500 via-teal-500 to-cyan-500",
+        pattern: "balanced",
+        isDefault: true,
+        config: {
+          atModeValue: "AUTO",
+          mode: t("scenarios.mode_option_auto"),
+          optimization: t("scenarios.default_balanced_name"),
+          lte_bands: "",
+          nsa_nr_bands: "",
+          sa_nr_bands: "",
+        },
+      },
+      {
+        id: "gaming",
+        name: t("scenarios.default_gaming_name"),
+        description: t("scenarios.default_gaming_description"),
+        icon: Gamepad2,
+        gradient: "from-violet-600 via-purple-600 to-indigo-700",
+        pattern: "gaming",
+        isDefault: true,
+        config: {
+          atModeValue: "NR5G",
+          mode: t("scenarios.mode_option_nrsa"),
+          optimization: t("scenarios.default_gaming_optimization"),
+          lte_bands: "",
+          nsa_nr_bands: "",
+          sa_nr_bands: "",
+        },
+      },
+      {
+        id: "streaming",
+        name: t("scenarios.default_streaming_name"),
+        description: t("scenarios.default_streaming_description"),
+        icon: Play,
+        gradient: "from-rose-500 via-pink-500 to-orange-400",
+        pattern: "streaming",
+        isDefault: true,
+        config: {
+          atModeValue: "LTE:NR5G",
+          mode: t("scenarios.mode_option_nrsa_nsa"),
+          optimization: t("scenarios.default_streaming_optimization"),
+          lte_bands: "",
+          nsa_nr_bands: "",
+          sa_nr_bands: "",
+        },
+      },
+    ],
+    [t],
+  );
+
+  // ---------------------------------------------------------------------------
+  // Translated network mode options
+  // ---------------------------------------------------------------------------
+  const networkModeOptions = useMemo(
+    () => [
+      { value: "AUTO", label: t("scenarios.mode_option_auto") },
+      { value: "LTE", label: t("scenarios.mode_option_lte") },
+      { value: "NR5G", label: t("scenarios.mode_option_nrsa") },
+      { value: "LTE:NR5G", label: t("scenarios.mode_option_nrsa_nsa") },
+    ],
+    [t],
+  );
+
+  const modeValueToLabel = useCallback(
+    (value: string) => {
+      return networkModeOptions.find((o) => o.value === value)?.label ?? value;
+    },
+    [networkModeOptions],
+  );
+
   const {
     activeScenarioId,
     customScenarios: storedScenarios,
@@ -173,8 +200,8 @@ const ConnectionScenariosCard = () => {
 
   // --- Derived ---------------------------------------------------------------
   const scenarios = useMemo(
-    () => [...DEFAULT_SCENARIOS, ...customScenarios],
-    [customScenarios],
+    () => [...defaultScenarios, ...customScenarios],
+    [defaultScenarios, customScenarios],
   );
   const selectedScenario = scenarios.find((s) => s.id === selectedId);
   const isSelectedActive = selectedId === activeScenarioId;
@@ -183,9 +210,9 @@ const ConnectionScenariosCard = () => {
   // (e.g., active custom scenario ID from backend doesn't match any local scenario)
   useEffect(() => {
     if (!isLoading && selectedId && !scenarios.find((s) => s.id === selectedId)) {
-      setSelectedId(DEFAULT_SCENARIOS[0].id);
+      setSelectedId(defaultScenarios[0].id);
     }
-  }, [isLoading, selectedId, scenarios]);
+  }, [isLoading, selectedId, scenarios, defaultScenarios]);
 
   // ---------------------------------------------------------------------------
   // Handle selection (click card = view config)
@@ -204,10 +231,12 @@ const ConnectionScenariosCard = () => {
     const success = await activateScenario(selectedId, selectedScenario.config);
 
     if (success) {
-      toast.success(`Switched to ${selectedScenario.name} scenario.`);
+      toast.success(
+        t("scenarios.activation_toast.success", { name: selectedScenario.name }),
+      );
     } else {
       toast.error(
-        `Failed to activate ${selectedScenario.name} scenario.`,
+        t("scenarios.activation_toast.error", { name: selectedScenario.name }),
       );
     }
   }, [
@@ -216,6 +245,7 @@ const ConnectionScenariosCard = () => {
     activeScenarioId,
     isActivating,
     activateScenario,
+    t,
   ]);
 
   // ---------------------------------------------------------------------------
@@ -229,12 +259,12 @@ const ConnectionScenariosCard = () => {
     setIsSaving(true);
     const scenarioData = {
       name: addName,
-      description: addDescription || "Custom configuration",
+      description: addDescription || t("scenarios.add_dialog.fields.preview_placeholder"),
       gradient: addGradient,
       config: {
         atModeValue: addMode,
         mode: modeValueToLabel(addMode),
-        optimization: "Custom",
+        optimization: t("scenarios.default_custom_optimization"),
         lte_bands: inputToBands(addLteBands),
         nsa_nr_bands: inputToBands(addNsaNrBands),
         sa_nr_bands: inputToBands(addSaNrBands),
@@ -248,9 +278,9 @@ const ConnectionScenariosCard = () => {
       setSelectedId(newId);
       setShowAddDialog(false);
       resetAddForm();
-      toast.success("Scenario created successfully.");
+      toast.success(t("scenarios.add_dialog.toast.success"));
     } else {
-      toast.error("Failed to create scenario.");
+      toast.error(t("scenarios.add_dialog.toast.error"));
     }
   };
 
@@ -272,11 +302,13 @@ const ConnectionScenariosCard = () => {
     if (success) {
       // If the deleted scenario was selected, fall back to active or default
       if (selectedId === id) {
-        setSelectedId(activeScenarioId === id ? DEFAULT_SCENARIOS[0].id : activeScenarioId);
+        setSelectedId(
+          activeScenarioId === id ? defaultScenarios[0].id : activeScenarioId,
+        );
       }
-      toast.success("Scenario deleted.");
+      toast.success(t("scenarios.deletion_toast.success"));
     } else {
-      toast.error("Failed to delete scenario.");
+      toast.error(t("scenarios.deletion_toast.error"));
     }
   };
 
@@ -320,9 +352,9 @@ const ConnectionScenariosCard = () => {
 
     if (updatedId) {
       setShowEditDialog(false);
-      toast.success("Scenario updated.");
+      toast.success(t("scenarios.edit_dialog.toast.success"));
     } else {
-      toast.error("Failed to update scenario.");
+      toast.error(t("scenarios.edit_dialog.toast.error"));
     }
   };
 
@@ -410,41 +442,47 @@ const ConnectionScenariosCard = () => {
       <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>New Connection Scenario</DialogTitle>
+            <DialogTitle>{t("scenarios.add_dialog.title")}</DialogTitle>
           </DialogHeader>
 
           <div className="space-y-5 py-4">
             {/* Name */}
             <div className="space-y-2">
-              <Label htmlFor="add-name">Scenario Name</Label>
+              <Label htmlFor="add-name">
+                {t("scenarios.add_dialog.fields.name_label")}
+              </Label>
               <Input
                 id="add-name"
                 value={addName}
                 onChange={(e) => setAddName(e.target.value)}
-                placeholder="e.g., Work from Home"
+                placeholder={t("scenarios.add_dialog.fields.name_placeholder")}
               />
             </div>
 
             {/* Description */}
             <div className="space-y-2">
-              <Label htmlFor="add-description">Description</Label>
+              <Label htmlFor="add-description">
+                {t("scenarios.add_dialog.fields.description_label")}
+              </Label>
               <Input
                 id="add-description"
                 value={addDescription}
                 onChange={(e) => setAddDescription(e.target.value)}
-                placeholder="e.g., Optimized for video calls"
+                placeholder={t("scenarios.add_dialog.fields.description_placeholder")}
               />
             </div>
 
             {/* Network Mode */}
             <div className="space-y-2">
-              <Label>Network Mode</Label>
+              <Label>{t("scenarios.add_dialog.fields.network_mode_label")}</Label>
               <Select value={addMode} onValueChange={setAddMode}>
-                <SelectTrigger aria-label="Network Mode">
+                <SelectTrigger
+                  aria-label={t("scenarios.add_dialog.fields.network_mode_aria")}
+                >
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {NETWORK_MODE_OPTIONS.map((opt) => (
+                  {networkModeOptions.map((opt) => (
                     <SelectItem key={opt.value} value={opt.value}>
                       {opt.label}
                     </SelectItem>
@@ -455,38 +493,44 @@ const ConnectionScenariosCard = () => {
 
             {/* Band Locks */}
             <div className="space-y-2">
-              <Label htmlFor="add-lte-bands">LTE Band Lock</Label>
+              <Label htmlFor="add-lte-bands">
+                {t("scenarios.add_dialog.fields.lte_bands_label")}
+              </Label>
               <Input
                 id="add-lte-bands"
                 value={addLteBands}
                 onChange={(e) => setAddLteBands(e.target.value)}
-                placeholder="e.g., 1, 3, 7, 28 (empty = Auto)"
+                placeholder={t("scenarios.add_dialog.fields.lte_bands_placeholder")}
               />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="add-sa-bands">NR5G-SA Band Lock</Label>
+                <Label htmlFor="add-sa-bands">
+                  {t("scenarios.add_dialog.fields.sa_bands_label")}
+                </Label>
                 <Input
                   id="add-sa-bands"
                   value={addSaNrBands}
                   onChange={(e) => setAddSaNrBands(e.target.value)}
-                  placeholder="e.g., 41, 78"
+                  placeholder={t("scenarios.add_dialog.fields.sa_bands_placeholder")}
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="add-nsa-bands">NR5G-NSA Band Lock</Label>
+                <Label htmlFor="add-nsa-bands">
+                  {t("scenarios.add_dialog.fields.nsa_bands_label")}
+                </Label>
                 <Input
                   id="add-nsa-bands"
                   value={addNsaNrBands}
                   onChange={(e) => setAddNsaNrBands(e.target.value)}
-                  placeholder="e.g., 41, 78"
+                  placeholder={t("scenarios.add_dialog.fields.nsa_bands_placeholder")}
                 />
               </div>
             </div>
 
             {/* Card Theme */}
             <div className="space-y-2">
-              <Label>Card Theme</Label>
+              <Label>{t("scenarios.add_dialog.fields.theme_label")}</Label>
               <div className="grid grid-cols-6 gap-2">
                 {gradientOptions.map((grad) => (
                   <button
@@ -507,7 +551,7 @@ const ConnectionScenariosCard = () => {
 
             {/* Preview */}
             <div className="space-y-2">
-              <Label>Preview</Label>
+              <Label>{t("scenarios.add_dialog.fields.preview_label")}</Label>
               <div
                 className={cn(
                   "relative overflow-hidden rounded-xl h-20 bg-linear-to-br",
@@ -520,10 +564,11 @@ const ConnectionScenariosCard = () => {
                 />
                 <div className="relative p-4 text-white">
                   <p className="font-medium">
-                    {addName || "Scenario Name"}
+                    {addName || t("scenarios.add_dialog.fields.name_label")}
                   </p>
                   <p className="text-sm text-white/70">
-                    {addDescription || "Custom configuration"}
+                    {addDescription ||
+                      t("scenarios.add_dialog.fields.preview_placeholder")}
                   </p>
                 </div>
               </div>
@@ -532,13 +577,15 @@ const ConnectionScenariosCard = () => {
 
           <DialogFooter className="gap-2">
             <DialogClose asChild>
-              <Button variant="outline">Cancel</Button>
+              <Button variant="outline">{t("cancel", { ns: "common" })}</Button>
             </DialogClose>
             <Button
               onClick={handleAddScenario}
               disabled={!addName.trim() || isSaving}
             >
-              {isSaving ? "Creating…" : "Create Scenario"}
+              {isSaving
+                ? t("scenarios.add_dialog.buttons.creating")
+                : t("scenarios.add_dialog.buttons.create")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -548,41 +595,47 @@ const ConnectionScenariosCard = () => {
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Edit Configuration</DialogTitle>
+            <DialogTitle>{t("scenarios.edit_dialog.title")}</DialogTitle>
           </DialogHeader>
 
           <div className="space-y-5 py-4">
             {/* Name */}
             <div className="space-y-2">
-              <Label htmlFor="edit-name">Scenario Name</Label>
+              <Label htmlFor="edit-name">
+                {t("scenarios.edit_dialog.fields.name_label")}
+              </Label>
               <Input
                 id="edit-name"
                 value={editName}
                 onChange={(e) => setEditName(e.target.value)}
-                placeholder="Scenario name"
+                placeholder={t("scenarios.edit_dialog.fields.name_placeholder")}
               />
             </div>
 
             {/* Description */}
             <div className="space-y-2">
-              <Label htmlFor="edit-description">Description</Label>
+              <Label htmlFor="edit-description">
+                {t("scenarios.edit_dialog.fields.description_label")}
+              </Label>
               <Input
                 id="edit-description"
                 value={editDescription}
                 onChange={(e) => setEditDescription(e.target.value)}
-                placeholder="Scenario description"
+                placeholder={t("scenarios.edit_dialog.fields.description_placeholder")}
               />
             </div>
 
             {/* Network Mode */}
             <div className="space-y-2">
-              <Label>Network Mode</Label>
+              <Label>{t("scenarios.edit_dialog.fields.network_mode_label")}</Label>
               <Select value={editMode} onValueChange={setEditMode}>
-                <SelectTrigger aria-label="Network Mode">
+                <SelectTrigger
+                  aria-label={t("scenarios.edit_dialog.fields.network_mode_aria")}
+                >
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {NETWORK_MODE_OPTIONS.map((opt) => (
+                  {networkModeOptions.map((opt) => (
                     <SelectItem key={opt.value} value={opt.value}>
                       {opt.label}
                     </SelectItem>
@@ -593,49 +646,59 @@ const ConnectionScenariosCard = () => {
 
             {/* Optimization */}
             <div className="space-y-2">
-              <Label htmlFor="edit-optimization">Optimization Label</Label>
+              <Label htmlFor="edit-optimization">
+                {t("scenarios.edit_dialog.fields.optimization_label")}
+              </Label>
               <Input
                 id="edit-optimization"
                 value={editOptimization}
                 onChange={(e) => setEditOptimization(e.target.value)}
-                placeholder="e.g., Latency, Throughput, Custom"
+                placeholder={t(
+                  "scenarios.edit_dialog.fields.optimization_placeholder",
+                )}
               />
             </div>
 
             {/* Band Locks */}
             <div className="space-y-2">
-              <Label htmlFor="edit-lte-bands">LTE Band Lock</Label>
+              <Label htmlFor="edit-lte-bands">
+                {t("scenarios.edit_dialog.fields.lte_bands_label")}
+              </Label>
               <Input
                 id="edit-lte-bands"
                 value={editLteBands}
                 onChange={(e) => setEditLteBands(e.target.value)}
-                placeholder="e.g., 1, 3, 7, 28 (empty = Auto)"
+                placeholder={t("scenarios.edit_dialog.fields.lte_bands_placeholder")}
               />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="edit-sa-bands">NR5G-SA Band Lock</Label>
+                <Label htmlFor="edit-sa-bands">
+                  {t("scenarios.edit_dialog.fields.sa_bands_label")}
+                </Label>
                 <Input
                   id="edit-sa-bands"
                   value={editSaNrBands}
                   onChange={(e) => setEditSaNrBands(e.target.value)}
-                  placeholder="e.g., 41, 78"
+                  placeholder={t("scenarios.edit_dialog.fields.sa_bands_placeholder")}
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="edit-nsa-bands">NR5G-NSA Band Lock</Label>
+                <Label htmlFor="edit-nsa-bands">
+                  {t("scenarios.edit_dialog.fields.nsa_bands_label")}
+                </Label>
                 <Input
                   id="edit-nsa-bands"
                   value={editNsaNrBands}
                   onChange={(e) => setEditNsaNrBands(e.target.value)}
-                  placeholder="e.g., 41, 78"
+                  placeholder={t("scenarios.edit_dialog.fields.nsa_bands_placeholder")}
                 />
               </div>
             </div>
 
             {/* Card Theme */}
             <div className="space-y-2">
-              <Label>Card Theme</Label>
+              <Label>{t("scenarios.edit_dialog.fields.theme_label")}</Label>
               <div className="grid grid-cols-6 gap-2">
                 {gradientOptions.map((grad) => (
                   <button
@@ -656,7 +719,7 @@ const ConnectionScenariosCard = () => {
 
             {/* Preview */}
             <div className="space-y-2">
-              <Label>Preview</Label>
+              <Label>{t("scenarios.edit_dialog.fields.preview_label")}</Label>
               <div
                 className={cn(
                   "relative overflow-hidden rounded-xl h-20 bg-linear-to-br",
@@ -668,9 +731,12 @@ const ConnectionScenariosCard = () => {
                   className="absolute inset-0 w-full h-full"
                 />
                 <div className="relative p-4 text-white">
-                  <p className="font-medium">{editName || "Scenario Name"}</p>
+                  <p className="font-medium">
+                    {editName || t("scenarios.edit_dialog.fields.name_label")}
+                  </p>
                   <p className="text-sm text-white/70">
-                    {editDescription || "Custom configuration"}
+                    {editDescription ||
+                      t("scenarios.edit_dialog.fields.preview_placeholder")}
                   </p>
                 </div>
               </div>
@@ -679,10 +745,15 @@ const ConnectionScenariosCard = () => {
 
           <DialogFooter className="gap-2">
             <DialogClose asChild>
-              <Button variant="outline">Cancel</Button>
+              <Button variant="outline">{t("cancel", { ns: "common" })}</Button>
             </DialogClose>
-            <Button onClick={handleSaveEdit} disabled={!editName.trim() || isSaving}>
-              {isSaving ? "Saving…" : "Save Changes"}
+            <Button
+              onClick={handleSaveEdit}
+              disabled={!editName.trim() || isSaving}
+            >
+              {isSaving
+                ? t("scenarios.edit_dialog.buttons.saving")
+                : t("scenarios.edit_dialog.buttons.save")}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -1,0 +1,42 @@
+{
+  "actions": {
+    "save": "保存",
+    "cancel": "取消",
+    "confirm": "确认",
+    "apply": "应用",
+    "close": "关闭",
+    "retry": "重试",
+    "reboot": "重启",
+    "log_out": "退出登录",
+    "reboot_device": "重启设备",
+    "reconnect_modem": "重新连接调制解调器",
+    "change_display_name": "更改显示名称",
+    "change_password": "更改密码"
+  },
+  "state": {
+    "loading": "加载中…",
+    "saving": "保存中…",
+    "applying": "应用中…",
+    "disconnecting": "断开连接中…",
+    "reconnecting": "重新连接中…",
+    "enabled": "已启用",
+    "disabled": "已禁用",
+    "on": "开",
+    "off": "关"
+  },
+  "time": {
+    "just_now": "刚刚",
+    "now": "现在",
+    "unknown": "未知",
+    "minutes_ago_one": "{{count}} 分钟前",
+    "minutes_ago_other": "{{count}} 分钟前",
+    "hours_ago_one": "{{count}} 小时前",
+    "hours_ago_other": "{{count}} 小时前",
+    "days_ago_one": "{{count}} 天前",
+    "days_ago_other": "{{count}} 天前"
+  },
+  "language": {
+    "label": "语言",
+    "switch_aria": "切换语言"
+  }
+}

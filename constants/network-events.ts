@@ -1,27 +1,5 @@
 import type { NetworkEventType } from "@/types/modem-status";
 
-/** Human-readable labels for each event type */
-export const EVENT_LABELS: Record<NetworkEventType, string> = {
-  network_mode: "Mode Change",
-  band_change: "Band Change",
-  pci_change: "Cell Handoff",
-  scc_pci_change: "Secondary Band Change",
-  ca_change: "Carrier Aggregation",
-  nr_anchor: "5G Anchor Change",
-  signal_lost: "Signal Lost",
-  signal_restored: "Signal Restored",
-  internet_lost: "Internet Lost",
-  internet_restored: "Internet Restored",
-  high_latency: "High Latency",
-  latency_recovered: "Latency Recovered",
-  high_packet_loss: "High Packet Loss",
-  packet_loss_recovered: "Packet Loss Recovered",
-  watchcat_recovery: "Watchdog Recovery",
-  sim_failover: "SIM Failover",
-  sim_swap_detected: "SIM Swap Detected",
-  airplane_mode: "Airplane Mode",
-};
-
 /** Tab categories used by the monitoring Network Events card */
 export type EventTabCategory = "bandChanges" | "dataConnection" | "networkMode";
 
@@ -46,4 +24,13 @@ export const EVENT_TAB_CATEGORIES: Record<NetworkEventType, EventTabCategory> =
     sim_failover: "dataConnection",
     sim_swap_detected: "dataConnection",
     airplane_mode: "networkMode",
+    profile_applied: "dataConnection",
+    profile_failed: "dataConnection",
+    profile_deactivated: "dataConnection",
+    config_backup_collected: "dataConnection",
+    config_restore_started: "dataConnection",
+    config_restore_section_success: "dataConnection",
+    config_restore_section_failed: "dataConnection",
+    config_restore_section_skipped: "dataConnection",
+    config_restore_completed: "dataConnection",
   };

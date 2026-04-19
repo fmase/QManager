@@ -6,27 +6,40 @@ This document covers building, installing, and deploying QManager to an OpenWRT 
 
 ## Quick Install (Recommended)
 
-QManager includes an automated installation script. Build the archive on your dev machine, transfer it, and run the installer:
+Install directly from the latest GitHub pre-release on the OpenWRT device:
 
-```bash
-# 1. Build the frontend
-bun run build
+One-liner convenience (same verified flow):
 
-# 2. Create the archive (from the project root)
-mkdir -p /tmp/qmanager_install
-cp -r out /tmp/qmanager_install/
-cp -r scripts /tmp/qmanager_install/
-cp scripts/install.sh /tmp/qmanager_install/
-tar czf qmanager.tar.gz -C /tmp qmanager_install
-
-# 3. Transfer to device
-scp qmanager.tar.gz root@192.168.224.1:/tmp/
-
-# 4. Install on device
-ssh root@192.168.224.1
-cd /tmp && tar xzf qmanager.tar.gz
-cd qmanager_install && sh install.sh
+```sh
+curl -fsSL -o /tmp/qmanager-installer.sh https://raw.githubusercontent.com/dr-dolomite/QManager/development-home/qmanager-installer.sh && sh /tmp/qmanager-installer.sh
 ```
+
+Expanded direct flow:
+
+```sh
+set -e
+REPO="dr-dolomite/QManager"
+API="https://api.github.com/repos/${REPO}/releases?per_page=20"
+
+JSON=$(uclient-fetch -qO- "$API" 2>/dev/null || wget -qO- "$API" 2>/dev/null || curl -fsSL "$API")
+TAG=$(printf '%s' "$JSON" \
+  | tr -d '\n' \
+  | sed 's/},{/}\
+{/g' \
+  | sed -n '/"prerelease":[[:space:]]*true/{s/.*"tag_name":[[:space:]]*"\([^"]*\)".*/\1/p;q}')
+
+[ -n "$TAG" ] || { echo "Failed to resolve latest pre-release tag"; exit 1; }
+
+BASE="https://github.com/${REPO}/releases/download/${TAG}"
+cd /tmp
+wget -O qmanager.tar.gz "$BASE/qmanager.tar.gz"
+wget -O sha256sum.txt "$BASE/sha256sum.txt"
+sha256sum -c sha256sum.txt
+tar xzf qmanager.tar.gz
+sh /tmp/qmanager_install/install.sh
+```
+
+To pin a specific release, set `TAG` manually and skip the API lookup block.
 
 The installer will:
 - Install required packages (`jq`) and optional packages (`msmtp`, `tailscale`, `ethtool`)
@@ -36,6 +49,37 @@ The installer will:
 - Enable and start all services
 
 See `sh install.sh --help` for all options (`--frontend-only`, `--backend-only`, `--skip-packages`, `--uninstall`, etc.)
+
+### Quick Uninstall
+
+One-liner:
+
+```sh
+curl -fsSL -o /tmp/qmanager-installer.sh https://raw.githubusercontent.com/dr-dolomite/QManager/development-home/qmanager-installer.sh && sh /tmp/qmanager-installer.sh --uninstall
+```
+
+Expanded direct flow:
+
+```sh
+set -e
+REPO="dr-dolomite/QManager"
+API="https://api.github.com/repos/${REPO}/releases?per_page=20"
+
+JSON=$(uclient-fetch -qO- "$API" 2>/dev/null || wget -qO- "$API" 2>/dev/null || curl -fsSL "$API")
+TAG=$(printf '%s' "$JSON" \
+  | tr -d '\n' \
+  | sed 's/},{/}\
+{/g' \
+  | sed -n '/"prerelease":[[:space:]]*true/{s/.*"tag_name":[[:space:]]*"\([^"]*\)".*/\1/p;q}')
+
+[ -n "$TAG" ] || { echo "Failed to resolve latest pre-release tag"; exit 1; }
+
+BASE="https://github.com/${REPO}/releases/download/${TAG}"
+cd /tmp
+wget -O qmanager.tar.gz "$BASE/qmanager.tar.gz"
+tar xzf qmanager.tar.gz
+sh /tmp/qmanager_install/uninstall.sh
+```
 
 ---
 
@@ -85,6 +129,12 @@ destination: "http://192.168.224.1/cgi-bin/:path*",
 
 ```bash
 bun run build
+```
+
+To generate release artifacts (`qmanager-build/qmanager.tar.gz` + `qmanager-build/sha256sum.txt`):
+
+```bash
+bun run package
 ```
 
 This produces a static export in the `out/` directory. The output is a complete, self-contained frontend that requires no server-side rendering.
@@ -369,8 +419,8 @@ grep "poller" /tmp/qmanager.log
 # Check session directory
 ls /tmp/qmanager_sessions/
 
-# Check shadow file
-ls -la /etc/qmanager/shadow
+# Check auth file
+ls -la /etc/qmanager/auth.json
 ```
 
 ### Service Won't Start

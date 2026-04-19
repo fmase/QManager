@@ -41,24 +41,15 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import {
   AlertTriangleIcon,
   Check,
   ChevronsUpDown,
-  LoaderCircle,
 } from "lucide-react";
 import { SaveButton, useSaveFlash } from "@/components/ui/save-button";
-import { motion, type Variants } from "motion/react";
+import { motion } from "motion/react";
+import { containerVariants, itemVariants } from "@/lib/motion";
 import { TbInfoCircleFilled } from "react-icons/tb";
+import { useTranslation } from "react-i18next";
 
 import type {
   UseSystemSettingsReturn,
@@ -66,18 +57,6 @@ import type {
 } from "@/hooks/use-system-settings";
 import { TIMEZONES } from "@/types/system-settings";
 import { cn } from "@/lib/utils";
-
-// ─── Animation variants ────────────────────────────────────────────────────
-
-const containerVariants: Variants = {
-  hidden: {},
-  visible: { transition: { staggerChildren: 0.06 } },
-};
-
-const itemVariants: Variants = {
-  hidden: { opacity: 0, y: 8 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.25, ease: "easeOut" } },
-};
 
 // ─── Component ──────────────────────────────────────────────────────────────
 
@@ -93,14 +72,16 @@ export default function SystemSettingsCard({
   error,
   saveSettings,
 }: SystemSettingsCardProps) {
+  const { t } = useTranslation("system-settings");
+
   // --- Loading skeleton ---
   if (isLoading) {
     return (
       <Card className="@container/card">
         <CardHeader>
-          <CardTitle>System Settings</CardTitle>
+          <CardTitle>{t("system.card_title")}</CardTitle>
           <CardDescription>
-            Configure device preferences and display options.
+            {t("system.card_description")}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -140,9 +121,9 @@ export default function SystemSettingsCard({
     return (
       <Card className="@container/card">
         <CardHeader>
-          <CardTitle>System Settings</CardTitle>
+          <CardTitle>{t("system.card_title")}</CardTitle>
           <CardDescription>
-            Configure device preferences and display options.
+            {t("system.card_description")}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -158,7 +139,7 @@ export default function SystemSettingsCard({
   // Key-based remount: when settings change after save/re-fetch,
   // the form reinitializes with fresh values from useState defaults.
   const formKey = settings
-    ? `${settings.wan_guard_enabled}-${settings.temp_unit}-${settings.distance_unit}-${settings.zonename}-${settings.sms_tool_device}`
+    ? `${settings.wan_guard_enabled}-${settings.temp_unit}-${settings.distance_unit}-${settings.zonename}`
     : "empty";
 
   return (
@@ -187,6 +168,7 @@ function SystemSettingsForm({
   error,
   saveSettings,
 }: SystemSettingsFormProps) {
+  const { t } = useTranslation("system-settings");
   const { saved, markSaved } = useSaveFlash();
 
   // --- Local form state (initialized from settings prop) ---
@@ -206,16 +188,7 @@ function SystemSettingsForm({
   );
   const [wanGuardSaving, setWanGuardSaving] = useState(false);
 
-  // SMS Tool Port toggle state (saves immediately + requires reboot)
-  const [smsToolSmd7, setSmsToolSmd7] = useState(
-    (settings?.sms_tool_device ?? "") === "/dev/smd7",
-  );
-  const [showSmsPortDialog, setShowSmsPortDialog] = useState(false);
-  const [pendingSmsPortValue, setPendingSmsPortValue] = useState(false);
-  const [smsPortSaving, setSmsPortSaving] = useState(false);
-  const [isRebooting, setIsRebooting] = useState(false);
-
-  // --- Dirty check (only for items 2-4, not WAN Guard or SMS port) ---
+  // --- Dirty check (only for items 2-4, not WAN Guard) ---
   const isDirty = useMemo(() => {
     if (!settings) return false;
     return (
@@ -245,57 +218,14 @@ function SystemSettingsForm({
       setWanGuardSaving(false);
 
       if (success) {
-        toast.success(checked ? "WAN Guard enabled" : "WAN Guard disabled");
+        toast.success(checked ? t("system.wan_guard_toast_enabled") : t("system.wan_guard_toast_disabled"));
       } else {
         // Revert on failure
         setWanGuardEnabled(!checked);
-        toast.error("Failed to update WAN Guard");
+        toast.error(t("system.wan_guard_toast_failed"));
       }
     },
-    [saveSettings, settings],
-  );
-
-  // --- SMS Tool Port toggle: show confirmation dialog ---
-  const handleSmsPortToggle = useCallback((checked: boolean) => {
-    setPendingSmsPortValue(checked);
-    setShowSmsPortDialog(true);
-  }, []);
-
-  // --- SMS Tool Port: save setting then optionally reboot ---
-  const confirmSmsPortChange = useCallback(
-    async (rebootNow: boolean) => {
-      setSmsPortSaving(true);
-      const deviceValue = pendingSmsPortValue ? "/dev/smd7" : "";
-
-      const success = await saveSettings({
-        action: "save_settings",
-        sms_tool_device: deviceValue,
-      });
-
-      if (success) {
-        setSmsToolSmd7(pendingSmsPortValue);
-        if (rebootNow) {
-          setIsRebooting(true);
-          fetch("/cgi-bin/quecmanager/system/reboot.sh", {
-            method: "POST",
-          }).catch(() => {});
-          setTimeout(() => {
-            sessionStorage.setItem("qm_rebooting", "1");
-            document.cookie = "qm_logged_in=; Path=/; Max-Age=0";
-            window.location.href = "/reboot/";
-          }, 2000);
-        } else {
-          toast.success("SMS tool port updated — reboot required");
-          setShowSmsPortDialog(false);
-          setSmsPortSaving(false);
-        }
-      } else {
-        toast.error("Failed to update SMS tool port");
-        setSmsPortSaving(false);
-        setShowSmsPortDialog(false);
-      }
-    },
-    [pendingSmsPortValue, saveSettings],
+    [saveSettings, settings, t],
   );
 
   // --- Timezone change handler ---
@@ -322,9 +252,9 @@ function SystemSettingsForm({
 
     if (success) {
       markSaved();
-      toast.success("Settings saved");
+      toast.success(t("system.toast_saved"));
     } else {
-      toast.error(error || "Failed to save settings");
+      toast.error(error || t("system.toast_failed"));
     }
   }, [
     canSave,
@@ -336,14 +266,15 @@ function SystemSettingsForm({
     zonename,
     error,
     markSaved,
+    t,
   ]);
 
   return (
     <Card className="@container/card">
       <CardHeader>
-        <CardTitle>System Settings</CardTitle>
+        <CardTitle>{t("system.card_title")}</CardTitle>
         <CardDescription>
-          Configure device preferences and display options.
+          {t("system.card_description")}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -369,21 +300,17 @@ function SystemSettingsForm({
                   <button
                     type="button"
                     className="inline-flex"
-                    aria-label="WAN Guard info"
+                    aria-label={t("system.wan_guard_info_aria")}
                   >
                     <TbInfoCircleFilled className="size-5 text-info" />
                   </button>
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>
-                    Checks WAN interface profiles at boot and disables <br />{" "}
-                    any that don&apos;t have an active data connection, <br />{" "}
-                    preventing unnecessary CPU usage.
-                  </p>
+                  <p>{t("system.wan_guard_tooltip")}</p>
                 </TooltipContent>
               </Tooltip>
               <p className="font-semibold text-muted-foreground text-sm">
-                WAN Guard
+                {t("system.wan_guard_label")}
               </p>
             </div>
             <div className="flex items-center space-x-2">
@@ -394,46 +321,7 @@ function SystemSettingsForm({
                 disabled={wanGuardSaving}
               />
               <Label htmlFor="wan-guard-enabled">
-                {wanGuardEnabled ? "Enabled" : "Disabled"}
-              </Label>
-            </div>
-          </motion.div>
-
-          {/* ── SMS Tool Port ────────────────────────────────────── */}
-          <Separator />
-          <motion.div variants={itemVariants} className="flex items-center justify-between">
-            <div className="flex items-center gap-1.5">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    className="inline-flex"
-                    aria-label="SMS tool port info"
-                  >
-                    <TbInfoCircleFilled className="size-5 text-info" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>
-                    Use /dev/smd7 instead of the default /dev/smd11 for
-                    <br />
-                    AT command and SMS communication. Requires a reboot.
-                  </p>
-                </TooltipContent>
-              </Tooltip>
-              <p className="font-semibold text-muted-foreground text-sm">
-                SMS Tool Port (smd7)
-              </p>
-            </div>
-            <div className="flex items-center space-x-2">
-              <Switch
-                id="sms-tool-smd7"
-                checked={smsToolSmd7}
-                onCheckedChange={handleSmsPortToggle}
-                disabled={smsPortSaving || isRebooting}
-              />
-              <Label htmlFor="sms-tool-smd7">
-                {smsToolSmd7 ? "smd7" : "Default"}
+                {wanGuardEnabled ? t("state.enabled", { ns: "common" }) : t("state.disabled", { ns: "common" })}
               </Label>
             </div>
           </motion.div>
@@ -442,18 +330,18 @@ function SystemSettingsForm({
           <Separator />
           <motion.div variants={itemVariants} className="flex items-center justify-between">
             <p className="font-semibold text-muted-foreground text-sm">
-              Temperature Unit
+              {t("system.temperature_unit_label")}
             </p>
             <Select
               value={tempUnit}
               onValueChange={(v) => setTempUnit(v as "celsius" | "fahrenheit")}
             >
-              <SelectTrigger className="w-36" aria-label="Temperature unit">
+              <SelectTrigger className="w-36" aria-label={t("system.temperature_unit_aria")}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="celsius">Celsius</SelectItem>
-                <SelectItem value="fahrenheit">Fahrenheit</SelectItem>
+                <SelectItem value="celsius">{t("system.temperature_celsius")}</SelectItem>
+                <SelectItem value="fahrenheit">{t("system.temperature_fahrenheit")}</SelectItem>
               </SelectContent>
             </Select>
           </motion.div>
@@ -462,18 +350,18 @@ function SystemSettingsForm({
           <Separator />
           <motion.div variants={itemVariants} className="flex items-center justify-between">
             <p className="font-semibold text-muted-foreground text-sm">
-              Distance Unit
+              {t("system.distance_unit_label")}
             </p>
             <Select
               value={distanceUnit}
               onValueChange={(v) => setDistanceUnit(v as "km" | "miles")}
             >
-              <SelectTrigger className="w-36" aria-label="Distance unit">
+              <SelectTrigger className="w-36" aria-label={t("system.distance_unit_aria")}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="km">Kilometers</SelectItem>
-                <SelectItem value="miles">Miles</SelectItem>
+                <SelectItem value="km">{t("system.distance_km")}</SelectItem>
+                <SelectItem value="miles">{t("system.distance_miles")}</SelectItem>
               </SelectContent>
             </Select>
           </motion.div>
@@ -482,7 +370,7 @@ function SystemSettingsForm({
           <Separator />
           <motion.div variants={itemVariants} className="flex items-center justify-between">
             <p className="font-semibold text-muted-foreground text-sm">
-              Timezone
+              {t("system.timezone_label")}
             </p>
             <Popover open={tzOpen} onOpenChange={setTzOpen}>
               <PopoverTrigger asChild>
@@ -494,16 +382,16 @@ function SystemSettingsForm({
                 >
                   <span className="truncate">
                     {TIMEZONES.find((tz) => tz.zonename === zonename)?.label ??
-                      "Select timezone"}
+                      t("system.timezone_placeholder")}
                   </span>
                   <ChevronsUpDown className="ml-2 size-4 shrink-0 opacity-50" />
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-64 p-0" align="end">
                 <Command>
-                  <CommandInput placeholder="Search timezone..." />
+                  <CommandInput placeholder={t("system.timezone_search_placeholder")} />
                   <CommandList>
-                    <CommandEmpty>No timezone found.</CommandEmpty>
+                    <CommandEmpty>{t("system.timezone_not_found")}</CommandEmpty>
                     <CommandGroup>
                       {TIMEZONES.map((tz) => (
                         <CommandItem
@@ -544,61 +432,6 @@ function SystemSettingsForm({
           </motion.div>
         </motion.div>
       </CardContent>
-
-      {/* ── SMS Tool Port Reboot Confirmation Dialog ─────────── */}
-      <AlertDialog
-        open={showSmsPortDialog}
-        onOpenChange={(open) => {
-          if (!smsPortSaving && !isRebooting) setShowSmsPortDialog(open);
-        }}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Reboot Required</AlertDialogTitle>
-            <AlertDialogDescription>
-              Changing the SMS tool port to{" "}
-              <strong>{pendingSmsPortValue ? "/dev/smd7" : "default (smd11)"}</strong>{" "}
-              requires a device reboot to take effect. Would you like to reboot
-              now?
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={smsPortSaving || isRebooting}>
-              Cancel
-            </AlertDialogCancel>
-            <Button
-              variant="outline"
-              disabled={smsPortSaving || isRebooting}
-              onClick={() => confirmSmsPortChange(false)}
-            >
-              {smsPortSaving ? (
-                <>
-                  <LoaderCircle className="size-4 animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                "Reboot Later"
-              )}
-            </Button>
-            <AlertDialogAction
-              disabled={smsPortSaving || isRebooting}
-              onClick={(e) => {
-                e.preventDefault();
-                confirmSmsPortChange(true);
-              }}
-            >
-              {isRebooting ? (
-                <>
-                  <LoaderCircle className="size-4 animate-spin" />
-                  Rebooting...
-                </>
-              ) : (
-                "Save & Reboot"
-              )}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </Card>
   );
 }

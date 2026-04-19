@@ -31,6 +31,7 @@ fi
 
 _password=$(printf '%s' "$POST_DATA" | jq -r '.password // empty')
 _confirm=$(printf '%s' "$POST_DATA" | jq -r '.confirm // empty')
+_enforce_strong=$(printf '%s' "$POST_DATA" | jq -r 'if .enforce_strong == false then "false" else "true" end')
 
 if [ -z "$_password" ]; then
     cgi_headers
@@ -48,11 +49,25 @@ if is_setup_required; then
         exit 0
     fi
 
+    # Validation rules (must match frontend and auth/password.sh exactly):
+    #   - length >= 5
+    #   - If strong password enforced: at least one uppercase, lowercase, digit
     _pw_len=$(printf '%s' "$_password" | wc -c)
-    if [ "$_pw_len" -lt 6 ]; then
-        cgi_headers
-        cgi_error "password_too_short" "Password must be at least 6 characters"
-        exit 0
+    if [ "$_enforce_strong" = "false" ]; then
+        if [ "$_pw_len" -lt 5 ]; then
+            cgi_headers
+            cgi_error "password_weak" "Password must be at least 5 characters"
+            exit 0
+        fi
+    else
+        if [ "$_pw_len" -lt 5 ] \
+           || ! printf '%s' "$_password" | grep -q '[A-Z]' \
+           || ! printf '%s' "$_password" | grep -q '[a-z]' \
+           || ! printf '%s' "$_password" | grep -q '[0-9]'; then
+            cgi_headers
+            cgi_error "password_weak" "Password must be at least 5 characters and include uppercase, lowercase, and a number"
+            exit 0
+        fi
     fi
 
     if [ "$_password" != "$_confirm" ]; then

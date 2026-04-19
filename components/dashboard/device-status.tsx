@@ -1,7 +1,9 @@
 "use client";
 
-import React, { useState } from "react";
-import { motion, type Variants } from "motion/react";
+import { useState } from "react";
+import { useTranslation } from "react-i18next";
+import { motion } from "motion/react";
+import { containerVariants, itemVariants } from "@/lib/motion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
@@ -9,20 +11,6 @@ import { Button } from "@/components/ui/button";
 import { Eye, EyeOff } from "lucide-react";
 
 import type { DeviceStatus } from "@/types/modem-status";
-
-const containerVariants: Variants = {
-  hidden: {},
-  visible: { transition: { staggerChildren: 0.06 } },
-};
-
-const itemVariants: Variants = {
-  hidden: { opacity: 0, y: 8 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.25, ease: "easeOut" },
-  },
-};
 
 interface DeviceStatusComponentProps {
   data: DeviceStatus | null;
@@ -33,32 +21,37 @@ const DeviceStatusComponent = ({
   data,
   isLoading,
 }: DeviceStatusComponentProps) => {
+  const { t } = useTranslation("dashboard");
   const [hidePrivate, setHidePrivate] = useState(false);
 
   const rows = [
-    { label: "Manufacturer", value: data?.manufacturer || "-" },
-    { label: "Firmware Version", value: data?.firmware || "-" },
-    { label: "Build Date", value: data?.build_date || "-" },
+    { label: t("device_status.firmware_version"), value: data?.firmware || "-" },
+    { label: t("device_status.build_date"), value: data?.build_date || "-" },
     {
-      label: "Phone Number",
+      label: t("device_status.phone_number"),
       value: data?.phone_number || "-",
       mono: true,
       private: true,
     },
-    { label: "IMSI", value: data?.imsi || "-", mono: true, private: true },
-    { label: "ICCID", value: data?.iccid || "-", mono: true, private: true },
+    { label: t("device_status.imsi"), value: data?.imsi || "-", mono: true, private: true },
+    { label: t("device_status.iccid"), value: data?.iccid || "-", mono: true, private: true },
     {
-      label: "Device IMEI",
+      label: t("device_status.device_imei"),
       value: data?.imei || "-",
       mono: true,
       private: true,
     },
     {
-      label: "LTE Category",
+      label: t("device_status.lte_category"),
       value: data?.lte_category ? `Cat ${data.lte_category}` : "-",
       mono: true,
     },
-    { label: "Active MIMO", value: data?.mimo || "-", mono: true },
+    { label: t("device_status.active_mimo"), value: data?.mimo || "-", mono: true },
+    {
+      label: t("device_status.qmanager_version"),
+      value: data?.qmanager_version || "-",
+      mono: true,
+    },
   ];
 
   if (isLoading) {
@@ -66,7 +59,7 @@ const DeviceStatusComponent = ({
       <Card className="@container/card col-span-2">
         <CardHeader>
           <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl text-center">
-            Device Information
+            {t("device_status.title")}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -95,7 +88,7 @@ const DeviceStatusComponent = ({
     <Card className="@container/card col-span-2">
       <CardHeader>
         <CardTitle className="text-2xl font-semibold @[250px]/card:text-3xl text-center flex-1">
-          Device Information
+          {t("device_status.title")}
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -103,8 +96,8 @@ const DeviceStatusComponent = ({
           <div className="flex items-center justify-center mb-8">
             <div className="size-44 bg-primary/15 rounded-full p-4 flex items-center justify-center">
               <img
-                src="/device-icon.svg"
-                alt="Device Icon"
+                src="/device-icon.png"
+                alt={t("device_status.icon_alt")}
                 className="size-full drop-shadow-md object-contain"
               />
             </div>
@@ -117,7 +110,7 @@ const DeviceStatusComponent = ({
                 size="icon"
                 onClick={() => setHidePrivate((prev) => !prev)}
                 aria-label={
-                  hidePrivate ? "Show private details" : "Hide private details"
+                  hidePrivate ? t("device_status.show_private") : t("device_status.hide_private")
                 }
               >
                 {hidePrivate ? (
@@ -134,7 +127,11 @@ const DeviceStatusComponent = ({
               animate="visible"
             >
               {rows.map((row) => (
-                <motion.div key={row.label} variants={itemVariants} className="flex items-center justify-between py-2">
+                <motion.div
+                  key={row.label}
+                  variants={itemVariants}
+                  className="flex items-center justify-between py-2"
+                >
                   <dt className="font-semibold text-muted-foreground xl:text-base text-sm">
                     {row.label}
                   </dt>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { motion, AnimatePresence } from "motion/react";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
@@ -13,14 +14,6 @@ import { ArrowLeftIcon, ArrowRightIcon } from "lucide-react";
 
 const TOTAL_STEPS = 6;
 
-const STEP_LABELS = [
-  "Welcome",
-  "Password",
-  "Network Mode",
-  "Connection",
-  "Band Preferences",
-  "Complete",
-];
 
 interface OnboardingShellProps {
   /** 1-based step index */
@@ -48,6 +41,17 @@ export function OnboardingShell({
   const [direction, setDirection] = useState(1);
   const liveRef = useRef<HTMLParagraphElement>(null);
 
+  const { t } = useTranslation("onboarding");
+
+  const stepLabelKeys = [
+    "step_label_welcome",
+    "step_label_password",
+    "step_label_network_mode",
+    "step_label_connection",
+    "step_label_band_preferences",
+    "step_label_complete",
+  ];
+
   // Derived state: update direction when step prop changes.
   // Calling setState during render (not in an effect) is the React-recommended
   // pattern for derived state — React re-renders immediately without cascading.
@@ -62,12 +66,12 @@ export function OnboardingShell({
   const showSkip = !!onSkip && !isFirstStep && !isLastStep;
 
   const defaultContinueLabel = isFirstStep
-    ? "Get Started"
+    ? t("shell.button_continue_first")
     : isLastStep
-      ? "Go to Dashboard"
-      : "Continue";
+      ? t("shell.button_continue_last")
+      : t("shell.button_continue");
 
-  const currentStepLabel = STEP_LABELS[currentStep - 1] ?? "";
+  const currentStepLabel = t(`shell.${stepLabelKeys[currentStep - 1] ?? ""}`, "");
 
   const slideVariants = {
     enter: (dir: number) => ({ opacity: 0, x: dir * 24 }),
@@ -84,7 +88,13 @@ export function OnboardingShell({
         aria-atomic="true"
         className="sr-only"
       >
-        {currentStepLabel ? `Step ${currentStep} of ${TOTAL_STEPS}: ${currentStepLabel}` : ""}
+        {currentStepLabel
+          ? t("shell.aria_live_step_indicator", {
+              step: currentStep,
+              total: TOTAL_STEPS,
+              label: currentStepLabel,
+            })
+          : ""}
       </p>
 
       <div className="w-full max-w-md">
@@ -96,7 +106,10 @@ export function OnboardingShell({
             aria-valuenow={currentStep}
             aria-valuemin={1}
             aria-valuemax={TOTAL_STEPS}
-            aria-label={`Step ${currentStep} of ${TOTAL_STEPS}`}
+            aria-label={t("shell.aria_progressbar_label", {
+              step: currentStep,
+              total: TOTAL_STEPS,
+            })}
             className="flex items-center justify-center gap-2"
           >
             {Array.from({ length: TOTAL_STEPS }, (_, i) => {
@@ -151,7 +164,7 @@ export function OnboardingShell({
                   className="gap-1.5 text-muted-foreground"
                 >
                   <ArrowLeftIcon className="size-3.5" />
-                  Back
+                  {t("shell.button_back")}
                 </Button>
               ) : (
                 <div />
@@ -166,7 +179,7 @@ export function OnboardingShell({
                     disabled={isLoading}
                     className="text-muted-foreground"
                   >
-                    Skip
+                    {t("shell.button_skip")}
                   </Button>
                 )}
                 <Button
@@ -178,7 +191,7 @@ export function OnboardingShell({
                   {isLoading ? (
                     <>
                       <Spinner className="size-3.5" />
-                      <span>Saving…</span>
+                      <span>{t("shell.button_saving")}</span>
                     </>
                   ) : (
                     <>
@@ -196,7 +209,7 @@ export function OnboardingShell({
 
         {/* Branding footer */}
         <p className="mt-4 text-center text-xs text-muted-foreground/50">
-          QManager — Quectel Modem Management
+          {t("shell.footer_branding")}
         </p>
       </div>
     </div>

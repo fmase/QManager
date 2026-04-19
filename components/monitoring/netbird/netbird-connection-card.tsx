@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { motion } from "motion/react";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 
 import {
   Card,
@@ -75,6 +76,7 @@ export function NetBirdConnectionCard({
   runInstall,
   refresh,
 }: NetBirdConnectionCardProps) {
+  const { t } = useTranslation("monitoring");
   const [setupKey, setSetupKey] = useState("");
   const [showRebootDialog, setShowRebootDialog] = useState(false);
   const [isRebooting, setIsRebooting] = useState(false);
@@ -100,15 +102,14 @@ export function NetBirdConnectionCard({
     }}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Reboot Required</AlertDialogTitle>
+          <AlertDialogTitle>{t("netbird.reboot_required_title")}</AlertDialogTitle>
           <AlertDialogDescription>
-            NetBird has been removed. A reboot is recommended to clean up
-            firewall rules and other artifacts. Would you like to reboot now?
+            {t("netbird.reboot_required_description")}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel disabled={isRebooting}>
-            Reboot Later
+            {t("netbird.reboot_later_button")}
           </AlertDialogCancel>
           <AlertDialogAction
             disabled={isRebooting}
@@ -117,10 +118,10 @@ export function NetBirdConnectionCard({
             {isRebooting ? (
               <>
                 <Loader2 className="size-4 animate-spin" />
-                Rebooting…
+                {t("netbird.rebooting_label")}
               </>
             ) : (
-              "Reboot Now"
+              t("netbird.reboot_now_button")
             )}
           </AlertDialogAction>
         </AlertDialogFooter>
@@ -133,9 +134,9 @@ export function NetBirdConnectionCard({
     return (
       <Card className="@container/card">
         <CardHeader>
-          <CardTitle>NetBird Connection</CardTitle>
+          <CardTitle>{t("netbird.connection_title")}</CardTitle>
           <CardDescription>
-            Manage your NetBird VPN connection.
+            {t("netbird.connection_description")}
           </CardDescription>
         </CardHeader>
         <CardContent aria-live="polite">
@@ -156,20 +157,20 @@ export function NetBirdConnectionCard({
     return (
       <Card className="@container/card">
         <CardHeader>
-          <CardTitle>NetBird Connection</CardTitle>
+          <CardTitle>{t("netbird.connection_title")}</CardTitle>
           <CardDescription>
-            Manage your NetBird VPN connection.
+            {t("netbird.connection_description")}
           </CardDescription>
         </CardHeader>
         <CardContent aria-live="polite">
           <Alert variant="destructive">
             <AlertCircle className="size-4" />
-            <AlertTitle>Failed to load NetBird status</AlertTitle>
+            <AlertTitle>{t("netbird.error_load_status")}</AlertTitle>
             <AlertDescription className="flex items-center justify-between">
               <span>{error}</span>
               <Button variant="outline" size="sm" onClick={() => refresh()}>
                 <RefreshCcwIcon className="size-3.5" />
-                Retry
+                {t("actions.retry", { ns: "common" })}
               </Button>
             </AlertDescription>
           </Alert>
@@ -181,14 +182,14 @@ export function NetBirdConnectionCard({
   // --- Not Installed ---------------------------------------------------------
   if (status && !status.installed) {
     const installCmd =
-      status.install_hint || "opkg update && opkg install netbird";
+      status.install_hint || t("netbird.install_command");
 
     return (
       <Card className="@container/card">
         <CardHeader>
-          <CardTitle>NetBird Connection</CardTitle>
+          <CardTitle>{t("netbird.connection_title")}</CardTitle>
           <CardDescription>
-            Manage your NetBird VPN connection.
+            {t("netbird.connection_description")}
           </CardDescription>
         </CardHeader>
         <CardContent aria-live="polite">
@@ -196,10 +197,10 @@ export function NetBirdConnectionCard({
             <PackageIcon className="size-10 text-muted-foreground" />
             <div className="text-center space-y-1.5">
               <p className="text-sm font-medium">
-                NetBird is not installed on this device.
+                {t("netbird.not_installed_title")}
               </p>
               <p className="text-xs text-muted-foreground">
-                Install automatically or run the command manually.
+                {t("netbird.not_installed_description")}
               </p>
             </div>
 
@@ -236,12 +237,12 @@ export function NetBirdConnectionCard({
                 {installResult.status === "running" ? (
                   <>
                     <Loader2 className="size-4 animate-spin" />
-                    {installResult.message || "Installing..."}
+                    {installResult.message || t("netbird.installing_label")}
                   </>
                 ) : (
                   <>
                     <PackageIcon className="size-4" />
-                    Install NetBird
+                    {t("netbird.install_button")}
                   </>
                 )}
               </Button>
@@ -252,13 +253,13 @@ export function NetBirdConnectionCard({
                 disabled={installResult.status === "running"}
               >
                 <RefreshCcwIcon className="size-3.5" />
-                Check Again
+                {t("netbird.check_again_button")}
               </Button>
             </div>
 
             <div className="w-full flex items-center gap-3 text-xs text-muted-foreground">
               <div className="h-px flex-1 bg-border" />
-              <span>or install manually</span>
+              <span>{t("netbird.install_manually_label")}</span>
               <div className="h-px flex-1 bg-border" />
             </div>
 
@@ -278,7 +279,7 @@ export function NetBirdConnectionCard({
         <span className="text-xs">{error}</span>
         <Button variant="outline" size="sm" onClick={() => refresh()}>
           <RefreshCcwIcon className="size-3.5" />
-          Retry
+          {t("actions.retry", { ns: "common" })}
         </Button>
       </AlertDescription>
     </Alert>
@@ -296,11 +297,11 @@ export function NetBirdConnectionCard({
     if (success) {
       toast.success(
         checked
-          ? "NetBird will start on boot"
-          : "NetBird will not start on boot",
+          ? t("netbird.toast_service_started")
+          : t("netbird.toast_service_stopped"),
       );
     } else {
-      toast.error("Failed to update boot setting");
+      toast.error(t("netbird.boot_toggle_error"));
     }
   };
 
@@ -310,12 +311,12 @@ export function NetBirdConnectionCard({
       <Separator />
       <div className="flex items-center justify-between">
         <p className="text-sm font-semibold text-muted-foreground">
-          Start on Boot
+          {t("netbird.boot_toggle_label")}
         </p>
         <Switch
           checked={bootEnabled}
           onCheckedChange={handleBootToggle}
-          aria-label="Enable NetBird on boot"
+          aria-label={t("netbird.boot_toggle_label")}
         />
       </div>
     </>
@@ -327,9 +328,9 @@ export function NetBirdConnectionCard({
       <Separator className="mt-4" />
       <div className="flex items-center justify-between pt-4">
         <div>
-          <p className="text-sm font-medium">Remove NetBird</p>
+          <p className="text-sm font-medium">{t("netbird.remove_title")}</p>
           <p className="text-xs text-muted-foreground">
-            Uninstall the NetBird package and firewall rules from this device.
+            {t("netbird.remove_description")}
           </p>
         </div>
         <AlertDialog>
@@ -342,40 +343,38 @@ export function NetBirdConnectionCard({
               {isUninstalling ? (
                 <>
                   <Loader2 className="size-4 animate-spin" />
-                  Removing...
+                  {t("netbird.removing_label")}
                 </>
               ) : (
                 <>
                   <Trash2Icon className="size-4" />
-                  Uninstall
+                  {t("netbird.uninstall_button")}
                 </>
               )}
             </Button>
           </AlertDialogTrigger>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Uninstall NetBird?</AlertDialogTitle>
+              <AlertDialogTitle>{t("netbird.uninstall_confirm_title")}</AlertDialogTitle>
               <AlertDialogDescription>
-                This will remove the NetBird package, firewall rules, and
-                all connection state from this device. The device will reboot
-                to clean up any remaining artifacts.
+                {t("netbird.uninstall_confirm_description")}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogCancel>{t("actions.cancel", { ns: "common" })}</AlertDialogCancel>
               <AlertDialogAction
                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                 onClick={async () => {
                   const success = await uninstall();
                   if (success) {
-                    toast.success("NetBird uninstalled");
+                    toast.success(t("netbird.toast_uninstalled"));
                     setShowRebootDialog(true);
                   } else {
-                    toast.error("Failed to uninstall NetBird");
+                    toast.error(t("netbird.toast_uninstall_error"));
                   }
                 }}
               >
-                Uninstall
+                {t("netbird.uninstall_confirm_button")}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
@@ -390,7 +389,7 @@ export function NetBirdConnectionCard({
       <div className="flex items-center gap-2">
         <Input
           type="text"
-          placeholder="Setup key (optional)"
+          placeholder={t("netbird.setup_key_placeholder")}
           value={setupKey}
           onChange={(e) => setSetupKey(e.target.value)}
           className="font-mono text-xs"
@@ -398,8 +397,7 @@ export function NetBirdConnectionCard({
         />
       </div>
       <p className="text-xs text-muted-foreground">
-        Enter a setup key from your NetBird dashboard, or leave empty if already
-        registered.
+        {t("netbird.setup_key_description")}
       </p>
     </div>
   );
@@ -409,10 +407,9 @@ export function NetBirdConnectionCard({
     return (
       <Card className="@container/card">
         <CardHeader>
-          <CardTitle>NetBird Connection</CardTitle>
+          <CardTitle>{t("netbird.connection_title")}</CardTitle>
           <CardDescription>
-            {version ? `NetBird v${version} · ` : ""}Manage your NetBird VPN
-            connection.
+            {version ? `NetBird v${version} · ` : ""}{t("netbird.connection_description")}
           </CardDescription>
         </CardHeader>
         <CardContent aria-live="polite">
@@ -420,11 +417,11 @@ export function NetBirdConnectionCard({
             {staleWarning}
             <div className="flex items-center justify-between">
               <p className="text-sm font-semibold text-muted-foreground">
-                Service
+                {t("netbird.label_service")}
               </p>
               <Badge variant="outline" className="bg-muted/50 text-muted-foreground border-muted-foreground/30">
                 <MinusCircleIcon className="size-3" />
-                Stopped
+                {t("netbird.badge_stopped")}
               </Badge>
             </div>
             {bootToggle}
@@ -434,9 +431,9 @@ export function NetBirdConnectionCard({
                 onClick={async () => {
                   const success = await startService();
                   if (success) {
-                    toast.success("NetBird service started");
+                    toast.success(t("netbird.toast_service_started"));
                   } else {
-                    toast.error("Failed to start NetBird service");
+                    toast.error(t("netbird.toast_service_start_error"));
                   }
                 }}
                 disabled={isTogglingService}
@@ -444,10 +441,10 @@ export function NetBirdConnectionCard({
                 {isTogglingService ? (
                   <>
                     <Loader2 className="size-4 animate-spin" />
-                    Starting...
+                    {t("netbird.starting_label")}
                   </>
                 ) : (
-                  "Start Service"
+                  t("netbird.service_start_button")
                 )}
               </Button>
 
@@ -462,8 +459,8 @@ export function NetBirdConnectionCard({
 
   // --- Connected -------------------------------------------------------------
   if (backendState === "Connected") {
-    const management = status?.management || "Unknown";
-    const signal = status?.signal || "Unknown";
+    const management = status?.management || t("shared.unknown", { ns: "monitoring" });
+    const signal = status?.signal || t("shared.unknown", { ns: "monitoring" });
     const fqdn = status?.fqdn || "";
     const netbirdIp = status?.netbird_ip || "";
 
@@ -471,7 +468,7 @@ export function NetBirdConnectionCard({
       ...(fqdn
         ? [
             {
-              label: "FQDN",
+              label: t("netbird.status_label_fqdn"),
               value: <span className="break-all">{fqdn}</span>,
             },
           ]
@@ -479,18 +476,18 @@ export function NetBirdConnectionCard({
       ...(netbirdIp
         ? [
             {
-              label: "NetBird IP",
+              label: t("netbird.status_label_netbird_ip"),
               value: <span className="font-mono">{netbirdIp}</span>,
             },
           ]
         : []),
       {
-        label: "Management",
+        label: t("netbird.status_label_management"),
         value:
           management === "Connected" ? (
             <Badge variant="outline" className="bg-success/15 text-success hover:bg-success/20 border-success/30">
               <CheckCircle2Icon className="size-3" />
-              Connected
+              {t("netbird.badge_connected")}
             </Badge>
           ) : (
             <Badge variant="outline" className="bg-destructive/15 text-destructive hover:bg-destructive/20 border-destructive/30">
@@ -500,12 +497,12 @@ export function NetBirdConnectionCard({
           ),
       },
       {
-        label: "Signal",
+        label: t("netbird.status_label_signal"),
         value:
           signal === "Connected" ? (
             <Badge variant="outline" className="bg-success/15 text-success hover:bg-success/20 border-success/30">
               <CheckCircle2Icon className="size-3" />
-              Connected
+              {t("netbird.badge_connected")}
             </Badge>
           ) : (
             <Badge variant="outline" className="bg-destructive/15 text-destructive hover:bg-destructive/20 border-destructive/30">
@@ -519,10 +516,9 @@ export function NetBirdConnectionCard({
     return (
       <Card className="@container/card">
         <CardHeader>
-          <CardTitle>NetBird Connection</CardTitle>
+          <CardTitle>{t("netbird.connection_title")}</CardTitle>
           <CardDescription>
-            {version ? `NetBird v${version} · ` : ""}Manage your NetBird VPN
-            connection.
+            {version ? `NetBird v${version} · ` : ""}{t("netbird.connection_description")}
           </CardDescription>
         </CardHeader>
         <CardContent aria-live="polite">
@@ -536,11 +532,11 @@ export function NetBirdConnectionCard({
             {/* Status badge */}
             <div className="flex items-center justify-between">
               <p className="text-sm font-semibold text-muted-foreground">
-                Status
+                {t("netbird.label_status")}
               </p>
               <Badge variant="outline" className="bg-success/15 text-success hover:bg-success/20 border-success/30">
                 <CheckCircle2Icon className="size-3" />
-                Connected
+                {t("netbird.badge_connected")}
               </Badge>
             </div>
 
@@ -573,9 +569,9 @@ export function NetBirdConnectionCard({
                 onClick={async () => {
                   const success = await disconnect();
                   if (success) {
-                    toast.success("NetBird disconnected");
+                    toast.success(t("netbird.toast_disconnected"));
                   } else {
-                    toast.error("Failed to disconnect");
+                    toast.error(t("netbird.toast_disconnect_error"));
                   }
                 }}
                 disabled={isDisconnecting}
@@ -583,10 +579,10 @@ export function NetBirdConnectionCard({
                 {isDisconnecting ? (
                   <>
                     <Loader2 className="size-4 animate-spin" />
-                    Disconnecting...
+                    {t("netbird.disconnecting_label")}
                   </>
                 ) : (
-                  "Disconnect"
+                  t("netbird.disconnect_button")
                 )}
               </Button>
             </div>
@@ -600,10 +596,9 @@ export function NetBirdConnectionCard({
   return (
     <Card className="@container/card">
       <CardHeader>
-        <CardTitle>NetBird Connection</CardTitle>
+        <CardTitle>{t("netbird.connection_title")}</CardTitle>
         <CardDescription>
-          {version ? `NetBird v${version} · ` : ""}Manage your NetBird VPN
-          connection.
+          {version ? `NetBird v${version} · ` : ""}{t("netbird.connection_description")}
         </CardDescription>
       </CardHeader>
       <CardContent aria-live="polite">
@@ -611,11 +606,11 @@ export function NetBirdConnectionCard({
           {staleWarning}
           <div className="flex items-center justify-between">
             <p className="text-sm font-semibold text-muted-foreground">
-              Status
+              {t("netbird.label_status")}
             </p>
             <Badge variant="outline" className="bg-muted/50 text-muted-foreground border-muted-foreground/30">
               <MinusCircleIcon className="size-3" />
-              Disconnected
+              {t("netbird.badge_disconnected")}
             </Badge>
           </div>
 
@@ -630,10 +625,10 @@ export function NetBirdConnectionCard({
               onClick={async () => {
                 const success = await connect(setupKey || undefined);
                 if (success) {
-                  toast.success("NetBird connected");
+                  toast.success(t("netbird.toast_connected"));
                   setSetupKey("");
                 } else {
-                  toast.error("Failed to connect");
+                  toast.error(t("netbird.toast_connect_retry_error"));
                 }
               }}
               disabled={isConnecting}
@@ -641,12 +636,10 @@ export function NetBirdConnectionCard({
               {isConnecting ? (
                 <>
                   <Loader2 className="size-4 animate-spin" />
-                  Connecting...
+                  {t("netbird.connecting_label")}
                 </>
               ) : (
-                <>
-                  Connect
-                </>
+                t("netbird.connect_button")
               )}
             </Button>
 
@@ -656,9 +649,9 @@ export function NetBirdConnectionCard({
               onClick={async () => {
                 const success = await stopService();
                 if (success) {
-                  toast.success("NetBird service stopped");
+                  toast.success(t("netbird.toast_service_stopped"));
                 } else {
-                  toast.error("Failed to stop NetBird service");
+                  toast.error(t("netbird.toast_service_stop_error"));
                 }
               }}
               disabled={isTogglingService}
@@ -666,10 +659,10 @@ export function NetBirdConnectionCard({
               {isTogglingService ? (
                 <>
                   <Loader2 className="size-4 animate-spin" />
-                  Stopping...
+                  {t("netbird.stopping_label")}
                 </>
               ) : (
-                "Stop Service"
+                t("netbird.service_stop_button")
               )}
             </Button>
 

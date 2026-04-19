@@ -26,6 +26,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { DEFAULT_AT_COMMANDS, type ATCommandPreset } from "@/constants/at-commands";
+import { useTranslation } from "react-i18next";
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -64,6 +65,7 @@ export default function CommandsPopover({
   onSelect,
   inputRef,
 }: CommandsPopoverProps) {
+  const { t } = useTranslation("system-settings");
   const [open, setOpen] = useState(false);
   const [manageOpen, setManageOpen] = useState(false);
 
@@ -86,12 +88,12 @@ export default function CommandsPopover({
     const trimmedCommand = newCommand.trim();
 
     if (!trimmedLabel || !trimmedCommand) {
-      setAddError("Both fields are required.");
+      setAddError(t("at_terminal.validate_fields_required"));
       return;
     }
 
     if (!trimmedCommand.toUpperCase().startsWith("AT")) {
-      setAddError('Command must start with "AT".');
+      setAddError(t("at_terminal.validate_must_start_at"));
       return;
     }
 
@@ -100,14 +102,14 @@ export default function CommandsPopover({
       (p) => p.command.toLowerCase() === trimmedCommand.toLowerCase()
     );
     if (isDuplicateCommand) {
-      setAddError("This command already exists.");
+      setAddError(t("at_terminal.validate_command_duplicate"));
       return;
     }
     const isDuplicateLabel = allCommands.some(
       (p) => p.label.toLowerCase() === trimmedLabel.toLowerCase()
     );
     if (isDuplicateLabel) {
-      setAddError("A command with this label already exists.");
+      setAddError(t("at_terminal.validate_label_duplicate"));
       return;
     }
 
@@ -135,40 +137,45 @@ export default function CommandsPopover({
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <Button variant="ghost" size="xs" aria-expanded={open}>
-            Commands
+            {t("at_terminal.popover_trigger")}
             <ChevronDownIcon />
           </Button>
         </PopoverTrigger>
 
         <PopoverContent className="w-80 p-0" align="end">
           <Command>
-            <CommandInput placeholder="Search commands..." />
+            <CommandInput placeholder={t("at_terminal.popover_search_placeholder")} />
             <CommandList>
-              <CommandEmpty>No commands found.</CommandEmpty>
+              <CommandEmpty>{t("at_terminal.popover_no_results")}</CommandEmpty>
 
-              <CommandGroup heading="Default">
-                {DEFAULT_AT_COMMANDS.map((preset) => (
-                  <CommandItem
-                    key={preset.command}
-                    value={preset.label}
-                    onSelect={() => {
-                      onSelect(preset.command);
-                      setOpen(false);
-                      inputRef.current?.focus();
-                    }}
-                  >
-                    <span className="font-medium flex-1 min-w-0 truncate">
-                      {preset.label}
-                    </span>
-                    <span className="font-mono text-xs text-muted-foreground truncate max-w-32">
-                      {preset.command}
-                    </span>
-                  </CommandItem>
-                ))}
+              <CommandGroup heading={t("at_terminal.popover_group_default")}>
+                {DEFAULT_AT_COMMANDS.map((preset) => {
+                  const label = preset.id
+                    ? t(`at_terminal.commands.${preset.id}`)
+                    : preset.label;
+                  return (
+                    <CommandItem
+                      key={preset.command}
+                      value={label}
+                      onSelect={() => {
+                        onSelect(preset.command);
+                        setOpen(false);
+                        inputRef.current?.focus();
+                      }}
+                    >
+                      <span className="font-medium flex-1 min-w-0 truncate">
+                        {label}
+                      </span>
+                      <span className="font-mono text-xs text-muted-foreground truncate max-w-32">
+                        {preset.command}
+                      </span>
+                    </CommandItem>
+                  );
+                })}
               </CommandGroup>
 
               {customCommands.length > 0 && (
-                <CommandGroup heading="Custom">
+                <CommandGroup heading={t("at_terminal.popover_group_custom")}>
                   {customCommands.map((preset) => (
                     <CommandItem
                       key={preset.command}
@@ -194,7 +201,7 @@ export default function CommandsPopover({
 
           {/* Footer */}
           <div className="flex items-center justify-between px-3 py-2 border-t text-xs text-muted-foreground">
-            <span>{totalCount} commands</span>
+            <span>{t("at_terminal.popover_total_count", { count: totalCount })}</span>
             <button
               className="text-xs underline underline-offset-2 hover:text-foreground transition-colors"
               onClick={() => {
@@ -202,7 +209,7 @@ export default function CommandsPopover({
                 setOpen(false);
               }}
             >
-              Manage Commands
+              {t("at_terminal.popover_manage_button")}
             </button>
           </div>
         </PopoverContent>
@@ -212,16 +219,16 @@ export default function CommandsPopover({
       <Dialog open={manageOpen} onOpenChange={setManageOpen}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Manage Custom Commands</DialogTitle>
+            <DialogTitle>{t("at_terminal.manage_title")}</DialogTitle>
             <DialogDescription>
-              Add and remove custom AT command presets.
+              {t("at_terminal.manage_description")}
             </DialogDescription>
           </DialogHeader>
 
           {/* Custom command list */}
           {customCommands.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-4">
-              No custom commands yet.
+              {t("at_terminal.manage_empty")}
             </p>
           ) : (
             <ul className="space-y-1">
@@ -241,7 +248,7 @@ export default function CommandsPopover({
                   <Button
                     variant="ghost"
                     size="icon-xs"
-                    aria-label={`Delete ${preset.label}`}
+                    aria-label={t("at_terminal.manage_delete_aria", { label: preset.label })}
                     onClick={() => handleDelete(index)}
                   >
                     <Trash2Icon />
@@ -256,8 +263,8 @@ export default function CommandsPopover({
           {/* Add form */}
           <div className="flex gap-2">
             <Input
-              placeholder="Command name"
-              aria-label="Command name"
+              placeholder={t("at_terminal.manage_name_placeholder")}
+              aria-label={t("at_terminal.manage_name_aria")}
               value={newLabel}
               onChange={(e) => {
                 setNewLabel(e.target.value);
@@ -266,8 +273,8 @@ export default function CommandsPopover({
               className="flex-1"
             />
             <Input
-              placeholder="AT+..."
-              aria-label="AT command"
+              placeholder={t("at_terminal.manage_command_placeholder")}
+              aria-label={t("at_terminal.manage_command_aria")}
               value={newCommand}
               onChange={(e) => {
                 setNewCommand(e.target.value);
@@ -279,7 +286,7 @@ export default function CommandsPopover({
               }}
             />
             <Button size="sm" onClick={handleAdd}>
-              Add
+              {t("at_terminal.manage_action_add")}
             </Button>
           </div>
 

@@ -1,0 +1,342 @@
+{
+  "custom_profiles": {
+    "page": {
+      "title": "Custom SIM Profile",
+      "description": "Bundle APN, IMEI, and TTL/HL settings into one-click profiles."
+    },
+    "view": {
+      "title": "Saved Profiles",
+      "description": "Manage your custom SIM profiles.",
+      "count_one": "{{count}} profile saved",
+      "count_other": "{{count}} profiles saved"
+    },
+    "table": {
+      "headers": {
+        "profile": "Profile",
+        "status": "Status",
+        "last_updated": "Last Updated",
+        "actions": ""
+      },
+      "status_badge": {
+        "active": "Active",
+        "inactive": "Inactive",
+        "sim_mismatch": "SIM Mismatch"
+      },
+      "pagination": {
+        "total_one": "{{count}} profile total",
+        "total_other": "{{count}} profiles total",
+        "page_info": "Page {{current}} of {{total}}",
+        "previous": "Previous",
+        "next": "Next"
+      },
+      "empty_row": "No profiles yet. Create one to get started.",
+      "actions_menu": {
+        "open_menu": "Open menu",
+        "edit": "Edit",
+        "activate": "Activate",
+        "deactivate": "Deactivate",
+        "delete": "Delete"
+      },
+      "delete_confirm": {
+        "title": "Delete Profile",
+        "description": "Are you sure you want to delete \"{{name}}\"? This action cannot be undone. Deleting this profile won't change your current modem configuration.",
+        "confirm_button": "Delete",
+        "deleting": "Deleting…"
+      }
+    },
+    "form": {
+      "create_title": "Create Custom SIM Profile",
+      "create_description": "Create a custom SIM profile with specific APN, TTL, and IMEI settings.",
+      "edit_title": "Edit Profile",
+      "edit_description": "Editing \"{{name}}\". Update the fields below.",
+      "load_current_button": "Load Current SIM",
+      "fields": {
+        "profile_name_label": "Profile Name",
+        "profile_name_placeholder": "My LTE Profile",
+        "profile_name_required": "Profile name is required.",
+        "sim_iccid_label": "SIM ICCID",
+        "sim_iccid_placeholder": "Auto-filled from current SIM",
+        "mno_label": "Mobile Network Operator",
+        "mno_placeholder": "Select carrier…",
+        "mno_custom": "Custom",
+        "apn_name_label": "APN Name",
+        "apn_name_placeholder": "internet",
+        "ip_protocol_label": "IP Protocol",
+        "ip_protocol_ipv4": "IPv4 Only",
+        "ip_protocol_ipv6": "IPv6 Only",
+        "ip_protocol_dual": "IPv4 + IPv6 (Dual Stack)",
+        "cid_label": "Profile Slot (CID)",
+        "cid_error": "CID must be 1–15.",
+        "imei_label": "Preferred IMEI",
+        "imei_placeholder": "Leave blank to keep current IMEI",
+        "imei_error": "IMEI must be exactly 15 digits.",
+        "ttl_label": "TTL Value",
+        "ttl_error": "TTL must be 0–255.",
+        "hl_label": "Hop Limit",
+        "hl_error": "HL must be 0–255."
+      },
+      "buttons": {
+        "create_submit": "Create Profile",
+        "update_submit": "Update Profile",
+        "reset": "Reset"
+      },
+      "toast": {
+        "create_success": "Profile created successfully.",
+        "create_error": "Failed to create profile.",
+        "update_success": "Profile updated successfully.",
+        "update_error": "Failed to update profile."
+      }
+    },
+    "activate_dialog": {
+      "title": "Activate Profile",
+      "description": "Apply \"{{name}}\" to the modem? This will update APN, TTL/HL, and IMEI settings as configured in the profile. Unchanged settings will be skipped.",
+      "confirm": "Activate"
+    },
+    "deactivate_dialog": {
+      "title": "Deactivate Profile",
+      "description": "Clear the active profile marker? The modem's current settings (APN, IMEI, TTL) will not be reverted — only the \"Active\" badge will be removed.",
+      "confirm": "Deactivate",
+      "deactivating": "Deactivating…"
+    },
+    "apply_dialog": {
+      "title": "Applying Profile",
+      "status_badge": {
+        "applying": "Applying…",
+        "complete": "Complete",
+        "partial": "Partial",
+        "failed": "Failed"
+      },
+      "step_labels": {
+        "apn": "APN Configuration",
+        "ttl_hl": "TTL / Hop Limit",
+        "imei": "IMEI"
+      },
+      "reboot_notice": "Modem is restarting to apply IMEI change. Dashboard will reconnect automatically."
+    },
+    "empty_state": {
+      "title": "No Custom Profiles",
+      "description": "Manage your custom SIM profiles here.",
+      "description_full": "You have not created any custom SIM profiles yet. Use the form to create your first profile.",
+      "refresh": "Refresh"
+    }
+  },
+  "scenarios": {
+    "page": {
+      "title": "Connection Scenarios",
+      "description": "Manage and customize connection scenarios for your cellular profiles to optimize network performance and reliability."
+    },
+    "default_balanced_name": "Balanced",
+    "default_balanced_description": "Auto band selection",
+    "default_gaming_name": "Gaming",
+    "default_gaming_description": "Low latency, SA priority",
+    "default_streaming_name": "Streaming",
+    "default_streaming_description": "High bandwidth, stable connection",
+    "default_gaming_optimization": "Latency",
+    "default_streaming_optimization": "Throughput",
+    "default_custom_optimization": "Custom",
+    "mode_option_auto": "Auto",
+    "mode_option_lte": "LTE Only",
+    "mode_option_nrsa": "5G SA Only",
+    "mode_option_nrsa_nsa": "5G SA / NSA",
+    "scenario_item": {
+      "active_badge": "Active",
+      "delete_confirm": {
+        "title": "Delete Scenario",
+        "description": "Are you sure you want to delete \"{{name}}\"? This action cannot be undone.",
+        "confirm": "Delete",
+        "deleting": "Deleting…"
+      }
+    },
+    "add_button": {
+      "label": "Create Scenario",
+      "description": "Add custom configuration"
+    },
+    "active_config_card": {
+      "configuration": "{{name}} Configuration",
+      "status": {
+        "applying": "Applying…",
+        "active": "Active",
+        "not_active": "Not Active"
+      },
+      "config_labels": {
+        "network_mode": "Network Mode",
+        "optimization": "Optimization",
+        "lte_bands": "LTE Bands",
+        "nrsa_bands": "NR5G-SA Bands",
+        "nrsa_nsa_bands": "NR5G-NSA Bands"
+      },
+      "config_values": {
+        "auto": "Auto",
+        "lte_only": "LTE Only",
+        "nrsa_only": "5G SA Only",
+        "nrsa_nsa": "5G SA / NSA",
+        "bands_auto": "Auto"
+      },
+      "edit_aria": "Edit scenario settings",
+      "activate": "Activate"
+    },
+    "add_dialog": {
+      "title": "New Connection Scenario",
+      "fields": {
+        "name_label": "Scenario Name",
+        "name_placeholder": "e.g., Work from Home",
+        "description_label": "Description",
+        "description_placeholder": "e.g., Optimized for video calls",
+        "network_mode_label": "Network Mode",
+        "network_mode_aria": "Network Mode",
+        "lte_bands_label": "LTE Band Lock",
+        "lte_bands_placeholder": "e.g., 1, 3, 7, 28 (empty = Auto)",
+        "sa_bands_label": "NR5G-SA Band Lock",
+        "sa_bands_placeholder": "e.g., 41, 78",
+        "nsa_bands_label": "NR5G-NSA Band Lock",
+        "nsa_bands_placeholder": "e.g., 41, 78",
+        "theme_label": "Card Theme",
+        "preview_label": "Preview",
+        "preview_placeholder": "Custom configuration"
+      },
+      "buttons": {
+        "create": "Create Scenario",
+        "creating": "Creating…"
+      },
+      "toast": {
+        "success": "Scenario created successfully.",
+        "error": "Failed to create scenario."
+      }
+    },
+    "edit_dialog": {
+      "title": "Edit Configuration",
+      "fields": {
+        "name_label": "Scenario Name",
+        "name_placeholder": "Scenario name",
+        "description_label": "Description",
+        "description_placeholder": "Scenario description",
+        "network_mode_label": "Network Mode",
+        "network_mode_aria": "Network Mode",
+        "optimization_label": "Optimization Label",
+        "optimization_placeholder": "e.g., Latency, Throughput, Custom",
+        "lte_bands_label": "LTE Band Lock",
+        "lte_bands_placeholder": "e.g., 1, 3, 7, 28 (empty = Auto)",
+        "sa_bands_label": "NR5G-SA Band Lock",
+        "sa_bands_placeholder": "e.g., 41, 78",
+        "nsa_bands_label": "NR5G-NSA Band Lock",
+        "nsa_bands_placeholder": "e.g., 41, 78",
+        "theme_label": "Card Theme",
+        "preview_label": "Preview",
+        "preview_placeholder": "Custom configuration"
+      },
+      "buttons": {
+        "save": "Save Changes",
+        "saving": "Saving…"
+      },
+      "toast": {
+        "success": "Scenario updated.",
+        "error": "Failed to update scenario."
+      }
+    },
+    "activation_toast": {
+      "success": "Switched to {{name}} scenario.",
+      "error": "Failed to activate {{name}} scenario."
+    },
+    "deletion_toast": {
+      "success": "Scenario deleted.",
+      "error": "Failed to delete scenario."
+    }
+  },
+  "sms": {
+    "page": {
+      "title": "SMS Center",
+      "description": "View, manage, and send SMS messages from your modem."
+    },
+    "inbox": {
+      "title": "Inbox",
+      "description": "View and manage your SMS messages",
+      "storage_suffix": " — {{used}}/{{total}} messages stored",
+      "table": {
+        "headers": {
+          "from": "From",
+          "message": "Message",
+          "date": "Date"
+        },
+        "actions": {
+          "open_menu": "Open menu",
+          "view": "View",
+          "delete": "Delete"
+        },
+        "empty_row": "No messages found.",
+        "select_all_aria": "Select all",
+        "select_row_aria": "Select row"
+      },
+      "buttons": {
+        "refresh_aria": "Refresh inbox",
+        "delete_selected": "Delete ({{count}})",
+        "delete_selected_aria": "Delete {{count}} selected",
+        "delete_all": "Delete All",
+        "delete_all_aria": "Delete all messages",
+        "new_message": "New Message",
+        "prev": "Prev",
+        "next": "Next"
+      },
+      "pagination": {
+        "total_one": "{{count}} message",
+        "total_other": "{{count}} messages",
+        "page_info": "{{current}} / {{total}}"
+      },
+      "error": {
+        "title": "Failed to load messages",
+        "description_prefix": "Failed to load messages"
+      },
+      "view_dialog": {
+        "title": "Message from {{sender}}",
+        "timestamp_aria": "{{timestamp}}"
+      },
+      "delete_single_confirm": {
+        "title": "Delete Message",
+        "description": "Are you sure you want to delete this message from {{sender}}? This action cannot be undone.",
+        "confirm": "Delete",
+        "deleting": "Deleting…"
+      },
+      "delete_all_confirm": {
+        "title": "Delete All Messages",
+        "description": "Are you sure you want to delete all {{count}} messages? This action cannot be undone.",
+        "confirm": "Delete All"
+      },
+      "delete_selected_confirm": {
+        "title": "Delete Selected Messages",
+        "description_one": "Are you sure you want to delete {{count}} selected message? This action cannot be undone.",
+        "description_other": "Are you sure you want to delete {{count}} selected messages? This action cannot be undone.",
+        "confirm": "Delete ({{count}})",
+        "deleting": "Deleting…"
+      },
+      "toast": {
+        "delete_success": "Message deleted",
+        "delete_error": "Failed to delete message",
+        "delete_all_success": "All messages deleted",
+        "delete_all_error": "Failed to delete messages",
+        "delete_selected_success_one": "{{count}} message deleted",
+        "delete_selected_success_other": "{{count}} messages deleted",
+        "delete_selected_error": "Failed to delete selected messages"
+      }
+    },
+    "compose": {
+      "title": "New Message",
+      "description": "Compose and send an SMS message.",
+      "fields": {
+        "phone_label": "Phone Number",
+        "phone_placeholder": "+1234567890",
+        "message_label": "Message",
+        "message_placeholder": "Type your message...",
+        "char_counter": "{{count}}/{{max}}"
+      },
+      "unicode_indicator": " (Unicode)",
+      "limit_warning": "Message exceeds single SMS limit. It will be sent as multiple parts.",
+      "buttons": {
+        "send": "Send",
+        "sending": "Sending…"
+      },
+      "toast": {
+        "success": "SMS sent successfully",
+        "error": "Failed to send SMS"
+      }
+    }
+  }
+}

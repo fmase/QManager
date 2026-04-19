@@ -10,49 +10,13 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { authFetch } from "@/lib/auth-fetch";
+import { useTranslation } from "react-i18next";
 
 // =============================================================================
 // StepNetworkMode — Onboarding step 3: preferred network type (optional)
 // =============================================================================
 
 const SETTINGS_ENDPOINT = "/cgi-bin/quecmanager/cellular/settings.sh";
-
-const NETWORK_OPTIONS = [
-  {
-    id: "AUTO",
-    label: "Automatic",
-    description: "Connect to the best available network",
-    Icon: RefreshCwIcon,
-    show5gArch: false,
-  },
-  {
-    id: "LTE",
-    label: "LTE Only",
-    description: "4G LTE — stable and widely available",
-    Icon: SignalIcon,
-    show5gArch: false,
-  },
-  {
-    id: "NR5G",
-    label: "5G Only",
-    description: "5G standalone — fastest where available",
-    Icon: ZapIcon,
-    show5gArch: true,
-  },
-  {
-    id: "LTE:NR5G",
-    label: "LTE + 5G",
-    description: "Dual mode with automatic fallback",
-    Icon: LayersIcon,
-    show5gArch: true,
-  },
-];
-
-const NR5G_ARCH_OPTIONS = [
-  { id: 0, label: "Auto (SA + NSA)", description: "Use both standalone and non-standalone" },
-  { id: 1, label: "NSA Only", description: "5G via LTE anchor — broader coverage" },
-  { id: 2, label: "SA Only", description: "Standalone 5G — lowest latency" },
-];
 
 interface StepNetworkModeProps {
   onDataChange: (data: { mode_pref: string; nr5g_mode: number } | null) => void;
@@ -67,6 +31,45 @@ export function StepNetworkMode({
   onLoadingChange,
   onSuccess,
 }: StepNetworkModeProps) {
+  const { t } = useTranslation("onboarding");
+
+  const NETWORK_OPTIONS = [
+    {
+      id: "AUTO",
+      label: t("network_mode.mode_label_auto"),
+      description: t("network_mode.mode_desc_auto"),
+      Icon: RefreshCwIcon,
+      show5gArch: false,
+    },
+    {
+      id: "LTE",
+      label: t("network_mode.mode_label_lte"),
+      description: t("network_mode.mode_desc_lte"),
+      Icon: SignalIcon,
+      show5gArch: false,
+    },
+    {
+      id: "NR5G",
+      label: t("network_mode.mode_label_5g_only"),
+      description: t("network_mode.mode_desc_5g_only"),
+      Icon: ZapIcon,
+      show5gArch: true,
+    },
+    {
+      id: "LTE:NR5G",
+      label: t("network_mode.mode_label_dual"),
+      description: t("network_mode.mode_desc_dual"),
+      Icon: LayersIcon,
+      show5gArch: true,
+    },
+  ];
+
+  const NR5G_ARCH_OPTIONS = [
+    { id: 0, label: t("network_mode.arch_label_auto"), description: t("network_mode.arch_desc_auto") },
+    { id: 1, label: t("network_mode.arch_label_nsa"), description: t("network_mode.arch_desc_nsa") },
+    { id: 2, label: t("network_mode.arch_label_sa"), description: t("network_mode.arch_desc_sa") },
+  ];
+
   const [selectedMode, setSelectedMode] = useState("AUTO");
   const [nr5gMode, setNr5gMode] = useState(0);
 
@@ -121,9 +124,9 @@ export function StepNetworkMode({
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-1.5">
-        <h2 className="text-2xl font-semibold tracking-tight">Preferred network</h2>
+        <h2 className="text-2xl font-semibold tracking-tight">{t("network_mode.heading")}</h2>
         <p className="text-sm text-muted-foreground">
-          How should your modem connect? You can change this anytime in Settings.
+          {t("network_mode.description")}
         </p>
       </div>
 
@@ -187,7 +190,7 @@ export function StepNetworkMode({
       {selectedOption.show5gArch && (
         <div className="flex flex-col gap-3 border-t border-border pt-4">
           <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-            5G Architecture
+            {t("network_mode.arch_section_label")}
           </p>
           <div
             role="radiogroup"

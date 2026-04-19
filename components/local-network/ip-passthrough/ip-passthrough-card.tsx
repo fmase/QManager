@@ -3,6 +3,7 @@
 import { useState, useEffect, type FormEvent, type ChangeEvent } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 
 import {
   Card,
@@ -64,6 +65,7 @@ const USB_MODE_FROM_API: Record<string, UsbModeLocal> = {
 };
 
 const IPPassthroughCard = () => {
+  const { t } = useTranslation("local-network");
   const {
     passthroughMode,
     targetMac,
@@ -148,7 +150,7 @@ const IPPassthroughCard = () => {
     e.preventDefault();
 
     if (!macValid) {
-      toast.error("Enter a valid MAC address (XX:XX:XX:XX:XX:XX)");
+      toast.error(t("ippt.error_invalid_mac"));
       return;
     }
 
@@ -169,9 +171,9 @@ const IPPassthroughCard = () => {
 
     if (success) {
       markSaved();
-      toast.success("Settings applied — device is rebooting…");
+      toast.success(t("ippt.toast_success_apply"));
     } else {
-      toast.error("Failed to save IP Passthrough settings");
+      toast.error(t("ippt.toast_error_apply"));
     }
   };
 
@@ -187,11 +189,8 @@ const IPPassthroughCard = () => {
     return (
       <Card className="@container/card">
         <CardHeader>
-          <CardTitle>IP Passthrough Configuration</CardTitle>
-          <CardDescription>
-            Assign the modem's public IP directly to a downstream device,
-            bypassing the router's NAT.
-          </CardDescription>
+          <CardTitle>{t("ippt.card_title")}</CardTitle>
+          <CardDescription>{t("ippt.card_description")}</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid gap-4">
@@ -234,11 +233,8 @@ const IPPassthroughCard = () => {
   return (
     <Card className="@container/card">
       <CardHeader>
-        <CardTitle>IP Passthrough Configuration</CardTitle>
-        <CardDescription>
-          Assign the modem's public IP directly to a downstream device,
-          bypassing the router's NAT.
-        </CardDescription>
+        <CardTitle>{t("ippt.card_title")}</CardTitle>
+        <CardDescription>{t("ippt.card_description")}</CardDescription>
       </CardHeader>
       <CardContent>
         {error && (
@@ -251,7 +247,7 @@ const IPPassthroughCard = () => {
               className="shrink-0 text-destructive hover:text-destructive"
               onClick={refresh}
             >
-              Retry
+              {t("actions.retry", { ns: "common" })}
             </Button>
           </div>
         )}
@@ -262,29 +258,29 @@ const IPPassthroughCard = () => {
                 <div className="grid @md/card:grid-cols-2 grid-cols-1 gap-4">
                   {/* Field 1: Passthrough Mode */}
                   <Field>
-                    <FieldLabel>IP Passthrough Mode</FieldLabel>
+                    <FieldLabel>{t("ippt.label_passthrough_mode")}</FieldLabel>
                     <Select
                       name="ippt_mode"
                       value={localMode}
                       onValueChange={(v) => setLocalMode(v as PassthroughMode)}
                       disabled={isSaving}
                     >
-                      <SelectTrigger aria-label="IP Passthrough mode">
-                        <SelectValue placeholder="Select Mode" />
+                      <SelectTrigger aria-label={t("ippt.aria_passthrough_mode")}>
+                        <SelectValue placeholder={t("ippt.placeholder_mode")} />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="disabled">
-                          Disabled (Router Mode)
+                          {t("ippt.option_mode_disabled_router")}
                         </SelectItem>
-                        <SelectItem value="eth">Ethernet (ETH)</SelectItem>
-                        <SelectItem value="usb">USB Tethering</SelectItem>
+                        <SelectItem value="eth">{t("ippt.option_mode_eth")}</SelectItem>
+                        <SelectItem value="usb">{t("ippt.option_mode_usb")}</SelectItem>
                       </SelectContent>
                     </Select>
                   </Field>
 
                   {/* Field 2: Target Device MAC (hidden when disabled) */}
                   <Field>
-                    <FieldLabel>Target Device (MAC)</FieldLabel>
+                    <FieldLabel>{t("ippt.label_target_device_mac")}</FieldLabel>
                     <AnimatePresence mode="wait">
                       {localMode === "disabled" ? (
                         <motion.div
@@ -295,8 +291,8 @@ const IPPassthroughCard = () => {
                           transition={{ duration: 0.2 }}
                         >
                           <Select disabled>
-                            <SelectTrigger aria-label="Target Device MAC">
-                              <SelectValue placeholder="N/A — Router Mode" />
+                            <SelectTrigger aria-label={t("ippt.aria_target_device_mac")}>
+                              <SelectValue placeholder={t("ippt.placeholder_mac_router_mode")} />
                             </SelectTrigger>
                             <SelectContent />
                           </Select>
@@ -318,15 +314,15 @@ const IPPassthroughCard = () => {
                             }
                             disabled={isSaving}
                           >
-                            <SelectTrigger aria-label="MAC source" className="w-full">
-                              <SelectValue placeholder="Select Target" />
+                            <SelectTrigger aria-label={t("ippt.aria_mac_source")} className="w-full">
+                              <SelectValue placeholder={t("ippt.placeholder_mac_source")} />
                             </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="automatic">
-                                Automatic — First Connected Device
+                                {t("ippt.option_mac_automatic")}
                               </SelectItem>
                               <SelectItem value="manual">
-                                Enter Manually…
+                                {t("ippt.option_mac_manual")}
                               </SelectItem>
                             </SelectContent>
                           </Select>
@@ -345,8 +341,8 @@ const IPPassthroughCard = () => {
                                 }}
                               >
                                 <Input
-                                  aria-label="MAC address"
-                                  placeholder="XX:XX:XX:XX:XX:XX"
+                                  aria-label={t("ippt.aria_mac_address")}
+                                  placeholder={t("ippt.placeholder_mac_manual")}
                                   className="font-mono uppercase placeholder:normal-case"
                                   value={localMacInput}
                                   onChange={handleMacInputChange}
@@ -354,8 +350,7 @@ const IPPassthroughCard = () => {
                                   disabled={isSaving}
                                 />
                                 <p className="text-xs text-muted-foreground mt-1">
-                                  Enter the MAC address of the device that will
-                                  receive the WAN IP.
+                                  {t("ippt.helper_mac_manual")}
                                 </p>
                               </motion.div>
                             )}
@@ -369,7 +364,7 @@ const IPPassthroughCard = () => {
                 <div className="grid @md/card:grid-cols-2 grid-cols-1 grid-flow-row gap-4">
                   {/* Field 3: IPPT NAT Mode */}
                   <Field>
-                    <FieldLabel>NAT Mode (Network Address Translation)</FieldLabel>
+                    <FieldLabel>{t("ippt.label_nat_mode")}</FieldLabel>
                     <Select
                       value={
                         localIpptNat ||
@@ -382,34 +377,34 @@ const IPPassthroughCard = () => {
                       onValueChange={(v) => setLocalIpptNat(v as NatMode)}
                       disabled={isSaving}
                     >
-                      <SelectTrigger aria-label="NAT mode">
-                        <SelectValue placeholder="Select NAT Mode" />
+                      <SelectTrigger aria-label={t("ippt.aria_nat_mode")}>
+                        <SelectValue placeholder={t("ippt.placeholder_nat_mode")} />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="nat-on">
-                          With NAT (Recommended)
+                          {t("ippt.option_nat_on")}
                         </SelectItem>
-                        <SelectItem value="nat-off">Without NAT</SelectItem>
+                        <SelectItem value="nat-off">{t("ippt.option_nat_off")}</SelectItem>
                       </SelectContent>
                     </Select>
                   </Field>
 
                   {/* Field 4: USB Modem Protocol */}
                   <Field>
-                    <FieldLabel>USB Connection Mode</FieldLabel>
+                    <FieldLabel>{t("ippt.label_usb_mode")}</FieldLabel>
                     <Select
                       value={localUsbMode}
                       onValueChange={(v) => setLocalUsbMode(v as UsbModeLocal)}
                       disabled={isSaving}
                     >
-                      <SelectTrigger aria-label="USB Connection Mode">
-                        <SelectValue placeholder="Choose USB Modem Protocol" />
+                      <SelectTrigger aria-label={t("ippt.aria_usb_mode")}>
+                        <SelectValue placeholder={t("ippt.placeholder_usb_mode")} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="rmnet">RMNET (QMI)</SelectItem>
-                        <SelectItem value="ecm">ECM (Universal)</SelectItem>
-                        <SelectItem value="mbim">MBIM (Windows)</SelectItem>
-                        <SelectItem value="rndis">RNDIS (Legacy)</SelectItem>
+                        <SelectItem value="rmnet">{t("ippt.option_usb_rmnet")}</SelectItem>
+                        <SelectItem value="ecm">{t("ippt.option_usb_ecm")}</SelectItem>
+                        <SelectItem value="mbim">{t("ippt.option_usb_mbim")}</SelectItem>
+                        <SelectItem value="rndis">{t("ippt.option_usb_rndis")}</SelectItem>
                       </SelectContent>
                     </Select>
                   </Field>
@@ -418,22 +413,22 @@ const IPPassthroughCard = () => {
                 <div className="grid @md/card:grid-cols-2 grid-cols-1 grid-flow-row gap-4">
                   {/* Field 5: DNS Offloading */}
                   <Field>
-                    <FieldLabel>DNS Proxy</FieldLabel>
+                    <FieldLabel>{t("ippt.label_dns_proxy")}</FieldLabel>
                     <Select
                       name="dns_mode"
                       value={localDnsProxy}
                       onValueChange={(v) => setLocalDnsProxy(v as DnsProxy)}
                       disabled={isSaving}
                     >
-                      <SelectTrigger aria-label="DNS proxy">
-                        <SelectValue placeholder="Select DNS mode" />
+                      <SelectTrigger aria-label={t("ippt.aria_dns_proxy")}>
+                        <SelectValue placeholder={t("ippt.placeholder_dns_proxy")} />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="disabled">
-                          Disabled (Recommended)
+                          {t("ippt.option_dns_disabled")}
                         </SelectItem>
                         <SelectItem value="enabled">
-                          Enabled (Use Modem DNS)
+                          {t("ippt.option_dns_enabled")}
                         </SelectItem>
                       </SelectContent>
                     </Select>
@@ -455,7 +450,7 @@ const IPPassthroughCard = () => {
               variant="outline"
               onClick={resetToServer}
               disabled={isSaving}
-              aria-label="Reset to saved values"
+              aria-label={t("ippt.aria_reset")}
             >
               <RotateCcwIcon />
             </Button>
@@ -470,30 +465,24 @@ const IPPassthroughCard = () => {
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>
-                Device Will Reboot Immediately
+                {t("ippt.dialog_title")}
               </AlertDialogTitle>
               <AlertDialogDescription asChild>
                 <div className="space-y-3 text-sm text-muted-foreground">
-                  <p>
-                    Applying these changes will save the configuration and
-                    immediately reboot the device.
-                  </p>
+                  <p>{t("ippt.dialog_desc_reboot_notice")}</p>
                   {localMode !== "disabled" && (
                     <p className="font-medium text-foreground">
-                      Once IP Passthrough is active, the device&apos;s local
-                      gateway will no longer be reachable. Make sure you have an
-                      active Tailscale connection or another out-of-band method
-                      to access the device after reboot.
+                      {t("ippt.dialog_desc_unreachable_warning")}
                     </p>
                   )}
-                  <p>This setting persists across reboots.</p>
+                  <p>{t("ippt.dialog_desc_persistence")}</p>
                 </div>
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogCancel>{t("actions.cancel", { ns: "common" })}</AlertDialogCancel>
               <AlertDialogAction onClick={handleConfirmedApply}>
-                Apply &amp; Reboot
+                {t("ippt.button_apply_reboot")}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

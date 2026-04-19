@@ -29,34 +29,34 @@ export interface MnoPreset {
  * dropdowns will automatically pick them up.
  */
 export const MNO_PRESETS: MnoPreset[] = [
-  {
-    id: "smart",
-    label: "Smart",
-    apn_name: "SMARTLTE",
-    ttl: 64,
-    hl: 64,
-  },
-  {
-    id: "dito",
-    label: "DITO",
-    apn_name: "internet.dito.ph",
-    ttl: 0,
-    hl: 0,
-  },
-  {
-    id: "gomo",
-    label: "GOMO",
-    apn_name: "gomo.ph",
-    ttl: 0,
-    hl: 0,
-  },
-  {
-    id: "globe",
-    label: "Globe",
-    apn_name: "internet.globe.com.ph",
-    ttl: 0,
-    hl: 0,
-  },
+  // {
+  //   id: "smart",
+  //   label: "Smart",
+  //   apn_name: "SMARTLTE",
+  //   ttl: 64,
+  //   hl: 64,
+  // },
+  // {
+  //   id: "dito",
+  //   label: "DITO",
+  //   apn_name: "internet.dito.ph",
+  //   ttl: 0,
+  //   hl: 0,
+  // },
+  // {
+  //   id: "gomo",
+  //   label: "GOMO",
+  //   apn_name: "gomo.ph",
+  //   ttl: 0,
+  //   hl: 0,
+  // },
+  // {
+  //   id: "globe",
+  //   label: "Globe",
+  //   apn_name: "internet.globe.com.ph",
+  //   ttl: 0,
+  //   hl: 0,
+  // },
   {
     id: "vzw",
     label: "Verizon",

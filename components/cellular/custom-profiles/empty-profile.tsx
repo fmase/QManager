@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 
 import {
   Card,
@@ -25,6 +26,8 @@ interface EmptyProfileViewProps {
 }
 
 const EmptyProfileViewComponent = ({ onRefresh }: EmptyProfileViewProps) => {
+  const { t } = useTranslation("cellular");
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
@@ -34,9 +37,9 @@ const EmptyProfileViewComponent = ({ onRefresh }: EmptyProfileViewProps) => {
     >
     <Card className="@container/card h-full">
       <CardHeader>
-        <CardTitle>Saved Profiles</CardTitle>
+        <CardTitle>{t("custom_profiles.view.title")}</CardTitle>
         <CardDescription>
-          Manage your custom SIM profiles here.
+          {t("custom_profiles.empty_state.description")}
         </CardDescription>
       </CardHeader>
       <CardContent className="h-full flex items-center justify-center">
@@ -45,17 +48,16 @@ const EmptyProfileViewComponent = ({ onRefresh }: EmptyProfileViewProps) => {
             <EmptyMedia variant="icon">
               <SmartphoneIcon />
             </EmptyMedia>
-            <EmptyTitle>No Custom Profiles</EmptyTitle>
+            <EmptyTitle>{t("custom_profiles.empty_state.title")}</EmptyTitle>
             <EmptyDescription>
-              You have not created any custom SIM profiles yet. Use the form to
-              create your first profile.
+              {t("custom_profiles.empty_state.description_full")}
             </EmptyDescription>
           </EmptyHeader>
           <EmptyContent>
             {onRefresh && (
               <Button variant="outline" size="sm" onClick={onRefresh}>
                 <RefreshCcwIcon className="size-4" />
-                Refresh
+                {t("custom_profiles.empty_state.refresh")}
               </Button>
             )}
           </EmptyContent>

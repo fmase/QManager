@@ -327,6 +327,24 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
         fi
     fi
 
+    # --- Auto-apply profile matching new SIM (sim_switch) ---
+    if [ -n "$sim_cfun_restored" ]; then
+        # Retry ICCID query — modem may need a moment to register the new SIM.
+        _as_iccid=""
+        for _try in 1 2 3; do
+            _as_iccid_raw=$(qcmd 'AT+QCCID' 2>/dev/null)
+            _as_iccid=$(printf '%s' "$_as_iccid_raw" | grep '+QCCID:' | sed 's/+QCCID: //g' | tr -d '\r ')
+            [ -n "$_as_iccid" ] && break
+            sleep 1
+        done
+        if [ -n "$_as_iccid" ]; then
+            ( . /usr/lib/qmanager/profile_mgr.sh && auto_apply_profile "$_as_iccid" "sim_switch" )
+        else
+            qlog_info "[sim_switch] ICCID query failed after SIM switch, skipping auto-apply"
+        fi
+        unset _as_iccid _as_iccid_raw _try
+    fi
+
     # 5. CFUN change (skip if SIM procedure already restored to user's desired value)
     if [ "$CFUN" != "unset" ]; then
         if [ -n "$sim_cfun_restored" ] && [ "$CFUN" = "1" ]; then

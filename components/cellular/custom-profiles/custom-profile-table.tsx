@@ -1,7 +1,9 @@
 "use client";
 
 import * as React from "react";
+import { useTranslation } from "react-i18next";
 import { motion } from "motion/react";
+import { TriangleAlertIcon } from "lucide-react";
 import {
   TbCircleCheckFilled,
   TbDotsVertical,
@@ -65,6 +67,7 @@ interface ProfileTableProps {
   onDelete: (id: string) => Promise<boolean>;
   onActivate?: (id: string) => void;
   onDeactivate?: () => void;
+  currentIccid?: string | null;
 }
 
 export function ProfileTable({
@@ -74,7 +77,9 @@ export function ProfileTable({
   onDelete,
   onActivate,
   onDeactivate,
+  currentIccid,
 }: ProfileTableProps) {
+  const { t } = useTranslation("cellular");
   const [deleteTarget, setDeleteTarget] = React.useState<ProfileSummary | null>(
     null
   );
@@ -92,7 +97,7 @@ export function ProfileTable({
     () => [
       {
         accessorKey: "name",
-        header: "Profile",
+        header: t("custom_profiles.table.headers.profile"),
         cell: ({ row }) => (
           <div className="flex items-center gap-2">
             <div>
@@ -109,30 +114,49 @@ export function ProfileTable({
       },
       {
         id: "status",
-        header: "Status",
+        header: t("custom_profiles.table.headers.status"),
         cell: ({ row }) => {
           const isActive = row.original.id === activeProfileId;
-          return isActive ? (
-            <Badge
-              variant="outline"
-              className="px-1.5 text-blue-600 border-blue-200 bg-blue-50 dark:bg-blue-950 dark:border-blue-800"
-            >
-              <TbCircleCheckFilled className="fill-blue-500 dark:fill-blue-400" />
-              Active
-            </Badge>
-          ) : (
+          if (isActive) {
+            const profileIccid = row.original.sim_iccid;
+            const isMismatch =
+              profileIccid && currentIccid && profileIccid !== currentIccid;
+
+            if (isMismatch) {
+              return (
+                <Badge
+                  variant="outline"
+                  className="px-1.5 bg-warning/15 text-warning hover:bg-warning/20 border-warning/30"
+                >
+                  <TriangleAlertIcon className="size-3" />
+                  {t("custom_profiles.table.status_badge.sim_mismatch")}
+                </Badge>
+              );
+            }
+
+            return (
+              <Badge
+                variant="outline"
+                className="px-1.5 text-blue-600 border-blue-200 bg-blue-50 dark:bg-blue-950 dark:border-blue-800"
+              >
+                <TbCircleCheckFilled className="fill-blue-500 dark:fill-blue-400" />
+                {t("custom_profiles.table.status_badge.active")}
+              </Badge>
+            );
+          }
+          return (
             <Badge
               variant="outline"
               className="px-1.5 text-muted-foreground"
             >
-              Inactive
+              {t("custom_profiles.table.status_badge.inactive")}
             </Badge>
           );
         },
       },
       {
         id: "updated",
-        header: "Last Updated",
+        header: t("custom_profiles.table.headers.last_updated"),
         cell: ({ row }) => (
           <span className="text-muted-foreground text-sm">
             {formatProfileDate(row.original.updated_at)}
@@ -141,7 +165,7 @@ export function ProfileTable({
       },
       {
         id: "actions",
-        header: "",
+        header: t("custom_profiles.table.headers.actions"),
         cell: ({ row }) => (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -151,26 +175,26 @@ export function ProfileTable({
                 size="icon"
               >
                 <TbDotsVertical />
-                <span className="sr-only">Open menu</span>
+                <span className="sr-only">{t("custom_profiles.table.actions_menu.open_menu")}</span>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-40">
               <DropdownMenuItem onClick={() => onEdit(row.original.id)}>
-                <TbEdit className="mr-2 size-4" />
-                Edit
+                <TbEdit className="size-4" />
+                {t("custom_profiles.table.actions_menu.edit")}
               </DropdownMenuItem>
               {onActivate && row.original.id !== activeProfileId && (
                 <DropdownMenuItem
                   onClick={() => onActivate(row.original.id)}
                 >
-                  <TbPlayerPlay className="mr-2 size-4" />
-                  Activate
+                  <TbPlayerPlay className="size-4" />
+                  {t("custom_profiles.table.actions_menu.activate")}
                 </DropdownMenuItem>
               )}
               {onDeactivate && row.original.id === activeProfileId && (
                 <DropdownMenuItem onClick={onDeactivate}>
-                  <TbPlayerStop className="mr-2 size-4" />
-                  Deactivate
+                  <TbPlayerStop className="size-4" />
+                  {t("custom_profiles.table.actions_menu.deactivate")}
                 </DropdownMenuItem>
               )}
               <DropdownMenuSeparator />
@@ -178,15 +202,15 @@ export function ProfileTable({
                 variant="destructive"
                 onClick={() => setDeleteTarget(row.original)}
               >
-                <TbTrash className="mr-2 size-4" />
-                Delete
+                <TbTrash className="size-4" />
+                {t("custom_profiles.table.actions_menu.delete")}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         ),
       },
     ],
-    [activeProfileId, onEdit, onActivate, onDeactivate]
+    [t, activeProfileId, onEdit, onActivate, onDeactivate, currentIccid]
   );
 
   const table = useReactTable({
@@ -244,7 +268,7 @@ export function ProfileTable({
                   colSpan={columns.length}
                   className="h-24 text-center"
                 >
-                  No profiles yet. Create one to get started.
+                  {t("custom_profiles.table.empty_row")}
                 </TableCell>
               </TableRow>
             )}
@@ -255,7 +279,7 @@ export function ProfileTable({
       {data.length > 0 && (
         <div className="flex items-center justify-between px-2 pt-2">
           <span className="text-muted-foreground text-sm">
-            {data.length} profile{data.length !== 1 ? "s" : ""} total
+            {t("custom_profiles.table.pagination.total", { count: data.length })}
           </span>
           {table.getPageCount() > 1 && (
             <div className="flex items-center gap-2">
@@ -265,11 +289,13 @@ export function ProfileTable({
                 onClick={() => table.previousPage()}
                 disabled={!table.getCanPreviousPage()}
               >
-                Previous
+                {t("custom_profiles.table.pagination.previous")}
               </Button>
               <span className="text-sm">
-                Page {table.getState().pagination.pageIndex + 1} of{" "}
-                {table.getPageCount()}
+                {t("custom_profiles.table.pagination.page_info", {
+                  current: table.getState().pagination.pageIndex + 1,
+                  total: table.getPageCount(),
+                })}
               </span>
               <Button
                 variant="outline"
@@ -277,7 +303,7 @@ export function ProfileTable({
                 onClick={() => table.nextPage()}
                 disabled={!table.getCanNextPage()}
               >
-                Next
+                {t("custom_profiles.table.pagination.next")}
               </Button>
             </div>
           )}
@@ -291,21 +317,27 @@ export function ProfileTable({
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Profile</AlertDialogTitle>
+            <AlertDialogTitle>
+              {t("custom_profiles.table.delete_confirm.title")}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete &ldquo;{deleteTarget?.name}
-              &rdquo;? This action cannot be undone. Deleting this profile
-              won&apos;t change your current modem configuration.
+              {t("custom_profiles.table.delete_confirm.description", {
+                name: deleteTarget?.name ?? "",
+              })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={isDeleting}>
+              {t("cancel", { ns: "common" })}
+            </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
               disabled={isDeleting}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {isDeleting ? "Deleting…" : "Delete"}
+              {isDeleting
+                ? t("custom_profiles.table.delete_confirm.deleting")
+                : t("custom_profiles.table.delete_confirm.confirm_button")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

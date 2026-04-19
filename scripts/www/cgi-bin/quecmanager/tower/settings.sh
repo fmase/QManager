@@ -53,7 +53,7 @@ current_persist=$(tower_config_get ".persist")
 [ "$current_persist" != "true" ] && current_persist="false"
 
 current_fo_enabled=$(tower_config_get ".failover.enabled")
-[ "$current_fo_enabled" != "true" ] && [ "$current_fo_enabled" != "false" ] && current_fo_enabled="true"
+[ "$current_fo_enabled" != "true" ] && [ "$current_fo_enabled" != "false" ] && current_fo_enabled="false"
 
 current_fo_threshold=$(tower_config_get ".failover.threshold")
 [ -z "$current_fo_threshold" ] && current_fo_threshold="20"

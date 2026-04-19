@@ -373,6 +373,90 @@ clear_active_profile() {
     rm -f "$ACTIVE_PROFILE_FILE"
 }
 
+# _profile_emit_event <type> <message> <severity>
+# Lazy-loads events.sh on first use with a no-op fallback if unavailable.
+# Matches the EVENTS_FILE/MAX_EVENTS convention used by qmanager_profile_apply
+# and qmanager_poller. Callers of profile_mgr.sh functions may not have
+# events.sh sourced (e.g. the subshell pattern from poller/watchcat), so we
+# lazy-source it on demand.
+_profile_emit_event() {
+    local etype="$1" msg="$2" severity="$3"
+    if ! command -v append_event >/dev/null 2>&1; then
+        [ -z "$EVENTS_FILE" ] && EVENTS_FILE="/tmp/qmanager_events.json"
+        [ -z "$MAX_EVENTS" ] && MAX_EVENTS=50
+        . /usr/lib/qmanager/events.sh 2>/dev/null || return 0
+    fi
+    command -v append_event >/dev/null 2>&1 && append_event "$etype" "$msg" "$severity" 2>/dev/null
+    return 0
+}
+
+# auto_apply_profile <current_iccid> <caller_tag>
+# Reconcile the active profile marker against the current SIM's ICCID.
+#
+#   - If a profile's sim_iccid matches the current ICCID, mark it active and
+#     spawn the apply worker detached. The worker owns its own PID lock and
+#     per-step skip logic — this helper does NOT pre-compare settings.
+#   - If no profile matches AND the currently-active profile was pinned to a
+#     different SIM, clear the active marker so the UI stops showing a stale
+#     "Active" badge, and emit a profile_deactivated event (warning) to match
+#     the poller's boot-time cleanup behavior. Profiles with empty sim_iccid
+#     are left alone (not SIM-bound).
+#
+# Safe to call repeatedly (idempotent).
+auto_apply_profile() {
+    local current_iccid="$1"
+    local caller="${2:-unknown}"
+    local iccid_suffix pf pf_iccid match_id _ap_id _ap_iccid _ap_name
+
+    if [ -z "$current_iccid" ]; then
+        qlog_info "[$caller] auto_apply_profile: empty ICCID, skipping" 2>/dev/null
+        return 1
+    fi
+
+    # Don't race a manual "Activate" click — if a worker is already running,
+    # let it finish. It will finalize the active marker on its own.
+    if ! profile_check_lock; then
+        qlog_info "[$caller] Apply already running (PID $_profile_lock_pid), skipping" 2>/dev/null
+        return 0
+    fi
+
+    iccid_suffix=$(printf '%s' "$current_iccid" | tail -c 4)
+    match_id=""
+    for pf in "$PROFILE_DIR"/p_*.json; do
+        [ -f "$pf" ] || continue
+        pf_iccid=$(jq -r '(.sim_iccid) | if . == null then empty else . end' "$pf" 2>/dev/null)
+        if [ "$pf_iccid" = "$current_iccid" ]; then
+            match_id=$(jq -r '(.id) | if . == null then empty else . end' "$pf" 2>/dev/null)
+            break
+        fi
+    done
+
+    if [ -z "$match_id" ]; then
+        # No profile matches the current SIM. If a SIM-pinned active profile
+        # exists for a different SIM, clear the marker so the UI stops showing
+        # a stale "Active" badge. Mirrors the poller's boot-time cleanup.
+        _ap_id=$(get_active_profile)
+        if [ -n "$_ap_id" ]; then
+            _ap_iccid=$(jq -r '(.sim_iccid) | if . == null then empty else . end' "$PROFILE_DIR/${_ap_id}.json" 2>/dev/null)
+            if [ -n "$_ap_iccid" ] && [ "$_ap_iccid" != "$current_iccid" ]; then
+                _ap_name=$(jq -r '(.name) | if . == null then empty else . end' "$PROFILE_DIR/${_ap_id}.json" 2>/dev/null)
+                clear_active_profile
+                _profile_emit_event "profile_deactivated" "Profile '${_ap_name:-unknown}' auto-deactivated (SIM mismatch)" "warning"
+                qlog_info "[$caller] Deactivated profile $_ap_id (SIM mismatch: current ICCID ...$iccid_suffix)" 2>/dev/null
+            fi
+        fi
+        if [ "$(profile_count)" -gt 0 ]; then
+            qlog_info "[$caller] No profile matches ICCID ...$iccid_suffix" 2>/dev/null
+        fi
+        return 1
+    fi
+
+    set_active_profile "$match_id" || return 1
+    qlog_info "[$caller] Auto-applying profile $match_id (ICCID ...$iccid_suffix)" 2>/dev/null
+    ( /usr/bin/qmanager_profile_apply "$match_id" </dev/null >/dev/null 2>&1 & )
+    return 0
+}
+
 # =============================================================================
 # AT Command Conversion Helpers
 # =============================================================================

@@ -30,7 +30,6 @@ export interface SaveSettingsPayload {
   distance_unit?: "km" | "miles";
   timezone?: string;
   zonename?: string;
-  sms_tool_device?: string; // "" = default (smd11), "/dev/smd7" = alternate
 }
 
 export interface SaveScheduledRebootPayload {

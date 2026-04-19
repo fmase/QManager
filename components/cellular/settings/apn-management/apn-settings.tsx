@@ -4,6 +4,7 @@ import APNSettingsCard from "./apn-card";
 import MBNCard from "./mbn-card";
 import { useApnSettings } from "@/hooks/use-apn-settings";
 import { useMbnSettings } from "@/hooks/use-mbn-settings";
+import { useSimProfiles } from "@/hooks/use-sim-profiles";
 
 const APNSettingsComponent = () => {
   const { profiles, activeCid, isLoading, isSaving, error, saveApn, refresh } =
@@ -17,6 +18,19 @@ const APNSettingsComponent = () => {
     saveMbn,
     rebootDevice,
   } = useMbnSettings();
+
+  const {
+    profiles: simProfiles,
+    activeProfileId,
+    isLoading: simProfilesLoading,
+  } = useSimProfiles();
+
+  const activeProfileName =
+    activeProfileId
+      ? simProfiles.find((p) => p.id === activeProfileId)?.name ??
+        "Active Custom SIM Profile"
+      : null;
+  const isProfileControlled = !simProfilesLoading && !!activeProfileId;
 
   return (
     <div className="@container/main mx-auto p-2">
@@ -41,6 +55,8 @@ const APNSettingsComponent = () => {
           isLoading={isLoading}
           isSaving={isSaving}
           onSave={saveApn}
+          isProfileControlled={isProfileControlled}
+          profileName={activeProfileName}
         />
         <MBNCard
           profiles={mbnProfiles}

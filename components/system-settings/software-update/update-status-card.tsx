@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { motion, type Variants } from "motion/react";
+import { useTranslation, Trans } from "react-i18next";
+import type { TFunction } from "i18next";
+import { motion } from "motion/react";
 import Markdown from "react-markdown";
 import {
   Card,
@@ -15,7 +17,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -43,8 +45,10 @@ import {
   RefreshCwIcon,
 } from "lucide-react";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 import type { UpdateInfo, UpdateStatus, DownloadState } from "@/hooks/use-software-update";
+import { containerVariants, itemVariants } from "@/lib/motion";
 import { StatusBadge } from "./software-update";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -61,24 +65,14 @@ const PROSE_CLASSES = [
   "prose-hr:border-border prose-hr:my-3",
 ].join(" ");
 
-const containerVariants: Variants = {
-  hidden: {},
-  visible: { transition: { staggerChildren: 0.06 } },
-};
-
-const itemVariants: Variants = {
-  hidden: { opacity: 0, y: 8 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.25, ease: "easeOut" } },
-};
-
-function formatRelativeTime(iso: string): string {
+function formatRelativeTime(iso: string, t: TFunction): string {
   const diff = Date.now() - new Date(iso).getTime();
   const mins = Math.floor(diff / 60000);
-  if (mins < 1) return "just now";
-  if (mins < 60) return `${mins}m ago`;
+  if (mins < 1) return t("time.just_now", { ns: "common" });
+  if (mins < 60) return t("time.minutes_ago", { ns: "common", count: mins });
   const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
-  return `${Math.floor(hrs / 24)}d ago`;
+  if (hrs < 24) return t("time.hours_ago", { ns: "common", count: hrs });
+  return t("time.days_ago", { ns: "common", count: Math.floor(hrs / 24) });
 }
 
 // ─── Props ──────────────────────────────────────────────────────────────────
@@ -114,6 +108,7 @@ export function UpdateStatusCard({
   downloadUpdate,
   installStaged,
 }: UpdateStatusCardProps) {
+  const { t } = useTranslation("system-settings");
   const [showInstallDialog, setShowInstallDialog] = useState(false);
   const [showChangelog, setShowChangelog] = useState(false);
 
@@ -121,27 +116,27 @@ export function UpdateStatusCard({
     try {
       await downloadUpdate();
     } catch {
-      toast.error("Failed to start download");
+      toast.error(t("software_update.toast_download_failed"));
     }
-  }, [downloadUpdate]);
+  }, [downloadUpdate, t]);
 
   const handleInstall = useCallback(async () => {
     setShowInstallDialog(false);
     try {
       await installStaged();
     } catch {
-      toast.error("Failed to start installation");
+      toast.error(t("software_update.toast_install_failed"));
     }
-  }, [installStaged]);
+  }, [installStaged, t]);
 
   // ── Loading skeleton ──────────────────────────────────────────────────
   if (isLoading) {
     return (
       <Card className="@container/card">
         <CardHeader>
-          <CardTitle>Update Status</CardTitle>
+          <CardTitle>{t("software_update.status_card_title")}</CardTitle>
           <CardDescription>
-            Current version and available updates.
+            {t("software_update.status_card_description")}
           </CardDescription>
           <CardAction>
             <Skeleton className="h-5 w-24 rounded-full" />
@@ -172,9 +167,9 @@ export function UpdateStatusCard({
     <>
       <Card className="@container/card">
         <CardHeader>
-          <CardTitle>Update Status</CardTitle>
+          <CardTitle>{t("software_update.status_card_title")}</CardTitle>
           <CardDescription>
-            Current version and available updates.
+            {t("software_update.status_card_description")}
           </CardDescription>
           {updateInfo && (
             <CardAction>
@@ -192,7 +187,10 @@ export function UpdateStatusCard({
           {displayError && (
             <Alert variant="destructive" className="mb-4">
               <AlertTriangleIcon className="size-4" />
-              <AlertDescription>{displayError}</AlertDescription>
+              <AlertTitle>{t("software_update.error_check_failed_title")}</AlertTitle>
+              <AlertDescription>
+                <p>{displayError}</p>
+              </AlertDescription>
             </Alert>
           )}
 
@@ -209,7 +207,7 @@ export function UpdateStatusCard({
                 <div className="flex items-center gap-3">
                   <div className="flex flex-col gap-0.5">
                     <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                      Installed
+                      {t("software_update.installed_label")}
                     </span>
                     <span className="text-sm font-medium">
                       {updateInfo.current_version}
@@ -218,7 +216,7 @@ export function UpdateStatusCard({
                   <ArrowRightIcon className="size-4 text-muted-foreground" />
                   <div className="flex flex-col gap-0.5">
                     <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                      Available
+                      {t("software_update.available_label")}
                     </span>
                     <span className="text-sm font-medium text-primary">
                       {updateInfo.latest_version}
@@ -234,10 +232,10 @@ export function UpdateStatusCard({
             ) : (
               <motion.div variants={itemVariants} className="flex items-center justify-between">
                 <p className="font-semibold text-muted-foreground text-sm">
-                  Installed Version
+                  {t("software_update.installed_version")}
                 </p>
                 <span className="text-sm font-medium">
-                  {updateInfo?.current_version ?? "Unknown"}
+                  {updateInfo?.current_version ?? t("time.unknown", { ns: "common" })}
                 </span>
               </motion.div>
             )}
@@ -254,7 +252,9 @@ export function UpdateStatusCard({
                   <motion.div variants={itemVariants} className="flex flex-col gap-2 min-w-0">
                     <div className="flex items-center justify-between">
                       <p className="font-semibold text-sm">
-                        {updateAvailable ? "Release Notes" : "Current Release Notes"}
+                        {updateAvailable
+                          ? t("software_update.release_notes")
+                          : t("software_update.current_release_notes")}
                       </p>
                       <Button
                         variant="ghost"
@@ -263,14 +263,14 @@ export function UpdateStatusCard({
                         onClick={() => setShowChangelog(true)}
                       >
                         <FileTextIcon className="size-3.5" />
-                        View full
+                        {t("software_update.view_full")}
                       </Button>
                     </div>
                     <div
                       role="region"
-                      aria-label="Release notes"
+                      aria-label={t("software_update.release_notes_aria")}
                       tabIndex={0}
-                      className={`max-h-64 overflow-y-auto overflow-x-hidden wrap-break-word rounded-lg border bg-muted/50 p-4 ${PROSE_CLASSES}`}
+                      className={cn("max-h-64 overflow-y-auto overflow-x-hidden wrap-break-word rounded-lg border bg-muted/50 p-4", PROSE_CLASSES)}
                     >
                       <Markdown>{displayChangelog}</Markdown>
                     </div>
@@ -280,7 +280,11 @@ export function UpdateStatusCard({
             })()}
 
             {/* ── Download progress / verified badge ──────────────── */}
-            {updateAvailable && downloadState && (
+            {/* Rendered whenever a download is in-flight or staged, so that
+                Version Management reinstall/downgrade flows surface progress
+                and the staged-ready prompt, not just the "update available"
+                forward-update path. */}
+            {downloadState && (
               <>
                 <Separator />
                 <motion.div variants={itemVariants}>
@@ -288,7 +292,9 @@ export function UpdateStatusCard({
                     <div className="flex flex-col gap-1.5">
                       <div className="flex items-center justify-between">
                         <span className="text-xs text-muted-foreground">
-                          {downloadState.status === "downloading" ? "Downloading qmanager.tar.gz..." : "Verifying SHA-256..."}
+                          {downloadState.status === "downloading"
+                            ? t("software_update.downloading_file")
+                            : t("software_update.verifying_sha")}
                         </span>
                         {downloadState.size && (
                           <span className="text-xs text-muted-foreground">{downloadState.size}</span>
@@ -297,11 +303,13 @@ export function UpdateStatusCard({
                       <div
                         className="h-1.5 rounded-full bg-muted overflow-hidden"
                         role="progressbar"
-                        aria-label={downloadState.status === "downloading" ? "Downloading update" : "Verifying integrity"}
-                        aria-valuemin={0}
-                        aria-valuemax={100}
+                        aria-label={
+                          downloadState.status === "downloading"
+                            ? t("software_update.download_progress_aria")
+                            : t("software_update.verify_progress_aria")
+                        }
                       >
-                        <div className="h-full rounded-full bg-primary animate-pulse" style={{ width: downloadState.status === "verifying" ? "90%" : "60%" }} />
+                        <div className="h-full w-2/5 rounded-full bg-primary animate-progress-indeterminate" />
                       </div>
                     </div>
                   )}
@@ -309,7 +317,9 @@ export function UpdateStatusCard({
                     <div className="flex items-center gap-2 rounded-lg border border-success/20 bg-success/5 p-2.5">
                       <CheckCircle2Icon className="size-4 text-success shrink-0" />
                       <span className="text-xs text-success">
-                        Downloaded & SHA-256 verified{downloadState.size ? ` (${downloadState.size})` : ""}
+                        {downloadState.size
+                          ? t("software_update.verified_badge_with_size", { size: downloadState.size })
+                          : t("software_update.verified_badge")}
                       </span>
                     </div>
                   )}
@@ -317,7 +327,7 @@ export function UpdateStatusCard({
                     <div className="flex items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/5 p-2.5">
                       <AlertTriangleIcon className="size-4 text-destructive shrink-0" />
                       <span className="text-xs text-destructive">
-                        {downloadState.message || "Download failed"}
+                        {downloadState.message || t("software_update.download_failed")}
                       </span>
                     </div>
                   )}
@@ -330,41 +340,46 @@ export function UpdateStatusCard({
             <motion.div variants={itemVariants} className="flex items-center justify-between gap-2">
               <span className="text-xs text-muted-foreground">
                 {lastChecked
-                  ? `Last checked ${formatRelativeTime(lastChecked)}`
-                  : "Never checked"}
+                  ? t("software_update.last_checked", { time: formatRelativeTime(lastChecked, t) })
+                  : t("software_update.never_checked")}
               </span>
-              {updateAvailable ? (
-                downloadState?.status === "ready" ? (
-                  <Button
-                    onClick={() => setShowInstallDialog(true)}
-                    disabled={isUpdating}
-                  >
-                    <DownloadIcon className="size-4" />
-                    Install Update
-                  </Button>
-                ) : (
-                  <Button
-                    onClick={handleDownload}
-                    disabled={isDownloading || isUpdating}
-                  >
-                    {isDownloading ? (
-                      <>
-                        <LoaderCircle className="size-4 animate-spin" />
-                        Downloading...
-                      </>
-                    ) : downloadState?.status === "error" ? (
-                      <>
-                        <RefreshCwIcon className="size-4" />
-                        Retry Download
-                      </>
-                    ) : (
-                      <>
-                        <DownloadIcon className="size-4" />
-                        Download Update
-                      </>
-                    )}
-                  </Button>
-                )
+              {downloadState?.status === "ready" ? (
+                // Staged download (any version — forward, reinstall, downgrade)
+                <Button
+                  onClick={() => setShowInstallDialog(true)}
+                  disabled={isUpdating}
+                >
+                  <DownloadIcon className="size-4" />
+                  {t("software_update.install_version", {
+                    version: downloadState.version ?? t("software_update.update_fallback"),
+                  })}
+                </Button>
+              ) : isDownloading ||
+                downloadState?.status === "downloading" ||
+                downloadState?.status === "verifying" ? (
+                <Button disabled>
+                  <LoaderCircle className="size-4 animate-spin" />
+                  {downloadState?.status === "verifying"
+                    ? t("software_update.verifying")
+                    : t("software_update.downloading")}
+                </Button>
+              ) : updateAvailable ? (
+                <Button
+                  onClick={handleDownload}
+                  disabled={isUpdating}
+                >
+                  {downloadState?.status === "error" ? (
+                    <>
+                      <RefreshCwIcon className="size-4" />
+                      {t("software_update.retry_download")}
+                    </>
+                  ) : (
+                    <>
+                      <DownloadIcon className="size-4" />
+                      {t("software_update.download_update")}
+                    </>
+                  )}
+                </Button>
               ) : (
                 <Button
                   variant="outline"
@@ -374,12 +389,12 @@ export function UpdateStatusCard({
                   {isChecking ? (
                     <>
                       <LoaderCircle className="size-4 animate-spin" />
-                      Checking...
+                      {t("software_update.checking")}
                     </>
                   ) : (
                     <>
                       <RefreshCwIcon className="size-4" />
-                      Check for Updates
+                      {t("software_update.check_for_updates")}
                     </>
                   )}
                 </Button>
@@ -394,14 +409,16 @@ export function UpdateStatusCard({
         <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>
-              Release Notes — {updateAvailable ? updateInfo?.latest_version : updateInfo?.current_version}
+              {t("software_update.release_notes_dialog_title", {
+                version: updateAvailable ? updateInfo?.latest_version : updateInfo?.current_version,
+              })}
             </DialogTitle>
           </DialogHeader>
           <div
             role="region"
-            aria-label="Full release notes"
+            aria-label={t("software_update.full_release_notes_aria")}
             tabIndex={0}
-            className={`max-h-[60vh] overflow-y-auto overflow-x-hidden wrap-break-word rounded-lg border bg-muted/50 p-5 ${PROSE_CLASSES}`}
+            className={cn("max-h-[60vh] overflow-y-auto overflow-x-hidden wrap-break-word rounded-lg border bg-muted/50 p-5", PROSE_CLASSES)}
           >
             <Markdown>
               {(updateAvailable ? updateInfo?.changelog : updateInfo?.current_changelog) ?? ""}
@@ -412,37 +429,73 @@ export function UpdateStatusCard({
       </Dialog>
 
       {/* ── Install confirmation dialog ──────────────────────────────── */}
-      <AlertDialog
-        open={showInstallDialog}
-        onOpenChange={setShowInstallDialog}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Install Update</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will update QManager from{" "}
-              <strong>{updateInfo?.current_version}</strong> to{" "}
-              <strong>{updateInfo?.latest_version}</strong>.
-              {updateInfo?.download_size && (
-                <>
-                  {" "}
-                  Download size:{" "}
-                  <strong>{updateInfo.download_size}</strong>.
-                </>
-              )}{" "}
-              The device will reboot automatically after installation. Do not
-              power off the device during the update.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleInstall}>
-              <DownloadIcon className="size-4" />
-              Install Now
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {(() => {
+        // Prefer the staged version from downloadState so reinstall / downgrade
+        // flows show the actual tarball that will be installed, not whatever
+        // latest_version the update check returned.
+        const stagedVersion =
+          downloadState?.version ?? updateInfo?.latest_version ?? "";
+        const currentVersion = updateInfo?.current_version ?? "";
+        const isReinstall =
+          !!stagedVersion && stagedVersion === currentVersion;
+        return (
+          <AlertDialog
+            open={showInstallDialog}
+            onOpenChange={setShowInstallDialog}
+          >
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>
+                  {isReinstall
+                    ? t("software_update.install_dialog_reinstall_title")
+                    : t("software_update.install_dialog_install_title", { version: stagedVersion })}
+                </AlertDialogTitle>
+                <AlertDialogDescription asChild>
+                  <div>
+                    <p>
+                      {isReinstall ? (
+                        <Trans
+                          i18nKey="software_update.install_dialog_reinstall_description"
+                          ns="system-settings"
+                          values={{ version: stagedVersion }}
+                          components={{ strong: <strong /> }}
+                        />
+                      ) : (
+                        <Trans
+                          i18nKey="software_update.install_dialog_install_description"
+                          ns="system-settings"
+                          values={{ version: stagedVersion, current: currentVersion }}
+                          components={{ strong: <strong /> }}
+                        />
+                      )}
+                    </p>
+                    {downloadState?.size && (
+                      <p>
+                        <Trans
+                          i18nKey="software_update.install_dialog_size_suffix"
+                          ns="system-settings"
+                          values={{ size: downloadState.size }}
+                          components={{ strong: <strong /> }}
+                        />
+                      </p>
+                    )}
+                    <p>{t("software_update.install_dialog_do_not_power_off")}</p>
+                  </div>
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>{t("actions.cancel", { ns: "common" })}</AlertDialogCancel>
+                <AlertDialogAction onClick={handleInstall}>
+                  <DownloadIcon className="size-4" />
+                  {isReinstall
+                    ? t("software_update.install_dialog_reinstall_now")
+                    : t("software_update.install_dialog_install_now")}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        );
+      })()}
     </>
   );
 }

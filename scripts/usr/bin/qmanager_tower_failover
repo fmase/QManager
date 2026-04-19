@@ -108,11 +108,18 @@ while true; do
     esac
 
     if [ -z "$rsrp" ]; then
-        quality=0
-        qlog_debug "No RSRP — quality=0%"
-    else
-        quality=$(calc_signal_quality "$rsrp")
+        # No RSRP reading yet — the poller hasn't published a confirmed
+        # signal value for this boot. Treating this as 0% would falsely
+        # trigger failover and clear the user's locks. Wait for the next
+        # interval and re-check; once the poller publishes a real value,
+        # the daemon resumes normal threshold evaluation on the same cycle.
+        # Mirrors the existing modem_reachable=false fast-path above.
+        qlog_debug "No RSRP yet — waiting for poller (skip cycle, bad counter unchanged)"
+        sleep "$INTERVAL"
+        continue
     fi
+
+    quality=$(calc_signal_quality "$rsrp")
 
     # --- Evaluate ------------------------------------------------------------
     if [ "$quality" -lt "$threshold" ]; then

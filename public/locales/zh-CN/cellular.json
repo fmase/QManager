@@ -1,0 +1,342 @@
+{
+  "custom_profiles": {
+    "page": {
+      "title": "自定义 SIM 配置文件",
+      "description": "将 APN、IMEI 和 TTL/HL 设置打包为一键式配置文件。"
+    },
+    "view": {
+      "title": "已保存的配置文件",
+      "description": "管理您的自定义 SIM 配置文件。",
+      "count_one": "已保存 {{count}} 个配置文件",
+      "count_other": "已保存 {{count}} 个配置文件"
+    },
+    "table": {
+      "headers": {
+        "profile": "配置文件",
+        "status": "状态",
+        "last_updated": "最后更新",
+        "actions": ""
+      },
+      "status_badge": {
+        "active": "活动",
+        "inactive": "未激活",
+        "sim_mismatch": "SIM 不匹配"
+      },
+      "pagination": {
+        "total_one": "共 {{count}} 个配置文件",
+        "total_other": "共 {{count}} 个配置文件",
+        "page_info": "第 {{current}} 页，共 {{total}} 页",
+        "previous": "上一页",
+        "next": "下一页"
+      },
+      "empty_row": "暂无配置文件，请创建一个以开始使用。",
+      "actions_menu": {
+        "open_menu": "打开菜单",
+        "edit": "编辑",
+        "activate": "激活",
+        "deactivate": "停用",
+        "delete": "删除"
+      },
+      "delete_confirm": {
+        "title": "删除配置文件",
+        "description": "确定要删除「{{name}}」吗？此操作不可撤销。删除此配置文件不会更改当前调制解调器配置。",
+        "confirm_button": "删除",
+        "deleting": "删除中…"
+      }
+    },
+    "form": {
+      "create_title": "创建自定义 SIM 配置文件",
+      "create_description": "使用特定的 APN、TTL 和 IMEI 设置创建自定义 SIM 配置文件。",
+      "edit_title": "编辑配置文件",
+      "edit_description": "正在编辑「{{name}}」。请更新以下字段。",
+      "load_current_button": "加载当前 SIM",
+      "fields": {
+        "profile_name_label": "配置文件名称",
+        "profile_name_placeholder": "我的 LTE 配置文件",
+        "profile_name_required": "配置文件名称为必填项。",
+        "sim_iccid_label": "SIM ICCID",
+        "sim_iccid_placeholder": "自动从当前 SIM 填充",
+        "mno_label": "移动网络运营商",
+        "mno_placeholder": "选择运营商…",
+        "mno_custom": "自定义",
+        "apn_name_label": "APN 名称",
+        "apn_name_placeholder": "internet",
+        "ip_protocol_label": "IP 协议",
+        "ip_protocol_ipv4": "仅 IPv4",
+        "ip_protocol_ipv6": "仅 IPv6",
+        "ip_protocol_dual": "IPv4 + IPv6 (双栈)",
+        "cid_label": "配置文件槽位 (CID)",
+        "cid_error": "CID 必须为 1–15。",
+        "imei_label": "首选 IMEI",
+        "imei_placeholder": "留空以保留当前 IMEI",
+        "imei_error": "IMEI 必须为 15 位数字。",
+        "ttl_label": "TTL 值",
+        "ttl_error": "TTL 必须为 0–255。",
+        "hl_label": "跳数限制",
+        "hl_error": "HL 必须为 0–255。"
+      },
+      "buttons": {
+        "create_submit": "创建配置文件",
+        "update_submit": "更新配置文件",
+        "reset": "重置"
+      },
+      "toast": {
+        "create_success": "配置文件创建成功。",
+        "create_error": "创建配置文件失败。",
+        "update_success": "配置文件更新成功。",
+        "update_error": "更新配置文件失败。"
+      }
+    },
+    "activate_dialog": {
+      "title": "激活配置文件",
+      "description": "将「{{name}}」应用到调制解调器？这将按配置文件中的设置更新 APN、TTL/HL 和 IMEI。未更改的设置将被跳过。",
+      "confirm": "激活"
+    },
+    "deactivate_dialog": {
+      "title": "停用配置文件",
+      "description": "清除活动配置文件标记？调制解调器当前的设置（APN、IMEI、TTL）不会恢复——仅移除「活动」标记。",
+      "confirm": "停用",
+      "deactivating": "停用中…"
+    },
+    "apply_dialog": {
+      "title": "正在应用配置文件",
+      "status_badge": {
+        "applying": "应用中…",
+        "complete": "完成",
+        "partial": "部分完成",
+        "failed": "失败"
+      },
+      "step_labels": {
+        "apn": "APN 配置",
+        "ttl_hl": "TTL / 跳数限制",
+        "imei": "IMEI"
+      },
+      "reboot_notice": "调制解调器正在重启以应用 IMEI 更改，仪表板将自动重新连接。"
+    },
+    "empty_state": {
+      "title": "暂无自定义配置文件",
+      "description": "在此管理您的自定义 SIM 配置文件。",
+      "description_full": "您尚未创建任何自定义 SIM 配置文件。请使用表单创建您的第一个配置文件。",
+      "refresh": "刷新"
+    }
+  },
+  "scenarios": {
+    "page": {
+      "title": "连接场景",
+      "description": "管理和自定义您的蜂窝配置文件连接场景，以优化网络性能和可靠性。"
+    },
+    "default_balanced_name": "均衡",
+    "default_balanced_description": "自动选择频段",
+    "default_gaming_name": "游戏",
+    "default_gaming_description": "低延迟，SA 优先",
+    "default_streaming_name": "流媒体",
+    "default_streaming_description": "高带宽、稳定连接",
+    "default_gaming_optimization": "低延迟",
+    "default_streaming_optimization": "高吞吐量",
+    "default_custom_optimization": "自定义",
+    "mode_option_auto": "自动",
+    "mode_option_lte": "仅 LTE",
+    "mode_option_nrsa": "仅 5G SA",
+    "mode_option_nrsa_nsa": "5G SA / NSA",
+    "scenario_item": {
+      "active_badge": "活动",
+      "delete_confirm": {
+        "title": "删除场景",
+        "description": "确定要删除「{{name}}」吗？此操作不可撤销。",
+        "confirm": "删除",
+        "deleting": "删除中…"
+      }
+    },
+    "add_button": {
+      "label": "创建场景",
+      "description": "添加自定义配置"
+    },
+    "active_config_card": {
+      "configuration": "{{name}} 配置",
+      "status": {
+        "applying": "应用中…",
+        "active": "活动",
+        "not_active": "未激活"
+      },
+      "config_labels": {
+        "network_mode": "网络模式",
+        "optimization": "优化",
+        "lte_bands": "LTE 频段",
+        "nrsa_bands": "NR5G-SA 频段",
+        "nrsa_nsa_bands": "NR5G-NSA 频段"
+      },
+      "config_values": {
+        "auto": "自动",
+        "lte_only": "仅 LTE",
+        "nrsa_only": "仅 5G SA",
+        "nrsa_nsa": "5G SA / NSA",
+        "bands_auto": "自动"
+      },
+      "edit_aria": "编辑场景设置",
+      "activate": "激活"
+    },
+    "add_dialog": {
+      "title": "新建连接场景",
+      "fields": {
+        "name_label": "场景名称",
+        "name_placeholder": "例如：在家办公",
+        "description_label": "描述",
+        "description_placeholder": "例如：针对视频通话优化",
+        "network_mode_label": "网络模式",
+        "network_mode_aria": "网络模式",
+        "lte_bands_label": "LTE 频段锁定",
+        "lte_bands_placeholder": "例如：1, 3, 7, 28（留空 = 自动）",
+        "sa_bands_label": "NR5G-SA 频段锁定",
+        "sa_bands_placeholder": "例如：41, 78",
+        "nsa_bands_label": "NR5G-NSA 频段锁定",
+        "nsa_bands_placeholder": "例如：41, 78",
+        "theme_label": "卡片主题",
+        "preview_label": "预览",
+        "preview_placeholder": "自定义配置"
+      },
+      "buttons": {
+        "create": "创建场景",
+        "creating": "创建中…"
+      },
+      "toast": {
+        "success": "场景创建成功。",
+        "error": "创建场景失败。"
+      }
+    },
+    "edit_dialog": {
+      "title": "编辑配置",
+      "fields": {
+        "name_label": "场景名称",
+        "name_placeholder": "场景名称",
+        "description_label": "描述",
+        "description_placeholder": "场景描述",
+        "network_mode_label": "网络模式",
+        "network_mode_aria": "网络模式",
+        "optimization_label": "优化标签",
+        "optimization_placeholder": "例如：低延迟、高吞吐量、自定义",
+        "lte_bands_label": "LTE 频段锁定",
+        "lte_bands_placeholder": "例如：1, 3, 7, 28（留空 = 自动）",
+        "sa_bands_label": "NR5G-SA 频段锁定",
+        "sa_bands_placeholder": "例如：41, 78",
+        "nsa_bands_label": "NR5G-NSA 频段锁定",
+        "nsa_bands_placeholder": "例如：41, 78",
+        "theme_label": "卡片主题",
+        "preview_label": "预览",
+        "preview_placeholder": "自定义配置"
+      },
+      "buttons": {
+        "save": "保存更改",
+        "saving": "保存中…"
+      },
+      "toast": {
+        "success": "场景已更新。",
+        "error": "更新场景失败。"
+      }
+    },
+    "activation_toast": {
+      "success": "已切换到 {{name}} 场景。",
+      "error": "激活 {{name}} 场景失败。"
+    },
+    "deletion_toast": {
+      "success": "场景已删除。",
+      "error": "删除场景失败。"
+    }
+  },
+  "sms": {
+    "page": {
+      "title": "短信中心",
+      "description": "查看、管理并从调制解调器发送短信。"
+    },
+    "inbox": {
+      "title": "收件箱",
+      "description": "查看和管理您的短信",
+      "storage_suffix": " — 已存储 {{used}}/{{total}} 条短信",
+      "table": {
+        "headers": {
+          "from": "发件人",
+          "message": "消息",
+          "date": "日期"
+        },
+        "actions": {
+          "open_menu": "打开菜单",
+          "view": "查看",
+          "delete": "删除"
+        },
+        "empty_row": "未找到消息。",
+        "select_all_aria": "全选",
+        "select_row_aria": "选择行"
+      },
+      "buttons": {
+        "refresh_aria": "刷新收件箱",
+        "delete_selected": "删除 ({{count}})",
+        "delete_selected_aria": "删除 {{count}} 条选中的消息",
+        "delete_all": "全部删除",
+        "delete_all_aria": "删除所有消息",
+        "new_message": "新短信",
+        "prev": "上一页",
+        "next": "下一页"
+      },
+      "pagination": {
+        "total_one": "{{count}} 条消息",
+        "total_other": "{{count}} 条消息",
+        "page_info": "{{current}} / {{total}}"
+      },
+      "error": {
+        "title": "加载消息失败",
+        "description_prefix": "加载消息失败"
+      },
+      "view_dialog": {
+        "title": "来自 {{sender}} 的消息",
+        "timestamp_aria": "{{timestamp}}"
+      },
+      "delete_single_confirm": {
+        "title": "删除消息",
+        "description": "确定要删除来自 {{sender}} 的这条消息吗？此操作不可撤销。",
+        "confirm": "删除",
+        "deleting": "删除中…"
+      },
+      "delete_all_confirm": {
+        "title": "删除所有消息",
+        "description": "确定要删除全部 {{count}} 条消息吗？此操作不可撤销。",
+        "confirm": "全部删除"
+      },
+      "delete_selected_confirm": {
+        "title": "删除选中的消息",
+        "description_one": "确定要删除 {{count}} 条选中的消息吗？此操作不可撤销。",
+        "description_other": "确定要删除 {{count}} 条选中的消息吗？此操作不可撤销。",
+        "confirm": "删除 ({{count}})",
+        "deleting": "删除中…"
+      },
+      "toast": {
+        "delete_success": "消息已删除",
+        "delete_error": "删除消息失败",
+        "delete_all_success": "所有消息已删除",
+        "delete_all_error": "删除消息失败",
+        "delete_selected_success_one": "已删除 {{count}} 条消息",
+        "delete_selected_success_other": "已删除 {{count}} 条消息",
+        "delete_selected_error": "删除选中的消息失败"
+      }
+    },
+    "compose": {
+      "title": "新短信",
+      "description": "撰写并发送短信。",
+      "fields": {
+        "phone_label": "电话号码",
+        "phone_placeholder": "+1234567890",
+        "message_label": "消息",
+        "message_placeholder": "请输入您的消息...",
+        "char_counter": "{{count}}/{{max}}"
+      },
+      "unicode_indicator": "（Unicode）",
+      "limit_warning": "消息超过单条短信限制，将作为多部分发送。",
+      "buttons": {
+        "send": "发送",
+        "sending": "发送中…"
+      },
+      "toast": {
+        "success": "短信发送成功",
+        "error": "发送短信失败"
+      }
+    }
+  }
+}

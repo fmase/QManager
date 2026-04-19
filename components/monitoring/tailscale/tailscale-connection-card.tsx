@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { motion } from "motion/react";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 
 import {
   Card,
@@ -90,6 +91,7 @@ export function TailscaleConnectionCard({
   runInstall,
   refresh,
 }: TailscaleConnectionCardProps) {
+  const { t } = useTranslation("monitoring");
   const [showRebootDialog, setShowRebootDialog] = useState(false);
   const [isRebooting, setIsRebooting] = useState(false);
 
@@ -114,15 +116,14 @@ export function TailscaleConnectionCard({
     }}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Reboot Required</AlertDialogTitle>
+          <AlertDialogTitle>{t("tailscale.reboot_required_title")}</AlertDialogTitle>
           <AlertDialogDescription>
-            Tailscale has been removed. A reboot is recommended to clean up
-            firewall rules and other artifacts. Would you like to reboot now?
+            {t("tailscale.reboot_required_description")}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel disabled={isRebooting}>
-            Reboot Later
+            {t("tailscale.reboot_later_button")}
           </AlertDialogCancel>
           <AlertDialogAction
             disabled={isRebooting}
@@ -131,10 +132,10 @@ export function TailscaleConnectionCard({
             {isRebooting ? (
               <>
                 <Loader2 className="size-4 animate-spin" />
-                Rebooting…
+                {t("tailscale.rebooting_label")}
               </>
             ) : (
-              "Reboot Now"
+              t("tailscale.reboot_now_button")
             )}
           </AlertDialogAction>
         </AlertDialogFooter>
@@ -147,9 +148,9 @@ export function TailscaleConnectionCard({
     return (
       <Card className="@container/card">
         <CardHeader>
-          <CardTitle>Tailscale Connection</CardTitle>
+          <CardTitle>{t("tailscale.connection_title")}</CardTitle>
           <CardDescription>
-            Manage your Tailscale VPN connection.
+            {t("tailscale.connection_description")}
           </CardDescription>
         </CardHeader>
         <CardContent aria-live="polite">
@@ -170,20 +171,20 @@ export function TailscaleConnectionCard({
     return (
       <Card className="@container/card">
         <CardHeader>
-          <CardTitle>Tailscale Connection</CardTitle>
+          <CardTitle>{t("tailscale.connection_title")}</CardTitle>
           <CardDescription>
-            Manage your Tailscale VPN connection.
+            {t("tailscale.connection_description")}
           </CardDescription>
         </CardHeader>
         <CardContent aria-live="polite">
           <Alert variant="destructive">
             <AlertCircle className="size-4" />
-            <AlertTitle>Failed to load Tailscale status</AlertTitle>
+            <AlertTitle>{t("tailscale.error_load_status")}</AlertTitle>
             <AlertDescription className="flex items-center justify-between">
               <span>{error}</span>
               <Button variant="outline" size="sm" onClick={() => refresh()}>
                 <RefreshCcwIcon className="size-3.5" />
-                Retry
+                {t("actions.retry", { ns: "common" })}
               </Button>
             </AlertDescription>
           </Alert>
@@ -195,14 +196,14 @@ export function TailscaleConnectionCard({
   // --- Not Installed ---------------------------------------------------------
   if (status && !status.installed) {
     const installCmd =
-      status.install_hint || "opkg update && opkg install tailscale tailscaled";
+      status.install_hint || t("tailscale.install_command");
 
     return (
       <Card className="@container/card">
         <CardHeader>
-          <CardTitle>Tailscale Connection</CardTitle>
+          <CardTitle>{t("tailscale.connection_title")}</CardTitle>
           <CardDescription>
-            Manage your Tailscale VPN connection.
+            {t("tailscale.connection_description")}
           </CardDescription>
         </CardHeader>
         <CardContent aria-live="polite">
@@ -210,10 +211,10 @@ export function TailscaleConnectionCard({
             <PackageIcon className="size-10 text-muted-foreground" />
             <div className="text-center space-y-1.5">
               <p className="text-sm font-medium">
-                Tailscale is not installed on this device.
+                {t("tailscale.not_installed_title")}
               </p>
               <p className="text-xs text-muted-foreground">
-                Install automatically or run the command manually.
+                {t("tailscale.not_installed_description")}
               </p>
             </div>
 
@@ -250,12 +251,12 @@ export function TailscaleConnectionCard({
                 {installResult.status === "running" ? (
                   <>
                     <Loader2 className="size-4 animate-spin" />
-                    {installResult.message || "Installing..."}
+                    {installResult.message || t("tailscale.installing_label")}
                   </>
                 ) : (
                   <>
                     <PackageIcon className="size-4" />
-                    Install Tailscale
+                    {t("tailscale.install_button")}
                   </>
                 )}
               </Button>
@@ -266,13 +267,13 @@ export function TailscaleConnectionCard({
                 disabled={installResult.status === "running"}
               >
                 <RefreshCcwIcon className="size-3.5" />
-                Check Again
+                {t("tailscale.check_again_button")}
               </Button>
             </div>
 
             <div className="w-full flex items-center gap-3 text-xs text-muted-foreground">
               <div className="h-px flex-1 bg-border" />
-              <span>or install manually</span>
+              <span>{t("tailscale.install_manually_label")}</span>
               <div className="h-px flex-1 bg-border" />
             </div>
 
@@ -292,7 +293,7 @@ export function TailscaleConnectionCard({
         <span className="text-xs">{error}</span>
         <Button variant="outline" size="sm" onClick={() => refresh()}>
           <RefreshCcwIcon className="size-3.5" />
-          Retry
+          {t("actions.retry", { ns: "common" })}
         </Button>
       </AlertDescription>
     </Alert>
@@ -316,11 +317,11 @@ export function TailscaleConnectionCard({
     if (success) {
       toast.success(
         checked
-          ? "Tailscale will start on boot"
-          : "Tailscale will not start on boot",
+          ? t("tailscale.toast_service_started")
+          : t("tailscale.toast_service_stopped"),
       );
     } else {
-      toast.error("Failed to update boot setting");
+      toast.error(t("tailscale.boot_toggle_error"));
     }
   };
 
@@ -330,12 +331,12 @@ export function TailscaleConnectionCard({
       <Separator />
       <div className="flex items-center justify-between">
         <p className="text-sm font-semibold text-muted-foreground">
-          Start on Boot
+          {t("tailscale.boot_toggle_label")}
         </p>
         <Switch
           checked={bootEnabled}
           onCheckedChange={handleBootToggle}
-          aria-label="Enable Tailscale on boot"
+          aria-label={t("tailscale.boot_toggle_label")}
         />
       </div>
     </>
@@ -347,9 +348,9 @@ export function TailscaleConnectionCard({
       <Separator className="mt-4" />
       <div className="flex items-center justify-between pt-4">
         <div>
-          <p className="text-sm font-medium">Remove Tailscale</p>
+          <p className="text-sm font-medium">{t("tailscale.remove_title")}</p>
           <p className="text-xs text-muted-foreground">
-            Uninstall the Tailscale packages and firewall rules from this device.
+            {t("tailscale.remove_description")}
           </p>
         </div>
         <AlertDialog>
@@ -362,40 +363,38 @@ export function TailscaleConnectionCard({
               {isUninstalling ? (
                 <>
                   <Loader2 className="size-4 animate-spin" />
-                  Removing…
+                  {t("tailscale.removing_label")}
                 </>
               ) : (
                 <>
                   <Trash2Icon className="size-4" />
-                  Uninstall
+                  {t("tailscale.uninstall_button")}
                 </>
               )}
             </Button>
           </AlertDialogTrigger>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Uninstall Tailscale?</AlertDialogTitle>
+              <AlertDialogTitle>{t("tailscale.uninstall_confirm_title")}</AlertDialogTitle>
               <AlertDialogDescription>
-                This will remove the Tailscale packages, firewall rules, and
-                all connection state from this device. The device will reboot
-                to clean up any remaining artifacts.
+                {t("tailscale.uninstall_confirm_description")}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogCancel>{t("actions.cancel", { ns: "common" })}</AlertDialogCancel>
               <AlertDialogAction
                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                 onClick={async () => {
                   const success = await uninstall();
                   if (success) {
-                    toast.success("Tailscale uninstalled");
+                    toast.success(t("tailscale.toast_uninstalled"));
                     setShowRebootDialog(true);
                   } else {
-                    toast.error("Failed to uninstall Tailscale");
+                    toast.error(t("tailscale.toast_uninstall_error"));
                   }
                 }}
               >
-                Uninstall
+                {t("tailscale.uninstall_confirm_button")}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
@@ -409,10 +408,9 @@ export function TailscaleConnectionCard({
     return (
       <Card className="@container/card">
         <CardHeader>
-          <CardTitle>Tailscale Connection</CardTitle>
+          <CardTitle>{t("tailscale.connection_title")}</CardTitle>
           <CardDescription>
-            {version ? `Tailscale v${version} · ` : ""}Manage your Tailscale VPN
-            connection.
+            {version ? `Tailscale v${version} · ` : ""}{t("tailscale.connection_description")}
           </CardDescription>
         </CardHeader>
         <CardContent aria-live="polite">
@@ -420,11 +418,11 @@ export function TailscaleConnectionCard({
             {staleWarning}
             <div className="flex items-center justify-between">
               <p className="text-sm font-semibold text-muted-foreground">
-                Service
+                {t("tailscale.label_service")}
               </p>
               <Badge variant="outline" className="bg-muted/50 text-muted-foreground border-muted-foreground/30">
                 <MinusCircleIcon className="size-3" />
-                Stopped
+                {t("tailscale.badge_stopped")}
               </Badge>
             </div>
             {bootToggle}
@@ -434,9 +432,9 @@ export function TailscaleConnectionCard({
                 onClick={async () => {
                   const success = await startService();
                   if (success) {
-                    toast.success("Tailscale service started");
+                    toast.success(t("tailscale.toast_service_started"));
                   } else {
-                    toast.error("Failed to start Tailscale service");
+                    toast.error(t("tailscale.toast_service_start_error"));
                   }
                 }}
                 disabled={isTogglingService}
@@ -444,10 +442,10 @@ export function TailscaleConnectionCard({
                 {isTogglingService ? (
                   <>
                     <Loader2 className="size-4 animate-spin" />
-                    Starting…
+                    {t("tailscale.starting_label")}
                   </>
                 ) : (
-                  "Start Service"
+                  t("tailscale.service_start_button")
                 )}
               </Button>
             </div>
@@ -464,10 +462,9 @@ export function TailscaleConnectionCard({
     return (
       <Card className="@container/card">
         <CardHeader>
-          <CardTitle>Tailscale Connection</CardTitle>
+          <CardTitle>{t("tailscale.connection_title")}</CardTitle>
           <CardDescription>
-            {version ? `Tailscale v${version} · ` : ""}Manage your Tailscale VPN
-            connection.
+            {version ? `Tailscale v${version} · ` : ""}{t("tailscale.connection_description")}
           </CardDescription>
         </CardHeader>
         <CardContent aria-live="polite">
@@ -475,11 +472,11 @@ export function TailscaleConnectionCard({
             {staleWarning}
             <div className="flex items-center justify-between">
               <p className="text-sm font-semibold text-muted-foreground">
-                Status
+                {t("tailscale.label_status")}
               </p>
               <Badge variant="outline" className="bg-warning/15 text-warning hover:bg-warning/20 border-warning/30">
                 <LogInIcon className="size-3" />
-                Needs Login
+                {t("tailscale.badge_needs_login")}
               </Badge>
             </div>
 
@@ -490,8 +487,7 @@ export function TailscaleConnectionCard({
                   <AlertCircle className="size-4" />
                   <AlertDescription className="space-y-3">
                     <p>
-                      Visit the link below to authenticate with your Tailscale
-                      account (Google, Microsoft, etc.).
+                      {t("tailscale.needs_login_description")}
                     </p>
                     <Button
                       variant="outline"
@@ -499,10 +495,10 @@ export function TailscaleConnectionCard({
                       onClick={() => window.open(authUrl, "_blank", "noopener,noreferrer")}
                     >
                       <ExternalLinkIcon className="size-3.5" />
-                      Open Login Page
+                      {t("tailscale.open_login_page_button")}
                     </Button>
                     <p className="text-xs text-muted-foreground animate-pulse motion-reduce:animate-none">
-                      Waiting for authentication…
+                      {t("tailscale.waiting_for_auth")}
                     </p>
                   </AlertDescription>
                 </Alert>
@@ -515,7 +511,7 @@ export function TailscaleConnectionCard({
                     onClick={async () => {
                       const success = await connect();
                       if (!success) {
-                        toast.error("Failed to initiate connection");
+                        toast.error(t("tailscale.toast_connect_error"));
                       }
                     }}
                     disabled={isConnecting}
@@ -523,10 +519,10 @@ export function TailscaleConnectionCard({
                     {isConnecting ? (
                       <>
                         <Loader2 className="size-4 animate-spin" />
-                        Connecting…
+                        {t("tailscale.connecting_label")}
                       </>
                     ) : (
-                      "Connect"
+                      t("tailscale.login_button")
                     )}
                   </Button>
                 </div>
@@ -542,9 +538,9 @@ export function TailscaleConnectionCard({
                 onClick={async () => {
                   const success = await stopService();
                   if (success) {
-                    toast.success("Tailscale service stopped");
+                    toast.success(t("tailscale.toast_service_stopped"));
                   } else {
-                    toast.error("Failed to stop Tailscale service");
+                    toast.error(t("tailscale.toast_service_stop_error"));
                   }
                 }}
                 disabled={isTogglingService}
@@ -552,10 +548,10 @@ export function TailscaleConnectionCard({
                 {isTogglingService ? (
                   <>
                     <Loader2 className="size-4 animate-spin" />
-                    Stopping…
+                    {t("tailscale.stopping_label")}
                   </>
                 ) : (
-                  "Stop Service"
+                  t("tailscale.service_stop_button")
                 )}
               </Button>
             </div>
@@ -575,15 +571,15 @@ export function TailscaleConnectionCard({
       : "";
 
     const infoRows: { label: string; value: React.ReactNode }[] = [
-      { label: "Hostname", value: self?.hostname || "—" },
+      { label: t("tailscale.status_label_hostname"), value: self?.hostname || "—" },
       {
-        label: "IPv4",
+        label: t("tailscale.status_label_ipv4"),
         value: <span className="font-mono">{ipv4}</span>,
       },
       ...(ipv6 !== "—"
         ? [
             {
-              label: "IPv6",
+              label: t("tailscale.status_label_ipv6"),
               value: (
                 <span className="font-mono break-all">{ipv6}</span>
               ),
@@ -593,16 +589,16 @@ export function TailscaleConnectionCard({
       ...(dnsName
         ? [
             {
-              label: "DNS Name",
+              label: t("tailscale.status_label_dns"),
               value: <span className="break-all">{dnsName}</span>,
             },
           ]
         : []),
-      ...(tailnet?.name ? [{ label: "Tailnet", value: tailnet.name }] : []),
+      ...(tailnet?.name ? [{ label: t("tailscale.status_label_tailnet"), value: tailnet.name }] : []),
       ...(magicSuffix
         ? [
             {
-              label: "MagicDNS",
+              label: t("tailscale.status_label_magic_dns"),
               value: <span className="font-mono">{magicSuffix}</span>,
             },
           ]
@@ -610,7 +606,7 @@ export function TailscaleConnectionCard({
       ...(self?.relay
         ? [
             {
-              label: "DERP Relay",
+              label: t("tailscale.status_label_derp_relay"),
               value: self.relay.toUpperCase(),
             },
           ]
@@ -620,10 +616,9 @@ export function TailscaleConnectionCard({
     return (
       <Card className="@container/card">
         <CardHeader>
-          <CardTitle>Tailscale Connection</CardTitle>
+          <CardTitle>{t("tailscale.connection_title")}</CardTitle>
           <CardDescription>
-            {version ? `Tailscale v${version} · ` : ""}Manage your Tailscale VPN
-            connection.
+            {version ? `Tailscale v${version} · ` : ""}{t("tailscale.connection_description")}
           </CardDescription>
         </CardHeader>
         <CardContent aria-live="polite">
@@ -637,7 +632,7 @@ export function TailscaleConnectionCard({
                 <Separator />
                 <Alert variant="destructive">
                   <AlertTriangleIcon className="size-4" />
-                  <AlertTitle>Health Warnings</AlertTitle>
+                  <AlertTitle>{t("tailscale.health_warnings_title")}</AlertTitle>
                   <AlertDescription>
                     <ul className="list-disc pl-4 text-xs space-y-1">
                       {health.map((msg, i) => (
@@ -654,11 +649,11 @@ export function TailscaleConnectionCard({
             {/* Status badge */}
             <div className="flex items-center justify-between">
               <p className="text-sm font-semibold text-muted-foreground">
-                Status
+                {t("tailscale.label_status")}
               </p>
               <Badge variant="outline" className="bg-success/15 text-success hover:bg-success/20 border-success/30">
                 <CheckCircle2Icon className="size-3" />
-                Connected
+                {t("tailscale.badge_connected")}
               </Badge>
             </div>
 
@@ -691,9 +686,9 @@ export function TailscaleConnectionCard({
                 onClick={async () => {
                   const success = await disconnect();
                   if (success) {
-                    toast.success("Tailscale disconnected");
+                    toast.success(t("tailscale.toast_disconnected"));
                   } else {
-                    toast.error("Failed to disconnect");
+                    toast.error(t("tailscale.toast_disconnect_error"));
                   }
                 }}
                 disabled={isDisconnecting}
@@ -701,10 +696,10 @@ export function TailscaleConnectionCard({
                 {isDisconnecting ? (
                   <>
                     <Loader2 className="size-4 animate-spin" />
-                    Disconnecting…
+                    {t("tailscale.disconnecting_label")}
                   </>
                 ) : (
-                  "Disconnect"
+                  t("tailscale.disconnect_button")
                 )}
               </Button>
 
@@ -715,30 +710,29 @@ export function TailscaleConnectionCard({
                     size="sm"
                     disabled={isDisconnecting}
                   >
-                    Logout
+                    {t("tailscale.logout_button")}
                   </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent>
                   <AlertDialogHeader>
-                    <AlertDialogTitle>Logout from Tailscale?</AlertDialogTitle>
+                    <AlertDialogTitle>{t("tailscale.logout_confirm_title")}</AlertDialogTitle>
                     <AlertDialogDescription>
-                      This will remove this device from your Tailscale network.
-                      You will need to re-authenticate to reconnect.
+                      {t("tailscale.logout_confirm_description")}
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogCancel>{t("actions.cancel", { ns: "common" })}</AlertDialogCancel>
                     <AlertDialogAction
                       onClick={async () => {
                         const success = await logout();
                         if (success) {
-                          toast.success("Logged out from Tailscale");
+                          toast.success(t("tailscale.toast_logged_out"));
                         } else {
-                          toast.error("Failed to logout");
+                          toast.error(t("tailscale.toast_logout_error"));
                         }
                       }}
                     >
-                      Logout
+                      {t("tailscale.logout_button")}
                     </AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
@@ -754,10 +748,9 @@ export function TailscaleConnectionCard({
   return (
     <Card className="@container/card">
       <CardHeader>
-        <CardTitle>Tailscale Connection</CardTitle>
+        <CardTitle>{t("tailscale.connection_title")}</CardTitle>
         <CardDescription>
-          {version ? `Tailscale v${version} · ` : ""}Manage your Tailscale VPN
-          connection.
+          {version ? `Tailscale v${version} · ` : ""}{t("tailscale.connection_description")}
         </CardDescription>
       </CardHeader>
       <CardContent aria-live="polite">
@@ -765,11 +758,11 @@ export function TailscaleConnectionCard({
           {staleWarning}
           <div className="flex items-center justify-between">
             <p className="text-sm font-semibold text-muted-foreground">
-              Status
+              {t("tailscale.label_status")}
             </p>
             <Badge variant="outline" className="bg-muted/50 text-muted-foreground border-muted-foreground/30">
               <MinusCircleIcon className="size-3" />
-              Disconnected
+              {t("tailscale.badge_disconnected")}
             </Badge>
           </div>
 
@@ -781,7 +774,7 @@ export function TailscaleConnectionCard({
               onClick={async () => {
                 const success = await connect();
                 if (!success) {
-                  toast.error("Failed to connect");
+                  toast.error(t("tailscale.toast_connect_retry_error"));
                 }
               }}
               disabled={isConnecting}
@@ -789,10 +782,10 @@ export function TailscaleConnectionCard({
               {isConnecting ? (
                 <>
                   <Loader2 className="size-4 animate-spin" />
-                  Connecting…
+                  {t("tailscale.connecting_label")}
                 </>
               ) : (
-                "Connect"
+                t("tailscale.connect_button")
               )}
             </Button>
 
@@ -803,30 +796,29 @@ export function TailscaleConnectionCard({
                   size="sm"
                   disabled={isDisconnecting}
                 >
-                  Logout
+                  {t("tailscale.logout_button")}
                 </Button>
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
-                  <AlertDialogTitle>Logout from Tailscale?</AlertDialogTitle>
+                  <AlertDialogTitle>{t("tailscale.logout_confirm_title")}</AlertDialogTitle>
                   <AlertDialogDescription>
-                    This will remove this device from your Tailscale network.
-                    You will need to re-authenticate to reconnect.
+                    {t("tailscale.logout_confirm_description")}
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogCancel>{t("actions.cancel", { ns: "common" })}</AlertDialogCancel>
                   <AlertDialogAction
                     onClick={async () => {
                       const success = await logout();
                       if (success) {
-                        toast.success("Logged out from Tailscale");
+                        toast.success(t("tailscale.toast_logged_out"));
                       } else {
-                        toast.error("Failed to logout");
+                        toast.error(t("tailscale.toast_logout_error"));
                       }
                     }}
                   >
-                    Logout
+                    {t("tailscale.logout_button")}
                   </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>

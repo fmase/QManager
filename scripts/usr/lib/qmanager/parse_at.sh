@@ -267,7 +267,7 @@ parse_serving_cell() {
 }
 
 # -----------------------------------------------------------------------------
-# Parse AT+QTEMP — Average temperature (excluding -273 unavailable sensors)
+# Parse AT+QTEMP — Average temperature (excluding non-positive/unavailable sensors)
 # Populates: t2_temperature
 # -----------------------------------------------------------------------------
 parse_temperature() {
@@ -276,7 +276,7 @@ parse_temperature() {
     local result
     result=$(printf '%s\n' "$raw" | grep '+QTEMP:' | \
         sed -n 's/.*,"\(-\{0,1\}[0-9]*\)".*/\1/p' | \
-        grep -v '^\-273$' | \
+        awk '$1 > 0' | \
         awk '{ sum += $1; count++ } END { if (count > 0) printf "%.0f", sum/count; }')
 
     if [ -n "$result" ]; then
@@ -772,17 +772,69 @@ parse_qsinr() {
 # CELLULAR INFORMATION PARSERS (Tier 2)
 # =============================================================================
 
+# Returns 0 when value looks like IPv6 in either colon form or Quectel's
+# dotted-decimal 16-octet form.
+_is_ipv6_like_addr() {
+    local v="$1"
+    case "$v" in
+        *:*) return 0 ;;
+        *[!0-9.]*|"") return 1 ;;
+    esac
+
+    [ "$(printf '%s' "$v" | awk -F'.' '{print NF}')" -eq 16 ]
+}
+
+# Prefer IPv6 DNS when available (UI compresses dotted-decimal IPv6 nicely).
+_pick_preferred_dns() {
+    local ipv4="$1" ipv6="$2"
+    if _is_ipv6_like_addr "$ipv6"; then
+        printf '%s' "$ipv6"
+    elif [ -n "$ipv4" ]; then
+        printf '%s' "$ipv4"
+    else
+        printf '%s' "$ipv6"
+    fi
+}
+
+# Returns the WAN-active PDP CID by inspecting the +QMAP: "WWAN" lines in the
+# same compound AT response that carries +CGCONTRDP. Picks the first QMAP line
+# whose IP is non-zero. Falls back to "1" if no QMAP block is present or all
+# entries are zero — matches the apn.sh CGI fallback behavior.
+_cgcontrdp_active_cid() {
+    local raw="$1"
+    local cid
+    cid=$(printf '%s\n' "$raw" | awk -F',' '
+        /^\+QMAP: "WWAN"/ {
+            ip = $5
+            gsub(/"/, "", ip)
+            gsub(/[[:space:]]/, "", ip)
+            if (ip == "" || ip == "0.0.0.0" || ip == "0:0:0:0:0:0:0:0") next
+            cid = $3
+            gsub(/[^0-9]/, "", cid)
+            if (cid != "") { print cid; exit }
+        }
+    ')
+    [ -z "$cid" ] && cid="1"
+    printf '%s' "$cid"
+}
+
 # -----------------------------------------------------------------------------
 # Parse AT+CGCONTRDP — APN name and DNS servers
-# Uses the first non-IMS profile (skips lines where APN is "ims").
+# Uses the WAN-active PDP context (identified by +QMAP "WWAN" mux_id).
 #
-# Response format:
-#   +CGCONTRDP: <cid>,<bearer_id>,"<apn>","<local_addr>",<subnet>,"<dns_prim>","<dns_sec>"
-# Example:
+# Response format (varies by PDP type):
+#   IPv4 PDP:
+#     +CGCONTRDP: <cid>,<bearer_id>,"<apn>","<local_addr>",<subnet>,"<dns_prim>","<dns_sec>"
+#   IPv4v6 PDP (dual-stack DNS often reported as adjacent quoted pairs):
+#     ...,"<dns1_v4>" "<dns1_v6>","<dns2_v4>" "<dns2_v6>"
+# Example (active CID determined from +QMAP "WWAN" mux_id, not by APN string):
 #   +CGCONTRDP: 1,5,"SMARTBRO","10.110.61.83",,"10.151.151.44","10.151.151.48"
 #   +CGCONTRDP: 2,6,"ims","36.4.216.0...",...
+#   +QMAP: "WWAN",1,1,"IPV4","10.110.61.83"  <- mux=1 -> use CGCONTRDP cid=1
 #
-# Populates: t2_apn, t2_primary_dns, t2_secondary_dns
+# Populates: t2_apn, t2_primary_dns, t2_secondary_dns,
+#            t2_primary_dns_v4, t2_primary_dns_v6,
+#            t2_secondary_dns_v4, t2_secondary_dns_v6
 # -----------------------------------------------------------------------------
 parse_cgcontrdp() {
     local raw="$1"
@@ -790,27 +842,69 @@ parse_cgcontrdp() {
     t2_apn=""
     t2_primary_dns=""
     t2_secondary_dns=""
+    t2_primary_dns_v4=""
+    t2_primary_dns_v6=""
+    t2_secondary_dns_v4=""
+    t2_secondary_dns_v6=""
 
-    # Get +CGCONTRDP lines, exclude IMS profile (case-insensitive)
-    local data_line
-    data_line=$(printf '%s\n' "$raw" | grep '^+CGCONTRDP:' | grep -iv '"ims"' | head -1)
+    # Identify the WAN-active PDP CID via +QMAP, then pick the matching CGCONTRDP line.
+    local active_cid data_line
+    active_cid=$(_cgcontrdp_active_cid "$raw")
+    data_line=$(printf '%s\n' "$raw" | grep "^+CGCONTRDP: ${active_cid}," | head -1)
 
     if [ -z "$data_line" ]; then
-        qlog_debug "parse_cgcontrdp: no non-IMS CGCONTRDP line found"
+        qlog_debug "parse_cgcontrdp: no CGCONTRDP line found for active CID $active_cid"
         return
     fi
 
-    local csv
-    csv=$(printf '%s' "$data_line" | sed 's/+CGCONTRDP: //g' | tr -d '\r')
+    # Extract all quoted fields to avoid comma-split breakage on dual-stack
+    # tuples like "198.224.179.134" "32.1.72...".
+    local qtmp qcount
+    qtmp=$(mktemp /tmp/qmanager_cgcontrdp_quoted.XXXXXX 2>/dev/null) || qtmp="/tmp/qmanager_cgcontrdp_quoted.$$"
+    printf '%s\n' "$data_line" | awk -F'"' '{for(i=2;i<=NF;i+=2) print $i}' > "$qtmp"
+    qcount=$(wc -l < "$qtmp" | tr -d ' ')
 
-    # Field 3: APN (quoted)
-    t2_apn=$(printf '%s' "$csv" | cut -d',' -f3 | tr -d '"' | tr -d ' ')
+    if [ -z "$qcount" ] || [ "$qcount" -lt 1 ] 2>/dev/null; then
+        rm -f "$qtmp"
+        qlog_debug "parse_cgcontrdp: failed to extract quoted fields"
+        return
+    fi
 
-    # Field 6: Primary DNS (quoted)
-    t2_primary_dns=$(printf '%s' "$csv" | cut -d',' -f6 | tr -d '"' | tr -d ' ')
+    # First quoted field is APN in all observed Quectel formats.
+    t2_apn=$(sed -n '1p' "$qtmp" | tr -d ' \r')
 
-    # Field 7: Secondary DNS (quoted)
-    t2_secondary_dns=$(printf '%s' "$csv" | cut -d',' -f7 | tr -d '"' | tr -d ' ')
+    if [ "$qcount" -ge 6 ]; then
+        # Dual-stack style: trailing 4 quoted values are dns1_v4,dns1_v6,dns2_v4,dns2_v6.
+        local dns1_v4 dns1_v6 dns2_v4 dns2_v6
+        dns1_v4=$(sed -n "$((qcount - 3))p" "$qtmp" | tr -d ' \r')
+        dns1_v6=$(sed -n "$((qcount - 2))p" "$qtmp" | tr -d ' \r')
+        dns2_v4=$(sed -n "$((qcount - 1))p" "$qtmp" | tr -d ' \r')
+        dns2_v6=$(sed -n "${qcount}p" "$qtmp" | tr -d ' \r')
+
+        if [ -n "$dns1_v4" ] && [ -n "$dns2_v4" ] && _is_ipv6_like_addr "$dns1_v6" && _is_ipv6_like_addr "$dns2_v6"; then
+            t2_primary_dns_v4="$dns1_v4"
+            t2_primary_dns_v6="$dns1_v6"
+            t2_secondary_dns_v4="$dns2_v4"
+            t2_secondary_dns_v6="$dns2_v6"
+        fi
+
+        t2_primary_dns=$(_pick_preferred_dns "$dns1_v4" "$dns1_v6")
+        t2_secondary_dns=$(_pick_preferred_dns "$dns2_v4" "$dns2_v6")
+    elif [ "$qcount" -eq 4 ]; then
+        # IPv4-only style: apn, local_addr, dns1, dns2.
+        # Mirror the values into the _v4 fields so the frontend's per-row
+        # IPv4 binding has data for single-stack carriers. _v6 fields stay empty.
+        t2_primary_dns_v4=$(sed -n '3p' "$qtmp" | tr -d ' \r')
+        t2_secondary_dns_v4=$(sed -n '4p' "$qtmp" | tr -d ' \r')
+        t2_primary_dns="$t2_primary_dns_v4"
+        t2_secondary_dns="$t2_secondary_dns_v4"
+    elif [ "$qcount" -ge 3 ]; then
+        # Fallback: use the last two quoted fields as DNS entries.
+        t2_primary_dns=$(sed -n "$((qcount - 1))p" "$qtmp" | tr -d ' \r')
+        t2_secondary_dns=$(sed -n "${qcount}p" "$qtmp" | tr -d ' \r')
+    fi
+
+    rm -f "$qtmp"
 }
 
 # -----------------------------------------------------------------------------

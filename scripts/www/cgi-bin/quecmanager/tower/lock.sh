@@ -4,8 +4,11 @@
 # lock.sh — CGI Endpoint: Apply/Clear Tower Lock
 # =============================================================================
 # Handles tower lock and unlock operations for both LTE and NR-SA.
-# On successful lock, updates config file and spawns failover watcher.
-# On unlock, updates config and kills any running watcher.
+# On successful lock, updates config file and — ONLY if the user has
+# already enabled Signal Failover via settings.sh — spawns the failover
+# watcher. Locking does NOT auto-enable failover.
+# On unlock, updates config and kills any running watcher, then disables
+# failover in config when no other lock remains active.
 #
 # NOTE: Cell lock commands may disconnect the modem for 3-5 seconds
 # before reconnecting. The failover watcher accounts for this with a
@@ -133,11 +136,13 @@ if [ "$LOCK_TYPE" = "lte" ]; then
         # Re-apply custom MTU after interface bounce
         mtu_reapply_after_bounce
 
-        # Update config file + auto-enable failover for this lock session
+        # Update config file — preserve the user's current failover toggle.
+        # Failover is no longer auto-enabled on lock; the user must toggle
+        # Signal Failover explicitly via settings.sh.
         tower_config_update_lte "true" "$c1_earfcn" "$c1_pci" "$c2_earfcn" "$c2_pci" "$c3_earfcn" "$c3_pci"
-        tower_config_update '.failover.enabled = true'
 
-        # Spawn failover watcher
+        # Spawn failover watcher only if the user has failover enabled.
+        # tower_spawn_failover_watcher returns "false" when config says off.
         failover_armed=$(tower_spawn_failover_watcher)
 
         jq -n --argjson nc "$num_cells" --argjson fa "$failover_armed" \
@@ -245,11 +250,12 @@ elif [ "$LOCK_TYPE" = "nr_sa" ]; then
         # Re-apply custom MTU after interface bounce
         mtu_reapply_after_bounce
 
-        # Update config + auto-enable failover for this lock session
+        # Update config — preserve the user's current failover toggle.
+        # Failover is no longer auto-enabled on lock; the user must toggle
+        # Signal Failover explicitly via settings.sh.
         tower_config_update_nr "true" "$nr_pci" "$nr_arfcn" "$nr_scs" "$nr_band"
-        tower_config_update '.failover.enabled = true'
 
-        # Spawn failover watcher
+        # Spawn failover watcher only if the user has failover enabled.
         failover_armed=$(tower_spawn_failover_watcher)
 
         jq -n --argjson fa "$failover_armed" \

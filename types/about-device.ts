@@ -19,7 +19,7 @@ export interface AboutDeviceResponse {
   };
   network: {
     device_ip: string;
-    lan_gateway: string;
+    lan_subnet: string;
     wan_ipv4: string;
     wan_ipv6: string;
     public_ipv4: string;

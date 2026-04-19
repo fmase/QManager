@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { EyeIcon, EyeOffIcon } from "lucide-react";
+import { EyeIcon, EyeOffIcon, Loader2 } from "lucide-react";
 import { changePassword } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,9 +12,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Field, FieldLabel } from "@/components/ui/field";
+import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { Spinner } from "@/components/ui/spinner";
+import { PasswordRequirements, isPasswordValid } from "@/components/auth/password-requirements";
+import { StrongPasswordToggle } from "@/components/auth/strong-password-toggle";
+import { cn } from "@/lib/utils";
 
 interface ChangePasswordDialogProps {
   open: boolean;
@@ -31,6 +33,7 @@ export function ChangePasswordDialog({
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [useStrongPassword, setUseStrongPassword] = useState(true);
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -41,6 +44,7 @@ export function ChangePasswordDialog({
     setShowCurrentPassword(false);
     setShowNewPassword(false);
     setShowConfirmPassword(false);
+    setUseStrongPassword(true);
     setError("");
     setIsSubmitting(false);
   }, []);
@@ -58,8 +62,14 @@ export function ChangePasswordDialog({
       e.preventDefault();
       setError("");
 
-      if (newPassword.length < 6) {
-        setError("New password must be at least 6 characters.");
+      // Single source of truth for rules: components/auth/password-requirements.tsx.
+      // Server-side copy lives in scripts/www/cgi-bin/quecmanager/auth/password.sh.
+      if (!isPasswordValid(newPassword, useStrongPassword)) {
+        setError(
+          useStrongPassword
+            ? "New password must be at least 5 characters and include uppercase, lowercase, and a number."
+            : "New password must be at least 5 characters."
+        );
         return;
       }
 
@@ -70,7 +80,7 @@ export function ChangePasswordDialog({
 
       setIsSubmitting(true);
       try {
-        const result = await changePassword(currentPassword, newPassword);
+        const result = await changePassword(currentPassword, newPassword, useStrongPassword);
         if (!result.success) {
           setError(result.error || "Password change failed.");
         }
@@ -79,7 +89,7 @@ export function ChangePasswordDialog({
         setIsSubmitting(false);
       }
     },
-    [currentPassword, newPassword, confirmPassword, changePassword]
+    [currentPassword, newPassword, confirmPassword, useStrongPassword]
   );
 
   return (
@@ -128,6 +138,7 @@ export function ChangePasswordDialog({
                   id="new-password"
                   type={showNewPassword ? "text" : "password"}
                   autoComplete="new-password"
+                  aria-describedby="change-password-reqs"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   required
@@ -146,6 +157,7 @@ export function ChangePasswordDialog({
                   {showNewPassword ? <EyeOffIcon className="size-4" /> : <EyeIcon className="size-4" />}
                 </Button>
               </div>
+              <PasswordRequirements password={newPassword} enforceStrong={useStrongPassword} id="change-password-reqs" className="pt-1" />
             </Field>
             <Field>
               <FieldLabel htmlFor="confirm-new-password">
@@ -156,6 +168,7 @@ export function ChangePasswordDialog({
                   id="confirm-new-password"
                   type={showConfirmPassword ? "text" : "password"}
                   autoComplete="new-password"
+                  aria-describedby={confirmPassword.length > 0 ? "confirm-password-hint" : undefined}
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   required
@@ -174,12 +187,26 @@ export function ChangePasswordDialog({
                   {showConfirmPassword ? <EyeOffIcon className="size-4" /> : <EyeIcon className="size-4" />}
                 </Button>
               </div>
+              {confirmPassword.length > 0 && (
+                <p
+                  id="confirm-password-hint"
+                  className={cn(
+                    "text-xs transition-colors duration-200",
+                    newPassword === confirmPassword ? "text-success" : "text-destructive"
+                  )}
+                >
+                  {newPassword === confirmPassword ? "Passwords match" : "Passwords don\u2019t match"}
+                </p>
+              )}
             </Field>
-            {error && (
-              <p role="alert" className="text-sm text-destructive">
-                {error}
-              </p>
-            )}
+
+            <StrongPasswordToggle
+              id="change-strong-password"
+              checked={useStrongPassword}
+              onCheckedChange={setUseStrongPassword}
+              disabled={isSubmitting}
+            />
+            {error && <FieldError>{error}</FieldError>}
           </div>
           <DialogFooter>
             <Button
@@ -193,7 +220,7 @@ export function ChangePasswordDialog({
             <Button type="submit" disabled={isSubmitting}>
               {isSubmitting ? (
                 <>
-                  <Spinner className="mr-2" />
+                  <Loader2 className="size-4 animate-spin" />
                   Changing...
                 </>
               ) : (

@@ -1,8 +1,10 @@
 "use client";
 
 import React from "react";
-import { motion, type Variants } from "motion/react";
+import { motion } from "motion/react";
+import { containerVariants, itemVariants } from "@/lib/motion";
 import { cn } from "@/lib/utils";
+import { useTranslation } from "react-i18next";
 import { useModemStatus } from "@/hooks/use-modem-status";
 import { useBandwidthMonitor } from "@/hooks/use-bandwidth-monitor";
 import NetworkStatusComponent from "./network-status";
@@ -15,22 +17,10 @@ import RecentActivitiesComponent from "./recent-activities";
 import DeviceMetricsComponent from "./device-metrics";
 import LiveLatencyComponent from "./live-latency";
 
-const containerVariants: Variants = {
-  hidden: {},
-  visible: { transition: { staggerChildren: 0.06 } },
-};
-
-const itemVariants: Variants = {
-  hidden: { opacity: 0, y: 8 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.25, ease: "easeOut" },
-  },
-};
 
 const HomeComponent = () => {
   const { data, isLoading, isStale, error } = useModemStatus();
+  const { t } = useTranslation("dashboard");
   const bandwidth = useBandwidthMonitor();
 
   const networkType = data?.network?.type ?? "";
@@ -41,7 +31,7 @@ const HomeComponent = () => {
     <div className="grid grid-cols-1 gap-6 px-4 lg:px-6 @3xl/main:grid-cols-2 @5xl/main:grid-cols-5" aria-live="polite" aria-atomic="false">
       {error && !isLoading && (
         <div role="alert" className="col-span-full rounded-lg bg-destructive/10 px-4 py-3 text-sm text-destructive">
-          Unable to reach the modem. Data shown may be outdated.
+          {t("alert.modem_unreachable")}
         </div>
       )}
       <div className="grid gap-4 @3xl/main:col-span-3 @5xl/main:col-span-3 col-span-1">

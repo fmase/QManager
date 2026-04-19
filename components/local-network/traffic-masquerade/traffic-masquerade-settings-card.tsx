@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useState, useMemo } from "react";
+import { useTranslation, Trans } from "react-i18next";
 import { toast } from "sonner";
 import {
   Card,
@@ -62,6 +63,7 @@ export default function TrafficMasqueradeSettingsCard({
   otherActive = false,
   onSaved,
 }: TrafficMasqueradeSettingsCardProps) {
+  const { t } = useTranslation("local-network");
   const { settings, isLoading, error, refresh } = hook;
 
   if (isLoading) return <MasqueradeSkeleton />;
@@ -71,19 +73,19 @@ export default function TrafficMasqueradeSettingsCard({
     return (
       <Card className="@container/card">
         <CardHeader>
-          <CardTitle>Traffic Masquerade</CardTitle>
+          <CardTitle>{t("masquerade.card_title")}</CardTitle>
           <CardDescription>
-            Make HTTPS traffic appear as a whitelisted service to carrier DPI.
+            {t("masquerade.card_description")}
           </CardDescription>
         </CardHeader>
         <CardContent aria-live="polite">
           <Alert variant="destructive">
             <AlertTriangle className="size-4" />
             <AlertDescription className="flex items-center justify-between">
-              <span>Failed to load settings.</span>
+              <span>{t("masquerade.error_load_failed")}</span>
               <Button variant="outline" size="sm" onClick={() => refresh()}>
                 <RefreshCcwIcon className="size-3.5" />
-                Retry
+                {t("actions.retry", { ns: "common" })}
               </Button>
             </AlertDescription>
           </Alert>
@@ -97,9 +99,9 @@ export default function TrafficMasqueradeSettingsCard({
     return (
       <Card className="@container/card">
         <CardHeader>
-          <CardTitle>Traffic Masquerade</CardTitle>
+          <CardTitle>{t("masquerade.card_title")}</CardTitle>
           <CardDescription>
-            Make HTTPS traffic appear as a whitelisted service to carrier DPI.
+            {t("masquerade.card_description")}
           </CardDescription>
         </CardHeader>
         <CardContent aria-live="polite">
@@ -107,22 +109,26 @@ export default function TrafficMasqueradeSettingsCard({
             <PackageIcon className="size-10 text-muted-foreground" />
             <div className="text-center space-y-1.5">
               <p className="text-sm font-medium">
-                The <code>nfqws</code> binary is not installed on this device.
+                {t("masquerade.error_binary_not_installed")}
               </p>
               <p className="text-xs text-muted-foreground">
-                Install it from the{" "}
-                <Link
-                  href="/local-network/video-optimizer"
-                  className="underline underline-offset-2"
-                >
-                  Video Optimizer
-                </Link>{" "}
-                page, then check again.
+                <Trans
+                  i18nKey="masquerade.error_install_from_video_optimizer"
+                  t={t}
+                  components={{
+                    link: (
+                      <Link
+                        href="/local-network/video-optimizer"
+                        className="underline underline-offset-2"
+                      />
+                    ),
+                  }}
+                />
               </p>
             </div>
             <Button variant="outline" size="sm" onClick={() => refresh()}>
               <RefreshCcwIcon className="size-3.5" />
-              Check Again
+              {t("masquerade.button_check_again")}
             </Button>
           </div>
         </CardContent>
@@ -155,6 +161,7 @@ function TrafficMasqueradeForm({
   otherActive: boolean;
   onSaved?: () => void;
 }) {
+  const { t } = useTranslation("local-network");
   const { settings, isSaving, isUninstalling, error, saveSettings, runUninstall, refresh } = hook;
 
   const [isEnabled, setIsEnabled] = useState(settings?.enabled ?? false);
@@ -187,15 +194,15 @@ function TrafficMasqueradeForm({
         markSaved();
         toast.success(
           isEnabled
-            ? "Traffic Masquerade enabled"
-            : "Traffic Masquerade disabled",
+            ? t("masquerade.toast_success_enabled")
+            : t("masquerade.toast_success_disabled"),
         );
         onSaved?.();
       } else {
-        toast.error(error || "Failed to save settings");
+        toast.error(error || t("masquerade.toast_error_apply"));
       }
     },
-    [isEnabled, sniDomain, sniError, saveSettings, markSaved, error, onSaved],
+    [isEnabled, sniDomain, sniError, saveSettings, markSaved, error, onSaved, t],
   );
 
   const canEnable =
@@ -208,11 +215,9 @@ function TrafficMasqueradeForm({
   return (
     <Card className="@container/card">
       <CardHeader>
-        <CardTitle>Traffic Masquerade</CardTitle>
+        <CardTitle>{t("masquerade.card_title")}</CardTitle>
         <CardDescription>
-          Make HTTPS traffic appear as a whitelisted service to carrier DPI by
-          injecting fake TLS handshakes with a spoofed domain. Some carriers
-          may detect this behavior and de-prioritize your connection.
+          {t("masquerade.card_description_full")}
         </CardDescription>
       </CardHeader>
       <CardContent aria-live="polite">
@@ -220,15 +225,14 @@ function TrafficMasqueradeForm({
           <Alert className="border-warning/30 bg-warning/10 text-warning mb-4">
             <AlertTriangle className="size-4" />
             <AlertDescription className="text-warning">
-              Video Optimizer is currently active. Disable it first before
-              enabling Traffic Masquerade.
+              {t("masquerade.alert_video_optimizer_active")}
             </AlertDescription>
           </Alert>
         ) : (
           <Alert className="border-warning/30 bg-warning/10 text-warning mb-4">
             <AlertTriangle className="size-4" />
             <AlertTitle className="text-warning">
-              Experimental Feature
+              {t("masquerade.badge_experimental")}
             </AlertTitle>
           </Alert>
         )}
@@ -237,9 +241,7 @@ function TrafficMasqueradeForm({
           <Alert className="mb-4">
             <AlertTriangle className="size-4" />
             <AlertDescription>
-              Required kernel module not found. Run{" "}
-              <code className="text-xs">opkg install kmod-nft-queue</code> on
-              the device.
+              {t("masquerade.alert_kernel_module_missing")}
             </AlertDescription>
           </Alert>
         )}
@@ -251,14 +253,14 @@ function TrafficMasqueradeForm({
               <div className="flex items-center justify-between">
                 <Field orientation="horizontal" className="w-fit">
                   <FieldLabel htmlFor="masq-enabled">
-                    Enable Traffic Masquerade
+                    {t("masquerade.label_enable")}
                   </FieldLabel>
                   <Switch
                     id="masq-enabled"
                     checked={isEnabled}
                     onCheckedChange={setIsEnabled}
                     disabled={!canToggle || isSaving}
-                    aria-label="Enable Traffic Masquerade"
+                    aria-label={t("masquerade.aria_enable")}
                   />
                 </Field>
                 {settings && (
@@ -272,14 +274,14 @@ function TrafficMasqueradeForm({
               </div>
 
               <Field>
-                <FieldLabel htmlFor="sni-domain">Masquerade Domain</FieldLabel>
+                <FieldLabel htmlFor="sni-domain">{t("masquerade.label_domain")}</FieldLabel>
                 <Input
                   id="sni-domain"
                   type="text"
                   value={sniDomain}
                   onChange={(e) => setSniDomain(e.target.value)}
                   disabled={!isEnabled || !canEnable || isSaving}
-                  placeholder="speedtest.net"
+                  placeholder={t("masquerade.placeholder_domain")}
                   className="max-w-sm"
                   aria-invalid={!!sniError && isEnabled}
                   aria-describedby={
@@ -287,8 +289,7 @@ function TrafficMasqueradeForm({
                   }
                 />
                 <FieldDescription id="sni-desc">
-                  The domain that appears in the fake TLS handshake sent to the
-                  carrier.
+                  {t("masquerade.helper_domain")}
                 </FieldDescription>
               </Field>
 
@@ -297,8 +298,8 @@ function TrafficMasqueradeForm({
                   <Separator />
                   <ServiceStats
                     stats={[
-                      { label: "Uptime", value: settings.uptime },
-                      { label: "Packets Processed", value: settings.packets_processed.toLocaleString() },
+                      { label: t("masquerade.stat_uptime"), value: settings.uptime },
+                      { label: t("masquerade.stat_packets_processed"), value: settings.packets_processed.toLocaleString() },
                     ]}
                   />
                 </>
@@ -322,9 +323,9 @@ function TrafficMasqueradeForm({
             <Separator className="mt-4" />
             <div className="flex items-center justify-between pt-4">
               <div>
-                <p className="text-sm font-medium">Remove nfqws</p>
+                <p className="text-sm font-medium">{t("masquerade.section_remove_binary")}</p>
                 <p className="text-xs text-muted-foreground">
-                  Uninstall the nfqws binary from this device.
+                  {t("masquerade.section_remove_binary_desc")}
                 </p>
               </div>
               <AlertDialog>
@@ -337,42 +338,40 @@ function TrafficMasqueradeForm({
                     {isUninstalling ? (
                       <>
                         <Loader2 className="size-4 animate-spin" />
-                        Removing…
+                        {t("masquerade.state_removing")}
                       </>
                     ) : (
                       <>
                         <Trash2Icon className="size-4" />
-                        Uninstall
+                        {t("masquerade.button_uninstall")}
                       </>
                     )}
                   </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent>
                   <AlertDialogHeader>
-                    <AlertDialogTitle>Uninstall nfqws?</AlertDialogTitle>
+                    <AlertDialogTitle>{t("masquerade.dialog_uninstall_title")}</AlertDialogTitle>
                     <AlertDialogDescription>
-                      This will remove the nfqws binary and disable both Video
-                      Optimizer and Traffic Masquerade. You can reinstall it
-                      from the Video Optimizer page.
+                      {t("masquerade.dialog_uninstall_desc")}
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogCancel>{t("actions.cancel", { ns: "common" })}</AlertDialogCancel>
                     <AlertDialogAction
                       className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                       onClick={async () => {
                         const success = await runUninstall();
                         if (success) {
-                          toast.success("nfqws uninstalled");
+                          toast.success(t("masquerade.toast_uninstall_success"));
                           refresh();
                         } else {
                           toast.error(
-                            error || "Failed to uninstall nfqws",
+                            error || t("masquerade.toast_uninstall_error"),
                           );
                         }
                       }}
                     >
-                      Uninstall
+                      {t("masquerade.button_uninstall")}
                     </AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>

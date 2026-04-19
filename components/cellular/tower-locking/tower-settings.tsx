@@ -2,7 +2,6 @@
 
 import React, { useState, useCallback } from "react";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
 import { SaveButton, useSaveFlash } from "@/components/ui/save-button";
 
 import {
@@ -66,6 +65,7 @@ const TowerLockingSettingsComponent = ({
 }: TowerLockingSettingsProps) => {
   // Whether any tower lock is active (from config — matches what failover daemon checks)
   const hasActiveLock = (config?.lte?.enabled || config?.nr_sa?.enabled) ?? false;
+  const scheduleEnabled = config?.schedule?.enabled ?? false;
 
   // Local state for threshold input
   const [thresholdInput, setThresholdInput] = useState<string>("");
@@ -240,7 +240,7 @@ const TowerLockingSettingsComponent = ({
       );
     }
 
-    if (config.schedule.enabled) {
+    if (scheduleEnabled) {
       return (
         <Badge
           variant="outline"
@@ -460,47 +460,54 @@ const TowerLockingSettingsComponent = ({
             </div>
           </div>
           <Separator />
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1.5">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button type="button" className="inline-flex" aria-label="Signal Failover info">
-                    <TbInfoCircleFilled className="size-5 text-info" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>
-                    When enabled, the device will unlock from the tower if
-                    signal quality
-                    <br />
-                    degrades below a certain threshold or becomes unavailable.
-                  </p>
-                </TooltipContent>
-              </Tooltip>
-              <span className="font-semibold text-muted-foreground text-sm">
-                Signal Failover
-              </span>
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button type="button" className="inline-flex" aria-label="Signal Failover info">
+                      <TbInfoCircleFilled className="size-5 text-info" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>
+                      When enabled, the device will unlock from the tower if
+                      signal quality
+                      <br />
+                      degrades below a certain threshold or becomes unavailable.
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+                <span className="font-semibold text-muted-foreground text-sm">
+                  Signal Failover
+                </span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Switch
+                  id="tower-failover"
+                  checked={config?.failover?.enabled ?? false}
+                  disabled={!config || !hasActiveLock}
+                  onCheckedChange={(checked) => {
+                    onFailoverChange(checked);
+                    if (!checked) {
+                      toast.warning("Failover disabled");
+                    }
+                  }}
+                />
+                <Label htmlFor="tower-failover">
+                  {!hasActiveLock
+                    ? "No active lock"
+                    : (config?.failover?.enabled ?? false)
+                      ? "Enabled"
+                      : "Disabled"}
+                </Label>
+              </div>
             </div>
-            <div className="flex items-center space-x-2">
-              <Switch
-                id="tower-failover"
-                checked={config?.failover?.enabled ?? false}
-                disabled={!config || !hasActiveLock}
-                onCheckedChange={(checked) => {
-                  onFailoverChange(checked);
-                  if (!checked) {
-                    toast.warning("Failover disabled");
-                  }
-                }}
-              />
-              <Label htmlFor="tower-failover">
-                {!hasActiveLock
-                  ? "No active lock"
-                  : (config?.failover?.enabled ?? false)
-                    ? "Enabled"
-                    : "Disabled"}
-              </Label>
-            </div>
+            {hasActiveLock && !(config?.failover?.enabled ?? false) && (
+              <p className="text-xs text-muted-foreground pl-6">
+                Failover is off — enable it to auto-unlock on poor signal.
+              </p>
+            )}
           </div>
           <Separator />
           <div className="flex items-center justify-between">

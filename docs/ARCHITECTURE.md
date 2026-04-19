@@ -149,6 +149,8 @@ Auth endpoints use `_SKIP_AUTH=1` to bypass the automatic auth check in `cgi_bas
 | `/tmp/qmanager_profile_state.json` | profile_apply | JSON | Profile apply progress |
 | `/tmp/qmanager_pci_state.json` | poller (events) | JSON | SCC PCI tracking |
 | `/tmp/qmanager_email_log.json` | poller (email) | NDJSON | Email alert log (max 100) |
+| `/tmp/qmanager_sms_log.json` | poller (sms) | NDJSON | SMS alert log (max 100) |
+| `/tmp/qmanager_sms_reload` | CGI | Empty | Trigger poller SMS alert config reload |
 | `/tmp/qmanager_low_power_active` | low_power | Timestamp | Low power mode flag (suppresses events + alerts) |
 | `/tmp/qmanager_watchcat.lock` | low_power | Empty | Watchdog pause lock (forces LOCKED state) |
 | `/etc/qmanager/` | CGI scripts | Various | Persistent configuration |
@@ -162,7 +164,7 @@ Auth endpoints use `_SKIP_AUTH=1` to bypass the automatic auth check in `cgi_bas
 ```
 init.d/qmanager (procd)
   └── qmanager_poller (main loop, runs forever)
-       ├── sources: events.sh, email_alerts.sh, parse_at.sh
+  ├── sources: events.sh, email_alerts.sh, sms_alerts.sh, parse_at.sh
        └── reads: qmanager_ping.json, qmanager_watchcat.json
 
 init.d/qmanager (procd)
@@ -200,7 +202,7 @@ Daemons communicate through shared files in `/tmp/`:
 
 - **Poller reads** ping daemon output (`qmanager_ping.json`) and watchcat state (`qmanager_watchcat.json`)
 - **CGI scripts read** the poller's cache (`qmanager_status.json`) for GET requests
-- **CGI scripts write** config files, then touch trigger files (e.g., `/tmp/qmanager_email_reload`) to signal daemons to reload
+- **CGI scripts write** config files, then touch trigger files (e.g., `/tmp/qmanager_email_reload`, `/tmp/qmanager_sms_reload`) to signal daemons to reload
 - **No IPC sockets or signals** — pure file-based communication
 
 ---
@@ -282,6 +284,7 @@ The apply process runs asynchronously via `qmanager_profile_apply` daemon. The f
 | Tower lock config | `/etc/qmanager/tower_lock.json` | JSON |
 | Band lock config | `/etc/qmanager/band_lock.json` | JSON |
 | IMEI backup config | `/etc/qmanager/imei_backup.json` | JSON |
+| SMS alerts config | `/etc/qmanager/sms_alerts.json` | JSON |
 | Last SIM ICCID | `/etc/qmanager/last_iccid` | Plain text |
 | Email SMTP config | `/etc/qmanager/msmtprc` | msmtp config (chmod 600) |
 | TTL/HL rules | `/etc/firewall.user.ttl` | Shell commands (iptables) |
@@ -290,5 +293,5 @@ The apply process runs asynchronously via `qmanager_profile_apply` daemon. The f
 | Ethernet link speed | UCI `quecmanager.eth_link.speed_limit` | UCI |
 | System settings | UCI `quecmanager.settings.*` | UCI |
 | Timezone | UCI `system.@system[0].timezone/zonename` | UCI |
-| Auth password | `/etc/qmanager/shadow` | SHA-256 hash |
+| Auth password | `/etc/qmanager/auth.json` | SHA-256 hash + salt |
 | Sessions | `/tmp/qmanager_sessions/<token>` | One file per session |

@@ -2,6 +2,8 @@
 
 import React from "react";
 
+import { useTranslation } from "react-i18next";
+
 import {
   Card,
   CardContent,
@@ -34,71 +36,6 @@ interface NetworkStatusComponentProps {
   modemReachable: boolean;
   isLoading: boolean;
   isStale: boolean;
-}
-
-// --- Helper: Determine network icon & label from type + CA status ---
-function getNetworkDisplay(
-  type: string,
-  caActive: boolean,
-  nrCaActive: boolean,
-) {
-  switch (type) {
-    case "5G-NSA":
-      return {
-        icon: <MdOutline5G className="size-full text-white" />,
-        label: "5G Signal",
-        sublabel: nrCaActive ? "5G + LTE / NR-CA" : "5G + LTE",
-        hasNetwork: true,
-      };
-    case "5G-SA":
-      return {
-        icon: <MdOutline5G className="size-full text-white" />,
-        label: "5G Signal",
-        sublabel: nrCaActive ? "Standalone / NR-CA" : "Standalone",
-        hasNetwork: true,
-      };
-    case "LTE":
-      return caActive
-        ? {
-            icon: <Md4gPlusMobiledata className="size-full text-white" />,
-            label: "LTE+ Signal",
-            sublabel: "4G Carrier Aggregation",
-            hasNetwork: true,
-          }
-        : {
-            icon: <Md4gMobiledata className="size-full text-white" />,
-            label: "LTE Signal",
-            sublabel: "4G Connected",
-            hasNetwork: true,
-          };
-    default:
-      return {
-        icon: <Md3gMobiledata className="size-full text-white/50" />,
-        label: "Signal",
-        sublabel: "No 4G/5G",
-        hasNetwork: false,
-      };
-  }
-}
-
-// --- Helper: Service status label ---
-function getServiceLabel(status: ServiceStatus) {
-  switch (status) {
-    case "optimal":
-      return "Optimal";
-    case "connected":
-      return "Connected";
-    case "limited":
-      return "Limited";
-    case "no_service":
-      return "No Service";
-    case "searching":
-      return "Searching";
-    case "sim_error":
-      return "SIM Error";
-    default:
-      return "Unknown";
-  }
 }
 
 // --- Helper: Pulsating icon color based on network type ---
@@ -166,6 +103,73 @@ const NetworkStatusComponent = ({
   isLoading,
   isStale,
 }: NetworkStatusComponentProps) => {
+  const { t } = useTranslation("dashboard");
+
+  // --- Helper: Determine network icon & label from type + CA status ---
+  function getNetworkDisplay(
+    type: string,
+    caActive: boolean,
+    nrCaActive: boolean,
+  ) {
+    switch (type) {
+      case "5G-NSA":
+        return {
+          icon: <MdOutline5G className="size-full text-white" />,
+          label: t("network.signal_5g"),
+          sublabel: nrCaActive ? t("network.signal_5g_lte_nrca") : t("network.signal_5g_lte"),
+          hasNetwork: true,
+        };
+      case "5G-SA":
+        return {
+          icon: <MdOutline5G className="size-full text-white" />,
+          label: t("network.signal_5g"),
+          sublabel: nrCaActive ? t("network.signal_sa_nrca") : t("network.signal_sa"),
+          hasNetwork: true,
+        };
+      case "LTE":
+        return caActive
+          ? {
+              icon: <Md4gPlusMobiledata className="size-full text-white" />,
+              label: t("network.signal_lte_plus"),
+              sublabel: t("network.ca_4g"),
+              hasNetwork: true,
+            }
+          : {
+              icon: <Md4gMobiledata className="size-full text-white" />,
+              label: t("network.signal_lte"),
+              sublabel: t("network.connected_4g"),
+              hasNetwork: true,
+            };
+      default:
+        return {
+          icon: <Md3gMobiledata className="size-full text-white/50" />,
+          label: t("network.signal_generic"),
+          sublabel: t("network.no_signal"),
+          hasNetwork: false,
+        };
+    }
+  }
+
+  // --- Helper: Service status label ---
+  function getServiceLabel(status: ServiceStatus) {
+    switch (status) {
+      case "optimal":
+        return t("network.service_optimal");
+      case "connected":
+        return t("network.service_connected");
+      case "limited":
+        return t("network.service_limited");
+      case "no_service":
+        return t("network.service_no_service");
+      case "searching":
+        return t("network.service_searching");
+      case "sim_error":
+        return t("network.service_sim_error");
+      default:
+        return t("network.service_unknown");
+    }
+  }
+
   // Derive display values
   const networkType = data?.type ?? "";
   const serviceStatus = data?.service_status ?? "unknown";
@@ -201,7 +205,7 @@ const NetworkStatusComponent = ({
       <CardHeader>
         <div className="flex md:flex-row flex-col xl:items-center justify-center xl:justify-between gap-2">
           <CardTitle className="text-2xl font-semibold @[250px]/card:text-3xl">
-            Network Status
+            {t("network.title")}
           </CardTitle>
 
           {/* Status badges */}
@@ -219,7 +223,7 @@ const NetworkStatusComponent = ({
                   className="bg-warning/15 text-warning hover:bg-warning/20 border-warning/30"
                 >
                   <div className="w-2 h-2 rounded-full bg-warning" />
-                  Data Delayed
+                  {t("network.data_delayed_badge")}
                 </Badge>
               )}
 
@@ -244,10 +248,10 @@ const NetworkStatusComponent = ({
                   }`}
                 />
                 {isAirplaneMode
-                  ? "Airplane Mode"
+                  ? t("network.airplane_mode")
                   : radioOn
-                    ? "Radio On"
-                    : "Radio Off"}
+                    ? t("network.radio_on")
+                    : t("network.radio_off")}
               </Badge>
 
               {/* Internet status — green/red/gray based on ping daemon */}
@@ -275,10 +279,10 @@ const NetworkStatusComponent = ({
                   />
                 )}
                 {internetAvailable === true
-                  ? "Online"
+                  ? t("network.internet_online")
                   : internetAvailable === false
-                    ? "Offline"
-                    : "Internet"}
+                    ? t("network.internet_offline")
+                    : t("network.internet_label")}
               </Badge>
             </div>
           )}
@@ -328,10 +332,10 @@ const NetworkStatusComponent = ({
               </div>
               <div className="grid gap-0.5 text-center">
                 <h3 className="text-base font-semibold leading-none">
-                  {isAirplaneMode ? "Low Power" : networkDisplay.label}
+                  {isAirplaneMode ? t("network.low_power") : networkDisplay.label}
                 </h3>
                 <p className="text-muted-foreground text-sm">
-                  {isAirplaneMode ? "Radio Off" : networkDisplay.sublabel}
+                  {isAirplaneMode ? t("network.radio_off") : networkDisplay.sublabel}
                 </p>
               </div>
             </div>
@@ -374,12 +378,12 @@ const NetworkStatusComponent = ({
               </div>
               <div className="grid gap-0.5 text-center">
                 <h3 className="text-base font-semibold leading-none">
-                  SIM {simSlot}
+                  {t("network.sim_label", { slot: simSlot })}
                 </h3>
                 <p className="text-muted-foreground text-sm">
                   {isAirplaneMode
-                    ? "Airplane Mode"
-                    : carrier || "No Carrier"}
+                    ? t("network.airplane_mode")
+                    : carrier || t("network.no_carrier")}
                 </p>
               </div>
             </div>
@@ -428,10 +432,10 @@ const NetworkStatusComponent = ({
               </div>
               <div className="grid gap-0.5 text-center">
                 <h3 className="text-base font-semibold leading-none">
-                  {isAirplaneMode ? "Standby" : "Service"}
+                  {isAirplaneMode ? t("network.standby_label") : t("network.service_label")}
                 </h3>
                 <p className="text-muted-foreground text-sm">
-                  {isAirplaneMode ? "Radio Off" : serviceLabel}
+                  {isAirplaneMode ? t("network.radio_off") : serviceLabel}
                 </p>
               </div>
             </div>

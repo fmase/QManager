@@ -39,6 +39,7 @@
 - **Frequency Calculator** — EARFCN/ARFCN to frequency conversion tool
 - **SMS Center** — Send and receive SMS messages directly from the interface
 - **IMEI Settings** — Read, backup, and modify device IMEI
+- **IMEI Toolkit** — Generate and validate IMEI values with TAC presets, Luhn checks, and quick copy/lookup tools
 - **FPLMN Management** — View and manage the Forbidden PLMN list
 - **MBN Configuration** — Select and activate modem broadband configuration files
 
@@ -55,6 +56,7 @@
 
 - **Connection Watchdog** — 4-tier auto-recovery: ifup → CFUN toggle → SIM failover → full reboot (with token bucket rate limiting)
 - **Email Alerts** — Downtime notifications via Gmail SMTP (msmtp), sent on recovery with duration details
+- **SMS Alerts** — Downtime notifications via `sms_tool`, sent during active outages once threshold is exceeded
 - **WAN Interface Guard** — Automatically disables phantom WAN profiles to prevent netifd CPU-wasting retry loops
 - **Low Power Mode** — Scheduled CFUN power-down windows via cron
 - **Tailscale VPN** — One-click installation, authentication, and status monitoring
@@ -75,12 +77,37 @@
 SSH into your OpenWRT device and run:
 
 ```sh
-wget -O /tmp/qmanager-installer.sh \
-  https://github.com/dr-dolomite/QManager/raw/refs/heads/main/qmanager-installer.sh && \
-  sh /tmp/qmanager-installer.sh
+set -e
+REPO="dr-dolomite/QManager"
+API="https://api.github.com/repos/${REPO}/releases?per_page=20"
+
+JSON=$(uclient-fetch -qO- "$API" 2>/dev/null || wget -qO- "$API" 2>/dev/null || curl -fsSL "$API")
+TAG=$(printf '%s' "$JSON" \
+  | tr -d '\n' \
+  | sed 's/},{/}\
+{/g' \
+  | sed -n '/"prerelease":[[:space:]]*true/{s/.*"tag_name":[[:space:]]*"\([^"]*\)".*/\1/p;q}')
+
+[ -n "$TAG" ] || { echo "Failed to resolve latest pre-release tag"; exit 1; }
+
+BASE="https://github.com/${REPO}/releases/download/${TAG}"
+cd /tmp
+wget -O qmanager.tar.gz "$BASE/qmanager.tar.gz"
+wget -O sha256sum.txt "$BASE/sha256sum.txt"
+sha256sum -c sha256sum.txt
+tar xzf qmanager.tar.gz
+sh /tmp/qmanager_install/install.sh
 ```
 
-The installer automatically detects your architecture, downloads the latest release, verifies the checksum, and runs the install script. You can pin a specific version with `QMANAGER_VERSION=v0.1.8`.
+One-liner convenience (same verified flow):
+
+```sh
+curl -fsSL -o /tmp/qmanager-installer.sh https://raw.githubusercontent.com/dr-dolomite/QManager/development-home/qmanager-installer.sh && sh /tmp/qmanager-installer.sh
+```
+
+The one-liner wrapper still downloads the latest pre-release tarball, verifies `sha256sum.txt`, and then executes `install.sh`.
+
+To pin a specific release instead of latest pre-release, set `TAG` manually (for example `TAG="v0.1.13"`) and skip the API lookup block.
 
 ### Upgrading
 
@@ -89,10 +116,33 @@ From v0.1.7+, go to **Monitoring → Software Update** and use the built-in upda
 ### Uninstalling
 
 ```sh
-wget -O /tmp/qmanager-installer.sh \
-  https://github.com/dr-dolomite/QManager/raw/refs/heads/main/qmanager-installer.sh && \
-  sh /tmp/qmanager-installer.sh --uninstall
+set -e
+REPO="dr-dolomite/QManager"
+API="https://api.github.com/repos/${REPO}/releases?per_page=20"
+
+JSON=$(uclient-fetch -qO- "$API" 2>/dev/null || wget -qO- "$API" 2>/dev/null || curl -fsSL "$API")
+TAG=$(printf '%s' "$JSON" \
+  | tr -d '\n' \
+  | sed 's/},{/}\
+{/g' \
+  | sed -n '/"prerelease":[[:space:]]*true/{s/.*"tag_name":[[:space:]]*"\([^"]*\)".*/\1/p;q}')
+
+[ -n "$TAG" ] || { echo "Failed to resolve latest pre-release tag"; exit 1; }
+
+BASE="https://github.com/${REPO}/releases/download/${TAG}"
+cd /tmp
+wget -O qmanager.tar.gz "$BASE/qmanager.tar.gz"
+tar xzf qmanager.tar.gz
+sh /tmp/qmanager_install/uninstall.sh
 ```
+
+One-liner uninstall:
+
+```sh
+curl -fsSL -o /tmp/qmanager-installer.sh https://raw.githubusercontent.com/dr-dolomite/QManager/development-home/qmanager-installer.sh && sh /tmp/qmanager-installer.sh --uninstall
+```
+
+Use `QMANAGER_TAG="v0.1.14" sh /tmp/qmanager-installer.sh` to pin a specific version with the one-liner wrapper.
 
 ---
 
@@ -194,7 +244,7 @@ QManager/
 │   ├── local-network/          # Ethernet, IP passthrough, DNS, TTL, MTU,
 │   │                           #   video optimizer, traffic masquerade
 │   ├── monitoring/             # Network events, latency, email alerts, watchdog,
-│   │                           #   Tailscale, logs, software updates
+│   │                           #   SMS alerts, Tailscale, logs, software updates
 │   ├── system-settings/        # System config, bandwidth monitor, AT terminal
 │   └── (login, setup, reboot, about-device, support)
 ├── components/                 # React components (~185 files)
@@ -215,8 +265,7 @@ QManager/
 │   ├── www/cgi-bin/            # CGI endpoints (58 scripts)
 │   ├── install.sh              # Device installation script
 │   └── uninstall.sh            # Clean removal script
-├── docs/                       # Documentation
-└── qmanager-installer.sh       # One-liner installer (fetches release + runs install.sh)
+└── docs/                       # Documentation
 ```
 
 ---
@@ -261,13 +310,11 @@ QManager runs 11 init.d services on the device:
   <h3>Support QManager's Development</h3>
   <p>Your contribution helps maintain the project and fund continued development, testing on new cellular networks, and hardware costs.</p>
   <br/>
-  <a href="https://ko-fi.com/drdolomite" target="_blank">
-    <img height="64" style="border:0;height:64px;" src="https://storage.ko-fi.com/cdn/kofi1.png?v=3" alt="Buy Me a Coffee at ko-fi.com" />
+  <a href="https://github.com/sponsors/dr-dolomite" target="_blank">
+    <img height="40" src="https://img.shields.io/badge/Sponsor-%E2%9D%A4-EA4AAA?style=for-the-badge&logo=githubsponsors&logoColor=white" alt="Sponsor on GitHub" />
   </a>
   <br/><br/>
-  <a href="https://paypal.me/iamrusss" target="_blank">
-    <img height="40" src="https://img.shields.io/badge/PayPal-00457C?style=for-the-badge&logo=paypal&logoColor=white" alt="Donate via PayPal" />
-  </a>
+  <p><strong>GCash via Remitly</strong><br/>Name: Russel Yasol<br/>Number: +639544817486</p>
 </div>
 
 ---

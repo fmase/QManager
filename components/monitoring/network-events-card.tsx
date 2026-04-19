@@ -50,20 +50,15 @@ const MotionTableRow = motion.create(TableRow);
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Field, FieldGroup, FieldLabel, FieldSet } from "@/components/ui/field";
 import { Switch } from "@/components/ui/switch";
+import { useTranslation } from "react-i18next";
 
 import { useRecentActivities } from "@/hooks/use-recent-activities";
-import { EVENT_LABELS, EVENT_TAB_CATEGORIES } from "@/constants/network-events";
+import { EVENT_TAB_CATEGORIES } from "@/constants/network-events";
 import type { NetworkEvent, EventSeverity } from "@/types/modem-status";
 
 // --- Constants ---------------------------------------------------------------
 
 type SortOrder = "newest" | "oldest" | "type";
-
-const LIMIT_OPTIONS = [
-  { label: "All Events", value: 50 },
-  { label: "10 Events", value: 10 },
-  { label: "25 Events", value: 25 },
-] as const;
 
 // --- Local helpers -----------------------------------------------------------
 
@@ -104,14 +99,19 @@ function EventsTable({
   totalCount,
   lastUpdate,
 }: EventsTableProps) {
+  const { t } = useTranslation("monitoring");
+  const { t: tEvents } = useTranslation("events");
+
   return (
     <>
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className="hidden @md/card:table-cell">Event Type</TableHead>
-            <TableHead>Message</TableHead>
-            <TableHead>Date & Time</TableHead>
+            <TableHead className="hidden @md/card:table-cell">
+              {t("network_events.table_header_event_type")}
+            </TableHead>
+            <TableHead>{t("network_events.table_header_message")}</TableHead>
+            <TableHead>{t("network_events.table_header_time")}</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -143,7 +143,7 @@ function EventsTable({
           ) : (
             events.map((event, index) => {
               const { date, time } = formatEventDateTime(event.timestamp);
-              const label = EVENT_LABELS[event.type] ?? event.type;
+              const label = tEvents(`type.${event.type}`, { defaultValue: event.type });
               return (
                 <MotionTableRow
                   key={`${event.timestamp}-${event.type}-${index}`}
@@ -176,13 +176,16 @@ function EventsTable({
       </Table>
       <div className="flex justify-between items-center pt-4">
         <div className="text-xs text-muted-foreground">
-          Showing <strong>{events.length}</strong> of{" "}
-          <strong>{totalCount}</strong> event{totalCount !== 1 ? "s" : ""}
+          {t("network_events.showing_count", {
+            count: totalCount,
+            shown: events.length,
+            total: totalCount,
+          })}
         </div>
         {lastUpdate && (
           <div className="flex items-center text-xs text-muted-foreground">
             <Clock className="h-3 w-3 mr-1" />
-            Last updated: {lastUpdate.toLocaleTimeString()}
+            {t("network_events.last_updated", { time: lastUpdate.toLocaleTimeString() })}
           </div>
         )}
       </div>
@@ -193,6 +196,7 @@ function EventsTable({
 // --- Main component ----------------------------------------------------------
 
 const NetworkEventsCard = () => {
+  const { t } = useTranslation("monitoring");
   const [activeTab, setActiveTab] = useState<string>("all");
   const [sortOrder, setSortOrder] = useState<SortOrder>("newest");
   const [maxEvents, setMaxEvents] = useState<number>(50);
@@ -211,6 +215,15 @@ const NetworkEventsCard = () => {
       setLastUpdate(new Date());
     }
   }, [events]);
+
+  const LIMIT_OPTIONS = useMemo(
+    () => [
+      { label: t("network_events.limit_all"), value: 50 },
+      { label: t("network_events.limit_10"), value: 10 },
+      { label: t("network_events.limit_25"), value: 25 },
+    ],
+    [t],
+  );
 
   // Filter by tab category
   const filteredEvents = useMemo(() => {
@@ -238,10 +251,9 @@ const NetworkEventsCard = () => {
   return (
     <Card className="@container/card">
       <CardHeader>
-        <CardTitle>Network Events</CardTitle>
+        <CardTitle>{t("network_events.card_title")}</CardTitle>
         <CardDescription>
-          Recent network events including band changes, connection drops, and
-          signal changes.
+          {t("network_events.card_description")}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -251,7 +263,7 @@ const NetworkEventsCard = () => {
               <FieldGroup>
                 <Field orientation="horizontal" className="w-fit">
                   <FieldLabel htmlFor="event-monitoring-setting">
-                    Auto-refresh
+                    {t("network_events.auto_refresh_label")}
                   </FieldLabel>
                   <Switch
                     id="event-monitoring-setting"
@@ -267,8 +279,9 @@ const NetworkEventsCard = () => {
             <Alert>
               <BellOff className="size-4" />
               <AlertTitle>
-                Auto-refresh paused — displaying events as of{" "}
-                {lastUpdate ? lastUpdate.toLocaleTimeString() : "last fetch"}.
+                {t("network_events.auto_refresh_paused", {
+                  time: lastUpdate ? lastUpdate.toLocaleTimeString() : "—",
+                })}
               </AlertTitle>
             </Alert>
           )}
@@ -278,17 +291,25 @@ const NetworkEventsCard = () => {
               <Tabs value={activeTab} onValueChange={setActiveTab}>
                 <div className="flex items-center">
                   <TabsList>
-                    <TabsTrigger value="all">All</TabsTrigger>
+                    <TabsTrigger value="all">
+                      {t("network_events.tab_all")}
+                    </TabsTrigger>
                     <TabsTrigger value="bandChanges">
-                      <span className="hidden @sm/card:inline">Band Changes</span>
+                      <span className="hidden @sm/card:inline">
+                        {t("network_events.tab_band_changes")}
+                      </span>
                       <Radio className="@sm/card:hidden" />
                     </TabsTrigger>
                     <TabsTrigger value="networkMode">
-                      <span className="hidden @sm/card:inline">Network Mode</span>
+                      <span className="hidden @sm/card:inline">
+                        {t("network_events.tab_network_mode")}
+                      </span>
                       <Signal className="@sm/card:hidden" />
                     </TabsTrigger>
                     <TabsTrigger value="dataConnection">
-                      <span className="hidden @sm/card:inline">Data Connection</span>
+                      <span className="hidden @sm/card:inline">
+                        {t("network_events.tab_data_connection")}
+                      </span>
                       <Wifi className="@sm/card:hidden" />
                     </TabsTrigger>
                   </TabsList>
@@ -302,30 +323,32 @@ const NetworkEventsCard = () => {
                         >
                           <ArrowUpDown className="h-3.5 w-3.5" />
                           <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-                            Sort
+                            {t("network_events.sort_label")}
                           </span>
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>Sort by</DropdownMenuLabel>
+                        <DropdownMenuLabel>
+                          {t("network_events.sort_label")}
+                        </DropdownMenuLabel>
                         <DropdownMenuSeparator />
                         <DropdownMenuCheckboxItem
                           checked={sortOrder === "newest"}
                           onCheckedChange={() => setSortOrder("newest")}
                         >
-                          Newest first
+                          {t("network_events.sort_newest")}
                         </DropdownMenuCheckboxItem>
                         <DropdownMenuCheckboxItem
                           checked={sortOrder === "oldest"}
                           onCheckedChange={() => setSortOrder("oldest")}
                         >
-                          Oldest first
+                          {t("network_events.sort_oldest")}
                         </DropdownMenuCheckboxItem>
                         <DropdownMenuCheckboxItem
                           checked={sortOrder === "type"}
                           onCheckedChange={() => setSortOrder("type")}
                         >
-                          Event type
+                          {t("network_events.sort_type")}
                         </DropdownMenuCheckboxItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -338,12 +361,14 @@ const NetworkEventsCard = () => {
                         >
                           <ListFilter className="h-3.5 w-3.5" />
                           <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-                            Limit
+                            {t("network_events.limit_label")}
                           </span>
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>Max Events</DropdownMenuLabel>
+                        <DropdownMenuLabel>
+                          {t("network_events.limit_label")}
+                        </DropdownMenuLabel>
                         <DropdownMenuSeparator />
                         {LIMIT_OPTIONS.map((opt) => (
                           <DropdownMenuCheckboxItem
@@ -367,7 +392,7 @@ const NetworkEventsCard = () => {
                         className={`h-3.5 w-3.5 ${isRefreshing ? "animate-spin" : ""}`}
                       />
                       <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-                        Refresh
+                        {t("network_events.refresh_button")}
                       </span>
                     </Button>
                   </div>
@@ -378,7 +403,7 @@ const NetworkEventsCard = () => {
                     <div className="flex items-center gap-x-2">
                       <AlertCircle className="size-5" />
                       <AlertTitle>
-                        Failed to load network events: {error}
+                        {t("network_events.failed_to_load", { error })}
                       </AlertTitle>
                     </div>
                   </Alert>
@@ -391,65 +416,46 @@ const NetworkEventsCard = () => {
                     emptyIcon={
                       <Activity className="h-8 w-8 text-muted-foreground" />
                     }
-                    emptyMessage="No network events found"
+                    emptyMessage={t("network_events.empty_all")}
                     totalCount={filteredEvents.length}
                     lastUpdate={lastUpdate}
                   />
                 </TabsContent>
 
                 <TabsContent value="bandChanges">
-                  <div className="grid gap-1.5 mb-4">
-                    <h3 className="text-sm font-medium">Band Changes</h3>
-                    <p className="text-sm text-muted-foreground">
-                      Band changes, cell handoffs, 5G anchor transitions, and
-                      carrier aggregation events.
-                    </p>
-                  </div>
                   <EventsTable
                     events={displayedEvents}
                     isLoading={isLoading}
                     emptyIcon={
                       <Radio className="h-8 w-8 text-muted-foreground" />
                     }
-                    emptyMessage="No band change events found"
+                    emptyMessage={t("network_events.empty_band_changes")}
                     totalCount={filteredEvents.length}
                     lastUpdate={lastUpdate}
                   />
                 </TabsContent>
 
                 <TabsContent value="networkMode">
-                  <div className="grid gap-1.5 mb-4">
-                    <h3 className="text-sm font-medium">Network Mode</h3>
-                    <p className="text-sm text-muted-foreground">
-                      Signal quality changes and network mode transitions.
-                    </p>
-                  </div>
                   <EventsTable
                     events={displayedEvents}
                     isLoading={isLoading}
                     emptyIcon={
                       <Signal className="h-8 w-8 text-muted-foreground" />
                     }
-                    emptyMessage="No network mode events found"
+                    emptyMessage={t("network_events.empty_network_mode")}
                     totalCount={filteredEvents.length}
                     lastUpdate={lastUpdate}
                   />
                 </TabsContent>
 
                 <TabsContent value="dataConnection">
-                  <div className="grid gap-1.5 mb-4">
-                    <h3 className="text-sm font-medium">Data Connection</h3>
-                    <p className="text-sm text-muted-foreground">
-                      Internet connectivity, latency, and packet loss events.
-                    </p>
-                  </div>
                   <EventsTable
                     events={displayedEvents}
                     isLoading={isLoading}
                     emptyIcon={
                       <Wifi className="h-8 w-8 text-muted-foreground" />
                     }
-                    emptyMessage="No data connection events found"
+                    emptyMessage={t("network_events.empty_data_connection")}
                     totalCount={filteredEvents.length}
                     lastUpdate={lastUpdate}
                   />

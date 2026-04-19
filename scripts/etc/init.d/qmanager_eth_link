@@ -23,6 +23,12 @@ ETH_INTERFACE="eth0"
 # Build hex advertise mask from ethtool's "Supported link modes" output.
 # Maps mode names to bit positions (linux/ethtool.h), splits into hi/lo
 # 32-bit halves so awk handles bit 47+ (2500baseT/Full) correctly.
+#
+# IDEMPOTENT: this script reads the current link speed from ethtool and
+# skips the apply entirely when the link is already at the desired speed.
+# Without this guard, every install/upgrade would flap eth0 (because the
+# old logic unconditionally called `ethtool -r`), killing any SSH session
+# attached to the LAN port mid-install.
 start() {
     # Guard: ethtool must be available
     command -v ethtool >/dev/null 2>&1 || return 1
@@ -33,10 +39,32 @@ start() {
     # Read configured speed limit from UCI
     limit=$(uci get quecmanager.eth_link.speed_limit 2>/dev/null)
 
-    # Wait for interface to be ready
+    # Read current negotiated speed (e.g. "1000" from "Speed: 1000Mb/s")
+    current_speed=$(ethtool "$ETH_INTERFACE" 2>/dev/null \
+        | sed -n 's/^[[:space:]]*Speed:[[:space:]]*\([0-9]\{1,\}\)Mb\/s.*/\1/p')
+
+    # Map UCI limit to desired numeric speed (empty = auto, accept anything)
+    case "$limit" in
+        "10")   desired_speed="10" ;;
+        "100")  desired_speed="100" ;;
+        "1000") desired_speed="1000" ;;
+        *)      desired_speed="" ;;
+    esac
+
+    # Skip apply if already at the desired speed. For "auto", any link-up
+    # speed counts as good. This is the hot path on every install/upgrade.
+    if [ -n "$current_speed" ]; then
+        if [ -z "$desired_speed" ] || [ "$current_speed" = "$desired_speed" ]; then
+            logger -t qmanager_eth_link "Link already at ${current_speed}Mb/s (limit=${limit:-auto}) — skip apply"
+            return 0
+        fi
+    fi
+
+    # Wait for interface to be ready before changing settings
     sleep 2
 
-    # Apply speed limit
+    # Apply speed limit (this WILL flap the link — only happens when the
+    # user explicitly changed the limit from the UI)
     case "$limit" in
         "10")   ethtool -s "$ETH_INTERFACE" advertise 0x003 autoneg on 2>/dev/null ;;
         "100")  ethtool -s "$ETH_INTERFACE" advertise 0x00f autoneg on 2>/dev/null ;;
@@ -53,19 +81,13 @@ start() {
 
     ethtool -r "$ETH_INTERFACE" 2>/dev/null
 
-    logger -t qmanager_eth_link "Applied speed limit: ${limit:-auto}"
+    logger -t qmanager_eth_link "Applied speed limit: ${limit:-auto} (was ${current_speed:-unknown}Mb/s)"
 }
 
+# stop() is intentionally a no-op. Resetting the link on stop forces a
+# renegotiation that drops every TCP connection on eth0 — including SSH
+# sessions that the installer itself is running over. Hardware state is
+# reset by reboot at the end of uninstall, not by this stop() handler.
 stop() {
-    # Reset to auto on stop — advertise all supported modes
-    if command -v ethtool >/dev/null 2>&1; then
-        advertise=$(get_supported_advertise_hex)
-        if [ -n "$advertise" ]; then
-            ethtool -s "$ETH_INTERFACE" advertise "$advertise" autoneg on 2>/dev/null
-        else
-            ethtool -s "$ETH_INTERFACE" autoneg on 2>/dev/null
-        fi
-        ethtool -r "$ETH_INTERFACE" 2>/dev/null
-        logger -t qmanager_eth_link "Reset to auto speed"
-    fi
+    :
 }

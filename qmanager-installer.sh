@@ -1,526 +1,268 @@
 #!/bin/sh
-# ==============================================================================
-# QManager — Installer for OpenWRT
-# Quectel Modem Manager
-# https://github.com/dr-dolomite/QManager
+# =============================================================================
+# QManager Bootstrap Installer
+# =============================================================================
+# Thin wrapper for one-liner installs. Downloads the selected release tarball
+# from GitHub, verifies sha256, extracts it, and runs install.sh (or
+# uninstall.sh). curl-only — no wget/uclient-fetch fallbacks.
+#
+# Supports both stable and pre-release channels.
 #
 # Usage:
-#   wget -O /tmp/qmanager-installer.sh \
-#     https://github.com/dr-dolomite/QManager/raw/refs/heads/development-home/qmanager-installer.sh
-#   sh /tmp/qmanager-installer.sh
+#   sh qmanager-installer.sh [OPTIONS]
 #
-# Environment variables:
-#   QMANAGER_VERSION  Pin a specific release version (default: latest)
+# Options:
+#   --uninstall             Run uninstall.sh instead of install.sh
+#   --tag <tag>             Use an explicit release tag (e.g., v0.1.14)
+#   --channel <ch>          Release channel: stable|prerelease|any (default: any)
+#   --repo <owner/repo>     Override GitHub repo (default: dr-dolomite/QManager)
+#   -h, --help              Show this help
 #
-# ==============================================================================
+# Environment overrides:
+#   QMANAGER_TAG            Same as --tag
+#   QMANAGER_CHANNEL        Same as --channel
+#   QMANAGER_REPO           Same as --repo
+# =============================================================================
 
-# --- Configuration -----------------------------------------------------------
+set -e
 
-GITHUB_REPO="dr-dolomite/QManager"
-GITHUB_API="https://api.github.com/repos/${GITHUB_REPO}/releases"
-ARCHIVE_PATH="/tmp/qmanager.tar.gz"
-CHECKSUM_PATH="/tmp/qmanager_sha256sum.txt"
-EXTRACT_DIR="/tmp/qmanager_install"
+REPO="${QMANAGER_REPO:-dr-dolomite/QManager}"
+TAG="${QMANAGER_TAG:-}"
+CHANNEL="${QMANAGER_CHANNEL:-any}"
+ACTION="install"
 
-# Device paths (must match install.sh / uninstall.sh)
-WWW_ROOT="/www"
-CGI_DIR="/www/cgi-bin/quecmanager"
-LIB_DIR="/usr/lib/qmanager"
-BIN_DIR="/usr/bin"
-INITD_DIR="/etc/init.d"
-CONF_DIR="/etc/qmanager"
-BACKUP_DIR="/etc/qmanager/backups"
-SESSION_DIR="/tmp/qmanager_sessions"
+usage() {
+    cat <<'EOF'
+QManager bootstrap installer
 
-# --- Colors & Formatting -----------------------------------------------------
+Usage:
+  sh qmanager-installer.sh [OPTIONS]
 
-if [ -t 1 ]; then
-    BOLD='\033[1m'
-    DIM='\033[2m'
-    RED='\033[0;31m'
-    GREEN='\033[0;32m'
-    YELLOW='\033[1;33m'
-    CYAN='\033[0;36m'
-    NC='\033[0m'
-else
-    BOLD='' DIM='' RED='' GREEN='' YELLOW='' CYAN='' NC=''
-fi
+Options:
+  --uninstall           Run uninstall.sh instead of install.sh
+  --tag <tag>           Use an explicit release tag (e.g., v0.1.14)
+  --channel <ch>        Release channel: stable | prerelease | any (default: any)
+                        - stable:     only releases marked prerelease=false
+                        - prerelease: only releases marked prerelease=true
+                        - any:        newest release regardless of flag
+  --repo <owner/repo>   Override repository (default: dr-dolomite/QManager)
+  -h, --help            Show this help
 
-# --- Helpers -----------------------------------------------------------------
+Environment overrides:
+  QMANAGER_TAG          Same as --tag
+  QMANAGER_CHANNEL      Same as --channel
+  QMANAGER_REPO         Same as --repo
 
-info()  { printf "  ${GREEN}*${NC}  %s\n" "$1"; }
-warn()  { printf "  ${YELLOW}!${NC}  %s\n" "$1"; }
-err()   { printf "  ${RED}x${NC}  %s\n" "$1"; }
-step()  { printf "\n  ${CYAN}>${NC}  ${BOLD}%s${NC}\n" "$1"; }
+Examples:
+  # Install newest release (any channel)
+  curl -sL https://raw.githubusercontent.com/dr-dolomite/QManager/main/qmanager-installer.sh | sh
 
-die() {
-    err "$1"
-    exit 1
+  # Install newest stable only
+  curl -sL .../qmanager-installer.sh | sh -s -- --channel stable
+
+  # Install a specific tag
+  curl -sL .../qmanager-installer.sh | sh -s -- --tag v0.1.14
+
+  # Uninstall
+  curl -sL .../qmanager-installer.sh | sh -s -- --uninstall
+EOF
 }
 
-# --- Checks ------------------------------------------------------------------
-
-check_root() {
-    [ "$(id -u)" -eq 0 ] || die "This script must be run as root"
-}
-
-check_openwrt() {
-    [ -f /etc/openwrt_release ] || die "OpenWRT not detected (/etc/openwrt_release missing)"
-}
-
-is_installed() {
-    [ -d "$LIB_DIR" ] || [ -f "$INITD_DIR/qmanager" ] || [ -d "$CGI_DIR" ]
-}
-
-# --- Download Helper ---------------------------------------------------------
-
-download_archive() {
-    local url="$1" dest="$2"
-
-    # uclient-fetch — native OpenWRT HTTPS downloader
-    if command -v uclient-fetch >/dev/null 2>&1; then
-        info "Using uclient-fetch..."
-        uclient-fetch -q -O "$dest" "$url" 2>/dev/null && return 0
-    fi
-
-    # wget (BusyBox or full)
-    if command -v wget >/dev/null 2>&1; then
-        info "Using wget..."
-        wget -q -O "$dest" "$url" 2>/dev/null && return 0
-    fi
-
-    # curl (if installed)
-    if command -v curl >/dev/null 2>&1; then
-        info "Using curl..."
-        curl -fsSL -o "$dest" "$url" 2>/dev/null && return 0
-    fi
-
-    return 1
-}
-
-# --- GitHub API Helper -------------------------------------------------------
-
-fetch_release_info() {
-    local api_url="$1" tmp_file="/tmp/qm_installer_api.json"
-    local is_list=false
-    rm -f "$tmp_file"
-
-    # Detect if we're querying the list endpoint (array) vs a single release (object)
-    case "$api_url" in */releases|*/releases\?*) is_list=true ;; esac
-
-    if ! download_archive "$api_url" "$tmp_file"; then
-        return 1
-    fi
-
-    # Parse with jsonfilter (stock OpenWRT) or jq (if available)
-    if command -v jsonfilter >/dev/null 2>&1; then
-        if $is_list; then
-            RELEASE_TAG=$(jsonfilter -i "$tmp_file" -e '@[0].tag_name' 2>/dev/null)
-        else
-            RELEASE_TAG=$(jsonfilter -i "$tmp_file" -e '@.tag_name' 2>/dev/null)
-        fi
-    elif command -v jq >/dev/null 2>&1; then
-        if $is_list; then
-            RELEASE_TAG=$(jq -r '.[0].tag_name // empty' "$tmp_file" 2>/dev/null)
-        else
-            RELEASE_TAG=$(jq -r '.tag_name // empty' "$tmp_file" 2>/dev/null)
-        fi
-    else
-        # Fallback: grep for tag_name in JSON (first match works for both list and single)
-        RELEASE_TAG=$(grep -o '"tag_name"[[:space:]]*:[[:space:]]*"[^"]*"' "$tmp_file" | head -1 | cut -d'"' -f4)
-    fi
-
-    rm -f "$tmp_file"
-    [ -n "$RELEASE_TAG" ]
-}
-
-# ==============================================================================
-# Option 1 — Install
-# ==============================================================================
-
-do_install() {
-    check_root
-    check_openwrt
-
-    printf "\n"
-    if is_installed; then
-        warn "QManager is already installed. This will upgrade it."
-        printf "\n  Continue? [y/N] "
-        read -r ans
-        case "$ans" in y|Y|yes|YES) ;; *) printf "\n  Aborted.\n\n"; return ;; esac
-    fi
-
-    # Deprecation warning for QMANAGER_BRANCH
-    if [ -n "${QMANAGER_BRANCH:-}" ]; then
-        warn "QMANAGER_BRANCH is deprecated and will be ignored."
-        warn "Use QMANAGER_VERSION to pin a specific release instead."
-    fi
-
-    # Resolve release version
-    step "Checking latest release..."
-    RELEASE_TAG=""
-
-    if [ -n "${QMANAGER_VERSION:-}" ]; then
-        info "Pinned version: $QMANAGER_VERSION"
-        if ! fetch_release_info "${GITHUB_API}/tags/${QMANAGER_VERSION}"; then
-            die "Release $QMANAGER_VERSION not found on GitHub"
-        fi
-    else
-        if ! fetch_release_info "${GITHUB_API}?per_page=1"; then
-            die "Could not fetch latest release from GitHub. Check your internet connection."
-        fi
-    fi
-
-    info "Release: $RELEASE_TAG"
-
-    # Construct download URLs from stable release pattern
-    local base_url="https://github.com/${GITHUB_REPO}/releases/download/${RELEASE_TAG}"
-    local tarball_url="${base_url}/qmanager.tar.gz"
-    local checksum_url="${base_url}/sha256sum.txt"
-
-    # Download tarball
-    step "Downloading QManager ${RELEASE_TAG}..."
-    printf "     %s\n" "$tarball_url"
-
-    rm -f "$ARCHIVE_PATH"
-    if ! download_archive "$tarball_url" "$ARCHIVE_PATH"; then
-        printf "\n"
-        die "Download failed. Ensure HTTPS is available (opkg install wget-ssl)"
-    fi
-    [ -f "$ARCHIVE_PATH" ] || die "Download failed — archive not found"
-
-    local size
-    size=$(du -k "$ARCHIVE_PATH" 2>/dev/null | awk '{print $1 "K"}')
-    info "Downloaded qmanager.tar.gz ($size)"
-
-    # Download and verify checksum
-    rm -f "$CHECKSUM_PATH"
-    if download_archive "$checksum_url" "$CHECKSUM_PATH" && [ -s "$CHECKSUM_PATH" ]; then
-        local expected_sha256 actual_sha256
-        expected_sha256=$(awk '{print $1}' "$CHECKSUM_PATH")
-        actual_sha256=$(sha256sum "$ARCHIVE_PATH" 2>/dev/null | awk '{print $1}')
-
-        if [ -z "$actual_sha256" ]; then
-            warn "sha256sum not available — skipping integrity check"
-        elif [ "$actual_sha256" != "$expected_sha256" ]; then
-            err "SHA-256 mismatch!"
-            err "  Expected: $expected_sha256"
-            err "  Got:      $actual_sha256"
-            rm -f "$ARCHIVE_PATH" "$CHECKSUM_PATH"
-            die "Archive integrity check failed — download may be corrupt or tampered"
-        else
-            info "SHA-256 verified"
-        fi
-    else
-        warn "Checksum file not available — skipping integrity check"
-    fi
-    rm -f "$CHECKSUM_PATH"
-
-    # Extract
-    step "Extracting archive..."
-    rm -rf "$EXTRACT_DIR"
-    tar xzf "$ARCHIVE_PATH" -C /tmp/ 2>/dev/null || die "Extraction failed — archive may be corrupt"
-    [ -d "$EXTRACT_DIR" ] || die "Extraction failed — $EXTRACT_DIR not found"
-    info "Extracted to $EXTRACT_DIR"
-
-    # Run install.sh from the archive
-    step "Running QManager installer..."
-    printf "\n"
-    if [ -f "$EXTRACT_DIR/install.sh" ]; then
-        chmod +x "$EXTRACT_DIR/install.sh"
-        sh "$EXTRACT_DIR/install.sh"
-    else
-        die "install.sh not found inside archive"
-    fi
-
-    # Cleanup
-    step "Cleaning up..."
-    rm -f "$ARCHIVE_PATH"
-    rm -rf "$EXTRACT_DIR"
-    info "Temporary files removed"
-}
-
-# ==============================================================================
-# Option 2 — Uninstall
-# ==============================================================================
-
-do_uninstall() {
-    check_root
-    check_openwrt
-
-    printf "\n"
-    if ! is_installed; then
-        warn "QManager does not appear to be installed."
-        printf "\n  Continue anyway? [y/N] "
-        read -r ans
-        case "$ans" in y|Y|yes|YES) ;; *) printf "\n  Aborted.\n\n"; return ;; esac
-    fi
-
-    # Confirmation
-    printf "\n"
-    printf "  ${YELLOW}${BOLD}This will permanently remove QManager from your device.${NC}\n\n"
-    printf "  The following will be removed:\n\n"
-    printf "     - Frontend files in %s/\n" "$WWW_ROOT"
-    printf "     - CGI endpoints in %s/\n" "$CGI_DIR"
-    printf "     - Libraries in %s/\n" "$LIB_DIR"
-    printf "     - Daemons: %s/qcmd, %s/qmanager_*\n" "$BIN_DIR" "$BIN_DIR"
-    printf "     - Init.d services in %s/\n" "$INITD_DIR"
-    printf "     - Runtime state in /tmp/\n"
-    printf "     - UCI config (quecmanager.*)\n"
-    printf "     - Firewall rules (/etc/firewall.user.ttl, .mtu)\n"
-    printf "\n"
-    printf "  Type ${BOLD}yes${NC} to confirm: "
-    read -r confirm
-    case "$confirm" in
-        yes|YES) ;;
-        *) printf "\n  Aborted — nothing was removed.\n\n"; return ;;
-    esac
-
-    # Ask about config directory
-    KEEP_CONFIG=1
-    if [ -d "$CONF_DIR" ]; then
-        printf "\n  Keep configuration files (%s/)? [Y/n] " "$CONF_DIR"
-        read -r ans
-        case "$ans" in n|N|no|NO) KEEP_CONFIG=0 ;; esac
-    fi
-
-    printf "\n"
-
-    # --- 1. Stop services ---
-    step "Stopping services..."
-    if [ -x "$INITD_DIR/qmanager" ]; then
-        "$INITD_DIR/qmanager" stop 2>/dev/null || true
-    fi
-    for svc in qmanager_eth_link qmanager_mtu qmanager_imei_check \
-               qmanager_wan_guard qmanager_watchcat qmanager_tower_failover \
-               qmanager_ttl qmanager_low_power_check qmanager_bandwidth; do
-        [ -x "$INITD_DIR/$svc" ] && "$INITD_DIR/$svc" stop 2>/dev/null || true
-    done
-
-    for proc in qmanager_poller qmanager_ping qmanager_watchcat \
-                qmanager_band_failover qmanager_tower_failover \
-                qmanager_tower_schedule qmanager_cell_scanner \
-                qmanager_neighbour_scanner qmanager_mtu_apply \
-                qmanager_profile_apply qmanager_imei_check \
-                qmanager_wan_guard qmanager_low_power \
-                qmanager_low_power_check qmanager_scheduled_reboot \
-                qmanager_update qmanager_auto_update \
-                bridge_traffic_monitor_rm551 websocat; do
-        killall "$proc" 2>/dev/null || true
-    done
-    sleep 1
-    info "All services stopped"
-
-    # --- 2. Disable & remove init.d scripts ---
-    step "Removing init.d services..."
-    for svc in qmanager qmanager_eth_link qmanager_ttl qmanager_mtu \
-               qmanager_wan_guard qmanager_imei_check \
-               qmanager_tower_failover qmanager_low_power_check \
-               qmanager_watchcat qmanager_bandwidth; do
-        if [ -f "$INITD_DIR/$svc" ]; then
-            "$INITD_DIR/$svc" disable 2>/dev/null || true
-            rm -f "$INITD_DIR/$svc"
-        fi
-    done
-    # Clean up rc.d symlinks
-    for _link in /etc/rc.d/*qmanager*; do
-        [ -e "$_link" ] && rm -f "$_link" 2>/dev/null || true
-    done
-    info "Init.d services removed"
-
-    # --- 3. Remove backend ---
-    step "Removing backend files..."
-    rm -f "$BIN_DIR/qcmd"
-    rm -f "$BIN_DIR/bridge_traffic_monitor_rm551"
-    for f in "$BIN_DIR"/qmanager_*; do
-        [ -f "$f" ] && rm -f "$f"
-    done
-    rm -rf "$LIB_DIR"
-    rm -rf "$CGI_DIR"
-    info "Binaries, libraries, and CGI endpoints removed"
-
-    # --- 4. Remove frontend ---
-    step "Removing frontend files..."
-    for dir in _next dashboard cellular monitoring local-network \
-               login about-device support system-settings setup reboot; do
-        [ -d "$WWW_ROOT/$dir" ] && rm -rf "$WWW_ROOT/$dir"
-    done
-    rm -f "$WWW_ROOT/index.html" "$WWW_ROOT/404.html" "$WWW_ROOT/favicon.ico"
-    rm -f "$WWW_ROOT/qmanager-logo.svg" "$WWW_ROOT/device-icon.svg" \
-          "$WWW_ROOT/device-icon-1.svg" "$WWW_ROOT/discord-qr.svg" \
-          "$WWW_ROOT/file.svg" "$WWW_ROOT/globe.svg" "$WWW_ROOT/window.svg"
-
-    # Restore original index.html from backup
-    if [ -f "$BACKUP_DIR/index.html.orig" ]; then
-        cp "$BACKUP_DIR/index.html.orig" "$WWW_ROOT/index.html"
-        info "Original index.html restored from backup"
-    else
-        warn "No backup found — original index.html not restored"
-        warn "Reinstall LuCI if needed: opkg install luci"
-    fi
-
-    # --- 5. Remove runtime state ---
-    step "Cleaning up runtime state..."
-    rm -f /tmp/qmanager_status.json \
-          /tmp/qmanager_ping.json \
-          /tmp/qmanager_ping_history.json \
-          /tmp/qmanager_signal_history.json \
-          /tmp/qmanager_events.json \
-          /tmp/qmanager_email_log.json \
-          /tmp/qmanager_profile_state.json \
-          /tmp/qmanager_watchcat.json \
-          /tmp/qmanager_band_failover_state.json \
-          /tmp/qmanager_tower_failover_state.json \
-          /tmp/qmanager_update.json
-    rm -f /tmp/qmanager.log /tmp/qmanager.log.1 /tmp/qmanager_update.log
-    rm -f /tmp/qmanager_*.lock \
-          /tmp/qmanager_email_reload \
-          /tmp/qmanager_imei_check_done \
-          /tmp/qmanager_update.pid \
-          /tmp/qmanager_long_running \
-          /tmp/qmanager_low_power_active \
-          /tmp/qmanager_recovery_active \
-          /tmp/qmanager_watchcat.pid \
-          /tmp/qm_spin_out 2>/dev/null || true
-    rm -rf /tmp/quecmanager 2>/dev/null || true
-    rm -rf "$SESSION_DIR"
-    info "Runtime state cleaned"
-
-    # --- 6. Remove firewall rules ---
-    rm -f /etc/firewall.user.ttl /etc/firewall.user.mtu
-
-    # --- 7. Remove UCI config ---
-    if uci -q get quecmanager >/dev/null 2>&1; then
-        uci -q delete quecmanager 2>/dev/null || true
-        uci commit 2>/dev/null || true
-    fi
-    rm -f /etc/config/quecmanager
-    info "UCI config removed"
-
-    # --- 8. Remove cron jobs ---
-    if crontab -l 2>/dev/null | grep -q qmanager; then
-        crontab -l 2>/dev/null | grep -v qmanager | crontab - 2>/dev/null || true
-        info "Cron jobs removed"
-    fi
-
-    # --- 9. Bandwidth SSL certs ---
-    rm -rf /etc/qmanager/bandwidth_certs 2>/dev/null || true
-
-    # --- 10. Config directory ---
-    if [ "$KEEP_CONFIG" -eq 0 ]; then
-        rm -rf "$CONF_DIR"
-        info "Configuration directory removed"
-    else
-        if [ -d "$CONF_DIR" ]; then
-            info "Configuration preserved at $CONF_DIR/"
-        fi
-    fi
-
-    # Summary
-    printf "\n"
-    printf "  ${CYAN}==========================================${NC}\n"
-    printf "  ${GREEN}${BOLD}    QManager — Uninstall Complete${NC}\n"
-    printf "  ${CYAN}==========================================${NC}\n"
-    printf "\n"
-    printf "  ${DIM}Tip: Reboot recommended to clear live iptables rules.${NC}\n\n"
-}
-
-# ==============================================================================
-# Option 3 — Download Only
-# ==============================================================================
-
-do_download_only() {
-    printf "\n"
-
-    # Resolve release version
-    step "Checking latest release..."
-    RELEASE_TAG=""
-
-    if [ -n "${QMANAGER_VERSION:-}" ]; then
-        info "Pinned version: $QMANAGER_VERSION"
-        if ! fetch_release_info "${GITHUB_API}/tags/${QMANAGER_VERSION}"; then
-            die "Release $QMANAGER_VERSION not found on GitHub"
-        fi
-    else
-        if ! fetch_release_info "${GITHUB_API}?per_page=1"; then
-            die "Could not fetch latest release from GitHub. Check your internet connection."
-        fi
-    fi
-
-    local tarball_url="https://github.com/${GITHUB_REPO}/releases/download/${RELEASE_TAG}/qmanager.tar.gz"
-
-    step "Downloading QManager ${RELEASE_TAG}..."
-    printf "     %s\n" "$tarball_url"
-
-    rm -f "$ARCHIVE_PATH"
-    if ! download_archive "$tarball_url" "$ARCHIVE_PATH"; then
-        printf "\n"
-        die "Download failed. Ensure HTTPS is available (opkg install wget-ssl)"
-    fi
-
-    if [ -f "$ARCHIVE_PATH" ]; then
-        local size
-        size=$(du -k "$ARCHIVE_PATH" 2>/dev/null | awk '{print $1 "K"}')
-        info "Downloaded to $ARCHIVE_PATH ($size)"
-        printf "\n"
-        printf "  To install later:\n\n"
-        printf "     tar xzf %s -C /tmp/\n" "$ARCHIVE_PATH"
-        printf "     sh %s/install.sh\n\n" "$EXTRACT_DIR"
-    else
-        die "Download failed"
-    fi
-}
-
-# ==============================================================================
-# Menu
-# ==============================================================================
-
-show_menu() {
-    clear 2>/dev/null || true
-    printf "\n"
-    printf "  ${CYAN}==========================================${NC}\n"
-    printf "  ${BOLD}       QManager — Setup Wizard${NC}\n"
-    printf "  ${DIM}     Quectel Modem Manager for OpenWRT${NC}\n"
-    printf "  ${CYAN}==========================================${NC}\n"
-    printf "\n"
-
-    # Show install status
-    if is_installed; then
-        printf "  Status: ${GREEN}Installed${NC}\n"
-    else
-        printf "  Status: ${DIM}Not installed${NC}\n"
-    fi
-    printf "\n"
-
-    printf "  ${BOLD}[1]${NC}  Install QManager\n"
-    printf "  ${BOLD}[2]${NC}  Uninstall QManager\n"
-    printf "  ${BOLD}[3]${NC}  Download Only\n"
-    printf "\n"
-    printf "  ${DIM}[0]  Exit${NC}\n"
-    printf "\n"
-    printf "  Select an option: "
-}
-
-# ==============================================================================
-# Entrypoint
-# ==============================================================================
-
-main() {
-    show_menu
-    read -r choice
-
-    case "$choice" in
-        1) do_install ;;
-        2) do_uninstall ;;
-        3) do_download_only ;;
-        0) printf "\n  Goodbye.\n\n"; exit 0 ;;
+# --- Arg parsing -------------------------------------------------------------
+
+while [ "$#" -gt 0 ]; do
+    case "$1" in
+        --uninstall)
+            ACTION="uninstall"
+            ;;
+        --tag)
+            shift
+            [ "$#" -gt 0 ] || { echo "Missing value for --tag" >&2; exit 1; }
+            TAG="$1"
+            ;;
+        --channel)
+            shift
+            [ "$#" -gt 0 ] || { echo "Missing value for --channel" >&2; exit 1; }
+            CHANNEL="$1"
+            ;;
+        --repo)
+            shift
+            [ "$#" -gt 0 ] || { echo "Missing value for --repo" >&2; exit 1; }
+            REPO="$1"
+            ;;
+        -h|--help)
+            usage
+            exit 0
+            ;;
         *)
-            printf "\n"
-            err "Invalid option: $choice"
-            printf "\n"
+            echo "Unknown option: $1" >&2
+            usage >&2
             exit 1
             ;;
     esac
+    shift
+done
+
+# --- Dependency checks -------------------------------------------------------
+
+if ! command -v curl >/dev/null 2>&1; then
+    echo "curl is required but not installed." >&2
+    echo "Install it first:  opkg update && opkg install curl ca-bundle" >&2
+    exit 1
+fi
+
+if ! command -v sha256sum >/dev/null 2>&1; then
+    echo "sha256sum is required but not available" >&2
+    exit 1
+fi
+
+if ! command -v tar >/dev/null 2>&1; then
+    echo "tar is required but not available" >&2
+    exit 1
+fi
+
+if ! command -v awk >/dev/null 2>&1; then
+    echo "awk is required but not available" >&2
+    exit 1
+fi
+
+# --- HTTP helpers (curl-only) ------------------------------------------------
+
+fetch_text() {
+    curl -fsSL --max-time 30 --connect-timeout 10 "$1" 2>/dev/null
 }
 
-main
+download_file() {
+    local url="$1" out="$2"
+    curl -fsSL --max-time 600 --connect-timeout 15 -o "$out" "$url"
+}
+
+# Parse release tags from GitHub API JSON without jq.
+# This parser is intentionally line-oriented so it remains POSIX/BuysBox-safe
+# and avoids fragile object splitting by literal "},{".
+extract_tag_from_releases_json() {
+    local channel="$1"
+
+    awk -v channel="$channel" '
+        /^[[:space:]]*"tag_name":[[:space:]]*"/ {
+            line = $0
+            sub(/^[[:space:]]*"tag_name":[[:space:]]*"/, "", line)
+            sub(/".*/, "", line)
+            tag = line
+
+            if (channel == "any" && tag != "") {
+                print tag
+                exit
+            }
+            next
+        }
+
+        /^[[:space:]]*"prerelease":[[:space:]]*true/ {
+            if (channel == "prerelease" && tag != "") {
+                print tag
+                exit
+            }
+            next
+        }
+
+        /^[[:space:]]*"prerelease":[[:space:]]*false/ {
+            if (channel == "stable" && tag != "") {
+                print tag
+                exit
+            }
+            next
+        }
+    '
+}
+
+# --- Channel selection -------------------------------------------------------
+
+case "$CHANNEL" in
+    stable|prerelease|any) ;;
+    *)
+        echo "Invalid --channel: $CHANNEL (expected: stable, prerelease, any)" >&2
+        exit 1
+        ;;
+esac
+
+# --- Tag resolution ----------------------------------------------------------
+
+if [ -z "$TAG" ]; then
+    echo "Resolving latest $CHANNEL release from $REPO..."
+
+    API="https://api.github.com/repos/${REPO}/releases?per_page=50"
+    JSON="$(fetch_text "$API" || true)"
+
+    if [ -z "$JSON" ]; then
+        echo "Failed to fetch release metadata from $API" >&2
+        echo "Check internet connectivity and GitHub API availability." >&2
+        exit 1
+    fi
+
+    TAG="$(printf '%s\n' "$JSON" | extract_tag_from_releases_json "$CHANNEL")"
+fi
+
+if [ -z "$TAG" ]; then
+    echo "Failed to resolve a release tag from channel '$CHANNEL'" >&2
+    if [ "$CHANNEL" = "stable" ]; then
+        echo "There may be no stable releases published yet — try --channel prerelease or --channel any" >&2
+    fi
+    exit 1
+fi
+
+echo "Using release: $TAG"
+
+# --- Download and verify -----------------------------------------------------
+
+BASE="https://github.com/${REPO}/releases/download/${TAG}"
+WORK_DIR="/tmp/qmanager-bootstrap"
+
+rm -rf "$WORK_DIR"
+mkdir -p "$WORK_DIR"
+
+cleanup() {
+    rm -rf "$WORK_DIR"
+}
+trap cleanup EXIT INT TERM
+
+cd "$WORK_DIR"
+
+echo "Downloading qmanager.tar.gz..."
+if ! download_file "$BASE/qmanager.tar.gz" qmanager.tar.gz; then
+    echo "Failed to download qmanager.tar.gz from $BASE" >&2
+    exit 1
+fi
+
+echo "Downloading sha256sum.txt..."
+if ! download_file "$BASE/sha256sum.txt" sha256sum.txt; then
+    echo "Failed to download sha256sum.txt from $BASE" >&2
+    exit 1
+fi
+
+echo "Verifying SHA-256..."
+sha256sum -c sha256sum.txt
+
+# --- Extract -----------------------------------------------------------------
+
+echo "Extracting..."
+if tar xzf qmanager.tar.gz 2>/dev/null; then
+    :
+elif command -v gzip >/dev/null 2>&1; then
+    gzip -dc qmanager.tar.gz | tar xf -
+else
+    echo "Unable to extract qmanager.tar.gz (tar -z and gzip both missing)" >&2
+    exit 1
+fi
+
+[ -d "$WORK_DIR/qmanager_install" ] || {
+    echo "Extraction produced no qmanager_install directory — archive layout invalid" >&2
+    exit 1
+}
+
+# --- Hand off to install.sh / uninstall.sh -----------------------------------
+
+if [ "$ACTION" = "uninstall" ]; then
+    exec sh "$WORK_DIR/qmanager_install/uninstall.sh"
+else
+    exec sh "$WORK_DIR/qmanager_install/install.sh"
+fi

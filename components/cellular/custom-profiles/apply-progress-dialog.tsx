@@ -1,6 +1,7 @@
 "use client";
 
-import React from "react";
+import React, { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Dialog,
   DialogContent,
@@ -58,42 +59,6 @@ const getStepIcon = (stepStatus: ApplyStepStatus, overallStatus?: string) => {
   return stepIcons[stepStatus];
 };
 
-const stepLabels: Record<string, string> = {
-  apn: "APN Configuration",
-  ttl_hl: "TTL / Hop Limit",
-  imei: "IMEI",
-};
-
-const statusBadge = (status: string) => {
-  switch (status) {
-    case "applying":
-      return (
-        <Badge className="bg-info/10 text-info border-info/20">
-          Applying…
-        </Badge>
-      );
-    case "complete":
-      return (
-        <Badge className="bg-success/10 text-success border-success/20">
-          Complete
-        </Badge>
-      );
-    case "partial":
-      return (
-        <Badge className="bg-warning/10 text-warning border-warning/20">
-          Partial
-        </Badge>
-      );
-    case "failed":
-      return (
-        <Badge className="bg-destructive/10 text-destructive border-destructive/20">
-          Failed
-        </Badge>
-      );
-    default:
-      return null;
-  }
-};
 
 export function ApplyProgressDialog({
   open,
@@ -101,6 +66,48 @@ export function ApplyProgressDialog({
   applyState,
   error,
 }: ApplyProgressDialogProps) {
+  const { t } = useTranslation("cellular");
+
+  const stepLabels = useMemo<Record<string, string>>(
+    () => ({
+      apn: t("custom_profiles.apply_dialog.step_labels.apn"),
+      ttl_hl: t("custom_profiles.apply_dialog.step_labels.ttl_hl"),
+      imei: t("custom_profiles.apply_dialog.step_labels.imei"),
+    }),
+    [t]
+  );
+
+  const renderStatusBadge = (status: string) => {
+    switch (status) {
+      case "applying":
+        return (
+          <Badge className="bg-info/10 text-info border-info/20">
+            {t("state.applying", { ns: "common" })}
+          </Badge>
+        );
+      case "complete":
+        return (
+          <Badge className="bg-success/10 text-success border-success/20">
+            {t("custom_profiles.apply_dialog.status_badge.complete")}
+          </Badge>
+        );
+      case "partial":
+        return (
+          <Badge className="bg-warning/10 text-warning border-warning/20">
+            {t("custom_profiles.apply_dialog.status_badge.partial")}
+          </Badge>
+        );
+      case "failed":
+        return (
+          <Badge className="bg-destructive/10 text-destructive border-destructive/20">
+            {t("custom_profiles.apply_dialog.status_badge.failed")}
+          </Badge>
+        );
+      default:
+        return null;
+    }
+  };
+
   const isTerminal =
     applyState &&
     ["complete", "partial", "failed"].includes(applyState.status);
@@ -117,8 +124,8 @@ export function ApplyProgressDialog({
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            Applying Profile
-            {displayStatus && statusBadge(displayStatus)}
+            {t("custom_profiles.apply_dialog.title")}
+            {displayStatus && renderStatusBadge(displayStatus)}
           </DialogTitle>
           {applyState?.profile_name && (
             <DialogDescription>
@@ -160,8 +167,7 @@ export function ApplyProgressDialog({
         {/* Reboot notice */}
         {applyState?.requires_reboot && (
           <div className="rounded-md bg-info/10 p-3 text-sm text-info">
-            Modem is restarting to apply IMEI change. Dashboard will reconnect
-            automatically.
+            {t("custom_profiles.apply_dialog.reboot_notice")}
           </div>
         )}
 
@@ -188,7 +194,7 @@ export function ApplyProgressDialog({
         {(isTerminal || (error && !applyState)) && (
           <div className="flex justify-end pt-2">
             <Button variant="outline" onClick={onClose}>
-              Close
+              {t("close", { ns: "common" })}
             </Button>
           </div>
         )}

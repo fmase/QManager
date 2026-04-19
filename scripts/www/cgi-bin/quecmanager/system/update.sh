@@ -33,6 +33,29 @@ UPDATER="/usr/bin/qmanager_update"
 
 # --- Helpers -----------------------------------------------------------------
 
+ensure_updater_executable() {
+    if [ -x "$UPDATER" ]; then
+        return 0
+    fi
+
+    if [ ! -f "$UPDATER" ]; then
+        cgi_error "updater_missing" "Update worker not found at $UPDATER"
+        return 1
+    fi
+
+    if [ -L "$UPDATER" ]; then
+        cgi_error "updater_invalid_target" "Update worker path must not be a symlink"
+        return 1
+    fi
+
+    chmod 755 "$UPDATER" 2>/dev/null || {
+        cgi_error "updater_not_executable" "Cannot make update worker executable"
+        return 1
+    }
+
+    return 0
+}
+
 get_current_version() {
     if [ -f "$VERSION_FILE" ]; then
         tr -d '[:space:]' < "$VERSION_FILE"
@@ -77,26 +100,20 @@ check_lock() {
 }
 
 # Fetch URL to a file, capturing HTTP headers for rate-limit detection.
-# Tries uclient-fetch first (native OpenWRT HTTPS), then wget-ssl, then curl.
+# curl-only — the installer guarantees curl is present.
 http_api_fetch() {
     local url="$1" out_file="$2" header_file="$3" timeout="${4:-15}"
 
-    # uclient-fetch — native OpenWRT HTTPS downloader (most reliable on device)
-    if command -v uclient-fetch >/dev/null 2>&1; then
-        uclient-fetch -qO "$out_file" --timeout="$timeout" "$url" 2>"$header_file" && return 0
+    if ! command -v curl >/dev/null 2>&1; then
+        return 1
     fi
 
-    # curl (if installed — supports -D for headers)
-    if command -v curl >/dev/null 2>&1; then
-        curl -sL --max-time "$timeout" -o "$out_file" -D "$header_file" "$url" && return 0
-    fi
-
-    # wget (full wget-ssl supports -S; BusyBox wget may not)
-    if command -v wget >/dev/null 2>&1; then
-        wget -qO "$out_file" -T "$timeout" -S "$url" 2>"$header_file" && return 0
-    fi
-
-    return 1
+    curl -sSL \
+        --max-time "$timeout" \
+        --connect-timeout 10 \
+        -o "$out_file" \
+        -D "$header_file" \
+        "$url" 2>/dev/null
 }
 
 # Semver comparison. Exit codes: 0 = $1 newer, 1 = same, 2 = $1 older
@@ -281,7 +298,7 @@ if [ "$REQUEST_METHOD" = "GET" ]; then
             is_current: (.tag_name == $cv)
         }]')
 
-    # Download URL from GitHub Releases (stable, redirect handled by uclient-fetch/curl)
+    # Download URL from GitHub Releases (curl handles redirects)
     download_url=""
     if [ -n "$latest_tag" ]; then
         download_url="https://github.com/${GITHUB_REPO}/releases/download/${latest_tag}/qmanager.tar.gz"
@@ -405,6 +422,7 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
     # --- Download update (stage without installing) ---
     if [ "$ACTION" = "download" ]; then
         check_lock
+        ensure_updater_executable || exit 0
 
         version=$(printf '%s' "$POST_DATA" | jq -r '.version // empty')
         if [ -z "$version" ]; then
@@ -422,6 +440,7 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
     # --- Install staged tarball ---
     if [ "$ACTION" = "install_staged" ]; then
         check_lock
+        ensure_updater_executable || exit 0
 
         if [ ! -f "/tmp/qmanager_staged.tar.gz" ]; then
             cgi_error "no_staged" "No staged download found. Download first."
@@ -436,6 +455,7 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
     # --- Install update ---
     if [ "$ACTION" = "install" ]; then
         check_lock
+        ensure_updater_executable || exit 0
 
         download_url=$(printf '%s' "$POST_DATA" | jq -r '.download_url // empty')
         version=$(printf '%s' "$POST_DATA" | jq -r '.version // empty')
@@ -454,6 +474,7 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
     # --- Rollback ---
     if [ "$ACTION" = "rollback" ]; then
         check_lock
+        ensure_updater_executable || exit 0
 
         if [ ! -f "$UPDATES_DIR/previous_version" ]; then
             cgi_error "no_rollback" "No previous version available for rollback"

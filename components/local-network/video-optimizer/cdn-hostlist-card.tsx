@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import {
   Card,
@@ -59,14 +60,18 @@ import { useCdnHostlist } from "@/hooks/use-cdn-hostlist";
 
 const DOMAIN_REGEX = /^[a-zA-Z0-9]([a-zA-Z0-9._-]*[a-zA-Z0-9])?$/;
 
-function validateDomain(value: string, existing: string[]): string | null {
+function validateDomain(
+  value: string,
+  existing: string[],
+  t: (key: string) => string,
+): string | null {
   const trimmed = value.trim();
-  if (!trimmed) return "Domain is required";
-  if (!DOMAIN_REGEX.test(trimmed)) return "Invalid domain format";
-  if (!trimmed.includes(".")) return "Must contain at least one dot";
-  if (trimmed.length > 253) return "Domain too long (max 253 chars)";
+  if (!trimmed) return t("video_optimizer.validation_domain_required");
+  if (!DOMAIN_REGEX.test(trimmed)) return t("video_optimizer.validation_domain_invalid_format");
+  if (!trimmed.includes(".")) return t("video_optimizer.validation_domain_needs_dot");
+  if (trimmed.length > 253) return t("video_optimizer.validation_domain_too_long");
   if (existing.some((d) => d.toLowerCase() === trimmed.toLowerCase()))
-    return "Domain already in list";
+    return t("video_optimizer.validation_domain_duplicate");
   return null;
 }
 
@@ -87,6 +92,7 @@ function HostlistSkeleton() {
 }
 
 export default function CdnHostlistCard() {
+  const { t } = useTranslation("local-network");
   const {
     domains,
     defaultDomains,
@@ -146,7 +152,7 @@ export default function CdnHostlistCard() {
 
   const handleAddDomain = useCallback(() => {
     const trimmed = newDomain.trim();
-    const err = validateDomain(trimmed, editDomains);
+    const err = validateDomain(trimmed, editDomains, t);
     if (err) {
       setValidationError(err);
       return;
@@ -154,7 +160,7 @@ export default function CdnHostlistCard() {
     setEditDomains((prev) => [...prev, trimmed]);
     setNewDomain("");
     setValidationError(null);
-  }, [newDomain, editDomains]);
+  }, [newDomain, editDomains, t]);
 
   const handleRemoveDomain = useCallback((originalIndex: number) => {
     setEditDomains((prev) => prev.filter((_, i) => i !== originalIndex));
@@ -174,11 +180,11 @@ export default function CdnHostlistCard() {
     const success = await saveHostlist(editDomains);
     if (success) {
       markSaved();
-      toast.success("Hostname list saved");
+      toast.success(t("video_optimizer.toast_save_success"));
     } else {
-      toast.error(error || "Failed to save hostname list");
+      toast.error(error || t("video_optimizer.toast_save_error"));
     }
-  }, [editDomains, saveHostlist, markSaved, error]);
+  }, [editDomains, saveHostlist, markSaved, error, t]);
 
   const handleReset = useCallback(() => {
     setEditDomains(domains);
@@ -188,11 +194,11 @@ export default function CdnHostlistCard() {
   const handleRestoreDefaults = useCallback(async () => {
     const success = await restoreDefaults();
     if (success) {
-      toast.success("Default hostnames restored");
+      toast.success(t("video_optimizer.toast_restore_success"));
     } else {
-      toast.error(error || "Failed to restore defaults");
+      toast.error(error || t("video_optimizer.toast_restore_error"));
     }
-  }, [restoreDefaults, error]);
+  }, [restoreDefaults, error, t]);
 
   // --- Export: download current edit list as .txt ---
   const handleExport = useCallback(() => {
@@ -204,8 +210,8 @@ export default function CdnHostlistCard() {
     a.download = "video_domains.txt";
     a.click();
     URL.revokeObjectURL(url);
-    toast.success(`Exported ${editDomains.length} domains`);
-  }, [editDomains]);
+    toast.success(t("video_optimizer.toast_export_success", { count: editDomains.length }));
+  }, [editDomains, t]);
 
   // --- Import: read .txt file and merge ---
   const handleImport = useCallback(
@@ -232,12 +238,10 @@ export default function CdnHostlistCard() {
         );
 
         if (newOnes.length === 0) {
-          toast.info("No new domains to import — all already in list");
+          toast.info(t("video_optimizer.toast_import_no_new"));
         } else {
           setEditDomains((prev) => [...prev, ...newOnes]);
-          toast.success(
-            `Imported ${newOnes.length} new domain${newOnes.length > 1 ? "s" : ""}`,
-          );
+          toast.success(t("video_optimizer.toast_import_success", { count: newOnes.length }));
         }
       };
       reader.readAsText(file);
@@ -245,7 +249,7 @@ export default function CdnHostlistCard() {
       // Reset input so the same file can be re-imported
       e.target.value = "";
     },
-    [editDomains],
+    [editDomains, t],
   );
 
   const toggleSort = useCallback(() => {
@@ -262,20 +266,19 @@ export default function CdnHostlistCard() {
     return (
       <Card className="@container/card">
         <CardHeader>
-          <CardTitle>CDN Hostname List</CardTitle>
+          <CardTitle>{t("video_optimizer.hostlist_card_title")}</CardTitle>
           <CardDescription>
-            Hostnames targeted for DPI evasion — video CDN domains that will
-            have their TLS handshakes modified
+            {t("video_optimizer.hostlist_card_description")}
           </CardDescription>
         </CardHeader>
         <CardContent aria-live="polite">
           <Alert variant="destructive">
             <AlertTriangle className="size-4" />
             <AlertDescription className="flex items-center justify-between">
-              <span>Failed to load hostname list.</span>
+              <span>{t("video_optimizer.hostlist_error_load_failed")}</span>
               <Button variant="outline" size="sm" onClick={() => refresh()}>
                 <RefreshCcwIcon className="size-3.5" />
-                Retry
+                {t("actions.retry", { ns: "common" })}
               </Button>
             </AlertDescription>
           </Alert>
@@ -287,23 +290,22 @@ export default function CdnHostlistCard() {
   return (
     <Card className="@container/card">
       <CardHeader>
-        <CardTitle>CDN Hostname List</CardTitle>
+        <CardTitle>{t("video_optimizer.hostlist_card_title")}</CardTitle>
         <CardDescription>
-          Hostnames targeted for DPI evasion — video CDN domains that will have
-          their TLS handshakes modified
+          {t("video_optimizer.hostlist_card_description")}
         </CardDescription>
       </CardHeader>
       <CardContent className="grid gap-4" aria-live="polite">
         {/* Toolbar: count badges + sort + menu */}
         <div className="flex items-center gap-2">
-          <Badge>{editDomains.length} domains</Badge>
+          <Badge>{t("video_optimizer.badge_domain_count", { count: editDomains.length })}</Badge>
           {customCount > 0 && (
             <Badge
               variant="outline"
               className="bg-info/15 text-info border-info/30"
             >
               <SparklesIcon className="size-3" />
-              {customCount} custom
+              {t("video_optimizer.badge_custom_count", { custom_count: customCount })}
             </Badge>
           )}
           <div className="flex-1" />
@@ -315,10 +317,10 @@ export default function CdnHostlistCard() {
             onClick={toggleSort}
             aria-label={
               sortAsc === null
-                ? "Sort alphabetically"
+                ? t("video_optimizer.aria_sort_az")
                 : sortAsc
-                  ? "Sort Z to A"
-                  : "Clear sort"
+                  ? t("video_optimizer.aria_sort_za")
+                  : t("video_optimizer.aria_sort_clear")
             }
           >
             {sortAsc === false ? (
@@ -334,7 +336,7 @@ export default function CdnHostlistCard() {
                 variant="ghost"
                 size="icon"
                 className="size-8"
-                aria-label="Hostlist options"
+                aria-label={t("video_optimizer.aria_menu_options")}
               >
                 <MoreVerticalIcon className="size-4" />
               </Button>
@@ -342,16 +344,16 @@ export default function CdnHostlistCard() {
             <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={handleExport}>
                 <Download className="size-4" />
-                Export list
+                {t("video_optimizer.menu_export")}
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => importRef.current?.click()}>
                 <Upload className="size-4" />
-                Import list
+                {t("video_optimizer.menu_import")}
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={handleReset} disabled={!isDirty}>
                 <RotateCcw className="size-4" />
-                Discard changes
+                {t("video_optimizer.menu_discard")}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -370,14 +372,14 @@ export default function CdnHostlistCard() {
           <InputGroup>
             <InputGroupInput
               type="text"
-              placeholder="e.g. cdn.example.com"
+              placeholder={t("video_optimizer.placeholder_new_domain")}
               value={newDomain}
               onChange={(e) => {
                 setNewDomain(e.target.value);
                 if (validationError) setValidationError(null);
               }}
               onKeyDown={handleKeyDown}
-              aria-label="New domain"
+              aria-label={t("video_optimizer.aria_new_domain")}
               aria-invalid={!!validationError}
               aria-describedby={
                 validationError ? "add-domain-error" : undefined
@@ -388,7 +390,7 @@ export default function CdnHostlistCard() {
                 size="sm"
                 variant="ghost"
                 onClick={handleAddDomain}
-                aria-label="Add domain"
+                aria-label={t("video_optimizer.aria_add_domain")}
               >
                 <Plus className="size-4" />
               </InputGroupButton>
@@ -403,7 +405,7 @@ export default function CdnHostlistCard() {
         <div className="max-h-100 overflow-y-auto rounded-md border">
           {displayDomains.length === 0 ? (
             <div className="flex items-center justify-center py-8 text-sm text-muted-foreground">
-              No domains configured
+              {t("video_optimizer.empty_state_no_domains")}
             </div>
           ) : (
             displayDomains.map(({ domain, originalIndex }) => {
@@ -418,7 +420,7 @@ export default function CdnHostlistCard() {
                     {isCustom && (
                       <SparklesIcon
                         className="size-3 shrink-0 text-info"
-                        aria-label="Custom domain"
+                        aria-label={t("video_optimizer.aria_custom_domain_badge")}
                       />
                     )}
                   </span>
@@ -428,7 +430,7 @@ export default function CdnHostlistCard() {
                     size="icon"
                     className="size-6 shrink-0 text-muted-foreground hover:text-destructive"
                     onClick={() => handleRemoveDomain(originalIndex)}
-                    aria-label={`Remove ${domain}`}
+                    aria-label={t("video_optimizer.aria_remove_domain", { domain })}
                   >
                     <X className="size-3.5" />
                   </Button>
@@ -462,28 +464,27 @@ export default function CdnHostlistCard() {
                 {isRestoring ? (
                   <>
                     <Loader2 className="size-4 animate-spin" />
-                    Restoring...
+                    {t("video_optimizer.state_restoring")}
                   </>
                 ) : (
-                  "Restore Defaults"
+                  t("video_optimizer.button_restore_defaults")
                 )}
               </Button>
             </AlertDialogTrigger>
             <AlertDialogContent>
               <AlertDialogHeader>
-                <AlertDialogTitle>Restore Default Hostnames?</AlertDialogTitle>
+                <AlertDialogTitle>{t("video_optimizer.dialog_restore_title")}</AlertDialogTitle>
                 <AlertDialogDescription>
-                  This will replace the current list with the factory default
-                  CDN hostnames. Any custom domains you added will be removed.
+                  {t("video_optimizer.dialog_restore_desc")}
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogCancel>{t("actions.cancel", { ns: "common" })}</AlertDialogCancel>
                 <AlertDialogAction
                   className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                   onClick={handleRestoreDefaults}
                 >
-                  Restore Defaults
+                  {t("video_optimizer.dialog_action_restore")}
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>

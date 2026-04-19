@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { useTranslation } from "react-i18next";
 import {
   Card,
   CardContent,
@@ -27,6 +28,7 @@ interface CustomProfileViewProps {
   onActivate: (id: string) => void;
   onDeactivate: () => void;
   onRefresh: () => void;
+  currentIccid?: string | null;
 }
 
 const CustomProfileViewComponent = ({
@@ -39,13 +41,16 @@ const CustomProfileViewComponent = ({
   onActivate,
   onDeactivate,
   onRefresh,
+  currentIccid,
 }: CustomProfileViewProps) => {
+  const { t } = useTranslation("cellular");
+
   if (isLoading) {
     return (
       <Card className="@container/card h-full">
         <CardHeader>
-          <CardTitle>Saved Profiles</CardTitle>
-          <CardDescription>Manage your custom SIM profiles.</CardDescription>
+          <CardTitle>{t("custom_profiles.view.title")}</CardTitle>
+          <CardDescription>{t("custom_profiles.view.description")}</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
@@ -65,9 +70,9 @@ const CustomProfileViewComponent = ({
   return (
     <Card className="@container/card h-full">
       <CardHeader>
-        <CardTitle>Saved Profiles</CardTitle>
+        <CardTitle>{t("custom_profiles.view.title")}</CardTitle>
         <CardDescription>
-          {profiles.length} profile{profiles.length !== 1 ? "s" : ""} saved.
+          {t("custom_profiles.view.count", { count: profiles.length })}
           {error && (
             <span className="text-destructive ml-2">{error}</span>
           )}
@@ -81,6 +86,7 @@ const CustomProfileViewComponent = ({
           onDelete={onDelete}
           onActivate={onActivate}
           onDeactivate={onDeactivate}
+          currentIccid={currentIccid}
         />
       </CardContent>
     </Card>
