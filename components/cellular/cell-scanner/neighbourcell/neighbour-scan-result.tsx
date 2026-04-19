@@ -1,6 +1,8 @@
 "use client";
 
 import * as React from "react";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import {
   flexRender,
   getCoreRowModel,
@@ -58,12 +60,17 @@ interface NeighbourScanResultViewProps {
 
 
 function getColumns(
+  t: TFunction,
   onLockCell?: (cell: NeighbourCellResult) => void,
 ): ColumnDef<NeighbourCellResult>[] {
   return [
     {
       accessorKey: "networkType",
-      header: () => <div className="pl-4">Network</div>,
+      header: () => (
+        <div className="pl-4">
+          {t("cell_scanner.neighbour.column_headers.network")}
+        </div>
+      ),
       cell: ({ row }) => (
         <div className="pl-4">
           <NetworkTypeBadge type={row.getValue("networkType")} />
@@ -72,7 +79,7 @@ function getColumns(
     },
     {
       accessorKey: "cellType",
-      header: "Cell Type",
+      header: t("cell_scanner.neighbour.column_headers.cell_type"),
       cell: ({ row }) => (
         <div className="font-medium">{row.getValue("cellType")}</div>
       ),
@@ -84,7 +91,7 @@ function getColumns(
           variant="ghost"
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         >
-          Frequency
+          {t("cell_scanner.neighbour.column_headers.frequency")}
           <ArrowUpDown className="size-4" />
         </Button>
       ),
@@ -95,7 +102,7 @@ function getColumns(
     },
     {
       accessorKey: "pci",
-      header: "PCI",
+      header: t("cell_scanner.neighbour.column_headers.pci"),
       cell: ({ row }) => {
         const pci = row.getValue("pci") as number;
         return <div className="font-semibold">{pci === 0 ? "-" : pci}</div>;
@@ -108,7 +115,7 @@ function getColumns(
           variant="ghost"
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         >
-          Signal
+          {t("cell_scanner.neighbour.column_headers.signal")}
           <ArrowUpDown className="size-4" />
         </Button>
       ),
@@ -117,7 +124,7 @@ function getColumns(
         if (strength === 0) {
           return (
             <Badge className="bg-warning/15 text-warning hover:bg-warning/20 border-warning/30">
-              No data
+              {t("cell_scanner.signal_badge.no_data")}
             </Badge>
           );
         }
@@ -146,13 +153,15 @@ function getColumns(
                 size="icon"
               >
                 <MoreVertical className="size-4" />
-                <span className="sr-only">Open menu</span>
+                <span className="sr-only">
+                  {t("cell_scanner.result_table.open_menu")}
+                </span>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-40">
               <DropdownMenuItem onClick={() => onLockCell?.(cellData)}>
                 <LockIcon className="size-4" />
-                Lock Cell
+                {t("cell_scanner.result_table.lock_cell")}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -166,6 +175,7 @@ const NeighbourScanResultView = ({
   data,
   onLockCell,
 }: NeighbourScanResultViewProps) => {
+  const { t } = useTranslation("cellular");
   // Only animate rows on initial mount — skip on sort/filter/page changes
   const hasAnimated = React.useRef(false);
   React.useEffect(() => { hasAnimated.current = true; }, []);
@@ -175,7 +185,7 @@ const NeighbourScanResultView = ({
   );
   const [columnVisibility, setColumnVisibility] =
     React.useState<VisibilityState>({});
-  const columns = React.useMemo(() => getColumns(onLockCell), [onLockCell]);
+  const columns = React.useMemo(() => getColumns(t, onLockCell), [t, onLockCell]);
 
   const table = useReactTable({
     data,
@@ -198,7 +208,7 @@ const NeighbourScanResultView = ({
     <div className="relative flex flex-col gap-4 overflow-hidden">
       <div className="flex flex-col @sm/card:flex-row items-start @sm/card:items-center gap-2">
         <Input
-          placeholder="Filter by cell type..."
+          placeholder={t("cell_scanner.neighbour.filter_placeholder")}
           value={
             (table.getColumn("cellType")?.getFilterValue() as string) ?? ""
           }
@@ -211,7 +221,8 @@ const NeighbourScanResultView = ({
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="outline" className="@sm/card:ml-auto">
-              Columns <ChevronDown className="size-4" />
+              {t("cell_scanner.result_table.columns_button")}{" "}
+              <ChevronDown className="size-4" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
@@ -280,7 +291,7 @@ const NeighbourScanResultView = ({
                   colSpan={columns.length}
                   className="h-24 text-center"
                 >
-                  No results found.
+                  {t("cell_scanner.result_table.empty_row")}
                 </TableCell>
               </TableRow>
             )}
@@ -289,8 +300,9 @@ const NeighbourScanResultView = ({
       </div>
       <div className="flex items-center justify-end space-x-2 py-4">
         <div className="text-muted-foreground flex-1 text-sm">
-          {table.getFilteredRowModel().rows.length}{" "}
-          {table.getFilteredRowModel().rows.length === 1 ? "cell" : "cells"} found
+          {t("cell_scanner.neighbour.footer_count", {
+            count: table.getFilteredRowModel().rows.length,
+          })}
         </div>
         <div className="space-x-2">
           <Button
@@ -299,7 +311,7 @@ const NeighbourScanResultView = ({
             onClick={() => table.previousPage()}
             disabled={!table.getCanPreviousPage()}
           >
-            Previous
+            {t("cell_scanner.result_table.previous")}
           </Button>
           <Button
             variant="outline"
@@ -307,7 +319,7 @@ const NeighbourScanResultView = ({
             onClick={() => table.nextPage()}
             disabled={!table.getCanNextPage()}
           >
-            Next
+            {t("cell_scanner.result_table.next")}
           </Button>
         </div>
       </div>
