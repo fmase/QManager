@@ -1,3 +1,5 @@
+"use client";
+
 import React from "react";
 import { useTranslation } from "react-i18next";
 import ConnectionScenariosCard from "./connection-scenario-card";
