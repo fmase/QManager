@@ -175,8 +175,11 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
 
         val=$(printf '%s' "$POST_DATA" | jq -r '.hostname // empty')
         if [ -n "$val" ]; then
-            uci set system.@system[0].hostname="$val"
-            system_dirty=1
+            cur=$(uci -q get system.@system[0].hostname 2>/dev/null)
+            if [ "$val" != "$cur" ]; then
+                uci set system.@system[0].hostname="$val"
+                system_dirty=1
+            fi
         fi
 
         # --- Temperature unit ---
@@ -209,16 +212,22 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
         # wall time until restart.
         val=$(printf '%s' "$POST_DATA" | jq -r '.timezone // empty')
         if [ -n "$val" ]; then
-            uci set system.@system[0].timezone="$val"
-            system_dirty=1
-            tz_dirty=1
+            cur=$(uci -q get system.@system[0].timezone 2>/dev/null)
+            if [ "$val" != "$cur" ]; then
+                uci set system.@system[0].timezone="$val"
+                system_dirty=1
+                tz_dirty=1
+            fi
         fi
 
         val=$(printf '%s' "$POST_DATA" | jq -r '.zonename // empty')
         if [ -n "$val" ]; then
-            uci set system.@system[0].zonename="$val"
-            system_dirty=1
-            tz_dirty=1
+            cur=$(uci -q get system.@system[0].zonename 2>/dev/null)
+            if [ "$val" != "$cur" ]; then
+                uci set system.@system[0].zonename="$val"
+                system_dirty=1
+                tz_dirty=1
+            fi
         fi
 
         # Commit changes
