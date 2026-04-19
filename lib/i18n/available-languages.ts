@@ -21,6 +21,12 @@ export const AVAILABLE_LANGUAGES: readonly LanguageMeta[] = [
   // shipped in the firmware tarball; the Languages card downloads it from the
   // remote manifest on demand. These entries let the LanguageSwitcher render
   // a native name before the manifest has been fetched.
+  //
+  // RTL languages intentionally omitted: QManager does not support right-to-left
+  // layout in v1. Physical spacing utilities (`ml-*`, `pl-*`, etc.) are still
+  // used throughout the codebase, so an RTL language would render with broken
+  // margins and arrow directions. Re-enable when a future plan establishes the
+  // logical-utilities + DirectionalIcon foundation (spec §7.2, parked).
   {
     code: "fr",
     native_name: "Français",
@@ -33,13 +39,6 @@ export const AVAILABLE_LANGUAGES: readonly LanguageMeta[] = [
     native_name: "Deutsch",
     english_name: "German",
     rtl: false,
-    bundled: false,
-  },
-  {
-    code: "ar",
-    native_name: "العربية",
-    english_name: "Arabic",
-    rtl: true,
     bundled: false,
   },
 ];

@@ -12,12 +12,17 @@ describe("available-languages", () => {
     expect(BUNDLED_CODES).toEqual(["en", "zh-CN"]);
   });
 
-  it("has 5 catalog entries (2 bundled + 3 downloadable placeholders)", () => {
-    expect(AVAILABLE_LANGUAGES).toHaveLength(5);
+  it("has 4 catalog entries (2 bundled + 2 downloadable placeholders, all LTR)", () => {
+    expect(AVAILABLE_LANGUAGES).toHaveLength(4);
     const bundled = AVAILABLE_LANGUAGES.filter((l) => l.bundled);
     const downloadable = AVAILABLE_LANGUAGES.filter((l) => !l.bundled);
     expect(bundled).toHaveLength(2);
-    expect(downloadable).toHaveLength(3);
+    expect(downloadable).toHaveLength(2);
+  });
+
+  it("contains no RTL languages in v1 — RTL support parked", () => {
+    const rtlLanguages = AVAILABLE_LANGUAGES.filter((l) => l.rtl);
+    expect(rtlLanguages).toHaveLength(0);
   });
 
   it("default language is English", () => {
@@ -40,11 +45,13 @@ describe("available-languages", () => {
     expect(getLanguage("xx")).toBeUndefined();
   });
 
-  it("isRtl returns correct direction for each language", () => {
+  it("isRtl returns false for every supported language (RTL parked in v1)", () => {
     expect(isRtl("en")).toBe(false);
     expect(isRtl("zh-CN")).toBe(false);
     expect(isRtl("fr")).toBe(false);
     expect(isRtl("de")).toBe(false);
-    expect(isRtl("ar")).toBe(true);
+    // ar is no longer in the catalog — getLanguage returns undefined,
+    // isRtl falls back to false.
+    expect(isRtl("ar")).toBe(false);
   });
 });
