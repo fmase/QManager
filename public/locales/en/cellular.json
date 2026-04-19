@@ -31,6 +31,7 @@
       },
       "empty_row": "No profiles yet. Create one to get started.",
       "actions_menu": {
+        "open_menu": "Open menu",
         "edit": "Edit",
         "activate": "Activate",
         "deactivate": "Deactivate",

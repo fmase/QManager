@@ -31,6 +31,7 @@
       },
       "empty_row": "暂无配置文件，请创建一个以开始使用。",
       "actions_menu": {
+        "open_menu": "打开菜单",
         "edit": "编辑",
         "activate": "激活",
         "deactivate": "停用",
