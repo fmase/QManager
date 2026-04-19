@@ -32,9 +32,14 @@ export function modeValueToLabel(atValue: string): string {
 
 // --- Band Format Helpers -----------------------------------------------------
 
+import type { TFunction } from "i18next";
+
 /** Colon-delimited storage → comma-separated display ("1:3:7" → "1, 3, 7") */
-export function bandsToDisplay(colonDelimited: string): string {
-  if (!colonDelimited) return "Auto";
+export function bandsToDisplay(colonDelimited: string, t?: TFunction): string {
+  if (!colonDelimited || colonDelimited === "AUTO")
+    return t
+      ? t("cellular:scenarios.active_config_card.config_values.auto")
+      : "Auto";
   return colonDelimited.split(":").join(", ");
 }
 
