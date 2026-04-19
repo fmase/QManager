@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { authFetch } from "@/lib/auth-fetch";
 import {
@@ -73,6 +74,8 @@ function DraggableNetworkItem({
   index: number;
   disabled: boolean;
 }) {
+  const { t } = useTranslation("cellular");
+
   const {
     attributes,
     listeners,
@@ -107,7 +110,7 @@ function DraggableNetworkItem({
         disabled={disabled}
       >
         <IconGripVertical className="text-muted-foreground size-4" />
-        <span className="sr-only">Drag to reorder</span>
+        <span className="sr-only">{t("core_settings.network_priority.drag_aria")}</span>
       </Button>
       <div className="flex items-center gap-x-3">
         <div
@@ -120,7 +123,7 @@ function DraggableNetworkItem({
         <span className="font-medium text-sm">{network.name}</span>
       </div>
       <span className="text-xs text-muted-foreground ml-auto">
-        Priority {index + 1}
+        {t("core_settings.network_priority.priority_label", { number: index + 1 })}
       </span>
     </motion.div>
   );
@@ -130,6 +133,7 @@ function DraggableNetworkItem({
 // Network Priority Card
 // =============================================================================
 const NetworkPriorityCard = () => {
+  const { t } = useTranslation("cellular");
   const { saved, markSaved } = useSaveFlash();
   const [networks, setNetworks] = useState<NetworkItem[]>([]);
   const [fetchedOrder, setFetchedOrder] = useState<string>("");
@@ -219,7 +223,7 @@ const NetworkPriorityCard = () => {
     const newOrder = networks.map((n) => n.id).join(":");
 
     if (newOrder === fetchedOrder) {
-      toast.info("No changes to save");
+      toast.info(t("core_settings.network_priority.toast.no_changes"));
       return;
     }
 
@@ -238,12 +242,12 @@ const NetworkPriorityCard = () => {
       if (!mountedRef.current) return;
 
       if (!data.success) {
-        toast.error(data.detail || "Failed to set network priority");
+        toast.error(data.detail || t("core_settings.network_priority.toast.error_fallback"));
         return;
       }
 
       markSaved();
-      toast.success("Network priority updated");
+      toast.success(t("core_settings.network_priority.toast.success"));
 
       // Brief recovery delay for network re-registration
       await new Promise((resolve) => setTimeout(resolve, 3000));
@@ -252,7 +256,7 @@ const NetworkPriorityCard = () => {
       await fetchOrder(true);
     } catch {
       if (mountedRef.current) {
-        toast.error("Failed to set network priority");
+        toast.error(t("core_settings.network_priority.toast.error_fallback"));
       }
     } finally {
       if (mountedRef.current) {
@@ -277,9 +281,9 @@ const NetworkPriorityCard = () => {
     return (
       <Card className="@container/card">
         <CardHeader>
-          <CardTitle>Network Priority</CardTitle>
+          <CardTitle>{t("core_settings.network_priority.card.title")}</CardTitle>
           <CardDescription>
-            Set the priority order of your network connections.
+            {t("core_settings.network_priority.card.description")}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -296,9 +300,9 @@ const NetworkPriorityCard = () => {
   return (
     <Card className="@container/card">
       <CardHeader>
-        <CardTitle>Network Priority</CardTitle>
+        <CardTitle>{t("core_settings.network_priority.card.title")}</CardTitle>
         <CardDescription>
-          Set the priority order of your network connections.
+          {t("core_settings.network_priority.card.description")}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -345,7 +349,7 @@ const NetworkPriorityCard = () => {
             variant="outline"
             onClick={handleReset}
             disabled={isSaving}
-            aria-label="Reset to saved values"
+            aria-label={t("core_settings.network_priority.reset_aria")}
           >
             <RotateCcwIcon />
           </Button>
