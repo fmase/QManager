@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback, useMemo, type FormEvent } from "react";
+import { useTranslation } from "react-i18next";
 import {
   TerminalIcon,
   TriangleAlertIcon,
@@ -39,27 +40,14 @@ interface Warning {
 // --- Safety rules ---
 
 const BLOCKED_COMMANDS = [
-  {
-    pattern: /\bQSCANFREQ\b/i,
-    message: "Use the Cell Scanner page for frequency scanning.",
-  },
-  {
-    pattern: /\bQSCAN\b/i,
-    message: "Use the Cell Scanner page for network scanning.",
-  },
-  {
-    pattern: /QCFG\s*=\s*"resetfactory"/i,
-    message: "Factory reset is not allowed from the terminal.",
-  },
-];
+  { pattern: /\bQSCANFREQ\b/i, messageKey: "blocked_qscanfreq" },
+  { pattern: /\bQSCAN\b/i, messageKey: "blocked_qscan" },
+  { pattern: /QCFG\s*=\s*"resetfactory"/i, messageKey: "blocked_factory_reset" },
+] as const;
 
 const WARNING_COMMANDS = [
-  {
-    pattern: /CFUN\s*=\s*[04]\b/i,
-    message:
-      "This will disable the modem radio. If connected via Tailscale, you may lose access to this UI.",
-  },
-];
+  { pattern: /CFUN\s*=\s*[04]\b/i, messageKey: "warning_disable_radio" },
+] as const;
 
 // --- Constants ---
 
@@ -115,6 +103,7 @@ function formatExport(entries: HistoryEntry[]): string {
 // --- Component ---
 
 export default function ATTerminalCard() {
+  const { t } = useTranslation("system-settings");
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -188,7 +177,7 @@ export default function ATTerminalCard() {
         } else {
           appendEntry({
             command,
-            response: json.detail ?? json.error ?? "Command failed",
+            response: json.detail ?? json.error ?? t("at_terminal.response_command_failed"),
             status: "error",
           });
         }
@@ -197,8 +186,8 @@ export default function ATTerminalCard() {
           command,
           response:
             err instanceof TypeError
-              ? "Network error — could not reach modem backend"
-              : "Unexpected error — check backend logs",
+              ? t("at_terminal.response_network_error")
+              : t("at_terminal.response_unexpected_error"),
           status: "error",
         });
       } finally {
@@ -207,7 +196,7 @@ export default function ATTerminalCard() {
         inputRef.current?.focus();
       }
     },
-    [appendEntry],
+    [appendEntry, t],
   );
 
   const handleSubmit = useCallback(
@@ -233,7 +222,7 @@ export default function ATTerminalCard() {
         if (rule.pattern.test(trimmed)) {
           appendEntry({
             command: trimmed,
-            response: rule.message,
+            response: t(`at_terminal.${rule.messageKey}`),
             status: "blocked",
           });
           setInput("");
@@ -245,7 +234,10 @@ export default function ATTerminalCard() {
       // Check warning commands
       for (const rule of WARNING_COMMANDS) {
         if (rule.pattern.test(trimmed)) {
-          setWarning({ message: rule.message, command: trimmed });
+          setWarning({
+            message: t(`at_terminal.${rule.messageKey}`),
+            command: trimmed,
+          });
           return;
         }
       }
@@ -253,7 +245,7 @@ export default function ATTerminalCard() {
       setLastCommand(trimmed);
       sendCommand(trimmed);
     },
-    [input, isLoading, appendEntry, sendCommand],
+    [input, isLoading, appendEntry, sendCommand, t],
   );
 
   const handleSendAnyway = useCallback(() => {
@@ -325,23 +317,23 @@ export default function ATTerminalCard() {
       <div className="bg-muted flex items-center gap-2 border-b px-3 py-2">
         <TerminalIcon className="text-muted-foreground size-4" />
         <span className="text-muted-foreground text-sm font-medium">
-          AT Terminal
+          {t("at_terminal.header_title")}
         </span>
         <div className="ml-auto flex gap-1">
           {gameActive ? (
             <span className="text-muted-foreground text-xs italic">
-              Playing Signal Storm... (Esc to exit)
+              {t("at_terminal.game_active_hint")}
             </span>
           ) : (
             <>
               <CommandsPopover onSelect={setInput} inputRef={inputRef} />
               <Button variant="ghost" size="xs" onClick={handleClear} disabled={isEmpty}>
                 <Trash2Icon />
-                Clear
+                {t("at_terminal.action_clear")}
               </Button>
               <Button variant="ghost" size="xs" onClick={handleExport} disabled={isEmpty}>
                 <DownloadIcon />
-                Export
+                {t("at_terminal.action_export")}
               </Button>
             </>
           )}
@@ -359,7 +351,7 @@ export default function ATTerminalCard() {
           >
             {isEmpty ? (
               <div className="text-muted-foreground flex h-40 items-center justify-center text-sm">
-                No commands yet. Type an AT command below.
+                {t("at_terminal.history_empty")}
               </div>
             ) : (
               <div className="space-y-3">
@@ -378,7 +370,7 @@ export default function ATTerminalCard() {
                 {suggestions[suggestionIndex % suggestions.length]}
               </span>
               <kbd className="rounded bg-muted px-1 py-0.5 text-[9px] text-muted-foreground/35">
-                Tab
+                {t("at_terminal.kbd_tab")}
               </kbd>
             </div>
           )}
@@ -388,7 +380,7 @@ export default function ATTerminalCard() {
             <div className="mx-3 mb-2 rounded-lg border border-warning/30 bg-warning/10 p-3">
               <div className="text-warning mb-1 flex items-center gap-1.5 text-sm font-semibold">
                 <TriangleAlertIcon className="size-4" />
-                Warning
+                {t("at_terminal.warning_title")}
               </div>
               <p className="text-muted-foreground mb-2 text-sm">
                 <code className="bg-warning/10 rounded px-1 py-0.5 text-xs">
@@ -402,10 +394,10 @@ export default function ATTerminalCard() {
                   className="bg-warning text-warning-foreground hover:bg-warning/90"
                   onClick={handleSendAnyway}
                 >
-                  Send Anyway
+                  {t("at_terminal.action_send_anyway")}
                 </Button>
                 <Button variant="outline" size="xs" onClick={handleCancelWarning}>
-                  Cancel
+                  {t("cancel", { ns: "common" })}
                 </Button>
               </div>
             </div>
@@ -425,12 +417,12 @@ export default function ATTerminalCard() {
               setSuggestionIndex(0);
             }}
             onKeyDown={handleKeyDown}
-            placeholder="AT+COPS?"
+            placeholder={t("at_terminal.input_placeholder")}
             disabled={inputDisabled}
             className="font-mono text-sm"
             autoComplete="off"
             spellCheck={false}
-            maxLength={256}
+            maxLength={4096}
           />
           <InputGroupButton
             type="submit"
@@ -444,7 +436,7 @@ export default function ATTerminalCard() {
             ) : (
               <ChevronRightIcon />
             )}
-            Send
+            {t("at_terminal.action_send")}
           </InputGroupButton>
         </InputGroup>
       </form>
