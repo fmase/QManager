@@ -82,7 +82,7 @@ CONFLICT_PACKAGES="sms-tool socat-at-bridge socat"
 # UCI-gated services — only enabled if a prior install had them enabled.
 # Everything else is enabled unconditionally. This is the ONLY hardcoded
 # service list in this script.
-UCI_GATED_SERVICES="qmanager_tower_failover qmanager_watchcat qmanager_bandwidth qmanager_dpi"
+UCI_GATED_SERVICES="qmanager_tower_failover qmanager_watchcat qmanager_bandwidth qmanager_dpi qmanager_wan_guard"
 
 # Expected modem firmware signature (after normalization: upper + alnum only)
 REQUIRED_FIRMWARE="RM551EGL"

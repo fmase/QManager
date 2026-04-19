@@ -2,6 +2,7 @@
 
 import { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
+import { EyeIcon, EyeOffIcon } from "lucide-react";
 
 import {
   Card,
@@ -10,6 +11,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -39,6 +41,9 @@ const SshPasswordCard = () => {
   const [next, setNext] = useState("");
   const [confirm, setConfirm] = useState("");
   const [enforceStrong, setEnforceStrong] = useState(true);
+  const [showCurrent, setShowCurrent] = useState(false);
+  const [showNext, setShowNext] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
 
   const policyHint = enforceStrong
     ? t("ssh_password.strong_policy_hint")
@@ -84,33 +89,61 @@ const SshPasswordCard = () => {
         <div className="grid gap-4 max-w-md">
           <div className="grid gap-2">
             <Label htmlFor="ssh-current">{t("ssh_password.current_label")}</Label>
-            <Input
-              id="ssh-current"
-              type="password"
-              autoComplete="current-password"
-              value={current}
-              onChange={(e) => {
-                setCurrent(e.target.value);
-                onAnyInputChange();
-              }}
-              disabled={isPending}
-            />
+            <div className="relative">
+              <Input
+                id="ssh-current"
+                type={showCurrent ? "text" : "password"}
+                autoComplete="current-password"
+                value={current}
+                onChange={(e) => {
+                  setCurrent(e.target.value);
+                  onAnyInputChange();
+                }}
+                disabled={isPending}
+                className="pr-10"
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                className="absolute right-1 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                onClick={() => setShowCurrent((v) => !v)}
+                tabIndex={-1}
+                aria-label={showCurrent ? "Hide password" : "Show password"}
+              >
+                {showCurrent ? <EyeOffIcon className="size-4" /> : <EyeIcon className="size-4" />}
+              </Button>
+            </div>
           </div>
 
           <div className="grid gap-2">
             <Label htmlFor="ssh-new">{t("ssh_password.new_label")}</Label>
-            <Input
-              id="ssh-new"
-              type="password"
-              autoComplete="new-password"
-              value={next}
-              onChange={(e) => {
-                setNext(e.target.value);
-                onAnyInputChange();
-              }}
-              disabled={isPending}
-              aria-describedby="ssh-new-hint"
-            />
+            <div className="relative">
+              <Input
+                id="ssh-new"
+                type={showNext ? "text" : "password"}
+                autoComplete="new-password"
+                value={next}
+                onChange={(e) => {
+                  setNext(e.target.value);
+                  onAnyInputChange();
+                }}
+                disabled={isPending}
+                aria-describedby="ssh-new-hint"
+                className="pr-10"
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                className="absolute right-1 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                onClick={() => setShowNext((v) => !v)}
+                tabIndex={-1}
+                aria-label={showNext ? "Hide password" : "Show password"}
+              >
+                {showNext ? <EyeOffIcon className="size-4" /> : <EyeIcon className="size-4" />}
+              </Button>
+            </div>
             {next.length > 0 && !policyOk && (
               <p id="ssh-new-hint" className="text-xs text-destructive">
                 {policyHint}
@@ -120,18 +153,32 @@ const SshPasswordCard = () => {
 
           <div className="grid gap-2">
             <Label htmlFor="ssh-confirm">{t("ssh_password.confirm_label")}</Label>
-            <Input
-              id="ssh-confirm"
-              type="password"
-              autoComplete="new-password"
-              value={confirm}
-              onChange={(e) => {
-                setConfirm(e.target.value);
-                onAnyInputChange();
-              }}
-              disabled={isPending}
-              aria-describedby="ssh-confirm-hint"
-            />
+            <div className="relative">
+              <Input
+                id="ssh-confirm"
+                type={showConfirm ? "text" : "password"}
+                autoComplete="new-password"
+                value={confirm}
+                onChange={(e) => {
+                  setConfirm(e.target.value);
+                  onAnyInputChange();
+                }}
+                disabled={isPending}
+                aria-describedby="ssh-confirm-hint"
+                className="pr-10"
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                className="absolute right-1 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                onClick={() => setShowConfirm((v) => !v)}
+                tabIndex={-1}
+                aria-label={showConfirm ? "Hide password" : "Show password"}
+              >
+                {showConfirm ? <EyeOffIcon className="size-4" /> : <EyeIcon className="size-4" />}
+              </Button>
+            </div>
             {confirm.length > 0 && !confirmMatches && (
               <p id="ssh-confirm-hint" className="text-xs text-destructive">
                 {t("ssh_password.error_mismatch")}
