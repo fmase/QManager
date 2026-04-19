@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, type FormEvent, type ChangeEvent } from "react";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import {
   Card,
@@ -56,6 +57,7 @@ const IMEISettingsCard = ({
   onSave,
   onReboot,
 }: IMEISettingsCardProps) => {
+  const { t } = useTranslation("cellular");
   const [imei, setImei] = useState<string>("");
   const [showRebootDialog, setShowRebootDialog] = useState(false);
   const [isRebooting, setIsRebooting] = useState(false);
@@ -77,16 +79,16 @@ const IMEISettingsCard = ({
     if (!isValidImei) return;
 
     if (!hasChanged) {
-      toast.info("No changes to save");
+      toast.info(t("core_settings.imei.settings_card.toast.success"));
       return;
     }
 
     const success = await onSave(imei);
     if (success) {
-      toast.success("IMEI saved — reboot required to apply");
+      toast.success(t("core_settings.imei.settings_card.toast.success"));
       setShowRebootDialog(true);
     } else {
-      toast.error("Failed to save IMEI");
+      toast.error(t("core_settings.imei.settings_card.toast.error"));
     }
   };
 
@@ -101,9 +103,9 @@ const IMEISettingsCard = ({
     setIsRebooting(true);
     const sent = await onReboot();
     if (sent) {
-      toast.success("Device is rebooting...");
+      toast.success(t("core_settings.imei.settings_card.toast.rebooting"));
     } else {
-      toast.error("Reboot failed — restart the device manually");
+      toast.error(t("core_settings.imei.settings_card.toast.reboot_error"));
       setIsRebooting(false);
     }
   };
@@ -118,10 +120,9 @@ const IMEISettingsCard = ({
     return (
       <Card className="@container/card">
         <CardHeader>
-          <CardTitle>IMEI Settings</CardTitle>
+          <CardTitle>{t("core_settings.imei.settings_card.title")}</CardTitle>
           <CardDescription>
-            Please proceed with caution when modifying IMEI settings. Incorrect
-            changes may lead to device malfunctions or legal issues.
+            {t("core_settings.imei.settings_card.description")}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -144,10 +145,9 @@ const IMEISettingsCard = ({
   return (
     <Card className="@container/card">
       <CardHeader>
-        <CardTitle>IMEI Settings</CardTitle>
+        <CardTitle>{t("core_settings.imei.settings_card.title")}</CardTitle>
         <CardDescription>
-          Change the device&apos;s IMEI identifier. A reboot is required after changes.
-          Check your local regulations before modifying.
+          {t("core_settings.imei.settings_card.description")}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -157,12 +157,12 @@ const IMEISettingsCard = ({
               <FieldGroup>
                 <Field>
                   <FieldLabel htmlFor="device-imei-input">
-                    Set Device IMEI
+                    {t("core_settings.imei.settings_card.field_label")}
                   </FieldLabel>
                   <InputGroup>
                     <InputGroupInput
                       id="device-imei-input"
-                      placeholder="Enter Device IMEI"
+                      placeholder={t("core_settings.imei.settings_card.field_placeholder")}
                       value={imei}
                       onChange={handleImeiChange}
                       maxLength={15}
@@ -177,16 +177,14 @@ const IMEISettingsCard = ({
                           <button
                             type="button"
                             className="pl-1.5 inline-flex items-center"
-                            aria-label="IMEI legal warning"
+                            aria-label={t("core_settings.imei.settings_card.warning_aria")}
                           >
                             <AlertTriangleIcon className="text-muted-foreground size-4" />
                           </button>
                         </TooltipTrigger>
                         <TooltipContent>
                           <p>
-                            IMEI modification regulations vary by country.
-                            <br />
-                            Check your local laws before changing the IMEI.
+                            {t("core_settings.imei.settings_card.warning_content")}
                           </p>
                         </TooltipContent>
                       </Tooltip>
@@ -194,12 +192,11 @@ const IMEISettingsCard = ({
                   </InputGroup>
                   {showImeiError && (
                     <FieldError id="imei-error">
-                      IMEI must be exactly 15 digits ({imei.length}/15)
+                      {t("core_settings.imei.settings_card.length_error", { count: imei.length })}
                     </FieldError>
                   )}
                   <FieldDescription>
-                    Changing the IMEI will require a device reboot to take
-                    effect.
+                    {t("core_settings.imei.settings_card.field_description")}
                   </FieldDescription>
                 </Field>
               </FieldGroup>
@@ -213,10 +210,10 @@ const IMEISettingsCard = ({
               {isSaving ? (
                 <>
                   <Loader2 className="size-4 animate-spin" />
-                  Saving...
+                  {t("common:state.saving")}
                 </>
               ) : (
-                "Write IMEI"
+                t("core_settings.imei.settings_card.write_button")
               )}
             </Button>
             <Button
@@ -224,7 +221,7 @@ const IMEISettingsCard = ({
               variant="outline"
               onClick={handleReset}
               disabled={isSaving}
-              aria-label="Reset to saved values"
+              aria-label={t("core_settings.imei.settings_card.reset_aria")}
             >
               <RotateCcwIcon />
             </Button>
@@ -237,15 +234,16 @@ const IMEISettingsCard = ({
         }}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Reboot Required</AlertDialogTitle>
+              <AlertDialogTitle>
+                {t("core_settings.imei.settings_card.reboot_dialog.title")}
+              </AlertDialogTitle>
               <AlertDialogDescription>
-                IMEI changes require a device reboot to take effect. Would you
-                like to reboot now?
+                {t("core_settings.imei.settings_card.reboot_dialog.description")}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel disabled={isRebooting}>
-                Reboot Later
+                {t("core_settings.imei.settings_card.reboot_dialog.cancel")}
               </AlertDialogCancel>
               <AlertDialogAction
                 disabled={isRebooting}
@@ -254,10 +252,10 @@ const IMEISettingsCard = ({
                 {isRebooting ? (
                   <>
                     <Loader2 className="size-4 animate-spin" />
-                    Rebooting...
+                    {t("core_settings.imei.settings_card.reboot_dialog.rebooting")}
                   </>
                 ) : (
-                  "Reboot Now"
+                  t("core_settings.imei.settings_card.reboot_dialog.reboot")
                 )}
               </AlertDialogAction>
             </AlertDialogFooter>

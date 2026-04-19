@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type ChangeEvent } from "react";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import {
   Card,
@@ -56,6 +57,7 @@ import {
 } from "@/lib/imei-utils";
 
 const IMEIToolsCard = () => {
+  const { t } = useTranslation("cellular");
   const [selectedPresetId, setSelectedPresetId] = useState<string>(
     IMEI_TAC_PRESETS[0].id
   );
@@ -94,7 +96,7 @@ const IMEIToolsCard = () => {
   const handleCopy = () => {
     if (!imei) return;
     navigator.clipboard.writeText(imei).then(
-      () => toast.success("Copied to clipboard"),
+      () => toast.success(t("core_settings.imei.tools_card.copy_success")),
       () => {
         const ta = document.createElement("textarea");
         ta.value = imei;
@@ -104,7 +106,7 @@ const IMEIToolsCard = () => {
         ta.select();
         document.execCommand("copy");
         document.body.removeChild(ta);
-        toast.success("Copied to clipboard");
+        toast.success(t("core_settings.imei.tools_card.copy_success"));
       },
     );
   };
@@ -112,10 +114,9 @@ const IMEIToolsCard = () => {
   return (
     <Card className="@container/card @3xl/main:col-span-2">
       <CardHeader>
-        <CardTitle>IMEI Tools</CardTitle>
+        <CardTitle>{t("core_settings.imei.tools_card.title")}</CardTitle>
         <CardDescription>
-          Generate and validate IMEI numbers using the Luhn algorithm. For
-          educational purposes only.
+          {t("core_settings.imei.tools_card.description")}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -130,13 +131,13 @@ const IMEIToolsCard = () => {
             <FieldSet>
               <FieldGroup>
                 <Field>
-                  <FieldLabel>Device Preset</FieldLabel>
+                  <FieldLabel>{t("core_settings.imei.tools_card.preset_label")}</FieldLabel>
                   <Select
                     value={selectedPresetId}
                     onValueChange={handlePresetChange}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Select a device" />
+                      <SelectValue placeholder={t("core_settings.imei.tools_card.preset_placeholder")} />
                     </SelectTrigger>
                     <SelectContent>
                       {IMEI_TAC_PRESETS.map((preset) => (
@@ -146,21 +147,21 @@ const IMEIToolsCard = () => {
                       ))}
                       <SelectSeparator />
                       <SelectItem value={IMEI_CUSTOM_ID}>
-                        Custom Prefix
+                        {t("core_settings.imei.tools_card.preset_custom")}
                       </SelectItem>
                     </SelectContent>
                   </Select>
                   <FieldDescription>
-                    Select a device TAC or enter a custom 8–12 digit prefix.
+                    {t("core_settings.imei.tools_card.preset_description")}
                   </FieldDescription>
                 </Field>
 
                 {isCustom && (
                   <Field>
-                    <FieldLabel>Custom Prefix</FieldLabel>
+                    <FieldLabel>{t("core_settings.imei.tools_card.custom_prefix_label")}</FieldLabel>
                     <InputGroup>
                       <InputGroupInput
-                        placeholder="Enter 8–12 digit prefix"
+                        placeholder={t("core_settings.imei.tools_card.custom_prefix_placeholder")}
                         value={customPrefix}
                         onChange={handleCustomPrefixChange}
                         maxLength={12}
@@ -170,13 +171,11 @@ const IMEIToolsCard = () => {
                     </InputGroup>
                     {showPrefixError ? (
                       <FieldError>
-                        Prefix must be 8–12 digits ({customPrefix.length}{" "}
-                        entered)
+                        {t("core_settings.imei.tools_card.custom_prefix_error", { count: customPrefix.length })}
                       </FieldError>
                     ) : (
                       <FieldDescription>
-                        The remaining digits and check digit are generated
-                        automatically.
+                        {t("core_settings.imei.tools_card.custom_prefix_description")}
                       </FieldDescription>
                     )}
                   </Field>
@@ -187,12 +186,12 @@ const IMEIToolsCard = () => {
             <FieldSet>
               <FieldGroup>
                 <Field>
-                  <FieldLabel>IMEI</FieldLabel>
+                  <FieldLabel>{t("core_settings.imei.tools_card.imei_label")}</FieldLabel>
 
                   <div className="flex items-center gap-2">
                     <InputGroup className="flex-1">
                       <InputGroupInput
-                        placeholder="Generate or enter a 15-digit IMEI"
+                        placeholder={t("core_settings.imei.tools_card.imei_placeholder")}
                         value={imei}
                         onChange={handleImeiChange}
                         maxLength={15}
@@ -206,21 +205,22 @@ const IMEIToolsCard = () => {
                               <InputGroupButton
                                 type="button"
                                 size="icon-xs"
-                                aria-label="Copy IMEI"
+                                aria-label={t("core_settings.imei.tools_card.copy_aria")}
                                 onClick={handleCopy}
                               >
                                 <CopyIcon />
                               </InputGroupButton>
                             </TooltipTrigger>
-                            <TooltipContent>Copy to clipboard</TooltipContent>
+                            <TooltipContent>
+                              {t("core_settings.imei.tools_card.copy_tooltip")}
+                            </TooltipContent>
                           </Tooltip>
                         </InputGroupAddon>
                       )}
                     </InputGroup>
                   </div>
                   <FieldDescription>
-                    Luhn validation runs automatically at 15 digits. You can
-                    also type or paste any IMEI to validate it.
+                    {t("core_settings.imei.tools_card.imei_description")}
                   </FieldDescription>
                 </Field>
               </FieldGroup>
@@ -229,34 +229,42 @@ const IMEIToolsCard = () => {
 
           {breakdown && (
             <Field>
-              <FieldLabel>Breakdown</FieldLabel>
+              <FieldLabel>{t("core_settings.imei.tools_card.breakdown_label")}</FieldLabel>
               <div className="grid grid-cols-4 gap-2 rounded-md border bg-muted/30 px-3 py-2 font-mono text-sm">
                 <div>
-                  <p className="text-xs text-muted-foreground">Validity</p>
+                  <p className="text-xs text-muted-foreground">
+                    {t("core_settings.imei.tools_card.breakdown_validity")}
+                  </p>
                   <p className="font-medium flex items-center gap-1">
                     {isValid ? (
                       <>
                         <CheckCircle2Icon className="size-4 text-green-500" />
-                        Valid IMEI
+                        {t("core_settings.imei.tools_card.breakdown_valid")}
                       </>
                     ) : (
                       <>
                         <XCircleIcon className="size-4 text-red-500" />
-                        Invalid IMEI
+                        {t("core_settings.imei.tools_card.breakdown_invalid")}
                       </>
                     )}
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground">TAC (1–8)</p>
+                  <p className="text-xs text-muted-foreground">
+                    {t("core_settings.imei.tools_card.breakdown_tac")}
+                  </p>
                   <p className="font-medium">{breakdown.tac}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground">SNR (9–14)</p>
+                  <p className="text-xs text-muted-foreground">
+                    {t("core_settings.imei.tools_card.breakdown_snr")}
+                  </p>
                   <p className="font-medium">{breakdown.snr}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground">Check (15)</p>
+                  <p className="text-xs text-muted-foreground">
+                    {t("core_settings.imei.tools_card.breakdown_check")}
+                  </p>
                   <p className="font-medium">{breakdown.checkDigit}</p>
                 </div>
               </div>
@@ -265,7 +273,7 @@ const IMEIToolsCard = () => {
 
           <div className="flex items-center gap-x-4">
             <Button type="submit" disabled={!isValidPrefix}>
-              Generate IMEI
+              {t("core_settings.imei.tools_card.generate_button")}
             </Button>
 
             <Button
@@ -280,7 +288,7 @@ const IMEIToolsCard = () => {
               }
             >
               <ExternalLinkIcon className="size-4" />
-              Check IMEI Info
+              {t("core_settings.imei.tools_card.check_info_button")}
             </Button>
           </div>
         </form>

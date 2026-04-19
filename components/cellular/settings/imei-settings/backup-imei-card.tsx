@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, type FormEvent, type ChangeEvent } from "react";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { SaveButton, useSaveFlash } from "@/components/ui/save-button";
 import {
@@ -59,6 +60,7 @@ const BackupIMEICard = ({
   isSaving,
   onSave,
 }: BackupIMEICardProps) => {
+  const { t } = useTranslation("cellular");
   const { saved, markSaved } = useSaveFlash();
   const [localEnabled, setLocalEnabled] = useState(false);
   const [localImei, setLocalImei] = useState("");
@@ -99,7 +101,7 @@ const BackupIMEICard = ({
     e.preventDefault();
 
     if (localEnabled && !isValidImei) {
-      toast.error("Backup IMEI must be exactly 15 digits");
+      toast.error(t("core_settings.imei.backup_card.toast.invalid"));
       return;
     }
 
@@ -108,16 +110,16 @@ const BackupIMEICard = ({
     const imeiChanged = localImei !== (backupImei ?? "");
 
     if (!enabledChanged && !imeiChanged) {
-      toast.info("No changes to save");
+      toast.info(t("core_settings.imei.backup_card.toast.no_changes"));
       return;
     }
 
     const success = await onSave({ enabled: localEnabled, imei: localImei });
     if (success) {
       markSaved();
-      toast.success("Backup IMEI configuration saved");
+      toast.success(t("core_settings.imei.backup_card.toast.success"));
     } else {
-      toast.error("Failed to save backup configuration");
+      toast.error(t("core_settings.imei.backup_card.toast.error"));
     }
   };
 
@@ -140,10 +142,9 @@ const BackupIMEICard = ({
     return (
       <Card className="@container/card">
         <CardHeader>
-          <CardTitle>Backup Device IMEI</CardTitle>
+          <CardTitle>{t("core_settings.imei.backup_card.title")}</CardTitle>
           <CardDescription>
-            Automatically sets up a backup IMEI for your device to ensure
-            connectivity in case of primary IMEI issues.
+            {t("core_settings.imei.backup_card.description_loading")}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -171,10 +172,9 @@ const BackupIMEICard = ({
   return (
     <Card className="@container/card">
       <CardHeader>
-        <CardTitle>Backup Device IMEI</CardTitle>
+        <CardTitle>{t("core_settings.imei.backup_card.title")}</CardTitle>
         <CardDescription>
-          If the network rejects the current IMEI after a reboot, the device
-          can automatically switch to a backup IMEI and restart.
+          {t("core_settings.imei.backup_card.description")}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -186,18 +186,21 @@ const BackupIMEICard = ({
                   <FieldLabel htmlFor="backup-imei-toggle">
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <button type="button" className="inline-flex" aria-label="More info">
+                        <button
+                          type="button"
+                          className="inline-flex"
+                          aria-label={t("core_settings.imei.backup_card.enable_tooltip_aria")}
+                        >
                           <TbInfoCircleFilled className="size-5 text-info" />
                         </button>
                       </TooltipTrigger>
                       <TooltipContent>
                         <p>
-                          Switch to a backup IMEI when the primary IMEI was
-                          rejected by the network.
+                          {t("core_settings.imei.backup_card.enable_tooltip_content")}
                         </p>
                       </TooltipContent>
                     </Tooltip>
-                    Enable Backup IMEI
+                    {t("core_settings.imei.backup_card.enable_label")}
                   </FieldLabel>
                   <Switch
                     id="backup-imei-toggle"
@@ -209,12 +212,12 @@ const BackupIMEICard = ({
               </div>
               <Field>
                 <FieldLabel htmlFor="backup-imei-input">
-                  Set Backup IMEI
+                  {t("core_settings.imei.backup_card.field_label")}
                 </FieldLabel>
                 <InputGroup>
                   <InputGroupInput
                     id="backup-imei-input"
-                    placeholder="Enter Backup IMEI"
+                    placeholder={t("core_settings.imei.backup_card.field_placeholder")}
                     value={localImei}
                     onChange={handleImeiChange}
                     maxLength={15}
@@ -227,24 +230,21 @@ const BackupIMEICard = ({
                         <button
                           type="button"
                           className="pl-1.5 inline-flex items-center"
-                          aria-label="IMEI legal warning"
+                          aria-label={t("core_settings.imei.backup_card.warning_aria")}
                         >
                           <AlertTriangleIcon className="text-muted-foreground size-4" />
                         </button>
                       </TooltipTrigger>
                       <TooltipContent>
                         <p>
-                          IMEI modification regulations vary by country.
-                          <br />
-                          Check your local laws before changing the IMEI.
+                          {t("core_settings.imei.backup_card.warning_content")}
                         </p>
                       </TooltipContent>
                     </Tooltip>
                   </InputGroupAddon>
                 </InputGroup>
                 <FieldDescription>
-                  Switching to the backup IMEI will require a device reboot to
-                  take effect.
+                  {t("core_settings.imei.backup_card.field_description")}
                 </FieldDescription>
               </Field>
             </FieldGroup>
@@ -261,7 +261,7 @@ const BackupIMEICard = ({
               variant="outline"
               onClick={handleReset}
               disabled={isSaving}
-              aria-label="Reset to saved values"
+              aria-label={t("core_settings.imei.backup_card.reset_aria")}
             >
               <RotateCcwIcon />
             </Button>
@@ -272,20 +272,19 @@ const BackupIMEICard = ({
         <AlertDialog open={showInfoDialog} onOpenChange={setShowInfoDialog}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Backup IMEI Auto-Recovery</AlertDialogTitle>
+              <AlertDialogTitle>
+                {t("core_settings.imei.backup_card.enable_dialog.title")}
+              </AlertDialogTitle>
               <AlertDialogDescription>
-                When backup IMEI is enabled, the device will automatically check
-                for IMEI rejection after each reboot following an IMEI change.
-                If the network rejects the primary IMEI, the device will switch
-                to the backup IMEI and reboot automatically.
+                {t("core_settings.imei.backup_card.enable_dialog.description")}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel onClick={handleInfoCancel}>
-                Cancel
+                {t("common:actions.cancel")}
               </AlertDialogCancel>
               <AlertDialogAction onClick={handleInfoConfirm}>
-                Enable Backup
+                {t("core_settings.imei.backup_card.enable_dialog.confirm")}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
