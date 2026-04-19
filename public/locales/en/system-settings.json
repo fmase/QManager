@@ -382,5 +382,84 @@
       "enable_ippt": "Enable IPPT (MAC passthrough)",
       "disable_ippt": "Disable IPPT"
     }
+  },
+  "languages": {
+    "page": {
+      "title": "Languages",
+      "description": "Install additional language packs to translate QManager's UI. Built-in packs ship with the firmware; downloadable packs are fetched from a remote manifest."
+    },
+    "sections": {
+      "active_title": "Active Language",
+      "active_description": "The language used to render every screen in QManager.",
+      "installed_title": "Installed",
+      "installed_description": "Language packs available on this device.",
+      "available_title": "Available for Download",
+      "available_description": "Additional language packs maintained by the community.",
+      "available_loading": "Checking for available language packs…",
+      "available_empty": "No downloadable packs in the catalog right now."
+    },
+    "badges": {
+      "built_in": "Built-in",
+      "downloaded": "Downloaded",
+      "update_available": "Update available",
+      "active": "Active"
+    },
+    "row": {
+      "size_label": "Download size",
+      "size_unit_kb": "{{kb}} KB",
+      "size_unit_mb": "{{mb}} MB",
+      "completeness_label": "Completeness",
+      "completeness_value": "{{percent}}% complete",
+      "version_label": "Version",
+      "last_updated_label": "Last updated",
+      "translator_label": "Translator",
+      "translator_label_plural": "Translators",
+      "translators_fallback": "Community contributors",
+      "install_button": "Install",
+      "install_button_progress": "Installing…",
+      "install_button_aria": "Install {{name}} language pack",
+      "update_button": "Update",
+      "update_button_aria": "Update {{name}} language pack",
+      "remove_button": "Remove",
+      "remove_button_aria": "Remove {{name}} language pack",
+      "cancel_install_button": "Cancel install"
+    },
+    "active_switcher": {
+      "label": "Select active language",
+      "aria": "Select active language",
+      "native_name_hint": "Native name: {{native}}"
+    },
+    "manifest_error": {
+      "title": "Unable to reach language-pack catalog",
+      "description": "QManager could not fetch the remote manifest. Installed packs still work. Check your internet connection and try again.",
+      "retry_button": "Retry"
+    },
+    "toast": {
+      "install_started": "Installing {{name}}…",
+      "install_success": "{{name}} installed",
+      "install_failed": "Failed to install {{name}}",
+      "install_cancelled": "Install cancelled",
+      "install_in_progress": "Another install is already in progress",
+      "remove_success": "{{name}} removed",
+      "remove_failed": "Failed to remove {{name}}",
+      "remove_active_switched": "{{name}} removed — switched to English",
+      "switched": "Switched to {{name}}",
+      "manifest_refreshed": "Catalog refreshed"
+    },
+    "install_failure_fallback": {
+      "title": "Manual install",
+      "description": "Copy the command below into an SSH session to install the pack manually.",
+      "command_template": "curl -sSfL -o /tmp/{{code}}.tar.gz {{url}} && sha256sum -c <(echo '{{sha256}}  /tmp/{{code}}.tar.gz') && mkdir -p /www/locales/{{code}} && tar -xzf /tmp/{{code}}.tar.gz -C /www/locales/{{code}} && echo {{version}} > /www/locales/{{code}}/.version"
+    },
+    "remove_dialog": {
+      "title": "Remove language pack",
+      "description": "{{name}} will be removed from this device. You can re-install it later from the catalog.",
+      "description_active": "{{name}} is the active language. Removing it will switch QManager back to English.",
+      "confirm_button": "Remove",
+      "cancel_button": "Cancel"
+    },
+    "empty_installed": "Only built-in languages are currently installed.",
+    "error_missing_pack": "This language pack is no longer available.",
+    "disk_hint": "The pack requires about {{kb}} KB of free space on /www."
   }
 }

@@ -382,5 +382,84 @@
       "enable_ippt": "启用 IPPT（MAC 直通）",
       "disable_ippt": "禁用 IPPT"
     }
+  },
+  "languages": {
+    "page": {
+      "title": "语言",
+      "description": "安装其他语言包以翻译 QManager 的界面。内置语言包随固件一起发布；可下载的语言包从远程清单获取。"
+    },
+    "sections": {
+      "active_title": "活动语言",
+      "active_description": "QManager 渲染所有界面时使用的语言。",
+      "installed_title": "已安装",
+      "installed_description": "本设备上可用的语言包。",
+      "available_title": "可下载",
+      "available_description": "社区维护的其他语言包。",
+      "available_loading": "正在检查可下载的语言包…",
+      "available_empty": "清单中暂无可下载的语言包。"
+    },
+    "badges": {
+      "built_in": "内置",
+      "downloaded": "已下载",
+      "update_available": "有可用更新",
+      "active": "活动"
+    },
+    "row": {
+      "size_label": "下载大小",
+      "size_unit_kb": "{{kb}} KB",
+      "size_unit_mb": "{{mb}} MB",
+      "completeness_label": "完整度",
+      "completeness_value": "完整度 {{percent}}%",
+      "version_label": "版本",
+      "last_updated_label": "最后更新",
+      "translator_label": "翻译者",
+      "translator_label_plural": "翻译者",
+      "translators_fallback": "社区贡献者",
+      "install_button": "安装",
+      "install_button_progress": "正在安装…",
+      "install_button_aria": "安装 {{name}} 语言包",
+      "update_button": "更新",
+      "update_button_aria": "更新 {{name}} 语言包",
+      "remove_button": "删除",
+      "remove_button_aria": "删除 {{name}} 语言包",
+      "cancel_install_button": "取消安装"
+    },
+    "active_switcher": {
+      "label": "选择活动语言",
+      "aria": "选择活动语言",
+      "native_name_hint": "原生名称: {{native}}"
+    },
+    "manifest_error": {
+      "title": "无法访问语言包清单",
+      "description": "QManager 无法获取远程清单。已安装的语言包仍可正常使用。请检查您的互联网连接后重试。",
+      "retry_button": "重试"
+    },
+    "toast": {
+      "install_started": "正在安装 {{name}}…",
+      "install_success": "已安装 {{name}}",
+      "install_failed": "安装 {{name}} 失败",
+      "install_cancelled": "安装已取消",
+      "install_in_progress": "已有另一个安装正在进行中",
+      "remove_success": "已删除 {{name}}",
+      "remove_failed": "删除 {{name}} 失败",
+      "remove_active_switched": "已删除 {{name}} — 已切换到英语",
+      "switched": "已切换到 {{name}}",
+      "manifest_refreshed": "清单已刷新"
+    },
+    "install_failure_fallback": {
+      "title": "手动安装",
+      "description": "将下方命令复制到 SSH 会话中以手动安装该语言包。",
+      "command_template": "curl -sSfL -o /tmp/{{code}}.tar.gz {{url}} && sha256sum -c <(echo '{{sha256}}  /tmp/{{code}}.tar.gz') && mkdir -p /www/locales/{{code}} && tar -xzf /tmp/{{code}}.tar.gz -C /www/locales/{{code}} && echo {{version}} > /www/locales/{{code}}/.version"
+    },
+    "remove_dialog": {
+      "title": "删除语言包",
+      "description": "{{name}} 将从本设备中删除。您可以稍后从清单中重新安装。",
+      "description_active": "{{name}} 是当前活动语言。删除它将把 QManager 切换回英语。",
+      "confirm_button": "删除",
+      "cancel_button": "取消"
+    },
+    "empty_installed": "当前仅安装了内置语言。",
+    "error_missing_pack": "该语言包已不再可用。",
+    "disk_hint": "该语言包需要 /www 上约 {{kb}} KB 的可用空间。"
   }
 }

@@ -19,6 +19,8 @@
     "applying": "应用中…",
     "disconnecting": "断开连接中…",
     "reconnecting": "重新连接中…",
+    "installing": "正在安装…",
+    "removing": "正在删除…",
     "enabled": "已启用",
     "disabled": "已禁用",
     "on": "开",
