@@ -67,10 +67,18 @@ const data = {
       url: "/system-settings",
       icon: SettingsIcon,
       items: [
-        { t_key: "configuration_backup", url: "/system-settings/config-backup" },
+        { t_key: "languages", url: "/system-settings/languages" },
+        {
+          t_key: "configuration_backup",
+          url: "/system-settings/config-backup",
+        },
         { t_key: "ssh_password", url: "/system-settings/ssh-password" },
-        { t_key: "bandwidth_monitor", url: "/system-settings/bandwidth-monitor" },
+        {
+          t_key: "bandwidth_monitor",
+          url: "/system-settings/bandwidth-monitor",
+        },
         { t_key: "logs", url: "/system-settings/logs" },
+        { t_key: "luci", url: "/cgi-bin/luci" },
       ],
     },
     {
@@ -78,9 +86,11 @@ const data = {
       url: "/system-settings/software-update",
       icon: DownloadIcon,
     },
-    { t_key: "at_terminal", url: "/system-settings/at-terminal", icon: TerminalIcon },
-    { t_key: "languages", url: "/system-settings/languages", icon: LanguagesIcon },
-    { t_key: "luci", url: "/cgi-bin/luci", icon: PackageOpenIcon },
+    {
+      t_key: "at_terminal",
+      url: "/system-settings/at-terminal",
+      icon: TerminalIcon,
+    },
   ],
   navSecondary: [
     { t_key: "about_device", url: "/about-device", icon: RouterIcon },
@@ -103,7 +113,10 @@ const data = {
       url: "/cellular/custom-profiles",
       icon: User2Icon,
       items: [
-        { t_key: "connection_scenarios", url: "/cellular/custom-profiles/connection-scenarios" },
+        {
+          t_key: "connection_scenarios",
+          url: "/cellular/custom-profiles/connection-scenarios",
+        },
       ],
     },
     {
@@ -112,7 +125,10 @@ const data = {
       icon: LucideSignal,
       items: [
         { t_key: "tower_locking", url: "/cellular/cell-locking/tower-locking" },
-        { t_key: "frequency_locking", url: "/cellular/cell-locking/frequency-locking" },
+        {
+          t_key: "frequency_locking",
+          url: "/cellular/cell-locking/frequency-locking",
+        },
       ],
     },
     {
@@ -120,8 +136,14 @@ const data = {
       url: "/cellular/cell-scanner",
       icon: ScanIcon,
       items: [
-        { t_key: "neighboring_cells", url: "/cellular/cell-scanner/neighbourcell-scanner" },
-        { t_key: "frequency_calculator", url: "/cellular/cell-scanner/frequency-calculator" },
+        {
+          t_key: "neighboring_cells",
+          url: "/cellular/cell-scanner/neighbourcell-scanner",
+        },
+        {
+          t_key: "frequency_calculator",
+          url: "/cellular/cell-scanner/frequency-calculator",
+        },
       ],
     },
     {
@@ -130,7 +152,10 @@ const data = {
       icon: Settings2,
       items: [
         { t_key: "apn_management", url: "/cellular/settings/apn-management" },
-        { t_key: "network_priority", url: "/cellular/settings/network-priority" },
+        {
+          t_key: "network_priority",
+          url: "/cellular/settings/network-priority",
+        },
         { t_key: "imei_settings", url: "/cellular/settings/imei-settings" },
         { t_key: "fplmn_settings", url: "/cellular/settings/fplmn-settings" },
       ],
@@ -146,7 +171,10 @@ const data = {
         { t_key: "custom_dns", url: "/local-network/custom-dns" },
         { t_key: "ttl_mtu_settings", url: "/local-network/ttl-settings" },
         { t_key: "video_optimizer", url: "/local-network/video-optimizer" },
-        { t_key: "traffic_masquerade", url: "/local-network/traffic-masquerade" },
+        {
+          t_key: "traffic_masquerade",
+          url: "/local-network/traffic-masquerade",
+        },
       ],
     },
   ],
