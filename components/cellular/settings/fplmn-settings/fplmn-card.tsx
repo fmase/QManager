@@ -65,7 +65,9 @@ const FPLMNCard = () => {
       if (data.success) {
         setHasEntries(data.has_entries);
       } else {
-        setFetchError(data.detail || "Failed to read blocked networks");
+        setFetchError(
+          resolveErrorMessage(t, undefined, data.detail, "Failed to read blocked networks")
+        );
       }
     } catch {
       if (mountedRef.current) {
@@ -76,7 +78,7 @@ const FPLMNCard = () => {
         setIsLoading(false);
       }
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     fetchStatus();
