@@ -20,6 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useLanguagePacks } from "@/hooks/use-language-packs";
+import { resolveErrorMessage } from "@/lib/i18n/resolve-error";
 import { buildCatalogView } from "@/lib/i18n/language-pack-manifest";
 import { AVAILABLE_LANGUAGES } from "@/lib/i18n/available-languages";
 import { persistLanguage } from "@/lib/i18n/config";
@@ -82,11 +83,14 @@ export function LanguagePackCard() {
       toast.info(t("languages.toast.install_started", { name: englishName }));
       const res = await startInstall(code);
       if (!res.ok) {
-        if (res.error === "install_in_progress") {
-          toast.error(t("languages.toast.install_in_progress"));
-        } else {
-          toast.error(t("languages.toast.install_failed", { name: englishName }));
-        }
+        toast.error(
+          resolveErrorMessage(
+            t,
+            res.error,
+            undefined,
+            t("languages.toast.install_failed", { name: englishName }),
+          ),
+        );
       }
     },
     [list, startInstall, t],

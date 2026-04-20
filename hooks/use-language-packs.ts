@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { LanguageCode, LanguagePackInstallState } from "@/types/i18n";
 import {
   cancelLanguagePackInstall,
@@ -11,6 +12,7 @@ import {
   type LanguagePackListResponse,
 } from "@/lib/i18n/language-pack-client";
 import { DEFAULT_MANIFEST_URL } from "@/lib/i18n/language-pack-manifest";
+import { resolveErrorMessage } from "@/lib/i18n/resolve-error";
 
 const STATUS_POLL_INTERVAL_MS = 1500;
 
@@ -28,6 +30,7 @@ export interface UseLanguagePacksReturn {
 }
 
 export function useLanguagePacks(manifestUrl: string = DEFAULT_MANIFEST_URL): UseLanguagePacksReturn {
+  const { t } = useTranslation(["system-settings", "errors"]);
   const [list, setList] = useState<LanguagePackListResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefetching, setIsRefetching] = useState(false);
@@ -121,13 +124,19 @@ export function useLanguagePacks(manifestUrl: string = DEFAULT_MANIFEST_URL): Us
       setInstall({ state: "running", code, progress: 0, message: "" });
       const res = await startLanguagePackInstall(code, manifestUrl);
       if (!res.ok) {
-        setInstall({ state: "failed", code, progress: 100, message: res.error });
+        const message = resolveErrorMessage(
+          t,
+          res.error,
+          undefined,
+          t("languages.toast.install_failed", { ns: "system-settings" }),
+        );
+        setInstall({ state: "failed", code, progress: 100, message });
         return res;
       }
       startPolling();
       return res;
     },
-    [manifestUrl, startPolling],
+    [manifestUrl, startPolling, t],
   );
 
   const cancelInstall = useCallback(async () => {
