@@ -503,5 +503,44 @@
       "description": "Cellular Modem Talk/Development Discord 社区是用户分享配置、共同排查问题和讨论蜂窝网络技巧的地方。欢迎加入！",
       "qr_alt": "QManager Discord 服务器邀请二维码"
     }
+  },
+  "signal_storm": {
+    "hud": {
+      "score": "得分",
+      "best": "最佳",
+      "wave": "波次"
+    },
+    "power_ups": {
+      "rapid_fire": "⚡ 快速射击",
+      "spread": "◈ 散射",
+      "shield": "◉ 护盾"
+    },
+    "pause": {
+      "title": "已暂停",
+      "resume_hint": "按 P 继续"
+    },
+    "game_over": {
+      "title": "游戏结束",
+      "score_label": "得分",
+      "new_high_score": "★ 新纪录 ★",
+      "best_prefix": "最佳：",
+      "controls_hint": "Enter 重试  •  Esc 退出"
+    },
+    "boss_defeated": "BOSS 已击败",
+    "muted": "已静音",
+    "boss_names": {
+      "tier_1": "信号干扰者",
+      "tier_2": "频率阻塞者",
+      "tier_3": "频段封锁者",
+      "tier_4": "网络毁灭者",
+      "tier_5": "核心腐化者"
+    },
+    "boss_subtitles": {
+      "tier_1": "正在干扰您的连接",
+      "tier_2": "正在阻塞所有频率",
+      "tier_3": "正在封锁每个频段",
+      "tier_4": "正在毁灭您的网络",
+      "tier_5": "正在腐化核心"
+    }
   }
 }

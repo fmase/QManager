@@ -503,5 +503,44 @@
       "description": "The Cellular Modem Talk/Development community on Discord is where users share configurations, troubleshoot issues together, and discuss cellular networking tips. Come say hello!",
       "qr_alt": "QR code for QManager Discord server invite"
     }
+  },
+  "signal_storm": {
+    "hud": {
+      "score": "SCORE",
+      "best": "BEST",
+      "wave": "WAVE"
+    },
+    "power_ups": {
+      "rapid_fire": "⚡ RAPID FIRE",
+      "spread": "◈ SPREAD",
+      "shield": "◉ SHIELD"
+    },
+    "pause": {
+      "title": "PAUSED",
+      "resume_hint": "Press P to resume"
+    },
+    "game_over": {
+      "title": "GAME OVER",
+      "score_label": "SCORE",
+      "new_high_score": "★ NEW HIGH SCORE ★",
+      "best_prefix": "BEST:",
+      "controls_hint": "Enter to retry  •  Esc to exit"
+    },
+    "boss_defeated": "BOSS DEFEATED",
+    "muted": "MUTED",
+    "boss_names": {
+      "tier_1": "SIGNAL DISRUPTOR",
+      "tier_2": "FREQUENCY JAMMER",
+      "tier_3": "BAND BLOCKER",
+      "tier_4": "NETWORK NULLIFIER",
+      "tier_5": "CORE CORRUPTOR"
+    },
+    "boss_subtitles": {
+      "tier_1": "Disrupting your connection",
+      "tier_2": "Jamming all frequencies",
+      "tier_3": "Blocking every band",
+      "tier_4": "Nullifying your network",
+      "tier_5": "Corrupting the core"
+    }
   }
 }
