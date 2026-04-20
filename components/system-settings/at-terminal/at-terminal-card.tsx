@@ -222,7 +222,7 @@ export default function ATTerminalCard() {
         if (rule.pattern.test(trimmed)) {
           appendEntry({
             command: trimmed,
-            response: t(`at_terminal.${rule.messageKey}`),
+            response: t(`blocked.${rule.messageKey}`, { ns: "at-commands" }),
             status: "blocked",
           });
           setInput("");
@@ -235,7 +235,7 @@ export default function ATTerminalCard() {
       for (const rule of WARNING_COMMANDS) {
         if (rule.pattern.test(trimmed)) {
           setWarning({
-            message: t(`at_terminal.${rule.messageKey}`),
+            message: t(`warnings.${rule.messageKey}`, { ns: "at-commands" }),
             command: trimmed,
           });
           return;

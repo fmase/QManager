@@ -151,7 +151,7 @@ export default function CommandsPopover({
               <CommandGroup heading={t("at_terminal.popover_group_default")}>
                 {DEFAULT_AT_COMMANDS.map((preset) => {
                   const label = preset.id
-                    ? t(`at_terminal.commands.${preset.id}`)
+                    ? t(preset.id, { ns: "at-commands" })
                     : preset.label;
                   return (
                     <CommandItem
