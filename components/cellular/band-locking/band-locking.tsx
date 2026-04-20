@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { useTranslation } from "react-i18next";
+import { useTranslation, Trans } from "react-i18next";
 import BandCardsComponent from "./band-cards";
 import BandSettingsComponent from "./band-settings";
 import { useBandLocking } from "@/hooks/use-band-locking";
@@ -104,7 +104,14 @@ const BandLockingComponent = () => {
         <Alert className="mb-4">
           <InfoIcon className="size-4" />
           <AlertDescription>
-            <p>{t("cell_locking.band_locking.scenario_override_banner", { scenario_name: activeScenarioName })}</p>
+            <p>
+                <Trans
+                  i18nKey="cell_locking.band_locking.scenario_override_banner"
+                  ns="cellular"
+                  values={{ scenario_name: activeScenarioName }}
+                  components={{ strong: <span className="font-semibold" /> }}
+                />
+              </p>
           </AlertDescription>
         </Alert>
       )}

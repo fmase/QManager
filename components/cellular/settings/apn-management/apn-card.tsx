@@ -2,7 +2,7 @@
 
 import { useState, useEffect, type FormEvent } from "react";
 import { toast } from "sonner";
-import { useTranslation } from "react-i18next";
+import { useTranslation, Trans } from "react-i18next";
 import {
   Card,
   CardContent,
@@ -201,9 +201,12 @@ const APNSettingsCard = ({
             <InfoIcon className="size-4" />
             <AlertDescription>
               <p>
-                {t("core_settings.apn.managed_by_profile", {
-                  profile_name: profileName ?? t("core_settings.apn.managed_by_profile_fallback"),
-                })}
+                <Trans
+                  i18nKey="core_settings.apn.managed_by_profile"
+                  ns="cellular"
+                  values={{ profile_name: profileName ?? t("core_settings.apn.managed_by_profile_fallback") }}
+                  components={{ strong: <span className="font-semibold" /> }}
+                />
               </p>
             </AlertDescription>
           </Alert>

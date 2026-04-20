@@ -174,6 +174,7 @@ const CustomDNSCard = () => {
                   <Field>
                     <FieldLabel htmlFor="tertiary-dns">
                       {t("dns.label_tertiary_dns")}
+                      <span className="text-muted-foreground">{t("dns.label_tertiary_dns_optional_suffix")}</span>
                     </FieldLabel>
                     <Input
                       id="tertiary-dns"

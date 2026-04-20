@@ -241,7 +241,11 @@ function TrafficMasqueradeForm({
           <Alert className="mb-4">
             <AlertTriangle className="size-4" />
             <AlertDescription>
-              {t("masquerade.alert_kernel_module_missing")}
+              <Trans
+                i18nKey="masquerade.alert_kernel_module_missing"
+                ns="local-network"
+                components={{ code: <code className="rounded bg-muted px-1 py-0.5 text-xs font-mono" /> }}
+              />
             </AlertDescription>
           </Alert>
         )}

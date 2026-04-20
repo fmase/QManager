@@ -345,7 +345,7 @@
         "title": "Band Locking",
         "description": "Restrict which LTE and NR bands the modem can use."
       },
-      "scenario_override_banner": "Band configuration is managed by the {{scenario_name}} scenario.",
+      "scenario_override_banner": "Band configuration is managed by the <strong>{{scenario_name}}</strong> scenario.",
       "settings_card": {
         "title": "Band Locking Settings",
         "description": "Restrict the modem to specific LTE and 5G bands. Enable failover to fall back to all bands if locked bands lose signal.",
@@ -1031,7 +1031,7 @@
           }
         }
       },
-      "managed_by_profile": "APN settings are managed by the {{profile_name}}.",
+      "managed_by_profile": "APN settings are managed by the <strong>{{profile_name}}</strong>.",
       "managed_by_profile_fallback": "active Custom SIM Profile",
       "reset_aria": "Reset to saved values",
       "toast": {

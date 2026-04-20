@@ -345,7 +345,7 @@
         "title": "频段锁定",
         "description": "限制调制解调器可使用的 LTE 和 NR 频段。"
       },
-      "scenario_override_banner": "频段配置由 {{scenario_name}} 场景管理。",
+      "scenario_override_banner": "频段配置由 <strong>{{scenario_name}}</strong> 场景管理。",
       "settings_card": {
         "title": "频段锁定设置",
         "description": "将调制解调器限制到特定的 LTE 和 5G 频段。启用故障转移，以便在锁定频段失去信号时回退到全部频段。",
@@ -1031,7 +1031,7 @@
           }
         }
       },
-      "managed_by_profile": "APN 设置由 {{profile_name}} 管理。",
+      "managed_by_profile": "APN 设置由 <strong>{{profile_name}}</strong> 管理。",
       "managed_by_profile_fallback": "活动的自定义 SIM 配置",
       "reset_aria": "重置为已保存值",
       "toast": {
