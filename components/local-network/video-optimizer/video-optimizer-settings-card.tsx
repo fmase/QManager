@@ -336,7 +336,7 @@ function VideoOptimizerForm({
   const isDirty = useMemo(() => {
     if (!settings) return false;
     const currentRepeats = settings.desync_repeats;
-    const typedRepeats = repeatsValid ? parseInt(repeatsText, 10) : currentRepeats;
+    const typedRepeats = repeatsValid ? parseInt(repeatsText, 10) : NaN;
     return isEnabled !== settings.enabled || typedRepeats !== currentRepeats;
   }, [settings, isEnabled, repeatsText, repeatsValid]);
 
