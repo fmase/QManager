@@ -429,5 +429,79 @@
     "empty_installed": "Only built-in languages are currently installed.",
     "error_missing_pack": "This language pack is no longer available.",
     "disk_hint": "The pack requires about {{kb}} KB of free space on /www."
+  },
+  "about_device": {
+    "page": {
+      "title": "About Device",
+      "subtitle": "Device identity, network addresses, and system information."
+    },
+    "device_info": {
+      "card_title": "Device Information",
+      "card_description": "Modem identity and system details.",
+      "image_alt": "{{model}} modem",
+      "image_alt_fallback": "Modem",
+      "sections": {
+        "device": "Device",
+        "system": "System"
+      },
+      "fields": {
+        "manufacturer_label": "Manufacturer",
+        "model_label": "Model",
+        "firmware_label": "Firmware",
+        "build_date_label": "Build Date",
+        "imei_label": "IMEI",
+        "lte_3gpp_release_label": "3GPP Release (LTE)",
+        "nr5g_3gpp_release_label": "3GPP Release (NR5G)",
+        "hostname_label": "Hostname",
+        "openwrt_version_label": "OpenWRT Version",
+        "kernel_version_label": "Kernel Version"
+      },
+      "error": {
+        "title": "Failed to load device information",
+        "retry_button": "Retry"
+      }
+    },
+    "about_qmanager": {
+      "card_title": "About QManager",
+      "card_description": "Modem management interface for OpenWRT.",
+      "copyright": "© {{year}} QManager. All rights reserved.",
+      "sections": {
+        "qmanager": "QManager",
+        "network": "Network"
+      },
+      "fields": {
+        "version_label": "Version",
+        "device_ip_label": "Device IP",
+        "lan_subnet_label": "LAN Subnet",
+        "wwan_ipv4_label": "WWAN IPv4",
+        "wwan_ipv6_label": "WWAN IPv6",
+        "public_ipv4_label": "Public IPv4",
+        "public_ipv6_label": "Public IPv6"
+      }
+    },
+    "errors": {
+      "fetch_failed": "Failed to fetch device information"
+    }
+  },
+  "support": {
+    "page": {
+      "title": "Support",
+      "subtitle": "Get help, report issues, or connect with the community."
+    },
+    "contact": {
+      "card_title": "Contact",
+      "card_description": "Reach out for questions, bug reports, or feature requests.",
+      "description": "Found a bug, have a feature idea, or need help with your setup? Reach out through any of the channels below.",
+      "fields": {
+        "email_label": "Email",
+        "github_label": "GitHub"
+      }
+    },
+    "community": {
+      "card_title": "Community",
+      "card_description": "Join the Cellular Modem Talk/Development Discord server.",
+      "description": "The Cellular Modem Talk/Development community on Discord is where users share configurations, troubleshoot issues together, and discuss cellular networking tips. Come say hello!",
+      "qr_alt": "QR code for QManager Discord server invite"
+    }
   }
 }

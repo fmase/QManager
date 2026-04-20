@@ -429,5 +429,79 @@
     "empty_installed": "当前仅安装了内置语言。",
     "error_missing_pack": "该语言包已不再可用。",
     "disk_hint": "该语言包需要 /www 上约 {{kb}} KB 的可用空间。"
+  },
+  "about_device": {
+    "page": {
+      "title": "关于设备",
+      "subtitle": "设备标识、网络地址和系统信息。"
+    },
+    "device_info": {
+      "card_title": "设备信息",
+      "card_description": "调制解调器标识和系统详细信息。",
+      "image_alt": "{{model}} 调制解调器",
+      "image_alt_fallback": "调制解调器",
+      "sections": {
+        "device": "设备",
+        "system": "系统"
+      },
+      "fields": {
+        "manufacturer_label": "制造商",
+        "model_label": "型号",
+        "firmware_label": "固件",
+        "build_date_label": "构建日期",
+        "imei_label": "IMEI",
+        "lte_3gpp_release_label": "3GPP 版本 (LTE)",
+        "nr5g_3gpp_release_label": "3GPP 版本 (NR5G)",
+        "hostname_label": "主机名",
+        "openwrt_version_label": "OpenWRT 版本",
+        "kernel_version_label": "内核版本"
+      },
+      "error": {
+        "title": "加载设备信息失败",
+        "retry_button": "重试"
+      }
+    },
+    "about_qmanager": {
+      "card_title": "关于 QManager",
+      "card_description": "用于 OpenWRT 的调制解调器管理界面。",
+      "copyright": "© {{year}} QManager。版权所有。",
+      "sections": {
+        "qmanager": "QManager",
+        "network": "网络"
+      },
+      "fields": {
+        "version_label": "版本",
+        "device_ip_label": "设备 IP",
+        "lan_subnet_label": "LAN 子网",
+        "wwan_ipv4_label": "WWAN IPv4",
+        "wwan_ipv6_label": "WWAN IPv6",
+        "public_ipv4_label": "公网 IPv4",
+        "public_ipv6_label": "公网 IPv6"
+      }
+    },
+    "errors": {
+      "fetch_failed": "获取设备信息失败"
+    }
+  },
+  "support": {
+    "page": {
+      "title": "支持",
+      "subtitle": "获取帮助、报告问题或与社区联系。"
+    },
+    "contact": {
+      "card_title": "联系",
+      "card_description": "就问题、错误报告或功能请求与我们联系。",
+      "description": "发现错误、有功能建议或需要设置帮助？通过下方任何一个渠道与我们联系。",
+      "fields": {
+        "email_label": "电子邮件",
+        "github_label": "GitHub"
+      }
+    },
+    "community": {
+      "card_title": "社区",
+      "card_description": "加入蜂窝调制解调器讨论/开发 Discord 服务器。",
+      "description": "Cellular Modem Talk/Development Discord 社区是用户分享配置、共同排查问题和讨论蜂窝网络技巧的地方。欢迎加入！",
+      "qr_alt": "QManager Discord 服务器邀请二维码"
+    }
   }
 }
