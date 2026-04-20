@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { authFetch } from "@/lib/auth-fetch";
+import { resolveErrorMessage } from "@/lib/i18n/resolve-error";
 
 // =============================================================================
 // useTtlSettings — One-Shot TTL/HL Fetch & Save Hook
@@ -42,6 +44,7 @@ export interface UseTtlSettingsReturn {
 }
 
 export function useTtlSettings(): UseTtlSettingsReturn {
+  const { t } = useTranslation("errors");
   const [data, setData] = useState<TtlSettingsData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -73,7 +76,7 @@ export function useTtlSettings(): UseTtlSettingsReturn {
       if (!mountedRef.current) return;
 
       if (!json.success) {
-        setError(json.error || "Failed to fetch TTL settings");
+        setError(resolveErrorMessage(t, json.error, undefined, "Failed to fetch TTL settings"));
         return;
       }
 
@@ -93,7 +96,7 @@ export function useTtlSettings(): UseTtlSettingsReturn {
         setIsLoading(false);
       }
     }
-  }, []);
+  }, [t]);
 
   // Fetch on mount
   useEffect(() => {
@@ -123,7 +126,7 @@ export function useTtlSettings(): UseTtlSettingsReturn {
         if (!mountedRef.current) return false;
 
         if (!json.success) {
-          setError(json.detail || json.error || "Failed to apply TTL/HL");
+          setError(resolveErrorMessage(t, json.error, json.detail, "Failed to apply TTL/HL"));
           return false;
         }
 
@@ -140,7 +143,7 @@ export function useTtlSettings(): UseTtlSettingsReturn {
         }
       }
     },
-    [fetchTtl],
+    [fetchTtl, t],
   );
 
   return {

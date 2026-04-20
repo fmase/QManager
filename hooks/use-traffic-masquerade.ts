@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { authFetch } from "@/lib/auth-fetch";
+import { resolveErrorMessage } from "@/lib/i18n/resolve-error";
 import type {
   MasqueradeTestResult,
   TrafficMasqueradeResponse,
@@ -11,6 +13,7 @@ import type {
 const API_URL = "/cgi-bin/quecmanager/network/video_optimizer.sh";
 
 export function useTrafficMasquerade() {
+  const { t } = useTranslation("errors");
   const [settings, setSettings] = useState<TrafficMasqueradeSettings | null>(
     null
   );
@@ -80,7 +83,7 @@ export function useTrafficMasquerade() {
 
         const data = await response.json();
         if (!data.success) {
-          setError(data.detail || "Failed to save settings");
+          setError(resolveErrorMessage(t, undefined, data.detail, "Failed to save settings"));
           return false;
         }
 
@@ -97,7 +100,7 @@ export function useTrafficMasquerade() {
         if (mountedRef.current) setIsSaving(false);
       }
     },
-    [fetchSettings]
+    [fetchSettings, t]
   );
 
   const [testResult, setTestResult] = useState<MasqueradeTestResult>({
@@ -179,7 +182,7 @@ export function useTrafficMasquerade() {
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const data = await response.json();
       if (!data.success) {
-        setError(data.detail || "Failed to uninstall");
+        setError(resolveErrorMessage(t, undefined, data.detail, "Failed to uninstall"));
         return false;
       }
       await fetchSettings(true);
@@ -192,7 +195,7 @@ export function useTrafficMasquerade() {
     } finally {
       if (mountedRef.current) setIsUninstalling(false);
     }
-  }, [fetchSettings]);
+  }, [fetchSettings, t]);
 
   return {
     settings,

@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { authFetch } from "@/lib/auth-fetch";
+import { resolveErrorMessage } from "@/lib/i18n/resolve-error";
 import type {
   VideoOptimizerResponse,
   VideoOptimizerSettings,
@@ -12,6 +14,7 @@ import type {
 const API_URL = "/cgi-bin/quecmanager/network/video_optimizer.sh";
 
 export function useVideoOptimizer() {
+  const { t } = useTranslation("errors");
   const [settings, setSettings] = useState<VideoOptimizerSettings | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -91,7 +94,7 @@ export function useVideoOptimizer() {
 
         const data = await response.json();
         if (!data.success) {
-          setError(data.detail || "Failed to save settings");
+          setError(resolveErrorMessage(t, undefined, data.detail, "Failed to save settings"));
           return false;
         }
 
@@ -109,7 +112,7 @@ export function useVideoOptimizer() {
         if (mountedRef.current) setIsSaving(false);
       }
     },
-    [fetchSettings]
+    [fetchSettings, t]
   );
 
   const stopVerifyPolling = useCallback(() => {
@@ -256,7 +259,7 @@ export function useVideoOptimizer() {
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const data = await response.json();
       if (!data.success) {
-        setError(data.detail || "Failed to uninstall");
+        setError(resolveErrorMessage(t, undefined, data.detail, "Failed to uninstall"));
         return false;
       }
       await fetchSettings(true);
@@ -269,7 +272,7 @@ export function useVideoOptimizer() {
     } finally {
       if (mountedRef.current) setIsUninstalling(false);
     }
-  }, [fetchSettings]);
+  }, [fetchSettings, t]);
 
   return {
     settings,

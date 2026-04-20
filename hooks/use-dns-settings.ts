@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { authFetch } from "@/lib/auth-fetch";
+import { resolveErrorMessage } from "@/lib/i18n/resolve-error";
 
 // =============================================================================
 // useDnsSettings — Custom DNS Fetch & Save Hook
@@ -54,6 +56,7 @@ export interface UseDnsSettingsReturn {
 }
 
 export function useDnsSettings(): UseDnsSettingsReturn {
+  const { t } = useTranslation("errors");
   const [data, setData] = useState<DnsSettingsData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -85,7 +88,7 @@ export function useDnsSettings(): UseDnsSettingsReturn {
       if (!mountedRef.current) return;
 
       if (!json.success) {
-        setError(json.error || "Failed to fetch DNS settings");
+        setError(resolveErrorMessage(t, json.error, undefined, "Failed to fetch DNS settings"));
         return;
       }
 
@@ -110,7 +113,7 @@ export function useDnsSettings(): UseDnsSettingsReturn {
         setIsLoading(false);
       }
     }
-  }, []);
+  }, [t]);
 
   // Fetch on mount
   useEffect(() => {
@@ -140,7 +143,7 @@ export function useDnsSettings(): UseDnsSettingsReturn {
         if (!mountedRef.current) return false;
 
         if (!json.success) {
-          setError(json.detail || json.error || "Failed to apply DNS settings");
+          setError(resolveErrorMessage(t, json.error, json.detail, "Failed to apply DNS settings"));
           return false;
         }
 
@@ -159,7 +162,7 @@ export function useDnsSettings(): UseDnsSettingsReturn {
         }
       }
     },
-    [fetchDns],
+    [fetchDns, t],
   );
 
   return {
