@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { Mail, ExternalLink } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import {
   Card,
   CardContent,
@@ -30,13 +31,13 @@ const DiscordIcon = ({ className }: { className?: string }) => (
 // =============================================================================
 
 const SupportComponent = () => {
+  const { t } = useTranslation("system-settings");
+
   return (
     <div className="@container/main mx-auto p-2">
       <div className="mb-6">
-        <h1 className="text-3xl font-bold mb-2">Support</h1>
-        <p className="text-muted-foreground">
-          Get help, report issues, or connect with the community.
-        </p>
+        <h1 className="text-3xl font-bold mb-2">{t("support.page.title")}</h1>
+        <p className="text-muted-foreground">{t("support.page.subtitle")}</p>
       </div>
       <div className="grid grid-cols-1 @3xl/main:grid-cols-2 grid-flow-row gap-4">
         {/* Contact Card */}
@@ -44,23 +45,22 @@ const SupportComponent = () => {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Mail className="h-5 w-5 text-muted-foreground" />
-              Contact
+              {t("support.contact.card_title")}
             </CardTitle>
             <CardDescription>
-              Reach out for questions, bug reports, or feature requests.
+              {t("support.contact.card_description")}
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="grid gap-6">
               <p className="text-sm text-muted-foreground leading-relaxed">
-                Found a bug, have a feature idea, or need help with your
-                setup? Reach out through any of the channels below.
+                {t("support.contact.description")}
               </p>
               <div>
                 <dl className="grid divide-y divide-border border-y border-border">
                   <div className="flex items-center justify-between py-2">
                     <dt className="text-sm font-semibold text-muted-foreground">
-                      Email
+                      {t("support.contact.fields.email_label")}
                     </dt>
                     <dd className="text-sm font-semibold min-w-0">
                       <a
@@ -74,7 +74,7 @@ const SupportComponent = () => {
                   </div>
                   <div className="flex items-center justify-between py-2">
                     <dt className="text-sm font-semibold text-muted-foreground">
-                      GitHub
+                      {t("support.contact.fields.github_label")}
                     </dt>
                     <dd className="text-sm font-semibold">
                       <a
@@ -99,24 +99,22 @@ const SupportComponent = () => {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <DiscordIcon className="h-5 w-5 text-muted-foreground" />
-              Community
+              {t("support.community.card_title")}
             </CardTitle>
             <CardDescription>
-              Join the Cellular Modem Talk/Development Discord server.
+              {t("support.community.card_description")}
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="grid gap-6">
               <p className="text-sm text-muted-foreground leading-relaxed">
-                The Cellular Modem Talk/Development community on Discord is where users share
-                configurations, troubleshoot issues together, and discuss
-                cellular networking tips. Come say hello!
+                {t("support.community.description")}
               </p>
               <div className="flex flex-col items-center gap-4">
                 <div className="rounded-lg border border-border bg-muted p-2">
                   <Image
                     src="/discord-qr.svg"
-                    alt="QR code for QManager Discord server invite"
+                    alt={t("support.community.qr_alt")}
                     width={192}
                     height={192}
                     className="size-48"
