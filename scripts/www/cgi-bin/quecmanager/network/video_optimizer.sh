@@ -201,6 +201,24 @@ POST)
             exit 0
         fi
 
+        # Optional: desync_repeats (integer 1-10). Absence = no change.
+        new_repeats=$(echo "$POST_DATA" | jq -r '(.desync_repeats) | if . == null then empty else tostring end')
+        if [ -n "$new_repeats" ]; then
+            case "$new_repeats" in
+                ''|*[!0-9]*)
+                    cgi_error "invalid_repeats" "desync_repeats must be an integer between 1 and 10"
+                    exit 0
+                    ;;
+                *)
+                    if [ "$new_repeats" -lt 1 ] || [ "$new_repeats" -gt 10 ]; then
+                        cgi_error "invalid_repeats" "desync_repeats must be an integer between 1 and 10"
+                        exit 0
+                    fi
+                    ;;
+            esac
+            uci set quecmanager.video_optimizer.desync_repeats="$new_repeats"
+        fi
+
         # Map to UCI value — enforce mutual exclusion with masquerade
         if [ "$new_enabled" = "true" ]; then
             uci set quecmanager.traffic_masquerade.enabled='0'
