@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { authFetch } from "@/lib/auth-fetch";
+import { resolveErrorMessage } from "@/lib/i18n/resolve-error";
 
 const CGI_ENDPOINT = "/cgi-bin/quecmanager/monitoring/watchdog.sh";
 
@@ -72,6 +74,7 @@ export interface UseWatchdogSettingsReturn {
 // ─── Hook ──────────────────────────────────────────────────────────────────
 
 export function useWatchdogSettings(): UseWatchdogSettingsReturn {
+  const { t } = useTranslation("errors");
   const [settings, setSettings] = useState<WatchdogSettings | null>(null);
   const [status, setStatus] = useState<WatchdogLiveStatus | null>(null);
   const [simFailover, setSimFailover] = useState<SimFailoverInfo | null>(null);
@@ -106,7 +109,7 @@ export function useWatchdogSettings(): UseWatchdogSettingsReturn {
       if (!mountedRef.current) return;
 
       if (!json.success) {
-        setError(json.error || "Failed to fetch watchdog settings");
+        setError(resolveErrorMessage(t, json.error, undefined, "Failed to fetch watchdog settings"));
         return;
       }
 
@@ -127,7 +130,7 @@ export function useWatchdogSettings(): UseWatchdogSettingsReturn {
         setIsLoading(false);
       }
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     fetchSettings();
@@ -156,7 +159,7 @@ export function useWatchdogSettings(): UseWatchdogSettingsReturn {
         if (!mountedRef.current) return false;
 
         if (!json.success) {
-          setError(json.reason || json.error || "Failed to save watchdog settings");
+          setError(resolveErrorMessage(t, json.error, json.reason, "Failed to save watchdog settings"));
           return false;
         }
 
@@ -175,7 +178,7 @@ export function useWatchdogSettings(): UseWatchdogSettingsReturn {
         }
       }
     },
-    [fetchSettings]
+    [fetchSettings, t]
   );
 
   // ---------------------------------------------------------------------------

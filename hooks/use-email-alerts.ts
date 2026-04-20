@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { authFetch } from "@/lib/auth-fetch";
+import { resolveErrorMessage } from "@/lib/i18n/resolve-error";
 import type { InstallResult } from "@/types/video-optimizer";
 
 // =============================================================================
@@ -55,6 +57,7 @@ export interface UseEmailAlertsReturn {
 // ─── Hook ──────────────────────────────────────────────────────────────────
 
 export function useEmailAlerts(): UseEmailAlertsReturn {
+  const { t } = useTranslation("errors");
   const [settings, setSettings] = useState<EmailAlertsSettings | null>(null);
   const [msmtpInstalled, setMsmtpInstalled] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
@@ -95,7 +98,7 @@ export function useEmailAlerts(): UseEmailAlertsReturn {
       if (!mountedRef.current) return;
 
       if (!json.success) {
-        setError(json.error || "Failed to fetch email alert settings");
+        setError(resolveErrorMessage(t, json.error, undefined, "Failed to fetch email alert settings"));
         return;
       }
 
@@ -113,7 +116,7 @@ export function useEmailAlerts(): UseEmailAlertsReturn {
         setIsLoading(false);
       }
     }
-  }, []);
+  }, [t]);
 
   // Fetch on mount
   useEffect(() => {
@@ -143,7 +146,7 @@ export function useEmailAlerts(): UseEmailAlertsReturn {
         if (!mountedRef.current) return false;
 
         if (!json.success) {
-          setError(json.detail || json.error || "Failed to save settings");
+          setError(resolveErrorMessage(t, json.error, json.detail, "Failed to save settings"));
           return false;
         }
 
@@ -162,7 +165,7 @@ export function useEmailAlerts(): UseEmailAlertsReturn {
         }
       }
     },
-    [fetchSettings],
+    [fetchSettings, t],
   );
 
   // ---------------------------------------------------------------------------
@@ -253,7 +256,7 @@ export function useEmailAlerts(): UseEmailAlertsReturn {
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       const json = await resp.json();
       if (!json.success) {
-        setError(json.detail || "Failed to uninstall");
+        setError(resolveErrorMessage(t, json.error, json.detail, "Failed to uninstall"));
         return false;
       }
       await fetchSettings(true);
@@ -266,7 +269,7 @@ export function useEmailAlerts(): UseEmailAlertsReturn {
     } finally {
       if (mountedRef.current) setIsUninstalling(false);
     }
-  }, [fetchSettings]);
+  }, [fetchSettings, t]);
 
   return {
     settings,

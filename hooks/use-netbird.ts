@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { authFetch } from "@/lib/auth-fetch";
+import { resolveErrorMessage } from "@/lib/i18n/resolve-error";
 import type { InstallResult } from "@/types/video-optimizer";
 
 // =============================================================================
@@ -73,6 +75,7 @@ export interface UseNetBirdReturn {
 // ─── Hook ──────────────────────────────────────────────────────────────────
 
 export function useNetBird(): UseNetBirdReturn {
+  const { t } = useTranslation("errors");
   const [status, setStatus] = useState<NetBirdStatus | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isConnecting, setIsConnecting] = useState(false);
@@ -114,7 +117,7 @@ export function useNetBird(): UseNetBirdReturn {
       if (!mountedRef.current) return;
 
       if (!json.success) {
-        setError(json.error || "Failed to fetch NetBird status");
+        setError(resolveErrorMessage(t, json.error, undefined, "Failed to fetch NetBird status"));
         return;
       }
 
@@ -129,7 +132,7 @@ export function useNetBird(): UseNetBirdReturn {
         setIsLoading(false);
       }
     }
-  }, []);
+  }, [t]);
 
   // ---------------------------------------------------------------------------
   // Fixed-interval polling
@@ -187,7 +190,7 @@ export function useNetBird(): UseNetBirdReturn {
         if (!mountedRef.current) return false;
 
         if (!json.success) {
-          setError(json.detail || json.error || "Failed to connect");
+          setError(resolveErrorMessage(t, json.error, json.detail, "Failed to connect"));
           return false;
         }
 
@@ -204,7 +207,7 @@ export function useNetBird(): UseNetBirdReturn {
         if (mountedRef.current) setIsConnecting(false);
       }
     },
-    [postAction, fetchStatus],
+    [postAction, fetchStatus, t],
   );
 
   const disconnect = useCallback(async (): Promise<boolean> => {
@@ -216,7 +219,7 @@ export function useNetBird(): UseNetBirdReturn {
       if (!mountedRef.current) return false;
 
       if (!json.success) {
-        setError(json.detail || json.error || "Failed to disconnect");
+        setError(resolveErrorMessage(t, json.error, json.detail, "Failed to disconnect"));
         return false;
       }
 
@@ -231,7 +234,7 @@ export function useNetBird(): UseNetBirdReturn {
     } finally {
       if (mountedRef.current) setIsDisconnecting(false);
     }
-  }, [postAction, fetchStatus]);
+  }, [postAction, fetchStatus, t]);
 
   const startService = useCallback(async (): Promise<boolean> => {
     setIsTogglingService(true);
@@ -242,7 +245,7 @@ export function useNetBird(): UseNetBirdReturn {
       if (!mountedRef.current) return false;
 
       if (!json.success) {
-        setError(json.detail || json.error || "Failed to start service");
+        setError(resolveErrorMessage(t, json.error, json.detail, "Failed to start service"));
         return false;
       }
 
@@ -257,7 +260,7 @@ export function useNetBird(): UseNetBirdReturn {
     } finally {
       if (mountedRef.current) setIsTogglingService(false);
     }
-  }, [postAction, fetchStatus]);
+  }, [postAction, fetchStatus, t]);
 
   const stopService = useCallback(async (): Promise<boolean> => {
     setIsTogglingService(true);
@@ -268,7 +271,7 @@ export function useNetBird(): UseNetBirdReturn {
       if (!mountedRef.current) return false;
 
       if (!json.success) {
-        setError(json.detail || json.error || "Failed to stop service");
+        setError(resolveErrorMessage(t, json.error, json.detail, "Failed to stop service"));
         return false;
       }
 
@@ -283,7 +286,7 @@ export function useNetBird(): UseNetBirdReturn {
     } finally {
       if (mountedRef.current) setIsTogglingService(false);
     }
-  }, [postAction, fetchStatus]);
+  }, [postAction, fetchStatus, t]);
 
   const setBootEnabled = useCallback(
     async (enabled: boolean): Promise<boolean> => {
@@ -297,7 +300,7 @@ export function useNetBird(): UseNetBirdReturn {
         if (!mountedRef.current) return false;
 
         if (!json.success) {
-          setError(json.detail || json.error || "Failed to update boot setting");
+          setError(resolveErrorMessage(t, json.error, json.detail, "Failed to update boot setting"));
           return false;
         }
 
@@ -311,7 +314,7 @@ export function useNetBird(): UseNetBirdReturn {
         return false;
       }
     },
-    [postAction, fetchStatus],
+    [postAction, fetchStatus, t],
   );
 
   // ---------------------------------------------------------------------------
@@ -365,7 +368,7 @@ export function useNetBird(): UseNetBirdReturn {
       const json = await postAction({ action: "uninstall" });
       if (!mountedRef.current) return false;
       if (!json.success) {
-        setError(json.detail || "Failed to uninstall");
+        setError(resolveErrorMessage(t, json.error, json.detail, "Failed to uninstall"));
         return false;
       }
       await fetchStatus(true);
@@ -380,7 +383,7 @@ export function useNetBird(): UseNetBirdReturn {
     } finally {
       if (mountedRef.current) setIsUninstalling(false);
     }
-  }, [postAction, fetchStatus]);
+  }, [postAction, fetchStatus, t]);
 
   return {
     status,

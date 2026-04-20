@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { authFetch } from "@/lib/auth-fetch";
+import { resolveErrorMessage } from "@/lib/i18n/resolve-error";
 import type { InstallResult } from "@/types/video-optimizer";
 
 // =============================================================================
@@ -87,6 +89,7 @@ export interface UseTailscaleReturn {
 // ─── Hook ──────────────────────────────────────────────────────────────────
 
 export function useTailscale(): UseTailscaleReturn {
+  const { t } = useTranslation("errors");
   const [status, setStatus] = useState<TailscaleStatus | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isConnecting, setIsConnecting] = useState(false);
@@ -128,7 +131,7 @@ export function useTailscale(): UseTailscaleReturn {
       if (!mountedRef.current) return;
 
       if (!json.success) {
-        setError(json.error || "Failed to fetch Tailscale status");
+        setError(resolveErrorMessage(t, json.error, undefined, "Failed to fetch Tailscale status"));
         return;
       }
 
@@ -143,7 +146,7 @@ export function useTailscale(): UseTailscaleReturn {
         setIsLoading(false);
       }
     }
-  }, []);
+  }, [t]);
 
   // ---------------------------------------------------------------------------
   // Adaptive polling — faster during auth wait
@@ -203,7 +206,7 @@ export function useTailscale(): UseTailscaleReturn {
       if (!mountedRef.current) return false;
 
       if (!json.success) {
-        setError(json.detail || json.error || "Failed to connect");
+        setError(resolveErrorMessage(t, json.error, json.detail, "Failed to connect"));
         return false;
       }
 
@@ -217,7 +220,7 @@ export function useTailscale(): UseTailscaleReturn {
     } finally {
       if (mountedRef.current) setIsConnecting(false);
     }
-  }, [postAction, fetchStatus]);
+  }, [postAction, fetchStatus, t]);
 
   const disconnect = useCallback(async (): Promise<boolean> => {
     setIsDisconnecting(true);
@@ -228,7 +231,7 @@ export function useTailscale(): UseTailscaleReturn {
       if (!mountedRef.current) return false;
 
       if (!json.success) {
-        setError(json.detail || json.error || "Failed to disconnect");
+        setError(resolveErrorMessage(t, json.error, json.detail, "Failed to disconnect"));
         return false;
       }
 
@@ -241,7 +244,7 @@ export function useTailscale(): UseTailscaleReturn {
     } finally {
       if (mountedRef.current) setIsDisconnecting(false);
     }
-  }, [postAction, fetchStatus]);
+  }, [postAction, fetchStatus, t]);
 
   const logout = useCallback(async (): Promise<boolean> => {
     setIsDisconnecting(true);
@@ -252,7 +255,7 @@ export function useTailscale(): UseTailscaleReturn {
       if (!mountedRef.current) return false;
 
       if (!json.success) {
-        setError(json.detail || json.error || "Failed to logout");
+        setError(resolveErrorMessage(t, json.error, json.detail, "Failed to logout"));
         return false;
       }
 
@@ -265,7 +268,7 @@ export function useTailscale(): UseTailscaleReturn {
     } finally {
       if (mountedRef.current) setIsDisconnecting(false);
     }
-  }, [postAction, fetchStatus]);
+  }, [postAction, fetchStatus, t]);
 
   const startService = useCallback(async (): Promise<boolean> => {
     setIsTogglingService(true);
@@ -276,7 +279,7 @@ export function useTailscale(): UseTailscaleReturn {
       if (!mountedRef.current) return false;
 
       if (!json.success) {
-        setError(json.detail || json.error || "Failed to start service");
+        setError(resolveErrorMessage(t, json.error, json.detail, "Failed to start service"));
         return false;
       }
 
@@ -289,7 +292,7 @@ export function useTailscale(): UseTailscaleReturn {
     } finally {
       if (mountedRef.current) setIsTogglingService(false);
     }
-  }, [postAction, fetchStatus]);
+  }, [postAction, fetchStatus, t]);
 
   const stopService = useCallback(async (): Promise<boolean> => {
     setIsTogglingService(true);
@@ -300,7 +303,7 @@ export function useTailscale(): UseTailscaleReturn {
       if (!mountedRef.current) return false;
 
       if (!json.success) {
-        setError(json.detail || json.error || "Failed to stop service");
+        setError(resolveErrorMessage(t, json.error, json.detail, "Failed to stop service"));
         return false;
       }
 
@@ -313,7 +316,7 @@ export function useTailscale(): UseTailscaleReturn {
     } finally {
       if (mountedRef.current) setIsTogglingService(false);
     }
-  }, [postAction, fetchStatus]);
+  }, [postAction, fetchStatus, t]);
 
   const setBootEnabled = useCallback(
     async (enabled: boolean): Promise<boolean> => {
@@ -327,7 +330,7 @@ export function useTailscale(): UseTailscaleReturn {
         if (!mountedRef.current) return false;
 
         if (!json.success) {
-          setError(json.detail || json.error || "Failed to update boot setting");
+          setError(resolveErrorMessage(t, json.error, json.detail, "Failed to update boot setting"));
           return false;
         }
 
@@ -341,7 +344,7 @@ export function useTailscale(): UseTailscaleReturn {
         return false;
       }
     },
-    [postAction, fetchStatus],
+    [postAction, fetchStatus, t],
   );
 
   // ---------------------------------------------------------------------------
@@ -395,7 +398,7 @@ export function useTailscale(): UseTailscaleReturn {
       const json = await postAction({ action: "uninstall" });
       if (!mountedRef.current) return false;
       if (!json.success) {
-        setError(json.detail || "Failed to uninstall");
+        setError(resolveErrorMessage(t, json.error, json.detail, "Failed to uninstall"));
         return false;
       }
       await fetchStatus(true);
@@ -410,7 +413,7 @@ export function useTailscale(): UseTailscaleReturn {
     } finally {
       if (mountedRef.current) setIsUninstalling(false);
     }
-  }, [postAction, fetchStatus]);
+  }, [postAction, fetchStatus, t]);
 
   return {
     status,
