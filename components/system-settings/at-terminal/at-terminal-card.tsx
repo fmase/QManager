@@ -40,13 +40,13 @@ interface Warning {
 // --- Safety rules ---
 
 const BLOCKED_COMMANDS = [
-  { pattern: /\bQSCANFREQ\b/i, messageKey: "blocked_qscanfreq" },
-  { pattern: /\bQSCAN\b/i, messageKey: "blocked_qscan" },
-  { pattern: /QCFG\s*=\s*"resetfactory"/i, messageKey: "blocked_factory_reset" },
+  { pattern: /\bQSCANFREQ\b/i, messageKey: "qscanfreq" },
+  { pattern: /\bQSCAN\b/i, messageKey: "qscan" },
+  { pattern: /QCFG\s*=\s*"resetfactory"/i, messageKey: "factory_reset" },
 ] as const;
 
 const WARNING_COMMANDS = [
-  { pattern: /CFUN\s*=\s*[04]\b/i, messageKey: "warning_disable_radio" },
+  { pattern: /CFUN\s*=\s*[04]\b/i, messageKey: "disable_radio" },
 ] as const;
 
 // --- Constants ---
