@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { authFetch } from "@/lib/auth-fetch";
+import { resolveErrorMessage } from "@/lib/i18n/resolve-error";
 import type { ProfileApplyState, ApplyStatus } from "@/types/sim-profile";
 
 // =============================================================================
@@ -35,6 +37,7 @@ export interface UseProfileApplyReturn {
 }
 
 export function useProfileApply(): UseProfileApplyReturn {
+  const { t } = useTranslation("errors");
   const [applyState, setApplyState] = useState<ProfileApplyState | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -128,7 +131,7 @@ export function useProfileApply(): UseProfileApplyReturn {
             startPolling();
             return;
           }
-          setError(data.detail || data.error || "Failed to start apply");
+          setError(resolveErrorMessage(t, data.error, data.detail, "Failed to start apply"));
           return;
         }
 
@@ -142,7 +145,7 @@ export function useProfileApply(): UseProfileApplyReturn {
         }
       }
     },
-    [startPolling]
+    [startPolling, t]
   );
 
   // ---------------------------------------------------------------------------

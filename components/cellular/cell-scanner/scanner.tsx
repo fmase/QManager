@@ -3,6 +3,7 @@
 import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { authFetch } from "@/lib/auth-fetch";
+import { resolveErrorMessage } from "@/lib/i18n/resolve-error";
 
 import { Card, CardContent } from "@/components/ui/card";
 import ScannerEmptyView from "./empty-view";
@@ -112,7 +113,7 @@ const FullScannerComponent = () => {
         });
       } else {
         toast.error(t("cell_scanner.toast.lock_error_title"), {
-          description: data.detail || data.error || t("cell_scanner.toast.lock_error_unknown"),
+          description: resolveErrorMessage(t, data.error, data.detail, t("cell_scanner.toast.lock_error_unknown")),
         });
       }
     } catch {

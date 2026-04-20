@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { authFetch } from "@/lib/auth-fetch";
+import { resolveErrorMessage } from "@/lib/i18n/resolve-error";
 import type {
   BackupImeiConfig,
   ImeiSettingsResponse,
@@ -46,6 +48,7 @@ export interface UseImeiSettingsReturn {
 }
 
 export function useImeiSettings(): UseImeiSettingsReturn {
+  const { t } = useTranslation("errors");
   const [currentImei, setCurrentImei] = useState<string | null>(null);
   const [backupEnabled, setBackupEnabled] = useState<boolean | null>(null);
   const [backupImei, setBackupImei] = useState<string | null>(null);
@@ -79,7 +82,7 @@ export function useImeiSettings(): UseImeiSettingsReturn {
       if (!mountedRef.current) return;
 
       if (!data.success) {
-        setError(data.error || "Failed to fetch IMEI settings");
+        setError(resolveErrorMessage(t, data.error, undefined, "Failed to fetch IMEI settings"));
         return;
       }
 
@@ -96,7 +99,7 @@ export function useImeiSettings(): UseImeiSettingsReturn {
         setIsLoading(false);
       }
     }
-  }, []);
+  }, [t]);
 
   // Fetch on mount
   useEffect(() => {
@@ -127,7 +130,7 @@ export function useImeiSettings(): UseImeiSettingsReturn {
         if (!mountedRef.current) return false;
 
         if (!data.success) {
-          setError(data.detail || data.error || "Failed to write IMEI");
+          setError(resolveErrorMessage(t, data.error, data.detail, "Failed to write IMEI"));
           return false;
         }
 
@@ -146,7 +149,7 @@ export function useImeiSettings(): UseImeiSettingsReturn {
         }
       }
     },
-    [fetchImei]
+    [fetchImei, t]
   );
 
   // ---------------------------------------------------------------------------
@@ -178,7 +181,7 @@ export function useImeiSettings(): UseImeiSettingsReturn {
 
         if (!data.success) {
           setError(
-            data.detail || data.error || "Failed to save backup configuration"
+            resolveErrorMessage(t, data.error, data.detail, "Failed to save backup configuration")
           );
           return false;
         }
@@ -200,7 +203,7 @@ export function useImeiSettings(): UseImeiSettingsReturn {
         }
       }
     },
-    [fetchImei]
+    [fetchImei, t]
   );
 
   // ---------------------------------------------------------------------------

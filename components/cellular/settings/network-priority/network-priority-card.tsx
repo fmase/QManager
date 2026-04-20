@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { authFetch } from "@/lib/auth-fetch";
+import { resolveErrorMessage } from "@/lib/i18n/resolve-error";
 import {
   closestCenter,
   DndContext,
@@ -242,7 +243,7 @@ const NetworkPriorityCard = () => {
       if (!mountedRef.current) return;
 
       if (!data.success) {
-        toast.error(data.detail || t("core_settings.network_priority.toast.error_fallback"));
+        toast.error(resolveErrorMessage(t, undefined, data.detail, t("core_settings.network_priority.toast.error_fallback")));
         return;
       }
 

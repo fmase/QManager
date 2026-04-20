@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { authFetch } from "@/lib/auth-fetch";
+import { resolveErrorMessage } from "@/lib/i18n/resolve-error";
 import type { NeighbourCellResult } from "@/components/cellular/cell-scanner/neighbourcell/neighbour-scan-result";
 
 // Poll interval while a scan is running (ms)
@@ -23,6 +25,7 @@ interface UseNeighbourScannerReturn {
 }
 
 export function useNeighbourScanner(): UseNeighbourScannerReturn {
+  const { t } = useTranslation("errors");
   const [status, setStatus] = useState<ScanStatus>("idle");
   const [results, setResults] = useState<NeighbourCellResult[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -95,7 +98,7 @@ export function useNeighbourScanner(): UseNeighbourScannerReturn {
           setStatus("running");
         } else {
           setStatus("error");
-          setError(data.detail || data.error || "Failed to start scan");
+          setError(resolveErrorMessage(t, data.error, data.detail, "Failed to start scan"));
           return;
         }
       }
@@ -107,7 +110,7 @@ export function useNeighbourScanner(): UseNeighbourScannerReturn {
       setStatus("error");
       setError("Failed to connect to scanner");
     }
-  }, [pollStatus]);
+  }, [pollStatus, t]);
 
   // --- Check for existing results on mount -----------------------------------
   useEffect(() => {

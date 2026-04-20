@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { authFetch } from "@/lib/auth-fetch";
+import { resolveErrorMessage } from "@/lib/i18n/resolve-error";
 import type {
   CellularSettings,
   AmbrData,
@@ -46,6 +48,7 @@ export interface UseCellularSettingsReturn {
 }
 
 export function useCellularSettings(): UseCellularSettingsReturn {
+  const { t } = useTranslation("errors");
   const [settings, setSettings] = useState<CellularSettings | null>(null);
   const [ambr, setAmbr] = useState<AmbrData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -78,7 +81,7 @@ export function useCellularSettings(): UseCellularSettingsReturn {
       if (!mountedRef.current) return;
 
       if (!data.success) {
-        setError(data.error || "Failed to fetch cellular settings");
+        setError(resolveErrorMessage(t, data.error, undefined, "Failed to fetch cellular settings"));
         return;
       }
 
@@ -96,7 +99,7 @@ export function useCellularSettings(): UseCellularSettingsReturn {
         setIsLoading(false);
       }
     }
-  }, []);
+  }, [t]);
 
   // Fetch on mount
   useEffect(() => {
@@ -128,7 +131,7 @@ export function useCellularSettings(): UseCellularSettingsReturn {
         if (!data.success) {
           const detail = data.failed_fields
             ? `Failed to apply: ${data.failed_fields.join(", ")}`
-            : data.error || "Failed to apply settings";
+            : resolveErrorMessage(t, data.error, undefined, "Failed to apply settings");
           setError(detail);
           return false;
         }
@@ -165,7 +168,7 @@ export function useCellularSettings(): UseCellularSettingsReturn {
         }
       }
     },
-    [fetchSettings]
+    [fetchSettings, t]
   );
 
   return {

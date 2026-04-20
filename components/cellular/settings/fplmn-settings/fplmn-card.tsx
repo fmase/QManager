@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { toast } from "sonner";
 import { useTranslation, Trans } from "react-i18next";
 import { authFetch } from "@/lib/auth-fetch";
+import { resolveErrorMessage } from "@/lib/i18n/resolve-error";
 import {
   Card,
   CardContent,
@@ -98,7 +99,7 @@ const FPLMNCard = () => {
         toast.success(t("core_settings.fplmn.toast.success"));
         await fetchStatus(true);
       } else {
-        toast.error(data.detail || t("core_settings.fplmn.toast.error_fallback"));
+        toast.error(resolveErrorMessage(t, undefined, data.detail, t("core_settings.fplmn.toast.error_fallback")));
       }
     } catch {
       if (mountedRef.current) {

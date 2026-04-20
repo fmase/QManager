@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { authFetch } from "@/lib/auth-fetch";
+import { resolveErrorMessage } from "@/lib/i18n/resolve-error";
 import type {
   BandCategory,
   CurrentBands,
@@ -72,6 +74,7 @@ export interface UseBandLockingReturn {
 }
 
 export function useBandLocking(): UseBandLockingReturn {
+  const { t } = useTranslation("errors");
   const [currentBands, setCurrentBands] = useState<CurrentBands | null>(null);
   const [failover, setFailover] = useState<FailoverState>({
     enabled: false,
@@ -113,7 +116,7 @@ export function useBandLocking(): UseBandLockingReturn {
 
       if (!data.success) {
         setError(
-          data.detail || data.error || "Failed to fetch band configuration",
+          resolveErrorMessage(t, data.error, data.detail, "Failed to fetch band configuration"),
         );
         return;
       }
@@ -133,7 +136,7 @@ export function useBandLocking(): UseBandLockingReturn {
         setIsLoading(false);
       }
     }
-  }, []);
+  }, [t]);
 
   // Initial fetch
   useEffect(() => {
@@ -224,7 +227,7 @@ export function useBandLocking(): UseBandLockingReturn {
         if (!mountedRef.current) return false;
 
         if (!data.success) {
-          setError(data.detail || data.error || "Failed to apply band lock");
+          setError(resolveErrorMessage(t, data.error, data.detail, "Failed to apply band lock"));
           return false;
         }
 
@@ -252,7 +255,7 @@ export function useBandLocking(): UseBandLockingReturn {
         }
       }
     },
-    [fetchCurrent, startFailoverPolling],
+    [fetchCurrent, startFailoverPolling, t],
   );
 
   // ---------------------------------------------------------------------------
@@ -296,7 +299,7 @@ export function useBandLocking(): UseBandLockingReturn {
         if (!mountedRef.current) return false;
 
         if (!data.success) {
-          setError(data.detail || data.error || "Failed to toggle failover");
+          setError(resolveErrorMessage(t, data.error, data.detail, "Failed to toggle failover"));
           return false;
         }
 
@@ -311,7 +314,7 @@ export function useBandLocking(): UseBandLockingReturn {
         return false;
       }
     },
-    [],
+    [t],
   );
 
   // ---------------------------------------------------------------------------
