@@ -13,12 +13,21 @@ DPI_INSTALL_PID="/tmp/qmanager_dpi_install.pid"
 
 # Ensure UCI section exists with defaults
 ensure_dpi_config() {
-    local section
+    local section existing_repeats
     section=$(uci -q get quecmanager.video_optimizer)
     if [ -z "$section" ]; then
         uci set quecmanager.video_optimizer=video_optimizer
         uci set quecmanager.video_optimizer.enabled='0'
         uci set quecmanager.video_optimizer.quic_enabled='1'
+        uci set quecmanager.video_optimizer.desync_repeats='1'
+        uci commit quecmanager
+        return
+    fi
+
+    # Backfill desync_repeats for installs created before this key existed
+    existing_repeats=$(uci -q get quecmanager.video_optimizer.desync_repeats)
+    if [ -z "$existing_repeats" ]; then
+        uci set quecmanager.video_optimizer.desync_repeats='1'
         uci commit quecmanager
     fi
 }
@@ -127,6 +136,15 @@ GET)
     # Read UCI settings
     enabled=$(uci -q get quecmanager.video_optimizer.enabled)
     masq_enabled=$(uci -q get quecmanager.traffic_masquerade.enabled)
+    desync_repeats=$(uci -q get quecmanager.video_optimizer.desync_repeats)
+    case "$desync_repeats" in
+        ''|*[!0-9]*) desync_repeats=1 ;;
+        *)
+            if [ "$desync_repeats" -lt 1 ] || [ "$desync_repeats" -gt 10 ]; then
+                desync_repeats=1
+            fi
+            ;;
+    esac
 
     # Only report live stats when video optimizer is the active mode —
     # VO and masq share a single nfqws process/PID/counters
@@ -152,6 +170,7 @@ GET)
         --arg uptime "$uptime" \
         --argjson packets_processed "${packets:-0}" \
         --argjson domains_loaded "${domains:-0}" \
+        --argjson desync_repeats "$desync_repeats" \
         --argjson binary_installed "$binary_ok" \
         --argjson kernel_module_loaded "$kmod_ok" \
         '{
@@ -162,6 +181,7 @@ GET)
             uptime: $uptime,
             packets_processed: $packets_processed,
             domains_loaded: $domains_loaded,
+            desync_repeats: $desync_repeats,
             binary_installed: $binary_installed,
             kernel_module_loaded: $kernel_module_loaded
         }'
