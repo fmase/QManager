@@ -63,19 +63,34 @@ start_service() {
             return 1
         fi
 
-        local quic_enabled
+        local quic_enabled desync_repeats
         quic_enabled=$(uci -q get quecmanager.video_optimizer.quic_enabled)
+        desync_repeats=$(uci -q get quecmanager.video_optimizer.desync_repeats)
+
+        # Clamp desync_repeats to [1,10]; fall back to 1 on non-numeric or out-of-range
+        case "$desync_repeats" in
+            ''|*[!0-9]*) desync_repeats=1 ;;
+            *)
+                if [ "$desync_repeats" -lt 1 ] || [ "$desync_repeats" -gt 10 ]; then
+                    desync_repeats=1
+                fi
+                ;;
+        esac
 
         args="$args --hostlist=$DPI_HOSTLIST"
         args="$args --dpi-desync=split2"
         args="$args --dpi-desync-split-seqovl=1"
         args="$args --dpi-desync-split-pos=1"
 
+        if [ "$desync_repeats" -gt 1 ]; then
+            args="$args --dpi-desync-repeats=$desync_repeats"
+        fi
+
         if [ "$quic_enabled" != "0" ]; then
             args="$args --dpi-desync-udplen-increment=2"
         fi
 
-        qlog_info "Starting video optimizer on $iface"
+        qlog_info "Starting video optimizer on $iface (repeats=$desync_repeats)"
     fi
 
     # Insert nftables rules (same for both modes — single queue)
