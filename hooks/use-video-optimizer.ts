@@ -67,6 +67,7 @@ export function useVideoOptimizer() {
         uptime: data.uptime,
         packets_processed: data.packets_processed,
         domains_loaded: data.domains_loaded,
+        desync_repeats: data.desync_repeats,
         binary_installed: data.binary_installed,
         kernel_module_loaded: data.kernel_module_loaded,
       });
@@ -79,22 +80,32 @@ export function useVideoOptimizer() {
   }, []);
 
   const saveSettings = useCallback(
-    async (enabled: boolean): Promise<boolean> => {
+    async (
+      input: { enabled: boolean; desync_repeats?: number },
+    ): Promise<boolean> => {
       setIsSaving(true);
       setError(null);
 
       try {
+        const body: { action: "save"; enabled: boolean; desync_repeats?: number } = {
+          action: "save",
+          enabled: input.enabled,
+        };
+        if (typeof input.desync_repeats === "number") {
+          body.desync_repeats = input.desync_repeats;
+        }
+
         const response = await authFetch(API_URL, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "save", enabled }),
+          body: JSON.stringify(body),
         });
 
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
         const data = await response.json();
         if (!data.success) {
-          setError(resolveErrorMessage(t, undefined, data.detail, "Failed to save settings"));
+          setError(resolveErrorMessage(t, data.error, data.detail, "Failed to save settings"));
           return false;
         }
 
