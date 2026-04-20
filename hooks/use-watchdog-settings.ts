@@ -159,6 +159,7 @@ export function useWatchdogSettings(): UseWatchdogSettingsReturn {
         if (!mountedRef.current) return false;
 
         if (!json.success) {
+          // watchdog CGI uses `reason` rather than `detail`
           setError(resolveErrorMessage(t, json.error, json.reason, "Failed to save watchdog settings"));
           return false;
         }
