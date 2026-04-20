@@ -12,7 +12,13 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Field, FieldGroup, FieldLabel, FieldSet } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
@@ -33,6 +39,7 @@ import {
   AlertTriangle,
   CheckCircle2,
   Download,
+  InfoIcon,
   Loader2,
   PackageIcon,
   RefreshCcwIcon,
@@ -278,7 +285,9 @@ export default function VideoOptimizerSettingsCard({
 
   // H3: Key-based remount — when settings change (initial load or post-save
   // re-fetch), the form reinitializes with fresh values from useState defaults.
-  const formKey = settings ? `${settings.enabled}` : "empty";
+  const formKey = settings
+    ? `${settings.enabled}:${settings.desync_repeats}`
+    : "empty";
 
   return (
     <VideoOptimizerForm
@@ -313,17 +322,33 @@ function VideoOptimizerForm({
   } = hook;
 
   const [isEnabled, setIsEnabled] = useState(settings?.enabled ?? false);
+  const [repeatsText, setRepeatsText] = useState<string>(
+    String(settings?.desync_repeats ?? 1),
+  );
   const { saved, markSaved } = useSaveFlash();
+
+  const repeatsValid = useMemo(() => {
+    if (!/^\d+$/.test(repeatsText)) return false;
+    const n = parseInt(repeatsText, 10);
+    return n >= 1 && n <= 10;
+  }, [repeatsText]);
 
   const isDirty = useMemo(() => {
     if (!settings) return false;
-    return isEnabled !== settings.enabled;
-  }, [settings, isEnabled]);
+    const currentRepeats = settings.desync_repeats;
+    const typedRepeats = repeatsValid ? parseInt(repeatsText, 10) : currentRepeats;
+    return isEnabled !== settings.enabled || typedRepeats !== currentRepeats;
+  }, [settings, isEnabled, repeatsText, repeatsValid]);
 
   const handleSave = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault();
-      const success = await saveSettings(isEnabled);
+      if (!repeatsValid) {
+        toast.error(t("invalid_repeats", { ns: "errors" }));
+        return;
+      }
+      const desync_repeats = parseInt(repeatsText, 10);
+      const success = await saveSettings({ enabled: isEnabled, desync_repeats });
       if (success) {
         markSaved();
         toast.success(
@@ -336,7 +361,7 @@ function VideoOptimizerForm({
         toast.error(error || t("video_optimizer.toast_error_apply"));
       }
     },
-    [isEnabled, saveSettings, markSaved, error, onSaved, t],
+    [isEnabled, repeatsText, repeatsValid, saveSettings, markSaved, error, onSaved, t],
   );
 
   const serviceStats = useMemo(
@@ -449,6 +474,43 @@ function VideoOptimizerForm({
               )}
 
               <Separator />
+
+              <Field orientation="vertical" className="gap-2">
+                <div className="flex items-center gap-2">
+                  <FieldLabel htmlFor="dpi-desync-repeats">
+                    {t("video_optimizer.label_desync_repeats")}
+                  </FieldLabel>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        aria-label={t("video_optimizer.aria_desync_repeats_info")}
+                        className="inline-flex items-center text-muted-foreground hover:text-foreground"
+                      >
+                        <InfoIcon className="size-4" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-xs">
+                      <p>{t("video_optimizer.help_desync_repeats")}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+                <Input
+                  id="dpi-desync-repeats"
+                  type="number"
+                  inputMode="numeric"
+                  min={1}
+                  max={10}
+                  step={1}
+                  value={repeatsText}
+                  onChange={(e) => setRepeatsText(e.target.value)}
+                  disabled={isSaving}
+                  aria-invalid={!repeatsValid}
+                  className="w-24"
+                />
+              </Field>
+
+              <Separator />
             </FieldGroup>
           </FieldSet>
           <div>
@@ -456,7 +518,7 @@ function VideoOptimizerForm({
               type="submit"
               isSaving={isSaving}
               saved={saved}
-              disabled={!isDirty || !canToggle}
+              disabled={!isDirty || !canToggle || !repeatsValid}
             />
           </div>
         </form>
