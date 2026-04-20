@@ -53,8 +53,9 @@ start_service() {
         args="$args --dpi-desync-fake-tls-mod=sni=$sni_domain"
         args="$args --dpi-desync-fooling=badseq"
         args="$args --dpi-desync-udplen-increment=2"
+        args="$args --dpi-desync-repeats=2"
 
-        qlog_info "Starting traffic masquerade on $iface (sni=$sni_domain)"
+        qlog_info "Starting traffic masquerade on $iface (sni=$sni_domain, repeats=2)"
 
     elif [ "$vo_enabled" = "1" ]; then
         # --- Video Optimizer mode ---
