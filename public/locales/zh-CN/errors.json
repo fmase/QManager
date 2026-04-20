@@ -59,6 +59,7 @@
   "invalid_pdp_type": "无效的 PDP 类型（必须是 IP、IPV6 或 IPV4V6）",
   "invalid_phone": "无效的电话号码格式",
   "invalid_profile": "无效的配置参数",
+  "invalid_repeats": "DPI 干扰重复次数必须是 1 到 10 之间的整数。",
   "invalid_roam_pref": "无效的漫游偏好",
   "invalid_scs": "无效的子载波间距值",
   "invalid_sim_slot": "无效的 SIM 卡槽号",

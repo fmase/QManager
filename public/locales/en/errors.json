@@ -59,6 +59,7 @@
   "invalid_pdp_type": "Invalid PDP type (must be IP, IPV6, or IPV4V6)",
   "invalid_phone": "Invalid phone number format",
   "invalid_profile": "Invalid profile parameter",
+  "invalid_repeats": "DPI desync repeats must be a whole number between 1 and 10.",
   "invalid_roam_pref": "Invalid roaming preference",
   "invalid_scs": "Invalid subcarrier spacing value",
   "invalid_sim_slot": "Invalid SIM slot number",
