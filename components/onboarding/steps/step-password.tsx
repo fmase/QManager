@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { EyeIcon, EyeOffIcon } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { resolveErrorMessage } from "@/lib/i18n/resolve-error";
 import { setupPassword } from "@/hooks/use-auth";
 import { authFetch } from "@/lib/auth-fetch";
 import { Input } from "@/components/ui/input";
@@ -117,7 +118,7 @@ export function StepPassword({ onSuccess, onLoadingChange, onSubmitRef, onValidi
         }
         onSuccess();
       } else {
-        setError(result.error || t("password.error_setup_failed"));
+        setError(resolveErrorMessage(t, result.error, undefined, t("password.error_setup_failed")));
       }
     } finally {
       setIsSubmitting(false);

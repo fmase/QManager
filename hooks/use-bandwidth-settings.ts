@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { authFetch } from "@/lib/auth-fetch";
+import { resolveErrorMessage } from "@/lib/i18n/resolve-error";
 import type {
   BandwidthSettings,
   BandwidthStatus,
@@ -44,6 +46,7 @@ export interface UseBandwidthSettingsReturn {
 // ─── Hook ────────────────────────────────────────────────────────────────────
 
 export function useBandwidthSettings(): UseBandwidthSettingsReturn {
+  const { t } = useTranslation("errors");
   const [settings, setSettings] = useState<BandwidthSettings | null>(null);
   const [status, setStatus] = useState<BandwidthStatus | null>(null);
   const [dependencies, setDependencies] =
@@ -124,7 +127,7 @@ export function useBandwidthSettings(): UseBandwidthSettingsReturn {
         if (!mountedRef.current) return false;
 
         if (!json.success) {
-          setError(json.detail || json.error || "Failed to save settings");
+          setError(resolveErrorMessage(t, json.error, json.detail, "Failed to save settings"));
           return false;
         }
 
@@ -143,7 +146,7 @@ export function useBandwidthSettings(): UseBandwidthSettingsReturn {
         }
       }
     },
-    [fetchSettings],
+    [fetchSettings, t],
   );
 
   // ─── Action wrappers ──────────────────────────────────────────────────────

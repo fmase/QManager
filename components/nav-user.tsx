@@ -54,6 +54,7 @@ import {
 import { ChangePasswordDialog } from "@/components/auth/change-password-dialog";
 import { AnimatedThemeToggler } from "./ui/animated-theme-toggler";
 import { useTranslation } from "react-i18next";
+import { resolveErrorMessage } from "@/lib/i18n/resolve-error";
 import { LanguageSwitcher } from "@/components/i18n/language-switcher";
 
 export function NavUser({
@@ -191,7 +192,7 @@ export function NavUser({
     });
 
     if (!result.success) {
-      toast.error(result.error || "Failed to reconnect modem");
+      toast.error(resolveErrorMessage(t, result.error, undefined, "Failed to reconnect modem"));
       return;
     }
 
