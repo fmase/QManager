@@ -665,7 +665,7 @@ export class SignalStormEngine {
 
   private doSpawnBoss(): void {
     const tier = (((this.wave / BOSS_WAVE_INTERVAL) - 1) % 5 + 1) as 1 | 2 | 3 | 4 | 5;
-    this.boss = spawnBoss(tier, this.wave, this.width, performance.now());
+    this.boss = spawnBoss(tier, this.wave, this.width, performance.now(), this.labels);
     this.audio.playBossIntro();
     this.audio.startMusic("boss");
   }

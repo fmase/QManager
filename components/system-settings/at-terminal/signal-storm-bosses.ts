@@ -6,6 +6,7 @@ import type {
   GamePalette,
   SpriteAtlas,
 } from "./signal-storm-types";
+import type { GameLabels } from "./signal-storm-labels";
 import {
   BOSS1_W, BOSS1_H,
   BOSS2_W, BOSS2_H,
@@ -27,22 +28,6 @@ const BOSS_BOB_PERIOD = 5.5;   // seconds for one full oscillation
 // Diagonal dash — how far below BOSS_ENTER_Y tier 2 / tier 4 bosses can steer
 const BOSS_DIAG_Y_MIN = BOSS_ENTER_Y;
 const BOSS_DIAG_Y_MAX = BOSS_ENTER_Y + 70;
-
-const BOSS_NAMES: Record<1 | 2 | 3 | 4 | 5, string> = {
-  1: "SIGNAL DISRUPTOR",
-  2: "FREQUENCY JAMMER",
-  3: "BAND BLOCKER",
-  4: "NETWORK NULLIFIER",
-  5: "CORE CORRUPTOR",
-};
-
-const BOSS_SUBTITLES: Record<1 | 2 | 3 | 4 | 5, string> = {
-  1: "Disrupting your connection",
-  2: "Jamming all frequencies",
-  3: "Blocking every band",
-  4: "Nullifying your network",
-  5: "Corrupting the core",
-};
 
 // ─── Result types ────────────────────────────────────────────────────────────
 
@@ -86,6 +71,7 @@ export function spawnBoss(
   wave: number,
   canvasWidth: number,
   timestamp: number,
+  labels: GameLabels,
 ): Boss {
   const cycleNumber = Math.floor((wave - 1) / 25);
   const baseHp = [0, 8, 12, 14, 10, 18][tier];
@@ -113,7 +99,7 @@ export function spawnBoss(
     targetX: canvasWidth / 2 - w / 2,
     targetY: BOSS_ENTER_Y,
     dx: 0,
-    name: BOSS_NAMES[tier],
+    name: labels.boss_names[tier],
     phase: 1,
     phaseJustChanged: false,
     phaseFreezeUntil: 0,
@@ -129,8 +115,8 @@ export function spawnBoss(
     introBanner: {
       phase: 1,
       startTime: timestamp,
-      name: BOSS_NAMES[tier],
-      subtitle: BOSS_SUBTITLES[tier],
+      name: labels.boss_names[tier],
+      subtitle: labels.boss_subtitles[tier],
     },
   };
 }
