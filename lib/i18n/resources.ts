@@ -7,6 +7,8 @@ import enLocalNetwork from "@/public/locales/en/local-network.json";
 import enMonitoring from "@/public/locales/en/monitoring.json";
 import enEvents from "@/public/locales/en/events.json";
 import enCellular from "@/public/locales/en/cellular.json";
+import enErrors from "@/public/locales/en/errors.json";
+import enAtCommands from "@/public/locales/en/at-commands.json";
 import zhCNCommon from "@/public/locales/zh-CN/common.json";
 import zhCNSidebar from "@/public/locales/zh-CN/sidebar.json";
 import zhCNDashboard from "@/public/locales/zh-CN/dashboard.json";
@@ -16,6 +18,8 @@ import zhCNLocalNetwork from "@/public/locales/zh-CN/local-network.json";
 import zhCNMonitoring from "@/public/locales/zh-CN/monitoring.json";
 import zhCNEvents from "@/public/locales/zh-CN/events.json";
 import zhCNCellular from "@/public/locales/zh-CN/cellular.json";
+import zhCNErrors from "@/public/locales/zh-CN/errors.json";
+import zhCNAtCommands from "@/public/locales/zh-CN/at-commands.json";
 
 // Resources for i18next. Every bundled language must declare every namespace.
 export const resources = {
@@ -29,6 +33,8 @@ export const resources = {
     monitoring: enMonitoring,
     events: enEvents,
     cellular: enCellular,
+    errors: enErrors,
+    "at-commands": enAtCommands,
   },
   "zh-CN": {
     common: zhCNCommon,
@@ -40,8 +46,22 @@ export const resources = {
     monitoring: zhCNMonitoring,
     events: zhCNEvents,
     cellular: zhCNCellular,
+    errors: zhCNErrors,
+    "at-commands": zhCNAtCommands,
   },
 } as const;
 
 export const DEFAULT_NAMESPACE = "common" as const;
-export const ALL_NAMESPACES = ["common", "sidebar", "dashboard", "onboarding", "system-settings", "local-network", "monitoring", "events", "cellular"] as const;
+export const ALL_NAMESPACES = [
+  "common",
+  "sidebar",
+  "dashboard",
+  "onboarding",
+  "system-settings",
+  "local-network",
+  "monitoring",
+  "events",
+  "cellular",
+  "errors",
+  "at-commands",
+] as const;
