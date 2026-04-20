@@ -1,7 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useMemo, useRef, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { SignalStormEngine, type GamePalette, type GameCallbacks } from "./signal-storm-engine";
+import { buildGameLabels, type GameLabels } from "./signal-storm-labels";
 
 function readPalette(el: HTMLElement): GamePalette {
   const style = getComputedStyle(el);
@@ -29,6 +31,9 @@ export default function SignalStormGame({ onExit }: { onExit: () => void }) {
   const engineRef = useRef<SignalStormEngine | null>(null);
   const animFrameRef = useRef<number>(0);
 
+  const { t } = useTranslation("system-settings");
+  const labels = useMemo<GameLabels>(() => buildGameLabels(t), [t]);
+
   useEffect(() => {
     const canvas = canvasRef.current;
     const wrapper = wrapperRef.current;
@@ -40,6 +45,10 @@ export default function SignalStormGame({ onExit }: { onExit: () => void }) {
     const palette = readPalette(wrapper);
     const callbacks: GameCallbacks = { onExit };
 
+    // Dispose any prior engine (language swap re-runs this effect).
+    engineRef.current?.dispose?.();
+    engineRef.current = null;
+
     const observer = new ResizeObserver((entries) => {
       for (const entry of entries) {
         const { width, height } = entry.contentRect;
@@ -48,7 +57,7 @@ export default function SignalStormGame({ onExit }: { onExit: () => void }) {
         if (engineRef.current) {
           engineRef.current.resize(width, height);
         } else {
-          engineRef.current = new SignalStormEngine(ctx, width, height, palette, callbacks);
+          engineRef.current = new SignalStormEngine(ctx, width, height, palette, callbacks, labels);
         }
       }
     });
@@ -65,10 +74,11 @@ export default function SignalStormGame({ onExit }: { onExit: () => void }) {
 
     return () => {
       engineRef.current?.dispose?.();
+      engineRef.current = null;
       cancelAnimationFrame(animFrameRef.current);
       observer.disconnect();
     };
-  }, [onExit]);
+  }, [onExit, labels]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     e.preventDefault();
