@@ -58,6 +58,8 @@ import {
   SCORE_BOSS,
 } from "./signal-storm-bosses";
 
+import type { GameLabels } from "./signal-storm-labels";
+
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const PLAYER_SPEED = 200;
@@ -135,19 +137,22 @@ export class SignalStormEngine {
   private spawnTimer = 0;
   private lastTime = 0;
   private isNewHighScore = false;
+  private labels: GameLabels;
 
   constructor(
     ctx: CanvasRenderingContext2D,
     width: number,
     height: number,
     palette: GamePalette,
-    callbacks: GameCallbacks
+    callbacks: GameCallbacks,
+    labels: GameLabels
   ) {
     this.ctx = ctx;
     this.width = width;
     this.height = height;
     this.palette = palette;
     this.callbacks = callbacks;
+    this.labels = labels;
 
     // Load high score
     try {
@@ -905,7 +910,7 @@ export class SignalStormEngine {
         ctx.textBaseline = "middle";
         ctx.fillStyle = this.palette.jammer;
         ctx.font = "bold 22px monospace";
-        ctx.fillText("BOSS DEFEATED", width / 2, height / 2 - 40);
+        ctx.fillText(this.labels.boss_defeated, width / 2, height / 2 - 40);
         ctx.globalAlpha = 1;
       }
 
@@ -916,7 +921,7 @@ export class SignalStormEngine {
         ctx.font = "10px monospace";
         ctx.textAlign = "right";
         ctx.textBaseline = "top";
-        ctx.fillText("MUTED", width - 12, 12);
+        ctx.fillText(this.labels.muted, width - 12, 12);
         ctx.restore();
       }
     }
@@ -938,10 +943,10 @@ export class SignalStormEngine {
       ctx.font = "bold 32px monospace";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.fillText("PAUSED", width / 2, height / 2 - 10);
+      ctx.fillText(this.labels.pause.title, width / 2, height / 2 - 10);
       ctx.fillStyle = this.palette.textMuted;
       ctx.font = "14px monospace";
-      ctx.fillText("Press P to resume", width / 2, height / 2 + 24);
+      ctx.fillText(this.labels.pause.resume_hint, width / 2, height / 2 + 24);
       ctx.restore();
     }
   }
@@ -1032,7 +1037,7 @@ export class SignalStormEngine {
     ctx.textBaseline = "top";
     ctx.fillStyle = this.palette.textMuted;
     ctx.font = "11px monospace";
-    ctx.fillText("SCORE", 12, 10);
+    ctx.fillText(this.labels.hud.score, 12, 10);
     ctx.fillStyle = this.palette.text;
     ctx.font = "bold 14px monospace";
     ctx.fillText(String(this.score), 12, 23);
@@ -1041,7 +1046,7 @@ export class SignalStormEngine {
     ctx.textAlign = "right";
     ctx.fillStyle = this.palette.textMuted;
     ctx.font = "11px monospace";
-    ctx.fillText("BEST", width - 12, 10);
+    ctx.fillText(this.labels.hud.best, width - 12, 10);
     ctx.fillStyle = this.palette.text;
     ctx.font = "bold 14px monospace";
     ctx.fillText(String(this.highScore), width - 12, 23);
@@ -1050,7 +1055,7 @@ export class SignalStormEngine {
     ctx.textAlign = "center";
     ctx.fillStyle = this.palette.textMuted;
     ctx.font = "11px monospace";
-    ctx.fillText("WAVE", width / 2, 10);
+    ctx.fillText(this.labels.hud.wave, width / 2, 10);
     ctx.fillStyle = this.palette.text;
     ctx.font = "bold 14px monospace";
     ctx.fillText(String(this.wave), width / 2, 23);
@@ -1068,21 +1073,21 @@ export class SignalStormEngine {
     if (now < this.player.rapidFireUntil) {
       const remaining = ((this.player.rapidFireUntil - now) / 1000).toFixed(1);
       ctx.fillStyle = this.palette.powerUp;
-      ctx.fillText(`⚡ RAPID FIRE ${remaining}s`, 12, yOffset);
+      ctx.fillText(`${this.labels.power_ups.rapid_fire} ${remaining}s`, 12, yOffset);
       yOffset += 14;
     }
 
     if (now < this.player.spreadShotUntil) {
       const remaining = ((this.player.spreadShotUntil - now) / 1000).toFixed(1);
       ctx.fillStyle = this.palette.spread;
-      ctx.fillText(`◈ SPREAD ${remaining}s`, 12, yOffset);
+      ctx.fillText(`${this.labels.power_ups.spread} ${remaining}s`, 12, yOffset);
     }
 
     // Shield indicator top-right
     if (this.player.hasShield) {
       ctx.textAlign = "right";
       ctx.fillStyle = this.palette.shield;
-      ctx.fillText("◉ SHIELD", width - 12, 44);
+      ctx.fillText(this.labels.power_ups.shield, width - 12, 44);
     }
 
     ctx.textAlign = "left";
@@ -1105,12 +1110,12 @@ export class SignalStormEngine {
     ctx.textBaseline = "middle";
     ctx.fillStyle = this.palette.text;
     ctx.font = "bold 32px monospace";
-    ctx.fillText("GAME OVER", centerX, centerY - 60);
+    ctx.fillText(this.labels.game_over.title, centerX, centerY - 60);
 
     // Score
     ctx.fillStyle = this.palette.textMuted;
     ctx.font = "11px monospace";
-    ctx.fillText("SCORE", centerX, centerY - 20);
+    ctx.fillText(this.labels.game_over.score_label, centerX, centerY - 20);
     ctx.fillStyle = this.palette.text;
     ctx.font = "bold 24px monospace";
     ctx.fillText(String(this.score), centerX, centerY + 4);
@@ -1119,17 +1124,17 @@ export class SignalStormEngine {
     if (this.isNewHighScore) {
       ctx.fillStyle = this.palette.powerUp;
       ctx.font = "bold 14px monospace";
-      ctx.fillText("★ NEW HIGH SCORE ★", centerX, centerY + 34);
+      ctx.fillText(this.labels.game_over.new_high_score, centerX, centerY + 34);
     } else {
       ctx.fillStyle = this.palette.textMuted;
       ctx.font = "11px monospace";
-      ctx.fillText(`BEST: ${this.highScore}`, centerX, centerY + 34);
+      ctx.fillText(`${this.labels.game_over.best_prefix} ${this.highScore}`, centerX, centerY + 34);
     }
 
     // Retry prompt
     ctx.fillStyle = this.palette.textMuted;
     ctx.font = "11px monospace";
-    ctx.fillText("Enter to retry  •  Esc to exit", centerX, centerY + 66);
+    ctx.fillText(this.labels.game_over.controls_hint, centerX, centerY + 66);
   }
 
   // ─── AABB collision ──────────────────────────────────────────────────────────
