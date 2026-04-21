@@ -69,9 +69,18 @@ fi
 _hash_id=$(printf '%s' "$_shadow_line" | awk -F'$' '{ print $2 }')
 _hash_salt=$(printf '%s' "$_shadow_line" | awk -F'$' '{ print $3 }')
 
+case "$_shadow_line" in
+    '!'|'*'|'x'|'')
+        qlog_error "Root account has no password set or is locked"
+        cgi_error "no_password_set" "Root account has no password set or is locked"
+        exit 0
+        ;;
+esac
+
 case "$_hash_id" in
-    5) _hash_method="sha-256" ;;
-    6) _hash_method="sha-512" ;;
+    1) _openssl_flag="-1" ;;
+    5) _openssl_flag="-5" ;;
+    6) _openssl_flag="-6" ;;
     *)
         qlog_error "Unsupported hash id in /etc/shadow: $_hash_id"
         cgi_error "hash_parse_failed" "Unsupported password hash format"
@@ -85,20 +94,26 @@ if [ -z "$_hash_salt" ]; then
     exit 0
 fi
 
-_recomputed=$(mkpasswd -m "$_hash_method" -S "$_hash_salt" "$_current" 2>/dev/null)
+if ! command -v openssl >/dev/null 2>&1; then
+    qlog_error "openssl not found — cannot validate root password"
+    cgi_error "hash_tool_missing" "Password validation tool (openssl) is not installed"
+    exit 0
+fi
+
+# Re-hash current password with the same $id$salt as /etc/shadow; compare verbatim.
+_recomputed=$(openssl passwd "$_openssl_flag" -salt "$_hash_salt" "$_current" 2>/dev/null)
 if [ -z "$_recomputed" ] || [ "$_recomputed" != "$_shadow_line" ]; then
-    # Flatten response-time channel on mismatch
     sleep 1
     cgi_error "invalid_password" "Current password is incorrect"
     exit 0
 fi
 
-# --- Apply new password via chpasswd stdin ----------------------------------
-printf 'root:%s\n' "$_new" | chpasswd 2>/dev/null
+# --- Apply new password via passwd stdin ------------------------------------
+printf '%s\n%s\n' "$_new" "$_new" | passwd root >/dev/null 2>&1
 _rc=$?
 if [ "$_rc" -ne 0 ]; then
-    qlog_error "chpasswd failed (rc=$_rc)"
-    cgi_error "chpasswd_failed" "Failed to apply new password"
+    qlog_error "passwd failed (rc=$_rc)"
+    cgi_error "passwd_failed" "Failed to apply new password"
     exit 0
 fi
 
