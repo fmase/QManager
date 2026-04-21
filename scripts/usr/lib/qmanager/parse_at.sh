@@ -549,6 +549,7 @@ parse_ca_info() {
     local tmpfile="/tmp/qmanager_ca_parse.tmp"
     printf '%s\n' "$qca_lines" > "$tmpfile"
 
+    local nr_pcc_seen=0
     while IFS= read -r line; do
         # Strip prefix, quotes, spaces, carriage returns
         local csv
@@ -651,6 +652,11 @@ parse_ca_info() {
         # cc_sinr may be a float (NR /100 conversion) — validated by awk above
         case "$cc_sinr" in ''|'-') cc_sinr="null" ;; esac
 
+        # --- Track NR PCC for reconciliation ---
+        if [ "$cc_type" = "PCC" ] && [ "$tech" = "NR" ]; then
+            nr_pcc_seen=1
+        fi
+
         # --- Write carrier data for jq processing ---
         printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
             "$cc_type" "$tech" "$band_short" "${freq:-null}" "$mhz" \
@@ -681,6 +687,28 @@ parse_ca_info() {
         t2_carrier_components="[]"
     fi
     rm -f "$cc_tmpfile"
+
+    # --- Reconcile network_type from QCAINFO NR PCC ---
+    # QENG may transiently report LTE after a CFUN reset while QCAINFO already
+    # shows NR5G as the PCC. If we saw an NR PCC and network_type is not already
+    # NR, upgrade the state so the frontend renders the correct NR card.
+    if [ "$nr_pcc_seen" = "1" ]; then
+        case "$network_type" in
+            "5G-SA"|"5G-NSA")
+                # Already NR — nothing to do
+                ;;
+            *)
+                qlog_warn "parse_ca_info: network_type reconciled ${network_type}→5G-SA based on NR PCC in QCAINFO"
+                network_type="5G-SA"
+                case "$nr_state" in
+                    "unknown"|"inactive") nr_state="connected" ;;
+                esac
+                case "$lte_state" in
+                    "unknown") lte_state="inactive" ;;
+                esac
+                ;;
+        esac
+    fi
 }
 
 # -----------------------------------------------------------------------------
