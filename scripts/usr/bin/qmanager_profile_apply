@@ -238,6 +238,12 @@ write_state
 apply_apn() {
     mark_step_running "apn" "Checking APN configuration..."
 
+    # Skip if no APN specified (avoids writing empty APN to live WAN CID)
+    if [ -z "$p_apn_name" ]; then
+        mark_step_skipped "apn" "No APN specified in profile"
+        return
+    fi
+
     # Read current APN for this CID
     local cgdcont_resp
     cgdcont_resp=$(run_at "AT+CGDCONT?")
