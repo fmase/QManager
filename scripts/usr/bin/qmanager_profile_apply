@@ -225,9 +225,7 @@ p_hl=$(printf '%s' "$profile_json" | jq -r '.settings.hl // empty | tostring')
 [ -z "$p_ttl" ] && p_ttl=0
 [ -z "$p_hl" ] && p_hl=0
 
-# Resolve the live WAN CID once up front; reused in apply_apn() below.
-detect_active_cid
-qlog_info "Applying profile: $p_name (APN=$p_apn_name, target CID=${active_cid} [profile stored CID=${p_apn_cid}])"
+qlog_info "Applying profile: $p_name (APN=$p_apn_name, CID=$p_apn_cid)"
 
 # Write initial state
 write_state
@@ -252,33 +250,44 @@ apply_apn() {
         return
     fi
 
-    # Parse current APN for the live WAN CID
+    # Parse current APN for the profile's CID
     # Response format: +CGDCONT: <cid>,"<pdp_type>","<apn>",...
     # Using awk -F'"' — $2=pdp_type, $4=apn (same approach as current_settings.sh)
     local current_apn
-    current_apn=$(printf '%s' "$cgdcont_resp" | grep "+CGDCONT: ${active_cid}," | awk -F'"' '{print $4}' | head -1)
+    current_apn=$(printf '%s' "$cgdcont_resp" | grep "+CGDCONT: ${p_apn_cid}," | awk -F'"' '{print $4}' | head -1)
 
     # Skip if APN hasn't changed
     if [ "$current_apn" = "$p_apn_name" ]; then
-        mark_step_skipped "apn" "APN already set to ${p_apn_name} (CID ${active_cid})"
+        mark_step_skipped "apn" "APN already set to ${p_apn_name} (CID ${p_apn_cid})"
         return
     fi
 
-    # Set APN
+    # Set APN — detach first so the new APN takes effect on reattach
+    # (AT+CGCONTRDP reflects the negotiated live-session APN, not just NVM)
     local pdp="${p_pdp_type:-IPV4V6}"
-    local at_cmd="AT+CGDCONT=${active_cid},\"${pdp}\",\"${p_apn_name}\""
-    mark_step_running "apn" "Setting APN to ${p_apn_name} (CID ${active_cid})..."
+    local at_cmd="AT+CGDCONT=${p_apn_cid},\"${pdp}\",\"${p_apn_name}\""
+    mark_step_running "apn" "Setting APN to ${p_apn_name} (CID ${p_apn_cid})..."
+
+    # Detach from network so the new APN takes effect on reattach
+    run_at "AT+COPS=2" >/dev/null 2>&1 || qlog_warn "AT+COPS=2 failed; proceeding with CGDCONT anyway"
 
     local resp
     resp=$(run_at "$at_cmd")
     if [ $? -ne 0 ]; then
+        # Try to reattach before bailing out so we don't leave the modem detached
+        run_at "AT+COPS=0" >/dev/null 2>&1 || qlog_warn "AT+COPS=0 reattach failed after CGDCONT error"
         mark_step_failed "apn" "Failed to set APN"
         return
     fi
 
+    sleep 2
+
+    mark_step_running "apn" "Reattaching to network..."
+    run_at "AT+COPS=0" >/dev/null 2>&1 || qlog_warn "AT+COPS=0 reattach failed"
+
     sleep "$CMD_GAP"
 
-    mark_step_done "apn" "Set APN to ${p_apn_name} (CID ${active_cid})"
+    mark_step_done "apn" "Set APN to ${p_apn_name} (CID ${p_apn_cid})"
 }
 
 # =============================================================================
