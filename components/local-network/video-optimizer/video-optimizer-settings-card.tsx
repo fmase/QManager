@@ -39,7 +39,6 @@ import {
   AlertTriangle,
   CheckCircle2,
   Download,
-  InfoIcon,
   Loader2,
   PackageIcon,
   RefreshCcwIcon,
@@ -49,6 +48,7 @@ import {
 import { useVideoOptimizer } from "@/hooks/use-video-optimizer";
 import { ServiceStats } from "../service-stats";
 import { ServiceStatusBadge } from "../service-status-badge";
+import { TbInfoCircleFilled } from "react-icons/tb";
 
 function VideoOptimizerSkeleton() {
   return (
@@ -66,7 +66,6 @@ function VideoOptimizerSkeleton() {
   );
 }
 
-
 function VerificationDisplay({
   verifyResult,
   onRunTest,
@@ -83,7 +82,9 @@ function VerificationDisplay({
   return (
     <div className="space-y-3">
       <div>
-        <h4 className="text-sm font-medium">{t("video_optimizer.verify_title")}</h4>
+        <h4 className="text-sm font-medium">
+          {t("video_optimizer.verify_title")}
+        </h4>
         <p className="text-xs text-muted-foreground">
           {t("video_optimizer.verify_description")}
         </p>
@@ -258,7 +259,8 @@ export default function VideoOptimizerSettingsCard({
                 {installResult.status === "running" ? (
                   <>
                     <Loader2 className="animate-spin" />
-                    {installResult.message || t("video_optimizer.state_installing")}
+                    {installResult.message ||
+                      t("video_optimizer.state_installing")}
                   </>
                 ) : (
                   <>
@@ -348,7 +350,10 @@ function VideoOptimizerForm({
         return;
       }
       const desync_repeats = parseInt(repeatsText, 10);
-      const success = await saveSettings({ enabled: isEnabled, desync_repeats });
+      const success = await saveSettings({
+        enabled: isEnabled,
+        desync_repeats,
+      });
       if (success) {
         markSaved();
         toast.success(
@@ -361,7 +366,16 @@ function VideoOptimizerForm({
         toast.error(error || t("video_optimizer.toast_error_apply"));
       }
     },
-    [isEnabled, repeatsText, repeatsValid, saveSettings, markSaved, error, onSaved, t],
+    [
+      isEnabled,
+      repeatsText,
+      repeatsValid,
+      saveSettings,
+      markSaved,
+      error,
+      onSaved,
+      t,
+    ],
   );
 
   const serviceStats = useMemo(
@@ -423,7 +437,11 @@ function VideoOptimizerForm({
                 <Trans
                   i18nKey="video_optimizer.alert_kernel_module_missing"
                   ns="local-network"
-                  components={{ code: <code className="rounded bg-muted px-1 py-0.5 text-xs font-mono" /> }}
+                  components={{
+                    code: (
+                      <code className="rounded bg-muted px-1 py-0.5 text-xs font-mono" />
+                    ),
+                  }}
                 />
               </p>
             </AlertDescription>
@@ -477,23 +495,25 @@ function VideoOptimizerForm({
 
               <Field orientation="vertical" className="gap-2">
                 <div className="flex items-center gap-2">
-                  <FieldLabel htmlFor="dpi-desync-repeats">
-                    {t("video_optimizer.label_desync_repeats")}
-                  </FieldLabel>
-                  <Tooltip>
+                                    <Tooltip>
                     <TooltipTrigger asChild>
                       <button
                         type="button"
-                        aria-label={t("video_optimizer.aria_desync_repeats_info")}
-                        className="inline-flex items-center text-muted-foreground hover:text-foreground"
+                        className="inline-flex"
+                        aria-label={t("core_settings.info.cell_data.info_aria")}
                       >
-                        <InfoIcon className="size-4" />
+                        <TbInfoCircleFilled className="size-5 text-info" />
                       </button>
                     </TooltipTrigger>
-                    <TooltipContent className="max-w-xs">
-                      <p>{t("video_optimizer.help_desync_repeats")}</p>
+                    <TooltipContent>
+                      <p className="max-w-xs">
+                        {t("video_optimizer.help_desync_repeats")}
+                      </p>
                     </TooltipContent>
                   </Tooltip>
+                  <FieldLabel htmlFor="dpi-desync-repeats">
+                    {t("video_optimizer.label_desync_repeats")}
+                  </FieldLabel>
                 </div>
                 <Input
                   id="dpi-desync-repeats"
@@ -573,7 +593,9 @@ function VideoOptimizerForm({
                       onClick={async () => {
                         const success = await runUninstall();
                         if (success) {
-                          toast.success(t("video_optimizer.toast_uninstall_success"));
+                          toast.success(
+                            t("video_optimizer.toast_uninstall_success"),
+                          );
                           refresh();
                         } else {
                           toast.error(
