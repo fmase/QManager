@@ -225,7 +225,9 @@ p_hl=$(printf '%s' "$profile_json" | jq -r '.settings.hl // empty | tostring')
 [ -z "$p_ttl" ] && p_ttl=0
 [ -z "$p_hl" ] && p_hl=0
 
-qlog_info "Applying profile: $p_name (APN=$p_apn_name, CID=$p_apn_cid)"
+# Resolve the live WAN CID once up front; reused in apply_apn() below.
+detect_active_cid
+qlog_info "Applying profile: $p_name (APN=$p_apn_name, target CID=${active_cid} [profile stored CID=${p_apn_cid}])"
 
 # Write initial state
 write_state
@@ -244,22 +246,22 @@ apply_apn() {
         return
     fi
 
-    # Parse current APN for the target CID
+    # Parse current APN for the live WAN CID
     # Response format: +CGDCONT: <cid>,"<pdp_type>","<apn>",...
     # Using awk -F'"' — $2=pdp_type, $4=apn (same approach as current_settings.sh)
     local current_apn
-    current_apn=$(printf '%s' "$cgdcont_resp" | grep "+CGDCONT: ${p_apn_cid}," | awk -F'"' '{print $4}' | head -1)
+    current_apn=$(printf '%s' "$cgdcont_resp" | grep "+CGDCONT: ${active_cid}," | awk -F'"' '{print $4}' | head -1)
 
     # Skip if APN hasn't changed
     if [ "$current_apn" = "$p_apn_name" ]; then
-        mark_step_skipped "apn" "APN already set to ${p_apn_name} (CID ${p_apn_cid})"
+        mark_step_skipped "apn" "APN already set to ${p_apn_name} (CID ${active_cid})"
         return
     fi
 
     # Set APN
     local pdp="${p_pdp_type:-IPV4V6}"
-    local at_cmd="AT+CGDCONT=${p_apn_cid},\"${pdp}\",\"${p_apn_name}\""
-    mark_step_running "apn" "Setting APN to ${p_apn_name} (CID ${p_apn_cid})..."
+    local at_cmd="AT+CGDCONT=${active_cid},\"${pdp}\",\"${p_apn_name}\""
+    mark_step_running "apn" "Setting APN to ${p_apn_name} (CID ${active_cid})..."
 
     local resp
     resp=$(run_at "$at_cmd")
@@ -270,7 +272,7 @@ apply_apn() {
 
     sleep "$CMD_GAP"
 
-    mark_step_done "apn" "Set APN to ${p_apn_name} (CID ${p_apn_cid})"
+    mark_step_done "apn" "Set APN to ${p_apn_name} (CID ${active_cid})"
 }
 
 # =============================================================================
