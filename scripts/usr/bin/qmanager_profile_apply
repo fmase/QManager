@@ -262,30 +262,34 @@ apply_apn() {
         return
     fi
 
-    # Set APN — detach first so the new APN takes effect on reattach
-    # (AT+CGCONTRDP reflects the negotiated live-session APN, not just NVM)
     local pdp="${p_pdp_type:-IPV4V6}"
     local at_cmd="AT+CGDCONT=${p_apn_cid},\"${pdp}\",\"${p_apn_name}\""
     mark_step_running "apn" "Setting APN to ${p_apn_name} (CID ${p_apn_cid})..."
 
-    # Detach from network so the new APN takes effect on reattach
-    run_at "AT+COPS=2" >/dev/null 2>&1 || qlog_warn "AT+COPS=2 failed; proceeding with CGDCONT anyway"
-
+    # 1. Write new APN to NVM first — the modem must know the new config
+    #    before we cycle the network attachment, otherwise COPS=0 reattaches
+    #    against the previously-negotiated APN.
     local resp
     resp=$(run_at "$at_cmd")
     if [ $? -ne 0 ]; then
-        # Try to reattach before bailing out so we don't leave the modem detached
-        run_at "AT+COPS=0" >/dev/null 2>&1 || qlog_warn "AT+COPS=0 reattach failed after CGDCONT error"
         mark_step_failed "apn" "Failed to set APN"
         return
     fi
 
+    # 2. Detach from network. At this point NVM holds the new APN.
+    mark_step_running "apn" "Detaching from network..."
+    run_at "AT+COPS=2" >/dev/null 2>&1 || qlog_warn "AT+COPS=2 failed; new APN may not take effect until reboot"
+
+    # 3. Let the detach settle.
     sleep 2
 
+    # 4. Reattach with the new APN — this is what makes CGCONTRDP reflect
+    #    the new APN on the live session.
     mark_step_running "apn" "Reattaching to network..."
-    run_at "AT+COPS=0" >/dev/null 2>&1 || qlog_warn "AT+COPS=0 reattach failed"
+    run_at "AT+COPS=0" >/dev/null 2>&1 || qlog_warn "AT+COPS=0 reattach failed; modem may be stuck detached"
 
-    sleep "$CMD_GAP"
+    # 5. Let the attach settle before declaring the step done.
+    sleep 2
 
     mark_step_done "apn" "Set APN to ${p_apn_name} (CID ${p_apn_cid})"
 }
