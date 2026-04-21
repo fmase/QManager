@@ -236,6 +236,19 @@ apply_network_mode_apn() {
         sleep 1
         i=$((i+1))
     done
+
+    # If any APN was written, cycle the PS attach so the live session
+    # re-negotiates with the new context — matches cellular/apn.sh and
+    # qmanager_profile_apply::apply_apn. One cycle total, not per-context.
+    if [ "$count" -gt 0 ]; then
+        qlog_info "apply_network_mode_apn: detaching for APN reattach"
+        qcmd 'AT+COPS=2' >/dev/null 2>&1 || qlog_warn "apply_network_mode_apn: AT+COPS=2 failed"
+        sleep 2
+        qlog_info "apply_network_mode_apn: reattaching"
+        qcmd 'AT+COPS=0' >/dev/null 2>&1 || qlog_warn "apply_network_mode_apn: AT+COPS=0 reattach failed"
+        sleep 2
+    fi
+
     return 0
 }
 
