@@ -60,7 +60,7 @@ trap cleanup EXIT INT TERM
 die_fail() {
     _msg="$1"
     qlog_error "$_msg"
-    lp_write_progress "failed" "$LP_CODE" 100 "$_msg"
+    lp_write_progress "failed" "$LP_CODE" 100 "failed" "$_msg"
     exit 1
 }
 
@@ -68,7 +68,7 @@ die_fail() {
 bail_if_cancelled() {
     if [ -f "$CANCEL_FILE" ]; then
         qlog_info "Cancel requested — aborting"
-        lp_write_progress "cancelled" "$LP_CODE" 100 "Install cancelled"
+        lp_write_progress "cancelled" "$LP_CODE" 100 "cancelled" "Install cancelled"
         exit 0
     fi
 }
@@ -84,7 +84,7 @@ lp_pack_is_code_safe "$LP_CODE" || die_fail "Invalid language code"
 [ -z "$MANIFEST_URL" ] && die_fail "Missing manifest_url"
 
 qlog_info "Installing language pack: $LP_CODE"
-lp_write_progress "running" "$LP_CODE" 5 "Fetching catalog..."
+lp_write_progress "running" "$LP_CODE" 5 "fetch_catalog" "Fetching catalog..."
 
 # --- Step 1: fetch manifest --------------------------------------------------
 bail_if_cancelled
@@ -112,7 +112,7 @@ if [ -n "$FREE_KB" ] && [ "$FREE_KB" -lt "$NEEDED_KB" ] 2>/dev/null; then
     die_fail "Not enough disk space (needs ~${NEEDED_KB} KB, have ${FREE_KB} KB)"
 fi
 
-lp_write_progress "running" "$LP_CODE" 20 "Downloading pack..."
+lp_write_progress "running" "$LP_CODE" 20 "download" "Downloading pack..."
 
 # --- Step 4: download tarball ------------------------------------------------
 bail_if_cancelled
@@ -122,13 +122,13 @@ curl -sSfL -m 30 -H "User-Agent: QManager" -o "$LP_TARBALL" "$PACK_URL" 2>/dev/n
     || die_fail "Download failed"
 [ -s "$LP_TARBALL" ] || die_fail "Downloaded file is empty"
 
-lp_write_progress "running" "$LP_CODE" 55 "Verifying checksum..."
+lp_write_progress "running" "$LP_CODE" 55 "verify" "Verifying checksum..."
 
 # --- Step 5: sha256 verify ---------------------------------------------------
 bail_if_cancelled
 lp_verify_sha256 "$LP_TARBALL" "$PACK_SHA" || die_fail "Checksum mismatch"
 
-lp_write_progress "running" "$LP_CODE" 70 "Extracting files..."
+lp_write_progress "running" "$LP_CODE" 70 "extract" "Extracting files..."
 
 # --- Step 6: extract to staging ---------------------------------------------
 bail_if_cancelled
@@ -140,13 +140,13 @@ mkdir -p "$LP_STAGING"
 # level of the archive (flat layout), matching the bundled packs.
 tar -xzf "$LP_TARBALL" -C "$LP_STAGING" 2>/dev/null || die_fail "Extraction failed"
 
-lp_write_progress "running" "$LP_CODE" 85 "Validating pack..."
+lp_write_progress "running" "$LP_CODE" 85 "validate" "Validating pack..."
 
 # --- Step 7: validate pack tree ---------------------------------------------
 bail_if_cancelled
 lp_validate_pack_tree "$LP_STAGING" || die_fail "Pack is missing required namespaces"
 
-lp_write_progress "running" "$LP_CODE" 95 "Installing..."
+lp_write_progress "running" "$LP_CODE" 95 "install" "Installing..."
 
 # --- Step 8: atomic swap -----------------------------------------------------
 bail_if_cancelled
@@ -161,6 +161,6 @@ LP_STAGING=""
 printf '%s' "$PACK_VER" > "$TARGET/.version" 2>/dev/null || true
 
 # --- Done --------------------------------------------------------------------
-lp_write_progress "success" "$LP_CODE" 100 "Installed"
+lp_write_progress "success" "$LP_CODE" 100 "done" "Installed"
 qlog_info "Language pack $LP_CODE installed (version=${PACK_VER:-unknown})"
 exit 0

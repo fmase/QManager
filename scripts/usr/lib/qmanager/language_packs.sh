@@ -164,22 +164,28 @@ lp_disk_free_kb() {
 }
 
 # -----------------------------------------------------------------------------
-# lp_write_progress <state> <code> <progress_int> <message>
+# lp_write_progress <state> <code> <progress_int> <step> [<message>]
 # Emits a single JSON document to $LP_PROGRESS_FILE atomically.
 # state: "idle" | "running" | "success" | "failed" | "cancelled"
+# step:  stable enum the frontend translates ("start" | "fetch_catalog" |
+#        "download" | "verify" | "extract" | "validate" | "install" | "done" |
+#        "cancelled" | "failed"). Empty for ad-hoc messages (e.g. error detail).
+# message: optional human fallback string. Frontend prefers translated step.
 # progress: integer 0-100
 # -----------------------------------------------------------------------------
 lp_write_progress() {
     _state="$1"
     _code="$2"
     _progress="$3"
-    _message="$4"
+    _step="$4"
+    _message="${5:-}"
     jq -n \
         --arg state "$_state" \
         --arg code "${_code:-}" \
         --argjson progress "${_progress:-0}" \
-        --arg message "${_message:-}" \
-        '{state:$state, code:$code, progress:$progress, message:$message}' \
+        --arg step "${_step:-}" \
+        --arg message "$_message" \
+        '{state:$state, code:$code, progress:$progress, step:$step, message:$message}' \
         > "${LP_PROGRESS_FILE}.tmp" 2>/dev/null
     mv "${LP_PROGRESS_FILE}.tmp" "$LP_PROGRESS_FILE" 2>/dev/null
     return 0

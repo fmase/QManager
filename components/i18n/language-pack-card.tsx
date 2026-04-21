@@ -2,8 +2,10 @@
 
 import * as React from "react";
 import { useTranslation } from "react-i18next";
+import { AnimatePresence, motion } from "motion/react";
 import { toast } from "sonner";
-import { AlertCircleIcon, GlobeIcon, Loader2Icon } from "lucide-react";
+import { LanguagesIcon, TriangleAlertIcon } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -13,12 +15,13 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useLanguagePacks } from "@/hooks/use-language-packs";
 import { resolveErrorMessage } from "@/lib/i18n/resolve-error";
 import { buildCatalogView } from "@/lib/i18n/language-pack-manifest";
@@ -49,15 +52,6 @@ export function LanguagePackCard() {
   }, [list]);
 
   const activeCode = i18n.language as LanguageCode;
-
-  // Languages selectable as "active" = bundled + downloaded (not available-only).
-  const selectableCodes = React.useMemo<LanguageCode[]>(() => {
-    const bundled = AVAILABLE_LANGUAGES.filter((e) => e.bundled).map((e) => e.code);
-    const downloaded = (list?.installed ?? [])
-      .map((i) => i.code)
-      .filter((c) => !bundled.includes(c));
-    return [...bundled, ...downloaded];
-  }, [list]);
 
   const handleSelectActive = React.useCallback(
     (code: LanguageCode) => {
@@ -139,139 +133,27 @@ export function LanguagePackCard() {
     [i18n, remove, t],
   );
 
-  const activeEntry = AVAILABLE_LANGUAGES.find((e) => e.code === activeCode);
-
   return (
-    <div className="flex flex-col gap-6">
-      {/* Active language section */}
-      <Card>
-        <CardHeader>
-          <CardTitle>{t("languages.sections.active_title")}</CardTitle>
-          <CardDescription>{t("languages.sections.active_description")}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col gap-2">
-            <label className="text-sm font-medium">{t("languages.active_switcher.label")}</label>
-            <Select
-              value={activeCode}
-              onValueChange={(value) => handleSelectActive(value as LanguageCode)}
-            >
-              <SelectTrigger
-                aria-label={t("languages.active_switcher.aria")}
-                className="w-full sm:max-w-sm"
-              >
-                <GlobeIcon className="size-4" />
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {selectableCodes.map((code) => {
-                  const meta = AVAILABLE_LANGUAGES.find((e) => e.code === code);
-                  return (
-                    <SelectItem key={code} value={code}>
-                      {meta?.native_name ?? code}
-                      <span className="ml-2 text-xs text-muted-foreground">
-                        ({meta?.english_name ?? code})
-                      </span>
-                    </SelectItem>
-                  );
-                })}
-              </SelectContent>
-            </Select>
-            {activeEntry && (
-              <p className="text-xs text-muted-foreground">
-                {t("languages.active_switcher.native_name_hint", { native: activeEntry.native_name })}
-              </p>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+    <div className="@container/main mx-auto p-2">
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold mb-2">{t("languages.page.title")}</h1>
+        <p className="text-muted-foreground">{t("languages.page.description")}</p>
+      </div>
 
-      {/* Installed section */}
-      <Card>
-        <CardHeader>
-          <CardTitle>{t("languages.sections.installed_title")}</CardTitle>
-          <CardDescription>{t("languages.sections.installed_description")}</CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-3">
-          {catalogView.builtIn.map((row) => {
-            if (row.status !== "built_in") return null;
-            return (
-              <LanguagePackRow
-                key={row.entry.code}
-                variant={{ kind: "built_in", entry: row.entry, isActive: row.entry.code === activeCode }}
-                installState={install}
-                onInstall={handleInstall}
-                onCancelInstall={cancelInstall}
-                onRemove={handleRemove}
-                onSelectActive={handleSelectActive}
-              />
-            );
-          })}
-          {catalogView.downloaded.map((row) => {
-            if (row.status !== "downloaded") return null;
-            return (
-              <LanguagePackRow
-                key={row.entry.code}
-                variant={{
-                  kind: "downloaded",
-                  entry: row.entry,
-                  isActive: row.entry.code === activeCode,
-                  version: row.version,
-                  updateAvailableVersion: row.updateAvailableVersion,
-                  manifestEntry: row.manifestEntry,
-                }}
-                installState={install}
-                onInstall={handleInstall}
-                onCancelInstall={cancelInstall}
-                onRemove={handleRemove}
-                onSelectActive={handleSelectActive}
-              />
-            );
-          })}
-          {catalogView.downloaded.length === 0 && (
-            <p className="text-xs text-muted-foreground">{t("languages.empty_installed")}</p>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Available section */}
-      <Card>
-        <CardHeader>
-          <CardTitle>{t("languages.sections.available_title")}</CardTitle>
-          <CardDescription>{t("languages.sections.available_description")}</CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-3">
-          {isLoading ? (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Loader2Icon className="size-4 animate-spin" />
-              <span>{t("languages.sections.available_loading")}</span>
-            </div>
-          ) : listError || list?.manifest_error ? (
-            <div className="flex flex-col gap-3 rounded-md border border-destructive/30 bg-destructive/5 p-4">
-              <div className="flex items-center gap-2">
-                <AlertCircleIcon className="size-4 text-destructive" />
-                <span className="font-medium text-destructive">
-                  {t("languages.manifest_error.title")}
-                </span>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                {t("languages.manifest_error.description")}
-              </p>
-              <div>
-                <Button size="sm" variant="outline" onClick={() => refetch()}>
-                  {t("languages.manifest_error.retry_button")}
-                </Button>
-              </div>
-            </div>
-          ) : catalogView.available.length === 0 ? (
-            <p className="text-xs text-muted-foreground">{t("languages.sections.available_empty")}</p>
-          ) : (
-            catalogView.available.map((row) => {
-              if (row.status !== "available") return null;
+      <div className="grid grid-cols-1 @3xl/main:grid-cols-2 grid-flow-row gap-4">
+        {/* Active & Installed section */}
+        <Card className="@container/card">
+          <CardHeader>
+            <CardTitle>{t("languages.sections.installed_title")}</CardTitle>
+            <CardDescription>{t("languages.sections.installed_description")}</CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-3">
+            {catalogView.builtIn.map((row) => {
+              if (row.status !== "built_in") return null;
               return (
                 <LanguagePackRow
-                  key={row.manifestEntry.code}
-                  variant={{ kind: "available", manifestEntry: row.manifestEntry }}
+                  key={row.entry.code}
+                  variant={{ kind: "built_in", entry: row.entry, isActive: row.entry.code === activeCode }}
                   installState={install}
                   onInstall={handleInstall}
                   onCancelInstall={cancelInstall}
@@ -279,10 +161,118 @@ export function LanguagePackCard() {
                   onSelectActive={handleSelectActive}
                 />
               );
-            })
-          )}
-        </CardContent>
-      </Card>
+            })}
+            {catalogView.downloaded.map((row) => {
+              if (row.status !== "downloaded") return null;
+              return (
+                <LanguagePackRow
+                  key={row.entry.code}
+                  variant={{
+                    kind: "downloaded",
+                    entry: row.entry,
+                    isActive: row.entry.code === activeCode,
+                    version: row.version,
+                    updateAvailableVersion: row.updateAvailableVersion,
+                    manifestEntry: row.manifestEntry,
+                  }}
+                  installState={install}
+                  onInstall={handleInstall}
+                  onCancelInstall={cancelInstall}
+                  onRemove={handleRemove}
+                  onSelectActive={handleSelectActive}
+                />
+              );
+            })}
+          </CardContent>
+        </Card>
+
+        {/* Available section */}
+        <Card className="@container/card">
+          <CardHeader>
+            <CardTitle>{t("languages.sections.available_title")}</CardTitle>
+            <CardDescription>{t("languages.sections.available_description")}</CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-3">
+            {isLoading ? (
+              <>
+                {[0, 1, 2].map((i) => (
+                  <div
+                    key={i}
+                    className="flex flex-col gap-3 rounded-md border p-4"
+                    aria-hidden
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex flex-col gap-2">
+                        <Skeleton className="h-5 w-40" />
+                        <Skeleton className="h-4 w-20" />
+                      </div>
+                      <Skeleton className="h-8 w-24" />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                      <Skeleton className="h-8 w-full" />
+                      <Skeleton className="h-8 w-full" />
+                      <Skeleton className="h-8 w-full" />
+                      <Skeleton className="h-8 w-full" />
+                    </div>
+                  </div>
+                ))}
+                <span className="sr-only" role="status">
+                  {t("languages.sections.available_loading")}
+                </span>
+              </>
+            ) : listError || list?.manifest_error ? (
+              <AnimatePresence initial={false}>
+                <motion.div
+                  key="manifest-error"
+                  initial={{ opacity: 0, y: -6, height: 0 }}
+                  animate={{ opacity: 1, y: 0, height: "auto" }}
+                  exit={{ opacity: 0, y: -6, height: 0 }}
+                  transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
+                  className="overflow-hidden"
+                >
+                  <Alert variant="destructive">
+                    <TriangleAlertIcon />
+                    <AlertTitle>{t("languages.manifest_error.title")}</AlertTitle>
+                    <AlertDescription>
+                      <p>{t("languages.manifest_error.description")}</p>
+                      <Button size="sm" variant="outline" onClick={() => refetch()}>
+                        {t("languages.manifest_error.retry_button")}
+                      </Button>
+                    </AlertDescription>
+                  </Alert>
+                </motion.div>
+              </AnimatePresence>
+            ) : catalogView.available.length === 0 ? (
+              <Empty className="border-none">
+                <EmptyHeader>
+                  <EmptyMedia variant="icon">
+                    <LanguagesIcon />
+                  </EmptyMedia>
+                  <EmptyTitle>{t("languages.sections.available_empty_title")}</EmptyTitle>
+                  <EmptyDescription>
+                    {t("languages.sections.available_empty_description")}
+                  </EmptyDescription>
+                </EmptyHeader>
+              </Empty>
+            ) : (
+              catalogView.available.map((row) => {
+                if (row.status !== "available") return null;
+                return (
+                  <LanguagePackRow
+                    key={row.manifestEntry.code}
+                    variant={{ kind: "available", manifestEntry: row.manifestEntry }}
+                    installState={install}
+                    onInstall={handleInstall}
+                    onCancelInstall={cancelInstall}
+                    onRemove={handleRemove}
+                    onSelectActive={handleSelectActive}
+                  />
+                );
+              })
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

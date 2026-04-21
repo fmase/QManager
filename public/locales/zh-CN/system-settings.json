@@ -354,21 +354,19 @@
   "languages": {
     "page": {
       "title": "语言",
-      "description": "安装其他语言包以翻译 QManager 的界面。内置语言包随固件一起发布；可下载的语言包从远程清单获取。"
+      "description": "选择 QManager 使用的语言。已内置几种语言，更多语言可随时下载（由社区翻译）。"
     },
     "sections": {
-      "active_title": "活动语言",
-      "active_description": "QManager 渲染所有界面时使用的语言。",
-      "installed_title": "已安装",
-      "installed_description": "本设备上可用的语言包。",
+      "installed_title": "活动与已安装",
+      "installed_description": "本设备上的语言。点击「激活」即可切换 QManager 的界面语言。",
       "available_title": "可下载",
       "available_description": "社区维护的其他语言包。",
       "available_loading": "正在检查可下载的语言包…",
-      "available_empty": "清单中暂无可下载的语言包。"
+      "available_empty_title": "暂无可下载的语言包",
+      "available_empty_description": "请稍后再来 — 社区在不断添加新的翻译。"
     },
     "badges": {
       "built_in": "内置",
-      "downloaded": "已下载",
       "update_available": "有可用更新",
       "active": "活动"
     },
@@ -390,12 +388,19 @@
       "update_button_aria": "更新 {{name}} 语言包",
       "remove_button": "删除",
       "remove_button_aria": "删除 {{name}} 语言包",
-      "cancel_install_button": "取消安装"
+      "cancel_install_button": "取消安装",
+      "activate_button": "激活",
+      "activate_button_aria": "将 QManager 切换为 {{name}}"
     },
-    "active_switcher": {
-      "label": "选择活动语言",
-      "aria": "选择活动语言",
-      "native_name_hint": "原生名称: {{native}}"
+    "install_steps": {
+      "start": "正在启动安装…",
+      "fetch_catalog": "正在获取目录…",
+      "download": "正在下载语言包…",
+      "verify": "正在校验文件…",
+      "extract": "正在解压文件…",
+      "validate": "正在校验语言包…",
+      "install": "正在安装…",
+      "done": "已安装"
     },
     "manifest_error": {
       "title": "无法访问语言包清单",
@@ -426,7 +431,6 @@
       "confirm_button": "删除",
       "cancel_button": "取消"
     },
-    "empty_installed": "当前仅安装了内置语言。",
     "error_missing_pack": "该语言包已不再可用。",
     "disk_hint": "该语言包需要 /www 上约 {{kb}} KB 的可用空间。"
   },

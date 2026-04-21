@@ -2,7 +2,9 @@
 
 import * as React from "react";
 import { useTranslation } from "react-i18next";
-import { CheckCircle2Icon, DownloadIcon, Loader2Icon, RefreshCwIcon, Trash2Icon } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
+import { CheckCircle2Icon, DownloadIcon, Loader2Icon, RefreshCwIcon, Trash2Icon, TriangleAlertIcon } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CopyableCommand } from "@/components/ui/copyable-command";
@@ -51,7 +53,6 @@ export function LanguagePackRow({
   const { t } = useTranslation("system-settings");
   const [removeOpen, setRemoveOpen] = React.useState(false);
   const [removing, setRemoving] = React.useState(false);
-  const [installFailed, setInstallFailed] = React.useState(false);
 
   const code =
     variant.kind === "available" ? variant.manifestEntry.code : variant.entry.code;
@@ -65,11 +66,9 @@ export function LanguagePackRow({
       : variant.entry.english_name;
 
   const isThisInstalling = installState.state === "running" && installState.code === code;
-  const isThisFailed = installState.state === "failed" && installState.code === code;
-
-  React.useEffect(() => {
-    setInstallFailed(isThisFailed);
-  }, [isThisFailed]);
+  // Derived: startInstall flips state to "running" synchronously, so this
+  // resets to false on retry without a useEffect.
+  const installFailed = installState.state === "failed" && installState.code === code;
 
   const manifestEntry =
     variant.kind === "available"
@@ -79,7 +78,6 @@ export function LanguagePackRow({
         : undefined;
 
   const handleInstallClick = async () => {
-    setInstallFailed(false);
     await onInstall(code);
   };
 
@@ -98,23 +96,20 @@ export function LanguagePackRow({
     (variant.kind === "built_in" || variant.kind === "downloaded") && variant.isActive;
 
   return (
-    <div className="flex flex-col gap-3 rounded-md border border-border p-4">
+    <div
+      className="flex flex-col gap-3 rounded-md border p-4"
+      aria-current={isActive || undefined}
+    >
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="flex flex-col gap-1">
-          <div className="flex items-center gap-2">
-            <span className="text-base font-medium">{nativeName}</span>
-            <span className="text-xs text-muted-foreground">({englishName})</span>
+        <div className="flex min-w-0 flex-1 flex-col gap-1">
+          <div className="flex flex-wrap items-baseline gap-x-2">
+            <span className="text-base font-medium break-words">{nativeName}</span>
+            <span className="text-xs text-muted-foreground break-words">({englishName})</span>
           </div>
           <div className="flex flex-wrap items-center gap-1.5">
             {variant.kind === "built_in" && (
               <Badge variant="outline" className="bg-muted/50 text-muted-foreground border-muted-foreground/30">
                 {t("languages.badges.built_in")}
-              </Badge>
-            )}
-            {variant.kind === "downloaded" && (
-              <Badge variant="outline" className="bg-success/15 text-success hover:bg-success/20 border-success/30">
-                <CheckCircle2Icon className="size-3" />
-                {t("languages.badges.downloaded")}
               </Badge>
             )}
             {variant.kind === "downloaded" && variant.updateAvailableVersion && (
@@ -123,7 +118,8 @@ export function LanguagePackRow({
               </Badge>
             )}
             {isActive && (
-              <Badge variant="outline" className="bg-info/15 text-info hover:bg-info/20 border-info/30">
+              <Badge variant="outline" className="bg-success/15 text-success hover:bg-success/20 border-success/30">
+                <CheckCircle2Icon className="size-3" />
                 {t("languages.badges.active")}
               </Badge>
             )}
@@ -132,8 +128,12 @@ export function LanguagePackRow({
 
         <div className="flex items-center gap-2">
           {(variant.kind === "built_in" || variant.kind === "downloaded") && !isActive && (
-            <Button size="sm" variant="outline" onClick={() => onSelectActive(code)}>
-              {t("languages.badges.active")}
+            <Button
+              size="sm"
+              onClick={() => onSelectActive(code)}
+              aria-label={t("languages.row.activate_button_aria", { name: englishName })}
+            >
+              {t("languages.row.activate_button")}
             </Button>
           )}
 
@@ -142,19 +142,17 @@ export function LanguagePackRow({
               size="sm"
               onClick={handleInstallClick}
               disabled={isThisInstalling}
+              aria-busy={isThisInstalling}
               aria-label={t("languages.row.install_button_aria", { name: englishName })}
             >
               {isThisInstalling ? (
-                <>
-                  <Loader2Icon className="size-4 animate-spin" />
-                  {t("languages.row.install_button_progress")}
-                </>
+                <Loader2Icon className="size-4 animate-spin" />
               ) : (
-                <>
-                  <DownloadIcon className="size-4" />
-                  {t("languages.row.install_button")}
-                </>
+                <DownloadIcon className="size-4" />
               )}
+              {isThisInstalling
+                ? t("languages.row.install_button_progress")
+                : t("languages.row.install_button")}
             </Button>
           )}
 
@@ -164,6 +162,7 @@ export function LanguagePackRow({
               variant="outline"
               onClick={handleInstallClick}
               disabled={isThisInstalling}
+              aria-busy={isThisInstalling}
               aria-label={t("languages.row.update_button_aria", { name: englishName })}
             >
               {isThisInstalling ? (
@@ -171,7 +170,6 @@ export function LanguagePackRow({
               ) : (
                 <RefreshCwIcon className="size-4" />
               )}
-              {t("languages.row.update_button")}
             </Button>
           )}
 
@@ -183,7 +181,6 @@ export function LanguagePackRow({
               aria-label={t("languages.row.remove_button_aria", { name: englishName })}
             >
               <Trash2Icon className="size-4" />
-              {t("languages.row.remove_button")}
             </Button>
           )}
 
@@ -196,26 +193,28 @@ export function LanguagePackRow({
       </div>
 
       {manifestEntry && (
-        <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground sm:grid-cols-4">
+        <div className="grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
           <div>
-            <div className="text-muted-foreground/70">{t("languages.row.completeness_label")}</div>
-            <div>{t("languages.row.completeness_value", { percent: Math.round(manifestEntry.completeness * 100) })}</div>
+            <div className="text-muted-foreground">{t("languages.row.completeness_label")}</div>
+            <div className="text-foreground">
+              {t("languages.row.completeness_value", { percent: Math.round(manifestEntry.completeness * 100) })}
+            </div>
           </div>
           <div>
-            <div className="text-muted-foreground/70">{t("languages.row.size_label")}</div>
-            <div>{formatSize(manifestEntry.size_bytes, t)}</div>
+            <div className="text-muted-foreground">{t("languages.row.size_label")}</div>
+            <div className="text-foreground">{formatSize(manifestEntry.size_bytes, t)}</div>
           </div>
           <div>
-            <div className="text-muted-foreground/70">{t("languages.row.version_label")}</div>
-            <div className="font-mono">{manifestEntry.version}</div>
+            <div className="text-muted-foreground">{t("languages.row.version_label")}</div>
+            <div className="font-mono text-foreground">{manifestEntry.version}</div>
           </div>
-          <div>
-            <div className="text-muted-foreground/70">
+          <div className="min-w-0">
+            <div className="text-muted-foreground">
               {manifestEntry.contributors && manifestEntry.contributors.length > 1
                 ? t("languages.row.translator_label_plural")
                 : t("languages.row.translator_label")}
             </div>
-            <div className="truncate">
+            <div className="truncate text-foreground">
               {manifestEntry.contributors && manifestEntry.contributors.length > 0
                 ? manifestEntry.contributors.join(", ")
                 : t("languages.row.translators_fallback")}
@@ -224,34 +223,48 @@ export function LanguagePackRow({
         </div>
       )}
 
-      {isThisInstalling && installState.message && (
+      {isThisInstalling && (
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <Loader2Icon className="size-3 animate-spin" />
-          <span>{installState.message}</span>
-          {typeof installState.progress === "number" && (
-            <span className="font-mono">{installState.progress}%</span>
-          )}
+          <span>
+            {installState.step
+              ? t(`languages.install_steps.${installState.step}`, {
+                  defaultValue: installState.message ?? "",
+                })
+              : installState.message}
+          </span>
         </div>
       )}
 
-      {installFailed && manifestEntry && (
-        <div className="flex flex-col gap-2 rounded-md border border-destructive/30 bg-destructive/5 p-3 text-xs">
-          <div className="font-medium text-destructive">
-            {t("languages.install_failure_fallback.title")}
-          </div>
-          <p className="text-destructive">
-            {t("languages.install_failure_fallback.description")}
-          </p>
-          <CopyableCommand
-            command={t("languages.install_failure_fallback.command_template", {
-              code,
-              url: manifestEntry.url,
-              sha256: manifestEntry.sha256,
-              version: manifestEntry.version,
-            })}
-          />
-        </div>
-      )}
+      {/* manifestEntry guard: built-in packs can't fail install (they don't run install). */}
+      <AnimatePresence initial={false}>
+        {installFailed && manifestEntry && (
+          <motion.div
+            key="install-failure"
+            initial={{ opacity: 0, y: -6, height: 0 }}
+            animate={{ opacity: 1, y: 0, height: "auto" }}
+            exit={{ opacity: 0, y: -6, height: 0 }}
+            transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
+            className="overflow-hidden"
+          >
+            <Alert variant="destructive">
+              <TriangleAlertIcon />
+              <AlertTitle>{t("languages.install_failure_fallback.title")}</AlertTitle>
+              <AlertDescription>
+                <p>{t("languages.install_failure_fallback.description")}</p>
+                <CopyableCommand
+                  command={t("languages.install_failure_fallback.command_template", {
+                    code,
+                    url: manifestEntry.url,
+                    sha256: manifestEntry.sha256,
+                    version: manifestEntry.version,
+                  })}
+                />
+              </AlertDescription>
+            </Alert>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <AlertDialog open={removeOpen} onOpenChange={setRemoveOpen}>
         <AlertDialogContent>

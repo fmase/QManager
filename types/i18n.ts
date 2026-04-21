@@ -22,10 +22,25 @@ export interface LanguageMeta {
   bundled: boolean;
 }
 
+export type LanguageInstallStep =
+  | "start"
+  | "fetch_catalog"
+  | "download"
+  | "verify"
+  | "extract"
+  | "validate"
+  | "install"
+  | "done"
+  | "cancelled"
+  | "failed";
+
 export interface LanguagePackInstallState {
   state: "idle" | "running" | "success" | "failed" | "cancelled";
   code?: LanguageCode;
   progress?: number; // 0–100
+  /** Stable enum the frontend translates. Empty for older worker builds. */
+  step?: LanguageInstallStep | string;
+  /** Human fallback emitted by the worker. Used when step is unknown. */
   message?: string;
   error?: string;
 }

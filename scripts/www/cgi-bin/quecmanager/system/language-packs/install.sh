@@ -80,7 +80,7 @@ echo "$BODY" > "$LP_INPUT_FILE"
 rm -f "$LP_CANCEL_FILE" "$LP_PROGRESS_FILE"
 
 # Emit pending progress so the client's first poll doesn't race the worker.
-lp_write_progress "running" "$CODE" 0 "Starting install..."
+lp_write_progress "running" "$CODE" 0 "start" "Starting install..."
 
 # Send response BEFORE spawning worker (firewall-restart-kills-HTTP memory).
 printf 'Status: 202\r\nContent-Type: application/json\r\n\r\n'

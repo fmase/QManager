@@ -46,16 +46,26 @@ export function LanguageSwitcher({ className }: { className?: string }) {
     i18n.changeLanguage(value);
   };
 
+  // Wrapped in a Radix DropdownMenu — stop only the keys/clicks the parent menu
+  // would intercept. Escape must bubble so users can dismiss the menu; Tab must
+  // bubble so focus order works.
+  const stopMenuKeys = (e: React.KeyboardEvent) => {
+    const intercepted = ["ArrowDown", "ArrowUp", "Enter", " "];
+    if (intercepted.includes(e.key)) {
+      e.stopPropagation();
+    }
+  };
+
   return (
     <div
       className={className}
       onClick={(e) => e.stopPropagation()}
-      onKeyDown={(e) => e.stopPropagation()}
+      onKeyDown={stopMenuKeys}
     >
       <Select value={i18n.language} onValueChange={handleChange}>
         <SelectTrigger
           aria-label={t("language.switch_aria")}
-          className="h-8 w-full justify-start gap-2 border-0 bg-transparent px-2 shadow-none focus:ring-0"
+          className="h-8 w-full justify-start gap-2 border-0 bg-transparent px-2 shadow-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
         >
           <Languages className="size-4" />
           <SelectValue>

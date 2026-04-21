@@ -354,21 +354,19 @@
   "languages": {
     "page": {
       "title": "Languages",
-      "description": "Install additional language packs to translate QManager's UI. Built-in packs ship with the firmware; downloadable packs are fetched from a remote manifest."
+      "description": "Pick the language QManager uses. A few come built in — download more any time as the community translates them."
     },
     "sections": {
-      "active_title": "Active Language",
-      "active_description": "The language used to render every screen in QManager.",
-      "installed_title": "Installed",
-      "installed_description": "Language packs available on this device.",
+      "installed_title": "Active & Installed",
+      "installed_description": "Languages already on this device. Activate any to switch QManager's interface.",
       "available_title": "Available for Download",
       "available_description": "Additional language packs maintained by the community.",
       "available_loading": "Checking for available language packs…",
-      "available_empty": "No downloadable packs in the catalog right now."
+      "available_empty_title": "No downloadable packs yet",
+      "available_empty_description": "Check back later — the community is always adding new translations."
     },
     "badges": {
       "built_in": "Built-in",
-      "downloaded": "Downloaded",
       "update_available": "Update available",
       "active": "Active"
     },
@@ -390,12 +388,19 @@
       "update_button_aria": "Update {{name}} language pack",
       "remove_button": "Remove",
       "remove_button_aria": "Remove {{name}} language pack",
-      "cancel_install_button": "Cancel install"
+      "cancel_install_button": "Cancel install",
+      "activate_button": "Activate",
+      "activate_button_aria": "Switch QManager to {{name}}"
     },
-    "active_switcher": {
-      "label": "Select active language",
-      "aria": "Select active language",
-      "native_name_hint": "Native name: {{native}}"
+    "install_steps": {
+      "start": "Starting install…",
+      "fetch_catalog": "Fetching catalog…",
+      "download": "Downloading pack…",
+      "verify": "Verifying checksum…",
+      "extract": "Extracting files…",
+      "validate": "Validating pack…",
+      "install": "Installing…",
+      "done": "Installed"
     },
     "manifest_error": {
       "title": "Unable to reach language-pack catalog",
@@ -426,7 +431,6 @@
       "confirm_button": "Remove",
       "cancel_button": "Cancel"
     },
-    "empty_installed": "Only built-in languages are currently installed.",
     "error_missing_pack": "This language pack is no longer available.",
     "disk_hint": "The pack requires about {{kb}} KB of free space on /www."
   },
