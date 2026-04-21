@@ -194,10 +194,6 @@ const CustomProfileFormComponent = ({
       newErrors.name = t("custom_profiles.form.fields.profile_name_required");
     }
 
-    if (form.cid < 1 || form.cid > 15) {
-      newErrors.cid = t("custom_profiles.form.fields.cid_error");
-    }
-
     if (form.imei && !/^\d{15}$/.test(form.imei)) {
       newErrors.imei = t("custom_profiles.form.fields.imei_error");
     }
@@ -360,49 +356,28 @@ const CustomProfileFormComponent = ({
                 </Field>
               </div>
 
-              <div className="grid grid-cols-1 @md/card:grid-cols-2 gap-4">
-                <Field>
-                  <FieldLabel>
-                    {t("custom_profiles.form.fields.ip_protocol_label")}
-                  </FieldLabel>
-                  <Select
-                    value={form.pdp_type}
-                    onValueChange={(v) => updateField("pdp_type", v)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {(
-                        Object.entries(pdpTypeLabels) as [PdpType, string][]
-                      ).map(([value, label]) => (
-                        <SelectItem key={value} value={value}>
-                          {label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </Field>
-                <Field>
-                  <FieldLabel htmlFor="apnCid">
-                    {t("custom_profiles.form.fields.cid_label")}
-                  </FieldLabel>
-                  <Input
-                    id="apnCid"
-                    type="number"
-                    min={1}
-                    max={15}
-                    value={form.cid}
-                    onChange={(e) =>
-                      updateField("cid", parseInt(e.target.value) || 1)
-                    }
-                    aria-describedby={errors.cid ? "apnCid-error" : undefined}
-                  />
-                  {errors.cid && (
-                    <FieldError id="apnCid-error">{errors.cid}</FieldError>
-                  )}
-                </Field>
-              </div>
+              <Field>
+                <FieldLabel>
+                  {t("custom_profiles.form.fields.ip_protocol_label")}
+                </FieldLabel>
+                <Select
+                  value={form.pdp_type}
+                  onValueChange={(v) => updateField("pdp_type", v)}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(
+                      Object.entries(pdpTypeLabels) as [PdpType, string][]
+                    ).map(([value, label]) => (
+                      <SelectItem key={value} value={value}>
+                        {label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </Field>
 
               <Field>
                 <FieldLabel htmlFor="imei">
