@@ -102,6 +102,7 @@ is_long_command() {
 
     case "$cmd" in
         *QSCAN*|*QSCANFREQ*|*QFOTADL*) return 0 ;;
+        *COPS=2*|*COPS=0*) return 0 ;;
         *) return 1 ;;
     esac
 }
