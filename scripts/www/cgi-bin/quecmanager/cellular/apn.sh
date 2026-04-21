@@ -164,6 +164,16 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
             ;;
     esac
 
+    # --- Step 1b: Force live PDP session to re-negotiate with the new APN --------
+    # AT+CGDCONT alone updates NVM but the active session keeps the
+    # previously-negotiated APN until detach/reattach.
+    qlog_info "Detaching from network for APN reattach"
+    qcmd 'AT+COPS=2' >/dev/null 2>&1 || qlog_warn "AT+COPS=2 failed; new APN may not take effect until reboot"
+    sleep 2
+    qlog_info "Reattaching to network"
+    qcmd 'AT+COPS=0' >/dev/null 2>&1 || qlog_warn "AT+COPS=0 reattach failed; modem may be stuck detached"
+    sleep 2
+
     # --- Step 2: Apply TTL/HL if explicitly provided (0 = disable custom values) ---
     if [ "$has_ttl" = "true" ] || [ "$has_hl" = "true" ]; then
         qlog_info "Applying TTL=$TTL, HL=$HL"
