@@ -65,8 +65,6 @@
         "ip_protocol_ipv4": "仅 IPv4",
         "ip_protocol_ipv6": "仅 IPv6",
         "ip_protocol_dual": "IPv4 + IPv6 (双栈)",
-        "cid_label": "配置文件槽位 (CID)",
-        "cid_error": "CID 必须为 1–15。",
         "imei_label": "首选 IMEI",
         "imei_placeholder": "留空以保留当前 IMEI",
         "imei_error": "IMEI 必须为 15 位数字。",

@@ -65,8 +65,6 @@
         "ip_protocol_ipv4": "IPv4 Only",
         "ip_protocol_ipv6": "IPv6 Only",
         "ip_protocol_dual": "IPv4 + IPv6 (Dual Stack)",
-        "cid_label": "Profile Slot (CID)",
-        "cid_error": "CID must be 1–15.",
         "imei_label": "Preferred IMEI",
         "imei_placeholder": "Leave blank to keep current IMEI",
         "imei_error": "IMEI must be exactly 15 digits.",
