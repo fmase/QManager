@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 
 import {
   Card,
@@ -38,6 +39,8 @@ const ScheduleTowerLockingComponent = ({
   config,
   onScheduleChange,
 }: ScheduleTowerLockingProps) => {
+  const { t } = useTranslation("cellular");
+
   // Local form state
   const [enabled, setEnabled] = useState(false);
   const [startTime, setStartTime] = useState("08:00");
@@ -57,6 +60,17 @@ const ScheduleTowerLockingComponent = ({
     setEndTime(scheduleConfig.end_time);
     setDays(scheduleConfig.days);
   }
+
+  // Translated day labels — rebuilt when language changes
+  const dayLabels = useMemo(() => [
+    t("cell_locking.tower_locking.schedule.day_labels.sun"),
+    t("cell_locking.tower_locking.schedule.day_labels.mon"),
+    t("cell_locking.tower_locking.schedule.day_labels.tue"),
+    t("cell_locking.tower_locking.schedule.day_labels.wed"),
+    t("cell_locking.tower_locking.schedule.day_labels.thu"),
+    t("cell_locking.tower_locking.schedule.day_labels.fri"),
+    t("cell_locking.tower_locking.schedule.day_labels.sat"),
+  ], [t]);
 
   // Debounced save — fires 800ms after last change
   const debouncedSave = useCallback(
@@ -98,9 +112,7 @@ const ScheduleTowerLockingComponent = ({
     if (!success) {
       // Backend rejected — revert toggle
       setEnabled(!checked);
-      toast.warning(
-        "No lock targets configured"
-      );
+      toast.warning(t("cell_locking.tower_locking.schedule.toast_no_targets"));
     }
   };
 
@@ -147,9 +159,9 @@ const ScheduleTowerLockingComponent = ({
   return (
     <Card className="@container/card">
       <CardHeader>
-        <CardTitle>Schedule Tower Locking</CardTitle>
+        <CardTitle>{t("cell_locking.tower_locking.schedule.title")}</CardTitle>
         <CardDescription>
-          Set specific times to enable or disable tower locking.
+          {t("cell_locking.tower_locking.schedule.description")}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -159,19 +171,18 @@ const ScheduleTowerLockingComponent = ({
             <div className="flex items-center gap-1.5">
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <button type="button" className="inline-flex" aria-label="More info">
+                  <button type="button" className="inline-flex" aria-label={t("cell_locking.tower_locking.schedule.enable_info_aria")}>
                     <TbInfoCircleFilled className="size-5 text-info" />
                   </button>
                 </TooltipTrigger>
                 <TooltipContent>
                   <p>
-                    Schedule tower locking to automatically enable or disable at
-                    specified times.
+                    {t("cell_locking.tower_locking.schedule.enable_tooltip")}
                   </p>
                 </TooltipContent>
               </Tooltip>
               <p className="font-semibold text-muted-foreground text-sm">
-                Enable Scheduled Locking
+                {t("cell_locking.tower_locking.schedule.enable_label")}
               </p>
             </div>
             <div className="flex items-center space-x-2">
@@ -181,7 +192,7 @@ const ScheduleTowerLockingComponent = ({
                 onCheckedChange={handleEnabledChange}
               />
               <Label htmlFor="schedule-locking">
-                {enabled ? "Enabled" : "Disabled"}
+                {enabled ? t("state.enabled", { ns: "common" }) : t("state.disabled", { ns: "common" })}
               </Label>
             </div>
           </div>
@@ -189,7 +200,7 @@ const ScheduleTowerLockingComponent = ({
           <div className="flex flex-col gap-4 mt-4">
             <div className="flex items-center justify-between">
               <Label className="font-semibold text-muted-foreground text-sm">
-                Start Time
+                {t("cell_locking.tower_locking.schedule.start_time_label")}
               </Label>
               <Input
                 type="time"
@@ -200,7 +211,7 @@ const ScheduleTowerLockingComponent = ({
             </div>
             <div className="flex items-center justify-between">
               <Label className="font-semibold text-muted-foreground text-sm">
-                End Time
+                {t("cell_locking.tower_locking.schedule.end_time_label")}
               </Label>
               <Input
                 type="time"
@@ -213,10 +224,10 @@ const ScheduleTowerLockingComponent = ({
           <Separator />
           <fieldset className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-4">
             <legend className="font-semibold text-muted-foreground text-sm">
-              Repeat On
+              {t("cell_locking.tower_locking.schedule.repeat_on_label")}
             </legend>
-            <div className="flex flex-wrap gap-2 mt-2" role="group" aria-label="Days of the week">
-              {DAY_LABELS.map((day, index) => (
+            <div className="flex flex-wrap gap-2 mt-2" role="group" aria-label={t("cell_locking.tower_locking.schedule.repeat_on_aria")}>
+              {dayLabels.map((day, index) => (
                 <Toggle
                   aria-label={day}
                   key={day}

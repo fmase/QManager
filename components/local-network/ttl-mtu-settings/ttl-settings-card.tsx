@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { useTranslation } from "react-i18next";
+import { useTranslation, Trans } from "react-i18next";
 
 import {
   Card,
@@ -191,7 +191,14 @@ function TTLForm({
           <Alert className="mb-4">
             <InfoIcon className="size-4" />
             <AlertDescription>
-              <p>{t("ttl.alert_profile_override", { profileName })}</p>
+              <p>
+                <Trans
+                  i18nKey="ttl.alert_profile_override"
+                  ns="local-network"
+                  values={{ profileName }}
+                  components={{ strong: <span className="font-semibold" /> }}
+                />
+              </p>
             </AlertDescription>
           </Alert>
         )}

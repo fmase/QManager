@@ -5,6 +5,7 @@ export interface VideoOptimizerSettings {
   uptime: string;
   packets_processed: number;
   domains_loaded: number;
+  desync_repeats: number;
   binary_installed: boolean;
   kernel_module_loaded: boolean;
 }
@@ -17,6 +18,7 @@ export interface VideoOptimizerResponse {
   uptime: string;
   packets_processed: number;
   domains_loaded: number;
+  desync_repeats: number;
   binary_installed: boolean;
   kernel_module_loaded: boolean;
 }
@@ -34,6 +36,7 @@ export interface VerifyResult {
 export interface VideoOptimizerSavePayload {
   action: "save";
   enabled: boolean;
+  desync_repeats?: number;
 }
 
 export interface VideoOptimizerVerifyPayload {

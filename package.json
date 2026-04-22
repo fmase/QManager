@@ -1,6 +1,6 @@
 {
   "name": "qmanager",
-  "version": "v0.1.18-test1",
+  "version": "v0.1.20",
   "private": true,
   "scripts": {
     "dev": "bun --bun next dev",
@@ -52,6 +52,7 @@
     "embla-carousel-react": "^8.6.0",
     "i18next": "^26.0.5",
     "i18next-browser-languagedetector": "^8.2.1",
+    "i18next-http-backend": "^3.0.5",
     "i18next-icu": "^2.4.3",
     "input-otp": "^1.4.2",
     "intl-messageformat": "^11.2.1",

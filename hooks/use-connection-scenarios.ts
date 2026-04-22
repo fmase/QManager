@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { authFetch } from "@/lib/auth-fetch";
+import { resolveErrorMessage } from "@/lib/i18n/resolve-error";
 import type {
   ScenarioListResponse,
   ScenarioActivateResponse,
@@ -61,6 +63,7 @@ export interface UseConnectionScenariosReturn {
 }
 
 export function useConnectionScenarios(): UseConnectionScenariosReturn {
+  const { t } = useTranslation("errors");
   const [activeScenarioId, setActiveScenarioId] = useState("balanced");
   const [customScenarios, setCustomScenarios] = useState<StoredScenario[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -143,7 +146,7 @@ export function useConnectionScenarios(): UseConnectionScenariosReturn {
         if (!mountedRef.current) return false;
 
         if (!data.success) {
-          setError(data.detail || data.error || "Failed to activate scenario");
+          setError(resolveErrorMessage(t, data.error, data.detail, "Failed to activate scenario"));
           return false;
         }
 
@@ -164,7 +167,7 @@ export function useConnectionScenarios(): UseConnectionScenariosReturn {
         }
       }
     },
-    [],
+    [t],
   );
 
   // ---------------------------------------------------------------------------
@@ -189,7 +192,7 @@ export function useConnectionScenarios(): UseConnectionScenariosReturn {
         if (!mountedRef.current) return null;
 
         if (!data.success) {
-          setError(data.detail || data.error || "Failed to save scenario");
+          setError(resolveErrorMessage(t, data.error, data.detail, "Failed to save scenario"));
           return null;
         }
 
@@ -204,7 +207,7 @@ export function useConnectionScenarios(): UseConnectionScenariosReturn {
         return null;
       }
     },
-    [fetchScenarios],
+    [fetchScenarios, t],
   );
 
   // ---------------------------------------------------------------------------
@@ -229,7 +232,7 @@ export function useConnectionScenarios(): UseConnectionScenariosReturn {
         if (!mountedRef.current) return false;
 
         if (!data.success) {
-          setError(data.detail || data.error || "Failed to delete scenario");
+          setError(resolveErrorMessage(t, data.error, data.detail, "Failed to delete scenario"));
           return false;
         }
 
@@ -244,7 +247,7 @@ export function useConnectionScenarios(): UseConnectionScenariosReturn {
         return false;
       }
     },
-    [fetchScenarios],
+    [fetchScenarios, t],
   );
 
   // ---------------------------------------------------------------------------

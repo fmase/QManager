@@ -1,26 +1,28 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
 import CellularSettingsCard from "./cellular-settings-card";
 import CellularAMBRCard from "./cellular-ambr";
 import { useCellularSettings } from "@/hooks/use-cellular-settings";
 
 const CellularSettingsComponent = () => {
+  const { t } = useTranslation("cellular");
   const { settings, ambr, isLoading, isSaving, error, saveSettings, refresh } =
     useCellularSettings();
 
   return (
     <div className="@container/main mx-auto p-2">
       <div className="mb-6">
-        <h1 className="text-3xl font-bold mb-2">Cellular Basic Settings</h1>
+        <h1 className="text-3xl font-bold mb-2">{t("core_settings.basic.page.title")}</h1>
         <p className="text-muted-foreground">
-          SIM slot, radio state, and network mode preferences.
+          {t("core_settings.basic.page.description")}
         </p>
       </div>
       {error && !isLoading && (
         <div role="alert" className="mb-4 rounded-lg bg-destructive/10 px-4 py-3 text-sm text-destructive">
-          Failed to load cellular settings. Displayed values may be outdated.
+          {t("core_settings.basic.page.error_load")}
           <button type="button" className="ml-2 underline" onClick={refresh}>
-            Retry
+            {t("common:actions.retry")}
           </button>
         </div>
       )}

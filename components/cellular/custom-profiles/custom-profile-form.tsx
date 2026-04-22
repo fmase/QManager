@@ -383,6 +383,7 @@ const CustomProfileFormComponent = ({
                     </SelectContent>
                   </Select>
                 </Field>
+
                 <Field>
                   <FieldLabel htmlFor="apnCid">
                     {t("custom_profiles.form.fields.cid_label")}
@@ -393,9 +394,7 @@ const CustomProfileFormComponent = ({
                     min={1}
                     max={15}
                     value={form.cid}
-                    onChange={(e) =>
-                      updateField("cid", parseInt(e.target.value) || 1)
-                    }
+                    onChange={(e) => updateField("cid", parseInt(e.target.value) || 1)}
                     aria-describedby={errors.cid ? "apnCid-error" : undefined}
                   />
                   {errors.cid && (

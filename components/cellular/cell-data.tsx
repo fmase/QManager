@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { motion } from "motion/react";
 import Link from "next/link";
 
@@ -28,6 +29,7 @@ import type {
   DeviceStatus,
 } from "@/types/modem-status";
 import { formatNumericField } from "@/types/modem-status";
+import type { TFunction } from "i18next";
 
 // =============================================================================
 // Props
@@ -46,40 +48,49 @@ interface CellDataComponentProps {
 // =============================================================================
 
 /** Map network type enum to human-readable display */
-function formatNetworkType(type: string): string {
+function formatNetworkType(type: string, t: TFunction): string {
   switch (type) {
     case "5G-NSA":
-      return "5G NR + LTE";
+      return t("core_settings.info.cell_data.network_type_values.nsa");
     case "5G-SA":
-      return "5G NR SA";
+      return t("core_settings.info.cell_data.network_type_values.sa");
     case "LTE":
-      return "LTE";
+      return t("core_settings.info.cell_data.network_type_values.lte");
     default:
       return type || "-";
   }
 }
 
 /** Build CA summary string from network status */
-function formatCarrierAggregation(network: NetworkStatus): string {
+function formatCarrierAggregation(network: NetworkStatus, t: TFunction): string {
   const isNSA = network.type === "5G-NSA";
   const parts: string[] = [];
 
   if (network.ca_active && network.ca_count > 0) {
-    parts.push(`LTE (${network.ca_count + 1} carriers)`);
+    parts.push(
+      t("core_settings.info.cell_data.carrier_aggregation.lte_carriers", {
+        count: network.ca_count + 1,
+      })
+    );
   } else if (isNSA) {
     // NSA always has an LTE anchor — show "LTE" even without CA
-    parts.push("LTE");
+    parts.push(t("core_settings.info.cell_data.carrier_aggregation.lte_anchor"));
   }
 
   if (network.nr_ca_active && network.nr_ca_count > 0) {
     // Genuine NR CA — show carrier count (+1 for primary NR carrier)
-    parts.push(`NR (${network.nr_ca_count + 1} carriers)`);
+    parts.push(
+      t("core_settings.info.cell_data.carrier_aggregation.nr_carriers", {
+        count: network.nr_ca_count + 1,
+      })
+    );
   } else if (isNSA) {
     // NSA dual connectivity: NR leg is active but not doing CA
-    parts.push("NR");
+    parts.push(t("core_settings.info.cell_data.carrier_aggregation.nr_leg"));
   }
 
-  if (parts.length === 0) return "Inactive";
+  if (parts.length === 0)
+    return t("core_settings.info.cell_data.carrier_aggregation.inactive");
   return parts.join(" + ");
 }
 
@@ -173,12 +184,13 @@ function compressIPv6(ip: string): string {
 // =============================================================================
 
 function CellDataSkeleton() {
+  const { t } = useTranslation("cellular");
   return (
     <Card className="@container/card">
       <CardHeader>
-        <CardTitle>Cellular Information</CardTitle>
+        <CardTitle>{t("core_settings.info.cell_data.card.title")}</CardTitle>
         <CardDescription>
-          Detailed information about the connected cellular network.
+          {t("core_settings.info.cell_data.card.description")}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -210,6 +222,8 @@ const CellDataComponent = ({
   device,
   isLoading,
 }: CellDataComponentProps) => {
+  const { t } = useTranslation("cellular");
+
   if (isLoading) return <CellDataSkeleton />;
 
   // Determine which RAT provides Cell ID and TAC
@@ -225,9 +239,9 @@ const CellDataComponent = ({
   return (
     <Card className="@container/card">
       <CardHeader>
-        <CardTitle>Cellular Information</CardTitle>
+        <CardTitle>{t("core_settings.info.cell_data.card.title")}</CardTitle>
         <CardDescription>
-          Detailed information about the connected cellular network.
+          {t("core_settings.info.cell_data.card.description")}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -244,7 +258,9 @@ const CellDataComponent = ({
             variants={{ hidden: { opacity: 0, x: -8 }, visible: { opacity: 1, x: 0 } }}
             transition={{ duration: 0.2, ease: "easeOut" }}
           >
-            <p className="text-sm font-semibold text-muted-foreground">ISP</p>
+            <p className="text-sm font-semibold text-muted-foreground">
+              {t("core_settings.info.cell_data.rows.isp")}
+            </p>
             <p className="text-sm font-semibold">{network?.carrier || "-"}</p>
           </motion.div>
 
@@ -256,7 +272,7 @@ const CellDataComponent = ({
             transition={{ duration: 0.2, ease: "easeOut" }}
           >
             <p className="text-sm font-semibold text-muted-foreground">
-              Access Point Name (APN)
+              {t("core_settings.info.cell_data.rows.apn")}
             </p>
             <div className="flex items-center gap-1.5">
               <p className="text-sm font-semibold">{network?.apn || "-"}</p>
@@ -266,7 +282,9 @@ const CellDataComponent = ({
                 className="p-0.5 cursor-pointer"
                 asChild
               >
-                <Link href="/cellular/settings/apn-management">Edit</Link>
+                <Link href="/cellular/settings/apn-management">
+                  {t("core_settings.info.cell_data.rows.apn_edit")}
+                </Link>
               </Button>
             </div>
           </motion.div>
@@ -279,10 +297,10 @@ const CellDataComponent = ({
             transition={{ duration: 0.2, ease: "easeOut" }}
           >
             <p className="text-sm font-semibold text-muted-foreground">
-              Network Type
+              {t("core_settings.info.cell_data.rows.network_type")}
             </p>
             <p className="text-sm font-semibold">
-              {network ? formatNetworkType(network.type) : "-"}
+              {network ? formatNetworkType(network.type, t) : "-"}
             </p>
           </motion.div>
 
@@ -294,27 +312,33 @@ const CellDataComponent = ({
             transition={{ duration: 0.2, ease: "easeOut" }}
           >
             <p className="text-sm font-semibold text-muted-foreground">
-              Cell ID
+              {t("core_settings.info.cell_data.rows.cell_id")}
             </p>
             <div className="flex items-center gap-1.5">
               {cellId != null && enodebId != null ? (
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <button type="button" className="inline-flex" aria-label="More info">
+                    <button
+                      type="button"
+                      className="inline-flex"
+                      aria-label={t("core_settings.info.cell_data.info_aria")}
+                    >
                       <TbInfoCircleFilled className="size-5 text-info" />
                     </button>
                   </TooltipTrigger>
                   <TooltipContent>
                     <div className="grid">
                       <p>
-                        {cellIdLabel} ID:{" "}
+                        {t("core_settings.info.cell_data.rows.cell_id_tooltip_row", {
+                          label: cellIdLabel,
+                        })}{" "}
                         <span className="font-semibold">
                           {formatNumericField(enodebId)}
                         </span>
                       </p>
 
                       <p>
-                        Sector:{" "}
+                        {t("core_settings.info.cell_data.rows.sector_tooltip")}{" "}
                         <span className="font-semibold">
                           {formatNumericField(sectorId)}
                         </span>
@@ -337,19 +361,23 @@ const CellDataComponent = ({
             transition={{ duration: 0.2, ease: "easeOut" }}
           >
             <p className="text-sm font-semibold text-muted-foreground">
-              Tracking Area Code
+              {t("core_settings.info.cell_data.rows.tac")}
             </p>
             <div className="flex items-center gap-1.5">
               {tac != null ? (
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <button type="button" className="inline-flex" aria-label="More info">
+                    <button
+                      type="button"
+                      className="inline-flex"
+                      aria-label={t("core_settings.info.cell_data.info_aria")}
+                    >
                       <TbInfoCircleFilled className="size-5 text-info" />
                     </button>
                   </TooltipTrigger>
                   <TooltipContent>
                     <p>
-                      Hex:{" "}
+                      {t("core_settings.info.cell_data.rows.tac_hex_tooltip")}{" "}
                       <span className="font-semibold">0x{decToHex(tac)}</span>
                     </p>
                   </TooltipContent>
@@ -367,13 +395,17 @@ const CellDataComponent = ({
             transition={{ duration: 0.2, ease: "easeOut" }}
           >
             <p className="text-sm font-semibold text-muted-foreground">
-              Total Bandwidth in Use
+              {t("core_settings.info.cell_data.rows.total_bandwidth")}
             </p>
             <div className="flex items-center gap-1.5">
               {network?.bandwidth_details ? (
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <button type="button" className="inline-flex" aria-label="More info">
+                    <button
+                      type="button"
+                      className="inline-flex"
+                      aria-label={t("core_settings.info.cell_data.info_aria")}
+                    >
                       <TbInfoCircleFilled className="size-5 text-info" />
                     </button>
                   </TooltipTrigger>
@@ -398,10 +430,10 @@ const CellDataComponent = ({
             transition={{ duration: 0.2, ease: "easeOut" }}
           >
             <p className="text-sm font-semibold text-muted-foreground">
-              Carrier Aggregation
+              {t("core_settings.info.cell_data.rows.carrier_aggregation")}
             </p>
             <p className="text-sm font-semibold">
-              {network ? formatCarrierAggregation(network) : "-"}
+              {network ? formatCarrierAggregation(network, t) : "-"}
             </p>
           </motion.div>
 
@@ -413,7 +445,7 @@ const CellDataComponent = ({
             transition={{ duration: 0.2, ease: "easeOut" }}
           >
             <p className="text-sm font-semibold text-muted-foreground">
-              Active MIMO
+              {t("core_settings.info.cell_data.rows.active_mimo")}
             </p>
             <div className="flex items-center gap-1.5">
               <p className="text-sm font-semibold">{device?.mimo || "-"}</p>
@@ -423,7 +455,9 @@ const CellDataComponent = ({
                 className="p-0.5 cursor-pointer"
                 asChild
               >
-                <Link href="/cellular/antenna-statistics">Per-Antenna</Link>
+                <Link href="/cellular/antenna-statistics">
+                  {t("core_settings.info.cell_data.rows.active_mimo_link")}
+                </Link>
               </Button>
             </div>
           </motion.div>
@@ -436,7 +470,7 @@ const CellDataComponent = ({
             transition={{ duration: 0.2, ease: "easeOut" }}
           >
             <p className="text-sm font-semibold text-muted-foreground">
-              WAN IPv4
+              {t("core_settings.info.cell_data.rows.wan_ipv4")}
             </p>
             <p className="text-sm font-semibold font-mono">
               {network?.wan_ipv4 || "-"}
@@ -451,13 +485,17 @@ const CellDataComponent = ({
             transition={{ duration: 0.2, ease: "easeOut" }}
           >
             <p className="text-sm font-semibold text-muted-foreground">
-              WAN IPv6
+              {t("core_settings.info.cell_data.rows.wan_ipv6")}
             </p>
             <div className="flex items-center gap-1.5">
               {network?.wan_ipv6 && compressIPv6(network.wan_ipv6) !== network.wan_ipv6 ? (
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <button type="button" className="inline-flex" aria-label="More info">
+                    <button
+                      type="button"
+                      className="inline-flex"
+                      aria-label={t("core_settings.info.cell_data.info_aria")}
+                    >
                       <TbInfoCircleFilled className="size-5 text-info" />
                     </button>
                   </TooltipTrigger>
@@ -480,13 +518,19 @@ const CellDataComponent = ({
             transition={{ duration: 0.2, ease: "easeOut" }}
           >
             <p className="text-sm font-semibold text-muted-foreground">
-              {hasIpv6Dns ? "Primary DNS (IPv4)" : "Primary DNS"}
+              {hasIpv6Dns
+                ? t("core_settings.info.cell_data.rows.primary_dns_ipv4")
+                : t("core_settings.info.cell_data.rows.primary_dns")}
             </p>
             <div className="flex items-center gap-1.5">
               {network?.primary_dns_v4 && compressIPv6(network.primary_dns_v4) !== network.primary_dns_v4 ? (
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <button type="button" className="inline-flex" aria-label="More info">
+                    <button
+                      type="button"
+                      className="inline-flex"
+                      aria-label={t("core_settings.info.cell_data.info_aria")}
+                    >
                       <TbInfoCircleFilled className="size-5 text-info" />
                     </button>
                   </TooltipTrigger>
@@ -511,13 +555,17 @@ const CellDataComponent = ({
                 transition={{ duration: 0.2, ease: "easeOut" }}
               >
                 <p className="text-sm font-semibold text-muted-foreground">
-                  Primary DNS (IPv6)
+                  {t("core_settings.info.cell_data.rows.primary_dns_ipv6")}
                 </p>
                 <div className="flex items-center gap-1.5">
                   {network?.primary_dns_v6 && compressIPv6(network.primary_dns_v6) !== network.primary_dns_v6 ? (
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <button type="button" className="inline-flex" aria-label="More info">
+                        <button
+                          type="button"
+                          className="inline-flex"
+                          aria-label={t("core_settings.info.cell_data.info_aria")}
+                        >
                           <TbInfoCircleFilled className="size-5 text-info" />
                         </button>
                       </TooltipTrigger>
@@ -542,13 +590,19 @@ const CellDataComponent = ({
             transition={{ duration: 0.2, ease: "easeOut" }}
           >
             <p className="text-sm font-semibold text-muted-foreground">
-              {hasIpv6Dns ? "Secondary DNS (IPv4)" : "Secondary DNS"}
+              {hasIpv6Dns
+                ? t("core_settings.info.cell_data.rows.secondary_dns_ipv4")
+                : t("core_settings.info.cell_data.rows.secondary_dns")}
             </p>
             <div className="flex items-center gap-1.5">
               {network?.secondary_dns_v4 && compressIPv6(network.secondary_dns_v4) !== network.secondary_dns_v4 ? (
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <button type="button" className="inline-flex" aria-label="More info">
+                    <button
+                      type="button"
+                      className="inline-flex"
+                      aria-label={t("core_settings.info.cell_data.info_aria")}
+                    >
                       <TbInfoCircleFilled className="size-5 text-info" />
                     </button>
                   </TooltipTrigger>
@@ -573,13 +627,17 @@ const CellDataComponent = ({
                 transition={{ duration: 0.2, ease: "easeOut" }}
               >
                 <p className="text-sm font-semibold text-muted-foreground">
-                  Secondary DNS (IPv6)
+                  {t("core_settings.info.cell_data.rows.secondary_dns_ipv6")}
                 </p>
                 <div className="flex items-center gap-1.5">
                   {network?.secondary_dns_v6 && compressIPv6(network.secondary_dns_v6) !== network.secondary_dns_v6 ? (
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <button type="button" className="inline-flex" aria-label="More info">
+                        <button
+                          type="button"
+                          className="inline-flex"
+                          aria-label={t("core_settings.info.cell_data.info_aria")}
+                        >
                           <TbInfoCircleFilled className="size-5 text-info" />
                         </button>
                       </TooltipTrigger>

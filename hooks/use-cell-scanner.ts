@@ -1,8 +1,10 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { authFetch } from "@/lib/auth-fetch";
+import { resolveErrorMessage } from "@/lib/i18n/resolve-error";
 import type { CellScanResult } from "@/components/cellular/cell-scanner/scan-result";
 
 // Poll interval while a scan is running (ms)
@@ -27,6 +29,7 @@ interface UseCellScannerReturn {
 }
 
 export function useCellScanner(): UseCellScannerReturn {
+  const { t } = useTranslation("errors");
   const [status, setStatus] = useState<ScanStatus>("idle");
   const [results, setResults] = useState<CellScanResult[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -168,7 +171,7 @@ export function useCellScanner(): UseCellScannerReturn {
           return;
         } else {
           setStatus("error");
-          setError(data.detail || data.error || "Failed to start scan");
+          setError(resolveErrorMessage(t, data.error, data.detail, "Failed to start scan"));
           return;
         }
       }
@@ -188,7 +191,7 @@ export function useCellScanner(): UseCellScannerReturn {
       setStatus("error");
       setError("Failed to connect to scanner");
     }
-  }, [startTimer, stopPolling]);
+  }, [startTimer, stopPolling, t]);
 
   // --- Check for existing results on mount -----------------------------------
   useEffect(() => {

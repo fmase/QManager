@@ -326,10 +326,6 @@
     "input_placeholder": "AT+COPS?",
     "kbd_tab": "Tab",
     "warning_title": "Warning",
-    "warning_disable_radio": "This will disable the modem radio. If connected via Tailscale, you may lose access to this UI.",
-    "blocked_qscanfreq": "Use the Cell Scanner page for frequency scanning.",
-    "blocked_qscan": "Use the Cell Scanner page for network scanning.",
-    "blocked_factory_reset": "Factory reset is not allowed from the terminal.",
     "response_network_error": "Network error — could not reach modem backend",
     "response_unexpected_error": "Unexpected error — check backend logs",
     "response_command_failed": "Command failed",
@@ -353,34 +349,202 @@
     "validate_fields_required": "Both fields are required.",
     "validate_must_start_at": "Command must start with \"AT\".",
     "validate_command_duplicate": "This command already exists.",
-    "validate_label_duplicate": "A command with this label already exists.",
-    "commands": {
-      "reboot": "Reboot",
-      "disconnect": "Disconnect",
-      "connect": "Connect",
-      "signal_info": "Signal Info",
-      "ca_info": "CA Info",
-      "get_sim_slot": "Get current SIM Slot",
-      "switch_sim_slot_1": "Switch to SIM Slot 1",
-      "switch_sim_slot_2": "Switch to SIM Slot 2",
-      "get_apn_list": "Get current APN List",
-      "set_apn_nrbroadband": "Set APN to NRBROADBAND",
-      "show_imei": "Show Current IMEI",
-      "show_network_mode": "Show Current Network Mode",
-      "set_network_mode_auto": "Set Network Mode to AUTO",
-      "set_network_mode_5g_lte": "Set Network Mode to 5G NR/4G LTE Only",
-      "set_network_mode_5g_only": "Set Network Mode to 5G NR Only",
-      "set_network_mode_lte_only": "Set Network Mode to 4G LTE Only",
-      "check_sa_nsa_status": "Check SA/NSA disable status",
-      "enable_sa_nsa": "Enable Both SA and NSA",
-      "disable_sa_only": "Disable SA Only",
-      "disable_nsa_only": "Disable NSA Only",
-      "get_5g_sa_bands": "Get Enabled 5G NR SA Bands",
-      "get_5g_nsa_bands": "Get Enabled 5G NR NSA Bands",
-      "get_4g_lte_bands": "Get Enabled 4G LTE Bands",
-      "view_ip_addresses": "View assigned IP addresses",
-      "enable_ippt": "Enable IPPT (MAC passthrough)",
-      "disable_ippt": "Disable IPPT"
+    "validate_label_duplicate": "A command with this label already exists."
+  },
+  "languages": {
+    "page": {
+      "title": "Languages",
+      "description": "Pick the language QManager uses. A few come built in — download more any time as the community translates them."
+    },
+    "sections": {
+      "installed_title": "Active & Installed",
+      "installed_description": "Languages already on this device. Activate any to switch QManager's interface.",
+      "available_title": "Available for Download",
+      "available_description": "Additional language packs maintained by the community.",
+      "available_loading": "Checking for available language packs…",
+      "available_empty_title": "No downloadable packs yet",
+      "available_empty_description": "Check back later — the community is always adding new translations."
+    },
+    "badges": {
+      "built_in": "Built-in",
+      "update_available": "Update available",
+      "active": "Active"
+    },
+    "row": {
+      "size_label": "Download size",
+      "size_unit_kb": "{{kb}} KB",
+      "size_unit_mb": "{{mb}} MB",
+      "completeness_label": "Completeness",
+      "completeness_value": "{{percent}}% complete",
+      "version_label": "Version",
+      "last_updated_label": "Last updated",
+      "translator_label": "Translator",
+      "translator_label_plural": "Translators",
+      "translators_fallback": "Community contributors",
+      "install_button": "Install",
+      "install_button_progress": "Installing…",
+      "install_button_aria": "Install {{name}} language pack",
+      "update_button": "Update",
+      "update_button_aria": "Update {{name}} language pack",
+      "remove_button": "Remove",
+      "remove_button_aria": "Remove {{name}} language pack",
+      "cancel_install_button": "Cancel install",
+      "activate_button": "Activate",
+      "activate_button_aria": "Switch QManager to {{name}}"
+    },
+    "install_steps": {
+      "start": "Starting install…",
+      "fetch_catalog": "Fetching catalog…",
+      "download": "Downloading pack…",
+      "verify": "Verifying checksum…",
+      "extract": "Extracting files…",
+      "validate": "Validating pack…",
+      "install": "Installing…",
+      "done": "Installed"
+    },
+    "manifest_error": {
+      "title": "Unable to reach language-pack catalog",
+      "description": "QManager could not fetch the remote manifest. Installed packs still work. Check your internet connection and try again.",
+      "retry_button": "Retry"
+    },
+    "toast": {
+      "install_started": "Installing {{name}}…",
+      "install_success": "{{name}} installed",
+      "install_failed": "Failed to install {{name}}",
+      "install_cancelled": "Install cancelled",
+      "install_in_progress": "Another install is already in progress",
+      "remove_success": "{{name}} removed",
+      "remove_failed": "Failed to remove {{name}}",
+      "remove_active_switched": "{{name}} removed — switched to English",
+      "switched": "Switched to {{name}}",
+      "manifest_refreshed": "Catalog refreshed"
+    },
+    "install_failure_fallback": {
+      "title": "Manual install",
+      "description": "Copy the command below into an SSH session to install the pack manually.",
+      "command_template": "curl -sSfL -o /tmp/{{code}}.tar.gz {{url}} && sha256sum -c <(echo '{{sha256}}  /tmp/{{code}}.tar.gz') && mkdir -p /www/locales/{{code}} && tar -xzf /tmp/{{code}}.tar.gz -C /www/locales/{{code}} && echo {{version}} > /www/locales/{{code}}/.version"
+    },
+    "remove_dialog": {
+      "title": "Remove language pack",
+      "description": "{{name}} will be removed from this device. You can re-install it later from the catalog.",
+      "description_active": "{{name}} is the active language. Removing it will switch QManager back to English.",
+      "confirm_button": "Remove",
+      "cancel_button": "Cancel"
+    },
+    "error_missing_pack": "This language pack is no longer available.",
+    "disk_hint": "The pack requires about {{kb}} KB of free space on /www."
+  },
+  "about_device": {
+    "page": {
+      "title": "About Device",
+      "subtitle": "Device identity, network addresses, and system information."
+    },
+    "device_info": {
+      "card_title": "Device Information",
+      "card_description": "Modem identity and system details.",
+      "image_alt": "{{model}} modem",
+      "image_alt_fallback": "Modem",
+      "sections": {
+        "device": "Device",
+        "system": "System"
+      },
+      "fields": {
+        "manufacturer_label": "Manufacturer",
+        "model_label": "Model",
+        "firmware_label": "Firmware",
+        "build_date_label": "Build Date",
+        "imei_label": "IMEI",
+        "lte_3gpp_release_label": "3GPP Release (LTE)",
+        "nr5g_3gpp_release_label": "3GPP Release (NR5G)",
+        "hostname_label": "Hostname",
+        "openwrt_version_label": "OpenWRT Version",
+        "kernel_version_label": "Kernel Version"
+      },
+      "error": {
+        "title": "Failed to load device information",
+        "retry_button": "Retry"
+      }
+    },
+    "about_qmanager": {
+      "card_title": "About QManager",
+      "card_description": "Modem management interface for OpenWRT.",
+      "copyright": "© {{year}} QManager. All rights reserved.",
+      "sections": {
+        "qmanager": "QManager",
+        "network": "Network"
+      },
+      "fields": {
+        "version_label": "Version",
+        "device_ip_label": "Device IP",
+        "lan_subnet_label": "LAN Subnet",
+        "wwan_ipv4_label": "WWAN IPv4",
+        "wwan_ipv6_label": "WWAN IPv6",
+        "public_ipv4_label": "Public IPv4",
+        "public_ipv6_label": "Public IPv6"
+      }
+    },
+    "errors": {
+      "fetch_failed": "Failed to fetch device information"
+    }
+  },
+  "support": {
+    "page": {
+      "title": "Support",
+      "subtitle": "Get help, report issues, or connect with the community."
+    },
+    "contact": {
+      "card_title": "Contact",
+      "card_description": "Reach out for questions, bug reports, or feature requests.",
+      "description": "Found a bug, have a feature idea, or need help with your setup? Reach out through any of the channels below.",
+      "fields": {
+        "email_label": "Email",
+        "github_label": "GitHub"
+      }
+    },
+    "community": {
+      "card_title": "Community",
+      "card_description": "Join the Cellular Modem Talk/Development Discord server.",
+      "description": "The Cellular Modem Talk/Development community on Discord is where users share configurations, troubleshoot issues together, and discuss cellular networking tips. Come say hello!",
+      "qr_alt": "QR code for QManager Discord server invite"
+    }
+  },
+  "signal_storm": {
+    "hud": {
+      "score": "SCORE",
+      "best": "BEST",
+      "wave": "WAVE"
+    },
+    "power_ups": {
+      "rapid_fire": "⚡ RAPID FIRE",
+      "spread": "◈ SPREAD",
+      "shield": "◉ SHIELD"
+    },
+    "pause": {
+      "title": "PAUSED",
+      "resume_hint": "Press P to resume"
+    },
+    "game_over": {
+      "title": "GAME OVER",
+      "score_label": "SCORE",
+      "new_high_score": "★ NEW HIGH SCORE ★",
+      "best_prefix": "BEST:",
+      "controls_hint": "Enter to retry  •  Esc to exit"
+    },
+    "boss_defeated": "BOSS DEFEATED",
+    "muted": "MUTED",
+    "boss_names": {
+      "tier_1": "SIGNAL DISRUPTOR",
+      "tier_2": "FREQUENCY JAMMER",
+      "tier_3": "BAND BLOCKER",
+      "tier_4": "NETWORK NULLIFIER",
+      "tier_5": "CORE CORRUPTOR"
+    },
+    "boss_subtitles": {
+      "tier_1": "Disrupting your connection",
+      "tier_2": "Jamming all frequencies",
+      "tier_3": "Blocking every band",
+      "tier_4": "Nullifying your network",
+      "tier_5": "Corrupting the core"
     }
   }
 }

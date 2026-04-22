@@ -1,12 +1,15 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { authFetch } from "@/lib/auth-fetch";
+import { resolveErrorMessage } from "@/lib/i18n/resolve-error";
 import type { HostlistResponse } from "@/types/video-optimizer";
 
 const API_URL = "/cgi-bin/quecmanager/network/video_optimizer.sh";
 
 export function useCdnHostlist() {
+  const { t } = useTranslation("errors");
   const [domains, setDomains] = useState<string[]>([]);
   const [defaultDomains, setDefaultDomains] = useState<string[]>([]);
   const [count, setCount] = useState(0);
@@ -68,7 +71,7 @@ export function useCdnHostlist() {
 
         const data = await response.json();
         if (!data.success) {
-          setError(data.detail || "Failed to save hostname list");
+          setError(resolveErrorMessage(t, undefined, data.detail, "Failed to save hostname list"));
           return false;
         }
 
@@ -85,7 +88,7 @@ export function useCdnHostlist() {
         if (mountedRef.current) setIsSaving(false);
       }
     },
-    [fetchHostlist]
+    [fetchHostlist, t]
   );
 
   const restoreDefaults = useCallback(async (): Promise<boolean> => {
@@ -103,7 +106,7 @@ export function useCdnHostlist() {
 
       const data = await response.json();
       if (!data.success) {
-        setError(data.detail || "Failed to restore defaults");
+        setError(resolveErrorMessage(t, undefined, data.detail, "Failed to restore defaults"));
         return false;
       }
 
@@ -119,7 +122,7 @@ export function useCdnHostlist() {
     } finally {
       if (mountedRef.current) setIsRestoring(false);
     }
-  }, [fetchHostlist]);
+  }, [fetchHostlist, t]);
 
   useEffect(() => {
     fetchHostlist();

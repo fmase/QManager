@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { authFetch } from "@/lib/auth-fetch";
+import { resolveErrorMessage } from "@/lib/i18n/resolve-error";
 import type {
   FreqLockModemState,
   FreqLockStatusResponse,
@@ -58,6 +60,7 @@ export interface UseFrequencyLockingReturn {
 }
 
 export function useFrequencyLocking(): UseFrequencyLockingReturn {
+  const { t } = useTranslation("errors");
   const [modemState, setModemState] = useState<FreqLockModemState | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isLteLocking, setIsLteLocking] = useState(false);
@@ -95,7 +98,7 @@ export function useFrequencyLocking(): UseFrequencyLockingReturn {
       if (!mountedRef.current) return;
 
       if (!data.success) {
-        setError(data.error || "Failed to fetch frequency lock status");
+        setError(resolveErrorMessage(t, data.error, undefined, "Failed to fetch frequency lock status"));
         return;
       }
 
@@ -127,7 +130,7 @@ export function useFrequencyLocking(): UseFrequencyLockingReturn {
         setIsLoading(false);
       }
     }
-  }, []);
+  }, [t]);
 
   // Initial fetch
   useEffect(() => {
@@ -160,7 +163,7 @@ export function useFrequencyLocking(): UseFrequencyLockingReturn {
         if (!mountedRef.current) return false;
 
         if (!data.success) {
-          setError(data.detail || data.error || "Frequency lock operation failed");
+          setError(resolveErrorMessage(t, data.error, data.detail, "Frequency lock operation failed"));
           return false;
         }
 
@@ -185,7 +188,7 @@ export function useFrequencyLocking(): UseFrequencyLockingReturn {
         }
       }
     },
-    [fetchStatus]
+    [fetchStatus, t]
   );
 
   // ---------------------------------------------------------------------------

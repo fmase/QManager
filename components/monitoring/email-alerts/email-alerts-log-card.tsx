@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import { authFetch } from "@/lib/auth-fetch";
+import { resolveErrorMessage } from "@/lib/i18n/resolve-error";
 
 import {
   Card,
@@ -104,7 +105,7 @@ const EmailAlertsLogCard = ({ refreshKey }: EmailAlertsLogCardProps) => {
           setTotal(data.total);
           setLastFetched(new Date());
         } else {
-          const msg = data.error || t("email_alerts.log_error_title");
+          const msg = resolveErrorMessage(t, data.error, undefined, t("email_alerts.log_error_title"));
           setFetchError(msg);
           if (mode !== "silent") toast.error(msg);
         }

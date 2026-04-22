@@ -40,13 +40,13 @@ interface Warning {
 // --- Safety rules ---
 
 const BLOCKED_COMMANDS = [
-  { pattern: /\bQSCANFREQ\b/i, messageKey: "blocked_qscanfreq" },
-  { pattern: /\bQSCAN\b/i, messageKey: "blocked_qscan" },
-  { pattern: /QCFG\s*=\s*"resetfactory"/i, messageKey: "blocked_factory_reset" },
+  { pattern: /\bQSCANFREQ\b/i, messageKey: "qscanfreq" },
+  { pattern: /\bQSCAN\b/i, messageKey: "qscan" },
+  { pattern: /QCFG\s*=\s*"resetfactory"/i, messageKey: "factory_reset" },
 ] as const;
 
 const WARNING_COMMANDS = [
-  { pattern: /CFUN\s*=\s*[04]\b/i, messageKey: "warning_disable_radio" },
+  { pattern: /CFUN\s*=\s*[04]\b/i, messageKey: "disable_radio" },
 ] as const;
 
 // --- Constants ---
@@ -222,7 +222,7 @@ export default function ATTerminalCard() {
         if (rule.pattern.test(trimmed)) {
           appendEntry({
             command: trimmed,
-            response: t(`at_terminal.${rule.messageKey}`),
+            response: t(`blocked.${rule.messageKey}`, { ns: "at-commands" }),
             status: "blocked",
           });
           setInput("");
@@ -235,7 +235,7 @@ export default function ATTerminalCard() {
       for (const rule of WARNING_COMMANDS) {
         if (rule.pattern.test(trimmed)) {
           setWarning({
-            message: t(`at_terminal.${rule.messageKey}`),
+            message: t(`warnings.${rule.messageKey}`, { ns: "at-commands" }),
             command: trimmed,
           });
           return;

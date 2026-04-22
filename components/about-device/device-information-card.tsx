@@ -12,6 +12,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle, RefreshCcw } from "lucide-react";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 
 import type { AboutDeviceData } from "@/types/about-device";
 
@@ -37,37 +39,37 @@ interface DeviceInformationCardProps {
   onRetry: () => void;
 }
 
-function buildSections(data: AboutDeviceData): DataSection[] {
+function buildSections(data: AboutDeviceData, t: TFunction): DataSection[] {
   return [
     {
-      title: "Device",
+      title: t("about_device.device_info.sections.device"),
       rows: [
-        { label: "Manufacturer", value: data.device.manufacturer },
-        { label: "Model", value: data.device.model },
-        { label: "Firmware", value: data.device.firmware },
-        { label: "Build Date", value: data.device.build_date },
-        { label: "IMEI", value: data.device.imei, mono: true },
+        { label: t("about_device.device_info.fields.manufacturer_label"), value: data.device.manufacturer },
+        { label: t("about_device.device_info.fields.model_label"), value: data.device.model },
+        { label: t("about_device.device_info.fields.firmware_label"), value: data.device.firmware },
+        { label: t("about_device.device_info.fields.build_date_label"), value: data.device.build_date },
+        { label: t("about_device.device_info.fields.imei_label"), value: data.device.imei, mono: true },
         {
-          label: "3GPP Release (LTE)",
+          label: t("about_device.device_info.fields.lte_3gpp_release_label"),
           value: data.threeGppRelease.lte,
         },
         {
-          label: "3GPP Release (NR5G)",
+          label: t("about_device.device_info.fields.nr5g_3gpp_release_label"),
           value: data.threeGppRelease.nr5g,
         },
       ],
     },
     {
-      title: "System",
+      title: t("about_device.device_info.sections.system"),
       rows: [
-        { label: "Hostname", value: data.system.hostname },
+        { label: t("about_device.device_info.fields.hostname_label"), value: data.system.hostname },
         {
-          label: "OpenWRT Version",
+          label: t("about_device.device_info.fields.openwrt_version_label"),
           value: data.system.openwrt_version,
           mono: true,
         },
         {
-          label: "Kernel Version",
+          label: t("about_device.device_info.fields.kernel_version_label"),
           value: data.system.kernel_version,
           mono: true,
         },
@@ -79,14 +81,15 @@ function buildSections(data: AboutDeviceData): DataSection[] {
 // ─── Loading skeleton ────────────────────────────────────────────────────────
 
 function DeviceInformationSkeleton() {
+  const { t } = useTranslation("system-settings");
   return (
     <Card className="@container/card">
       <CardHeader>
         <CardTitle className="text-2xl font-semibold">
-          Device Information
+          {t("about_device.device_info.card_title")}
         </CardTitle>
         <CardDescription>
-          Modem identity and system details.
+          {t("about_device.device_info.card_description")}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -114,6 +117,8 @@ const DeviceInformationCard = ({
   error,
   onRetry,
 }: DeviceInformationCardProps) => {
+  const { t } = useTranslation("system-settings");
+
   if (isLoading) {
     return <DeviceInformationSkeleton />;
   }
@@ -122,22 +127,22 @@ const DeviceInformationCard = ({
     <Card className="@container/card">
       <CardHeader>
         <CardTitle className="text-2xl font-semibold">
-          Device Information
+          {t("about_device.device_info.card_title")}
         </CardTitle>
         <CardDescription>
-          Modem identity and system details.
+          {t("about_device.device_info.card_description")}
         </CardDescription>
       </CardHeader>
       <CardContent aria-live="polite">
         {error ? (
           <Alert variant="destructive">
             <AlertCircle className="h-4 w-4" />
-            <AlertTitle>Failed to load device information</AlertTitle>
+            <AlertTitle>{t("about_device.device_info.error.title")}</AlertTitle>
             <AlertDescription className="flex items-center justify-between">
               <span>{error}</span>
               <Button variant="outline" size="sm" onClick={onRetry}>
                 <RefreshCcw className="size-3.5 mr-1.5" />
-                Retry
+                {t("about_device.device_info.error.retry_button")}
               </Button>
             </AlertDescription>
           </Alert>
@@ -153,14 +158,18 @@ const DeviceInformationCard = ({
               <div className="size-44 bg-primary/15 rounded-full p-4 flex items-center justify-center">
                 <img
                   src="/device-icon.png"
-                  alt={data.device.model ? `${data.device.model} modem` : "Modem"}
+                  alt={
+                    data.device.model
+                      ? t("about_device.device_info.image_alt", { model: data.device.model })
+                      : t("about_device.device_info.image_alt_fallback")
+                  }
                   className="size-full drop-shadow-md object-contain"
                 />
               </div>
             </motion.div>
 
             {/* Data sections */}
-            {buildSections(data).map((section) => (
+            {buildSections(data, t).map((section) => (
               <div key={section.title}>
                 <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
                   {section.title}

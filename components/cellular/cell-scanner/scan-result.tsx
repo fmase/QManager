@@ -1,6 +1,8 @@
 "use client";
 
 import * as React from "react";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import { motion } from "motion/react";
 import {
   flexRender,
@@ -72,11 +74,12 @@ interface ScanResultViewProps {
 
 
 const createColumns = (
+  t: TFunction,
   onLockCell?: (cell: CellScanResult) => void,
 ): ColumnDef<CellScanResult>[] => [
   {
     accessorKey: "networkType",
-    header: () => <div>Network</div>,
+    header: () => <div>{t("cell_scanner.result_table.column_headers.network")}</div>,
     cell: ({ row }) => (
       <div><NetworkTypeBadge type={row.getValue("networkType")} /></div>
     ),
@@ -88,7 +91,7 @@ const createColumns = (
         variant="ghost"
         onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
       >
-        Provider
+        {t("cell_scanner.result_table.column_headers.provider")}
         <ArrowUpDown className="size-4" />
       </Button>
     ),
@@ -99,7 +102,7 @@ const createColumns = (
           <span className="font-semibold">{cell.provider}</span>
           <Tooltip>
             <TooltipTrigger asChild>
-              <button type="button" className="inline-flex p-2 -m-2" aria-label="MCC/MNC details">
+              <button type="button" className="inline-flex p-2 -m-2" aria-label={t("cell_scanner.result_table.mcc_mnc_aria")}>
                 <Info className="size-3" />
               </button>
             </TooltipTrigger>
@@ -115,7 +118,7 @@ const createColumns = (
   },
   {
     accessorKey: "band",
-    header: "Band",
+    header: t("cell_scanner.result_table.column_headers.band"),
     cell: ({ row }) => {
       const networkType = row.original.networkType;
       const band = row.getValue("band") as number;
@@ -130,33 +133,33 @@ const createColumns = (
   },
   {
     accessorKey: "earfcn",
-    header: "EARFCN",
+    header: t("cell_scanner.result_table.column_headers.earfcn"),
     cell: ({ row }) => (
       <div className="font-semibold">{row.getValue("earfcn")}</div>
     ),
   },
   {
     accessorKey: "pci",
-    header: "PCI",
+    header: t("cell_scanner.result_table.column_headers.pci"),
     cell: ({ row }) => (
       <div className="font-semibold">{row.getValue("pci")}</div>
     ),
   },
   {
     accessorKey: "cellID",
-    header: "Cell ID",
+    header: t("cell_scanner.result_table.column_headers.cell_id"),
     cell: ({ row }) => (
       <div className="font-medium">{row.getValue("cellID")}</div>
     ),
   },
   {
     accessorKey: "tac",
-    header: "TAC",
+    header: t("cell_scanner.result_table.column_headers.tac"),
     cell: ({ row }) => <div className="font-medium">{row.getValue("tac")}</div>,
   },
   {
     accessorKey: "bandwidth",
-    header: "BW",
+    header: t("cell_scanner.result_table.column_headers.bandwidth"),
     cell: ({ row }) => (
       <div className="font-medium">{row.getValue("bandwidth")} MHz</div>
     ),
@@ -168,7 +171,7 @@ const createColumns = (
         variant="ghost"
         onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
       >
-        Signal
+        {t("cell_scanner.result_table.column_headers.signal")}
         <ArrowUpDown className="size-4" />
       </Button>
     ),
@@ -197,13 +200,13 @@ const createColumns = (
               size="icon"
             >
               <MoreVertical className="size-4" />
-              <span className="sr-only">Open menu</span>
+              <span className="sr-only">{t("cell_scanner.result_table.open_menu")}</span>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-40">
             <DropdownMenuItem onClick={() => onLockCell?.(cellData)}>
               <LockIcon className="size-4" />
-              Lock Cell
+              {t("cell_scanner.result_table.lock_cell")}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -221,19 +224,8 @@ const NARROW_HIDDEN: VisibilityState = {
 };
 const NARROW_BREAKPOINT = 640;
 
-const COLUMN_LABELS: Record<string, string> = {
-  networkType: "Network",
-  provider: "Provider",
-  band: "Band",
-  earfcn: "EARFCN",
-  pci: "PCI",
-  cellID: "Cell ID",
-  tac: "TAC",
-  bandwidth: "Bandwidth",
-  signalStrength: "Signal",
-};
-
 const ScanResultView = ({ data, onLockCell }: ScanResultViewProps) => {
+  const { t } = useTranslation("cellular");
   const containerRef = React.useRef<HTMLDivElement>(null);
   // Only animate rows on initial mount — skip on sort/filter/page changes
   const hasAnimated = React.useRef(false);
@@ -244,7 +236,19 @@ const ScanResultView = ({ data, onLockCell }: ScanResultViewProps) => {
   );
   const [columnVisibility, setColumnVisibility] =
     React.useState<VisibilityState>({});
-  const columns = React.useMemo(() => createColumns(onLockCell), [onLockCell]);
+  const columns = React.useMemo(() => createColumns(t, onLockCell), [t, onLockCell]);
+
+  const columnLabels = React.useMemo<Record<string, string>>(() => ({
+    networkType: t("cell_scanner.result_table.column_headers.network"),
+    provider: t("cell_scanner.result_table.column_headers.provider"),
+    band: t("cell_scanner.result_table.column_headers.band"),
+    earfcn: t("cell_scanner.result_table.column_headers.earfcn"),
+    pci: t("cell_scanner.result_table.column_headers.pci"),
+    cellID: t("cell_scanner.result_table.column_headers.cell_id"),
+    tac: t("cell_scanner.result_table.column_headers.tac"),
+    bandwidth: t("cell_scanner.result_table.column_headers.bandwidth_full"),
+    signalStrength: t("cell_scanner.result_table.column_headers.signal"),
+  }), [t]);
 
   // Auto-hide secondary columns on narrow containers
   React.useEffect(() => {
@@ -286,7 +290,7 @@ const ScanResultView = ({ data, onLockCell }: ScanResultViewProps) => {
     <div ref={containerRef} className="relative flex flex-col gap-4 overflow-hidden">
       <div className="flex flex-col @sm/card:flex-row items-start @sm/card:items-center gap-2">
         <Input
-          placeholder="Filter by provider..."
+          placeholder={t("cell_scanner.result_table.filter_placeholder")}
           value={
             (table.getColumn("provider")?.getFilterValue() as string) ?? ""
           }
@@ -299,7 +303,7 @@ const ScanResultView = ({ data, onLockCell }: ScanResultViewProps) => {
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="outline" className="@sm/card:ml-auto">
-              Columns <ChevronDown className="size-4" />
+              {t("cell_scanner.result_table.columns_button")} <ChevronDown className="size-4" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
@@ -315,7 +319,7 @@ const ScanResultView = ({ data, onLockCell }: ScanResultViewProps) => {
                       column.toggleVisibility(!!value)
                     }
                   >
-                    {COLUMN_LABELS[column.id] ?? column.id}
+                    {columnLabels[column.id] ?? column.id}
                   </DropdownMenuCheckboxItem>
                 );
               })}
@@ -367,7 +371,7 @@ const ScanResultView = ({ data, onLockCell }: ScanResultViewProps) => {
                   colSpan={columns.length}
                   className="h-24 text-center"
                 >
-                  No results found.
+                  {t("cell_scanner.result_table.empty_row")}
                 </TableCell>
               </TableRow>
             )}
@@ -379,10 +383,10 @@ const ScanResultView = ({ data, onLockCell }: ScanResultViewProps) => {
           {(() => {
             const filtered = table.getFilteredRowModel().rows.length;
             const total = data.length;
-            const label = filtered === 1 ? "cell" : "cells";
-            return filtered < total
-              ? `${filtered} of ${total} ${label}`
-              : `${total} ${label} found`;
+            if (filtered < total) {
+              return t("cell_scanner.result_table.footer_of_total", { filtered, total, count: filtered });
+            }
+            return t("cell_scanner.result_table.footer_total", { count: total });
           })()}
         </div>
         <div className="space-x-2">
@@ -392,7 +396,7 @@ const ScanResultView = ({ data, onLockCell }: ScanResultViewProps) => {
             onClick={() => table.previousPage()}
             disabled={!table.getCanPreviousPage()}
           >
-            Previous
+            {t("cell_scanner.result_table.previous")}
           </Button>
           <Button
             variant="outline"
@@ -400,7 +404,7 @@ const ScanResultView = ({ data, onLockCell }: ScanResultViewProps) => {
             onClick={() => table.nextPage()}
             disabled={!table.getCanNextPage()}
           >
-            Next
+            {t("cell_scanner.result_table.next")}
           </Button>
         </div>
       </div>

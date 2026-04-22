@@ -1,8 +1,10 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { EyeIcon, EyeOffIcon, Loader2 } from "lucide-react";
 import { changePassword } from "@/hooks/use-auth";
+import { resolveErrorMessage } from "@/lib/i18n/resolve-error";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -27,6 +29,7 @@ export function ChangePasswordDialog({
   open,
   onOpenChange,
 }: ChangePasswordDialogProps) {
+  const { t } = useTranslation("common");
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -82,14 +85,14 @@ export function ChangePasswordDialog({
       try {
         const result = await changePassword(currentPassword, newPassword, useStrongPassword);
         if (!result.success) {
-          setError(result.error || "Password change failed.");
+          setError(resolveErrorMessage(t, result.error, undefined, "Password change failed."));
         }
         // On success, changePassword() clears the session and redirects to login
       } finally {
         setIsSubmitting(false);
       }
     },
-    [currentPassword, newPassword, confirmPassword, useStrongPassword]
+    [currentPassword, newPassword, confirmPassword, useStrongPassword, t]
   );
 
   return (

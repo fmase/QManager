@@ -1,6 +1,7 @@
 "use client";
 
 import { Fragment } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Card,
   CardContent,
@@ -26,14 +27,15 @@ interface CellularAMBRCardProps {
 }
 
 const CellularAMBRCard = ({ ambr, isLoading }: CellularAMBRCardProps) => {
+  const { t } = useTranslation("cellular");
+
   if (isLoading) {
     return (
       <Card className="@container/card">
         <CardHeader>
-          <CardTitle>Data Rate Limits</CardTitle>
+          <CardTitle>{t("core_settings.basic.ambr.card.title")}</CardTitle>
           <CardDescription>
-            The maximum upload and download speeds your carrier allows for each
-            data connection. These limits are set by your carrier&apos;s network policy.
+            {t("core_settings.basic.ambr.card.description")}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -61,10 +63,9 @@ const CellularAMBRCard = ({ ambr, isLoading }: CellularAMBRCardProps) => {
   return (
     <Card className="@container/card">
       <CardHeader>
-        <CardTitle>Data Rate Limits</CardTitle>
+        <CardTitle>{t("core_settings.basic.ambr.card.title")}</CardTitle>
         <CardDescription>
-          The maximum upload and download speeds your carrier allows for each
-          data connection. These limits are set by your carrier&apos;s network policy.
+          {t("core_settings.basic.ambr.card.description")}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -74,22 +75,17 @@ const CellularAMBRCard = ({ ambr, isLoading }: CellularAMBRCardProps) => {
             <div className="flex items-center gap-1.5">
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <button type="button" className="inline-flex" aria-label="More info">
+                  <button type="button" className="inline-flex" aria-label={t("core_settings.basic.ambr.tooltip.aria")}>
                     <TbInfoCircleFilled className="size-5 text-info" />
                   </button>
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>
-                    While devices can request specific AMBR values, operators{" "}
-                    <br />
-                    may ignore these and enforce their own speed limits based on{" "}
-                    <br />
-                    subscription plans, network policies, or congestion
-                    conditions.
+                  <p className="whitespace-pre-line">
+                    {t("core_settings.basic.ambr.tooltip.content")}
                   </p>
                 </TooltipContent>
               </Tooltip>
-              <h2 className="font-semibold text-sm">LTE Rates</h2>
+              <h2 className="font-semibold text-sm">{t("core_settings.basic.ambr.section.lte")}</h2>
             </div>
 
             <Separator />
@@ -121,7 +117,7 @@ const CellularAMBRCard = ({ ambr, isLoading }: CellularAMBRCardProps) => {
             ) : (
               <>
                 <p className="text-sm text-muted-foreground">
-                  No LTE rate data — not connected to LTE
+                  {t("core_settings.basic.ambr.empty.lte")}
                 </p>
                 <Separator />
               </>
@@ -133,22 +129,17 @@ const CellularAMBRCard = ({ ambr, isLoading }: CellularAMBRCardProps) => {
             <div className="flex items-center gap-1.5">
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <button type="button" className="inline-flex" aria-label="More info">
+                  <button type="button" className="inline-flex" aria-label={t("core_settings.basic.ambr.tooltip.aria")}>
                     <TbInfoCircleFilled className="size-5 text-info" />
                   </button>
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>
-                    While devices can request specific AMBR values, operators{" "}
-                    <br />
-                    may ignore these and enforce their own speed limits based on{" "}
-                    <br />
-                    subscription plans, network policies, or congestion
-                    conditions.
+                  <p className="whitespace-pre-line">
+                    {t("core_settings.basic.ambr.tooltip.content")}
                   </p>
                 </TooltipContent>
               </Tooltip>
-              <h2 className="font-semibold text-sm">5G Rates</h2>
+              <h2 className="font-semibold text-sm">{t("core_settings.basic.ambr.section.nr5g")}</h2>
             </div>
             <Separator />
             {ambr && ambr.nr5g.length > 0 ? (
@@ -179,7 +170,7 @@ const CellularAMBRCard = ({ ambr, isLoading }: CellularAMBRCardProps) => {
             ) : (
               <>
                 <p className="text-sm text-muted-foreground">
-                  No 5G rate data — not connected to 5G
+                  {t("core_settings.basic.ambr.empty.nr5g")}
                 </p>
                 <Separator />
               </>

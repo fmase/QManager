@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import Image from "next/image";
 import { toast } from "sonner";
 import { authFetch } from "@/lib/auth-fetch";
+import { resolveErrorMessage } from "@/lib/i18n/resolve-error";
 
 import {
   Card,
@@ -147,7 +148,7 @@ const EthernetStatusCard = () => {
         // Silent re-fetch to get new negotiated speed
         await fetchStatus(true);
       } else {
-        toast.error(data.detail || t("ethernet.toast_error_set_speed"));
+        toast.error(resolveErrorMessage(t, undefined, data.detail, t("ethernet.toast_error_set_speed")));
       }
     } catch {
       if (mountedRef.current) {

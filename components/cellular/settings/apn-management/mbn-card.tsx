@@ -2,6 +2,7 @@
 
 import { useState, useEffect, type FormEvent } from "react";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 import {
   Card,
   CardContent,
@@ -49,6 +50,7 @@ const MBNCard = ({
   onSave,
   onReboot,
 }: MBNCardProps) => {
+  const { t } = useTranslation("cellular");
   // Form state
   const [localAutoSel, setLocalAutoSel] = useState<string>("");
   const [selectedProfile, setSelectedProfile] = useState<string>("");
@@ -79,10 +81,10 @@ const MBNCard = ({
     if (localAutoSel === "1" && currentAutoSel !== "1") {
       const success = await onSave({ action: "auto_sel", auto_sel: 1 });
       if (success) {
-        toast.success("Auto-select enabled — reboot required");
+        toast.success(t("core_settings.apn.mbn.toast.auto_enabled"));
         setShowRebootDialog(true);
       } else {
-        toast.error("Failed to enable auto-select");
+        toast.error(t("core_settings.apn.mbn.toast.enable_error"));
       }
       return;
     }
@@ -91,10 +93,10 @@ const MBNCard = ({
     if (localAutoSel === "0" && currentAutoSel !== "0" && selectedProfile === currentProfile?.name) {
       const success = await onSave({ action: "auto_sel", auto_sel: 0 });
       if (success) {
-        toast.success("Auto-select disabled — reboot required");
+        toast.success(t("core_settings.apn.mbn.toast.auto_disabled"));
         setShowRebootDialog(true);
       } else {
-        toast.error("Failed to disable auto-select");
+        toast.error(t("core_settings.apn.mbn.toast.disable_error"));
       }
       return;
     }
@@ -106,15 +108,15 @@ const MBNCard = ({
         profile_name: selectedProfile,
       });
       if (success) {
-        toast.success("Carrier profile applied — reboot required");
+        toast.success(t("core_settings.apn.mbn.toast.profile_applied"));
         setShowRebootDialog(true);
       } else {
-        toast.error("Failed to apply carrier profile");
+        toast.error(t("core_settings.apn.mbn.toast.apply_error"));
       }
       return;
     }
 
-    toast.info("No changes to save");
+    toast.info(t("core_settings.apn.mbn.toast.no_changes"));
   };
 
   const handleReset = () => {
@@ -132,9 +134,9 @@ const MBNCard = ({
     setIsRebooting(true);
     const sent = await onReboot();
     if (sent) {
-      toast.success("Device is rebooting...");
+      toast.success(t("core_settings.apn.mbn.toast.rebooting"));
     } else {
-      toast.error("Reboot failed — restart the device manually");
+      toast.error(t("core_settings.apn.mbn.toast.reboot_error"));
       setIsRebooting(false);
     }
   };
@@ -143,9 +145,9 @@ const MBNCard = ({
     return (
       <Card className="@container/card">
         <CardHeader>
-          <CardTitle>Carrier Profile</CardTitle>
+          <CardTitle>{t("core_settings.apn.mbn.card.title")}</CardTitle>
           <CardDescription>
-            Select which carrier firmware profile is active on the modem. A reboot is required after changes.
+            {t("core_settings.apn.mbn.card.description")}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -171,9 +173,9 @@ const MBNCard = ({
   return (
     <Card className="@container/card">
       <CardHeader>
-        <CardTitle>Carrier Profile</CardTitle>
+        <CardTitle>{t("core_settings.apn.mbn.card.title")}</CardTitle>
         <CardDescription>
-          Select which carrier firmware profile is active on the modem. A reboot is required after changes.
+          {t("core_settings.apn.mbn.card.description")}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -182,7 +184,7 @@ const MBNCard = ({
             <FieldSet>
               <FieldGroup>
                 <Field>
-                  <FieldLabel htmlFor="mbn-auto-select">Auto-Select Profile</FieldLabel>
+                  <FieldLabel htmlFor="mbn-auto-select">{t("core_settings.apn.mbn.auto_select.label")}</FieldLabel>
                   <Select
                     value={
                       localAutoSel ||
@@ -191,18 +193,18 @@ const MBNCard = ({
                     onValueChange={setLocalAutoSel}
                     disabled={isSaving}
                   >
-                    <SelectTrigger id="mbn-auto-select" aria-label="Auto-Select Profile">
-                      <SelectValue placeholder="Choose Auto-Select" />
+                    <SelectTrigger id="mbn-auto-select" aria-label={t("core_settings.apn.mbn.auto_select.label")}>
+                      <SelectValue placeholder={t("core_settings.apn.mbn.auto_select.placeholder")} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="1">Enabled</SelectItem>
-                      <SelectItem value="0">Disabled</SelectItem>
+                      <SelectItem value="1">{t("common:state.enabled")}</SelectItem>
+                      <SelectItem value="0">{t("common:state.disabled")}</SelectItem>
                     </SelectContent>
                   </Select>
                 </Field>
 
                 <Field>
-                  <FieldLabel htmlFor="mbn-carrier-config">Carrier Configuration</FieldLabel>
+                  <FieldLabel htmlFor="mbn-carrier-config">{t("core_settings.apn.mbn.configuration.label")}</FieldLabel>
                   <Select
                     value={
                       selectedProfile ||
@@ -213,14 +215,14 @@ const MBNCard = ({
                     onValueChange={setSelectedProfile}
                     disabled={isSaving || localAutoSel === "1"}
                   >
-                    <SelectTrigger id="mbn-carrier-config" aria-label="Carrier Configuration">
-                      <SelectValue placeholder="Choose Carrier Configuration" />
+                    <SelectTrigger id="mbn-carrier-config" aria-label={t("core_settings.apn.mbn.configuration.label")}>
+                      <SelectValue placeholder={t("core_settings.apn.mbn.configuration.placeholder")} />
                     </SelectTrigger>
                     <SelectContent>
                       {profiles?.map((p) => (
                         <SelectItem key={p.index} value={p.name}>
                           {p.name}
-                          {p.selected && p.activated ? " (Active)" : ""}
+                          {p.selected && p.activated ? t("core_settings.apn.mbn.configuration.option_active_suffix") : ""}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -234,10 +236,10 @@ const MBNCard = ({
               {isSaving ? (
                 <>
                   <Loader2 className="size-4 animate-spin" />
-                  Saving...
+                  {t("common:state.saving")}
                 </>
               ) : (
-                "Save Settings"
+                t("core_settings.apn.mbn.save")
               )}
             </Button>
             <Button
@@ -245,7 +247,7 @@ const MBNCard = ({
               variant="outline"
               onClick={handleReset}
               disabled={isSaving}
-              aria-label="Reset to saved values"
+              aria-label={t("core_settings.apn.mbn.reset_aria")}
             >
               <RotateCcwIcon />
             </Button>
@@ -258,15 +260,14 @@ const MBNCard = ({
         }}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Reboot Required</AlertDialogTitle>
+              <AlertDialogTitle>{t("core_settings.apn.mbn.reboot_dialog.title")}</AlertDialogTitle>
               <AlertDialogDescription>
-                Carrier profile changes require a device reboot to take effect.
-                Would you like to reboot now?
+                {t("core_settings.apn.mbn.reboot_dialog.description")}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel disabled={isRebooting}>
-                Reboot Later
+                {t("core_settings.apn.mbn.reboot_dialog.cancel")}
               </AlertDialogCancel>
               <AlertDialogAction
                 disabled={isRebooting}
@@ -275,10 +276,10 @@ const MBNCard = ({
                 {isRebooting ? (
                   <>
                     <Loader2 className="size-4 animate-spin" />
-                    Rebooting...
+                    {t("core_settings.apn.mbn.reboot_dialog.rebooting")}
                   </>
                 ) : (
-                  "Reboot Now"
+                  t("core_settings.apn.mbn.reboot_dialog.reboot")
                 )}
               </AlertDialogAction>
             </AlertDialogFooter>

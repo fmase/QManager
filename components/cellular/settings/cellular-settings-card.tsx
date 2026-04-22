@@ -2,6 +2,7 @@
 
 import { useState, useEffect, type FormEvent } from "react";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 import { Field, FieldGroup, FieldLabel, FieldSet } from "@/components/ui/field";
 import {
   Select,
@@ -36,6 +37,7 @@ const CellularSettingsCard = ({
   isSaving,
   onSave,
 }: CellularSettingsCardProps) => {
+  const { t } = useTranslation("cellular");
   const { saved, markSaved } = useSaveFlash();
   const [simSlot, setSimSlot] = useState<string>("");
   const [cfun, setCfun] = useState<string>("");
@@ -77,16 +79,16 @@ const CellularSettingsCard = ({
     }
 
     if (Object.keys(changes).length === 0) {
-      toast.info("No changes to save");
+      toast.info(t("core_settings.basic.radio.toast.no_changes"));
       return;
     }
 
     const success = await onSave(changes);
     if (success) {
       markSaved();
-      toast.success("Modem settings saved");
+      toast.success(t("core_settings.basic.radio.toast.success"));
     } else {
-      toast.error("Failed to save modem settings");
+      toast.error(t("core_settings.basic.radio.toast.error"));
     }
   };
 
@@ -104,9 +106,9 @@ const CellularSettingsCard = ({
     return (
       <Card className="@container/card">
         <CardHeader>
-          <CardTitle>Cellular Basic Settings</CardTitle>
+          <CardTitle>{t("core_settings.basic.radio.card.title")}</CardTitle>
           <CardDescription>
-            Manage your cellular connection settings.
+            {t("core_settings.basic.radio.card.description")}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -150,9 +152,9 @@ const CellularSettingsCard = ({
   return (
     <Card className="@container/card">
       <CardHeader>
-        <CardTitle>Modem Radio Settings</CardTitle>
+        <CardTitle>{t("core_settings.basic.radio.card.title")}</CardTitle>
         <CardDescription>
-          Configure SIM slot, radio power, network type, and roaming preferences.
+          {t("core_settings.basic.radio.card.description")}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -162,37 +164,37 @@ const CellularSettingsCard = ({
               <FieldGroup>
                 <div className="grid @md/card:grid-cols-2 grid-cols-1 grid-flow-row gap-4">
                   <Field>
-                    <FieldLabel>SIM Slot</FieldLabel>
+                    <FieldLabel>{t("core_settings.basic.radio.sim_slot.label")}</FieldLabel>
                     <Select
                       value={simSlot || (settings ? String(settings.sim_slot) : "")}
                       onValueChange={setSimSlot}
                       disabled={isSaving}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Choose SIM Slot" />
+                        <SelectValue placeholder={t("core_settings.basic.radio.sim_slot.placeholder")} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="1">SIM 1</SelectItem>
-                        <SelectItem value="2">SIM 2</SelectItem>
+                        <SelectItem value="1">{t("core_settings.basic.radio.sim_slot.options.sim1")}</SelectItem>
+                        <SelectItem value="2">{t("core_settings.basic.radio.sim_slot.options.sim2")}</SelectItem>
                       </SelectContent>
                     </Select>
                   </Field>
 
                   <Field>
-                    <FieldLabel>Radio Power</FieldLabel>
+                    <FieldLabel>{t("core_settings.basic.radio.radio_power.label")}</FieldLabel>
                     <Select
                       value={cfun || (settings ? String(settings.cfun) : "")}
                       onValueChange={setCfun}
                       disabled={isSaving}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Choose Radio Power Mode" />
+                        <SelectValue placeholder={t("core_settings.basic.radio.radio_power.placeholder")} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="0">Radio Off (Low Power)</SelectItem>
-                        <SelectItem value="1">Normal Operation</SelectItem>
+                        <SelectItem value="0">{t("core_settings.basic.radio.radio_power.options.low_power")}</SelectItem>
+                        <SelectItem value="1">{t("core_settings.basic.radio.radio_power.options.normal")}</SelectItem>
                         <SelectItem value="4">
-                          Airplane Mode (RF Off)
+                          {t("core_settings.basic.radio.radio_power.options.airplane")}
                         </SelectItem>
                       </SelectContent>
                     </Select>
@@ -201,38 +203,38 @@ const CellularSettingsCard = ({
 
                 <div className="grid @md/card:grid-cols-2 grid-cols-1 grid-flow-row gap-4">
                   <Field>
-                    <FieldLabel>Preferred Network Type</FieldLabel>
+                    <FieldLabel>{t("core_settings.basic.radio.network_type.label")}</FieldLabel>
                     <Select
                       value={modePref || (settings ? settings.mode_pref : "")}
                       onValueChange={setModePref}
                       disabled={isSaving}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Choose Network Type" />
+                        <SelectValue placeholder={t("core_settings.basic.radio.network_type.placeholder")} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="AUTO">Automatic</SelectItem>
-                        <SelectItem value="LTE">LTE Only</SelectItem>
-                        <SelectItem value="NR5G">5G Only</SelectItem>
-                        <SelectItem value="LTE:NR5G">LTE + 5G</SelectItem>
+                        <SelectItem value="AUTO">{t("core_settings.basic.radio.network_type.options.auto")}</SelectItem>
+                        <SelectItem value="LTE">{t("core_settings.basic.radio.network_type.options.lte")}</SelectItem>
+                        <SelectItem value="NR5G">{t("core_settings.basic.radio.network_type.options.nr5g")}</SelectItem>
+                        <SelectItem value="LTE:NR5G">{t("core_settings.basic.radio.network_type.options.lte_nr5g")}</SelectItem>
                       </SelectContent>
                     </Select>
                   </Field>
 
                   <Field>
-                    <FieldLabel>5G Architecture</FieldLabel>
+                    <FieldLabel>{t("core_settings.basic.radio.architecture.label")}</FieldLabel>
                     <Select
                       value={nr5gMode || (settings ? String(settings.nr5g_mode) : "")}
                       onValueChange={setNr5gMode}
                       disabled={isSaving}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Choose 5G Mode" />
+                        <SelectValue placeholder={t("core_settings.basic.radio.architecture.placeholder")} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="0">Auto (SA + NSA)</SelectItem>
-                        <SelectItem value="1">NSA Only (5G via LTE)</SelectItem>
-                        <SelectItem value="2">SA Only (Standalone)</SelectItem>
+                        <SelectItem value="0">{t("core_settings.basic.radio.architecture.options.auto")}</SelectItem>
+                        <SelectItem value="1">{t("core_settings.basic.radio.architecture.options.nsa")}</SelectItem>
+                        <SelectItem value="2">{t("core_settings.basic.radio.architecture.options.sa")}</SelectItem>
                       </SelectContent>
                     </Select>
                   </Field>
@@ -240,19 +242,19 @@ const CellularSettingsCard = ({
 
                 <div className="grid @md/card:grid-cols-2 grid-cols-1 grid-flow-row gap-4">
                   <Field>
-                    <FieldLabel>Roaming Preference</FieldLabel>
+                    <FieldLabel>{t("core_settings.basic.radio.roaming.label")}</FieldLabel>
                     <Select
                       value={roamPref || (settings ? String(settings.roam_pref) : "")}
                       onValueChange={setRoamPref}
                       disabled={isSaving}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Choose Roaming Preference" />
+                        <SelectValue placeholder={t("core_settings.basic.radio.roaming.placeholder")} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="255">Any Network</SelectItem>
-                        <SelectItem value="1">Home Network Only</SelectItem>
-                        <SelectItem value="3">Partner Networks</SelectItem>
+                        <SelectItem value="255">{t("core_settings.basic.radio.roaming.options.any")}</SelectItem>
+                        <SelectItem value="1">{t("core_settings.basic.radio.roaming.options.home")}</SelectItem>
+                        <SelectItem value="3">{t("core_settings.basic.radio.roaming.options.partner")}</SelectItem>
                       </SelectContent>
                     </Select>
                   </Field>
@@ -267,7 +269,7 @@ const CellularSettingsCard = ({
               variant="outline"
               onClick={handleReset}
               disabled={isSaving}
-              aria-label="Reset to saved values"
+              aria-label={t("core_settings.basic.radio.reset_aria")}
             >
               <RotateCcwIcon />
             </Button>

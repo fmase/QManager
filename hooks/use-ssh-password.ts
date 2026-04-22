@@ -27,9 +27,13 @@ function humanizeError(code: string, detail?: string): string {
       return "Current password is incorrect.";
     case "shadow_unreadable":
       return "Could not read system password file.";
+    case "no_password_set":
+      return "Root account has no password set. Set one from the device shell first.";
     case "hash_parse_failed":
       return "Unsupported password hash format on this device.";
-    case "chpasswd_failed":
+    case "hash_tool_missing":
+      return "Password validation tool is not installed on this device.";
+    case "passwd_failed":
       return "Failed to apply the new password.";
     case "method_not_allowed":
       return "Unexpected request method.";

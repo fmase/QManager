@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { authFetch } from "@/lib/auth-fetch";
+import { resolveErrorMessage } from "@/lib/i18n/resolve-error";
 import type { CurrentApnProfile } from "@/types/sim-profile";
 import type {
   ApnSettingsResponse,
@@ -39,6 +41,7 @@ export interface UseApnSettingsReturn {
 }
 
 export function useApnSettings(): UseApnSettingsReturn {
+  const { t } = useTranslation("errors");
   const [profiles, setProfiles] = useState<CurrentApnProfile[] | null>(null);
   const [activeCid, setActiveCid] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -71,7 +74,7 @@ export function useApnSettings(): UseApnSettingsReturn {
       if (!mountedRef.current) return;
 
       if (!data.success) {
-        setError(data.error || "Failed to fetch APN settings");
+        setError(resolveErrorMessage(t, data.error, undefined, "Failed to fetch APN settings"));
         return;
       }
 
@@ -87,7 +90,7 @@ export function useApnSettings(): UseApnSettingsReturn {
         setIsLoading(false);
       }
     }
-  }, []);
+  }, [t]);
 
   // Fetch on mount
   useEffect(() => {
@@ -117,7 +120,7 @@ export function useApnSettings(): UseApnSettingsReturn {
         if (!mountedRef.current) return false;
 
         if (!data.success) {
-          setError(data.detail || data.error || "Failed to apply APN settings");
+          setError(resolveErrorMessage(t, data.error, data.detail, "Failed to apply APN settings"));
           return false;
         }
 
@@ -139,7 +142,7 @@ export function useApnSettings(): UseApnSettingsReturn {
         }
       }
     },
-    [fetchApn]
+    [fetchApn, t]
   );
 
   return {

@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { authFetch } from "@/lib/auth-fetch";
+import { resolveErrorMessage } from "@/lib/i18n/resolve-error";
 import type {
   VideoOptimizerResponse,
   VideoOptimizerSettings,
@@ -12,6 +14,7 @@ import type {
 const API_URL = "/cgi-bin/quecmanager/network/video_optimizer.sh";
 
 export function useVideoOptimizer() {
+  const { t } = useTranslation("errors");
   const [settings, setSettings] = useState<VideoOptimizerSettings | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -64,6 +67,7 @@ export function useVideoOptimizer() {
         uptime: data.uptime,
         packets_processed: data.packets_processed,
         domains_loaded: data.domains_loaded,
+        desync_repeats: data.desync_repeats,
         binary_installed: data.binary_installed,
         kernel_module_loaded: data.kernel_module_loaded,
       });
@@ -76,22 +80,32 @@ export function useVideoOptimizer() {
   }, []);
 
   const saveSettings = useCallback(
-    async (enabled: boolean): Promise<boolean> => {
+    async (
+      input: { enabled: boolean; desync_repeats?: number },
+    ): Promise<boolean> => {
       setIsSaving(true);
       setError(null);
 
       try {
+        const body: { action: "save"; enabled: boolean; desync_repeats?: number } = {
+          action: "save",
+          enabled: input.enabled,
+        };
+        if (typeof input.desync_repeats === "number") {
+          body.desync_repeats = input.desync_repeats;
+        }
+
         const response = await authFetch(API_URL, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "save", enabled }),
+          body: JSON.stringify(body),
         });
 
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
         const data = await response.json();
         if (!data.success) {
-          setError(data.detail || "Failed to save settings");
+          setError(resolveErrorMessage(t, data.error, data.detail, "Failed to save settings"));
           return false;
         }
 
@@ -109,7 +123,7 @@ export function useVideoOptimizer() {
         if (mountedRef.current) setIsSaving(false);
       }
     },
-    [fetchSettings]
+    [fetchSettings, t]
   );
 
   const stopVerifyPolling = useCallback(() => {
@@ -256,7 +270,7 @@ export function useVideoOptimizer() {
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const data = await response.json();
       if (!data.success) {
-        setError(data.detail || "Failed to uninstall");
+        setError(resolveErrorMessage(t, undefined, data.detail, "Failed to uninstall"));
         return false;
       }
       await fetchSettings(true);
@@ -269,7 +283,7 @@ export function useVideoOptimizer() {
     } finally {
       if (mountedRef.current) setIsUninstalling(false);
     }
-  }, [fetchSettings]);
+  }, [fetchSettings, t]);
 
   return {
     settings,

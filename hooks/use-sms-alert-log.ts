@@ -2,7 +2,9 @@
 
 import { useState, useCallback, useRef, useEffect } from "react";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 import { authFetch } from "@/lib/auth-fetch";
+import { resolveErrorMessage } from "@/lib/i18n/resolve-error";
 
 // =============================================================================
 // useSmsAlertLog — Fetch Hook for SMS Alert Log Entries
@@ -45,6 +47,7 @@ export interface UseSmsAlertLogReturn {
 // ─── Hook ──────────────────────────────────────────────────────────────────
 
 export function useSmsAlertLog(): UseSmsAlertLogReturn {
+  const { t } = useTranslation("errors");
   const [entries, setEntries] = useState<SmsLogEntry[]>([]);
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
@@ -84,7 +87,7 @@ export function useSmsAlertLog(): UseSmsAlertLogReturn {
           setTotal(data.total);
           setLastFetched(new Date());
         } else {
-          const msg = data.error || "Failed to load SMS log";
+          const msg = resolveErrorMessage(t, data.error, undefined, "Failed to load SMS log");
           setError(msg);
           if (mode !== "silent") toast.error(msg);
         }
@@ -101,7 +104,7 @@ export function useSmsAlertLog(): UseSmsAlertLogReturn {
         }
       }
     },
-    [],
+    [t],
   );
 
   // Fetch on mount

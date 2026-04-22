@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { motion } from "motion/react";
 import { EyeIcon, EyeOffIcon } from "lucide-react";
 import { useLogin } from "@/hooks/use-auth";
@@ -13,12 +14,14 @@ import {
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
+import { resolveErrorMessage } from "@/lib/i18n/resolve-error";
 
 // =============================================================================
 // LoginComponent
 // =============================================================================
 
 export default function LoginComponent() {
+  const { t } = useTranslation("common");
   const { status, login } = useLogin();
 
   const [password, setPassword] = useState("");
@@ -61,14 +64,14 @@ export default function LoginComponent() {
               `Too many failed attempts. Try again in ${result.retry_after} seconds.`,
             );
           } else {
-            setError(result.error || "Invalid password.");
+            setError(resolveErrorMessage(t, result.error, undefined, "Invalid password."));
           }
         }
       } finally {
         setIsSubmitting(false);
       }
     },
-    [password, login],
+    [password, login, t],
   );
 
   // Show spinner while detecting setup status or during redirect to /setup/

@@ -2,6 +2,7 @@
 
 import React from "react";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 import TowerLockingSettingsComponent from "@/components/cellular/tower-locking/tower-settings";
 import ScheduleTowerLockingComponent from "./schedule-locking";
 import LTELockingComponent from "./lte-locking";
@@ -10,6 +11,7 @@ import { useTowerLocking } from "@/hooks/use-tower-locking";
 import { useModemStatus } from "@/hooks/use-modem-status";
 
 const TowerLockingComponent = () => {
+  const { t } = useTranslation("cellular");
   const tower = useTowerLocking();
   const { data: modemData } = useModemStatus();
   const failoverConfig = tower.config?.failover ?? {
@@ -20,9 +22,9 @@ const TowerLockingComponent = () => {
   return (
     <div className="@container/main mx-auto p-2">
       <div className="mb-6">
-        <h1 className="text-3xl font-bold mb-2">Tower Locking</h1>
+        <h1 className="text-3xl font-bold mb-2">{t("cell_locking.tower_locking.page.title")}</h1>
         <p className="text-muted-foreground">
-          Lock onto specific cell towers by PCI and EARFCN.
+          {t("cell_locking.tower_locking.page.description")}
         </p>
       </div>
       <div className="grid grid-cols-1 gap-4">
@@ -34,14 +36,14 @@ const TowerLockingComponent = () => {
             isLoading={tower.isLoading}
             onPersistChange={(persist) => {
               if (!tower.config) {
-                toast.error("Settings unavailable — try refreshing the page");
+                toast.error(t("cell_locking.tower_locking.settings.settings_unavailable_toast"));
                 return;
               }
               tower.updateSettings(persist, failoverConfig);
             }}
             onFailoverChange={(enabled) => {
               if (!tower.config) {
-                toast.error("Settings unavailable — try refreshing the page");
+                toast.error(t("cell_locking.tower_locking.settings.settings_unavailable_toast"));
                 return;
               }
               tower.updateSettings(tower.config.persist, {
@@ -51,7 +53,7 @@ const TowerLockingComponent = () => {
             }}
             onThresholdChange={async (threshold) => {
               if (!tower.config) {
-                toast.error("Settings unavailable — try refreshing the page");
+                toast.error(t("cell_locking.tower_locking.settings.settings_unavailable_toast"));
                 return false;
               }
               return tower.updateSettings(tower.config.persist, {

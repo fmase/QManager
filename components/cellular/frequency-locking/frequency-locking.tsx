@@ -1,20 +1,24 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
 import LteFreqLockingComponent from "./lte-freq-locking";
 import NrFreqLockingComponent from "./nr-freq-locking";
 import { useFrequencyLocking } from "@/hooks/use-frequency-locking";
 import { useModemStatus } from "@/hooks/use-modem-status";
 
 const FrequencyLockingComponent = () => {
+  const { t } = useTranslation("cellular");
   const freqLock = useFrequencyLocking();
   const { data: modemData } = useModemStatus();
 
   return (
     <div className="@container/main mx-auto p-2">
       <div className="mb-6">
-        <h1 className="text-3xl font-bold mb-2">Frequency Locking</h1>
+        <h1 className="text-3xl font-bold mb-2">
+          {t("cell_locking.frequency_locking.page.title")}
+        </h1>
         <p className="text-muted-foreground">
-          Lock to specific EARFCNs/NR-ARFCNs. Experimental — use with caution.
+          {t("cell_locking.frequency_locking.page.description")}
         </p>
       </div>
       <div className="grid grid-cols-1 @3xl/main:grid-cols-2 grid-flow-row gap-4">

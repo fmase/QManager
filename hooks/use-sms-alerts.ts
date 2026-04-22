@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { authFetch } from "@/lib/auth-fetch";
+import { resolveErrorMessage } from "@/lib/i18n/resolve-error";
 
 // =============================================================================
 // useSmsAlerts — Fetch & Save Hook for SMS Alert Settings
@@ -43,6 +45,7 @@ export interface UseSmsAlertsReturn {
 // ─── Hook ──────────────────────────────────────────────────────────────────
 
 export function useSmsAlerts(): UseSmsAlertsReturn {
+  const { t } = useTranslation("errors");
   const [settings, setSettings] = useState<SmsAlertsSettings | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -75,7 +78,7 @@ export function useSmsAlerts(): UseSmsAlertsReturn {
       if (!mountedRef.current) return;
 
       if (!json.success) {
-        setError(json.error || "Failed to fetch SMS alert settings");
+        setError(resolveErrorMessage(t, json.error, undefined, "Failed to fetch SMS alert settings"));
         return;
       }
 
@@ -92,7 +95,7 @@ export function useSmsAlerts(): UseSmsAlertsReturn {
         setIsLoading(false);
       }
     }
-  }, []);
+  }, [t]);
 
   // Fetch on mount
   useEffect(() => {
@@ -122,7 +125,7 @@ export function useSmsAlerts(): UseSmsAlertsReturn {
         if (!mountedRef.current) return false;
 
         if (!json.success) {
-          setError(json.detail || json.error || "Failed to save settings");
+          setError(resolveErrorMessage(t, json.error, json.detail, "Failed to save settings"));
           return false;
         }
 
@@ -140,7 +143,7 @@ export function useSmsAlerts(): UseSmsAlertsReturn {
         }
       }
     },
-    [fetchSettings],
+    [fetchSettings, t],
   );
 
   // ---------------------------------------------------------------------------
@@ -165,7 +168,7 @@ export function useSmsAlerts(): UseSmsAlertsReturn {
       if (!mountedRef.current) return false;
 
       if (!json.success) {
-        setError(json.detail || json.error || "Failed to send test SMS");
+        setError(resolveErrorMessage(t, json.error, json.detail, "Failed to send test SMS"));
         return false;
       }
       return true;
@@ -180,7 +183,7 @@ export function useSmsAlerts(): UseSmsAlertsReturn {
         setIsSendingTest(false);
       }
     }
-  }, []);
+  }, [t]);
 
   return {
     settings,

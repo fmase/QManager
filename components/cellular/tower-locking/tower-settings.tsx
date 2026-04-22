@@ -2,6 +2,7 @@
 
 import React, { useState, useCallback } from "react";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 import { SaveButton, useSaveFlash } from "@/components/ui/save-button";
 
 import {
@@ -63,6 +64,7 @@ const TowerLockingSettingsComponent = ({
   onFailoverChange,
   onThresholdChange,
 }: TowerLockingSettingsProps) => {
+  const { t } = useTranslation("cellular");
   // Whether any tower lock is active (from config — matches what failover daemon checks)
   const hasActiveLock = (config?.lte?.enabled || config?.nr_sa?.enabled) ?? false;
   const scheduleEnabled = config?.schedule?.enabled ?? false;
@@ -97,7 +99,7 @@ const TowerLockingSettingsComponent = ({
     setIsSavingThreshold(false);
     if (ok) {
       markThresholdSaved();
-      toast.success("Failover threshold updated");
+      toast.success(t("cell_locking.tower_locking.settings.threshold_toast_success"));
     }
   }, [thresholdInput, onThresholdChange, markThresholdSaved]);
 
@@ -149,7 +151,7 @@ const TowerLockingSettingsComponent = ({
           className="bg-muted/50 text-muted-foreground border-muted-foreground/30"
         >
           <Loader2 className="h-3 w-3 animate-spin" />
-          Loading
+          {t("cell_locking.tower_locking.settings.failover_badge.loading")}
         </Badge>
       );
     }
@@ -161,7 +163,7 @@ const TowerLockingSettingsComponent = ({
           className="bg-muted/50 text-muted-foreground border-muted-foreground/30"
         >
           <MinusCircleIcon className="h-3 w-3" />
-          Unknown
+          {t("cell_locking.tower_locking.settings.failover_badge.unknown")}
         </Badge>
       );
     }
@@ -173,7 +175,7 @@ const TowerLockingSettingsComponent = ({
           className="bg-success/15 text-success hover:bg-success/20 border-success/30"
         >
           <CheckCircle2Icon className="h-3 w-3" />
-          Monitoring
+          {t("cell_locking.tower_locking.settings.failover_badge.monitoring")}
         </Badge>
       );
     }
@@ -185,7 +187,7 @@ const TowerLockingSettingsComponent = ({
           className="bg-warning/15 text-warning hover:bg-warning/20 border-warning/30"
         >
           <TriangleAlertIcon className="h-3 w-3" />
-          Unlocked due to Poor Signal
+          {t("cell_locking.tower_locking.settings.failover_badge.unlocked_poor_signal")}
         </Badge>
       );
     }
@@ -197,7 +199,7 @@ const TowerLockingSettingsComponent = ({
           className="bg-muted/50 text-muted-foreground border-muted-foreground/30"
         >
           <MinusCircleIcon className="h-3 w-3" />
-          Disabled
+          {t("cell_locking.tower_locking.settings.failover_badge.disabled")}
         </Badge>
       );
     }
@@ -208,7 +210,7 @@ const TowerLockingSettingsComponent = ({
         className="bg-success/15 text-success hover:bg-success/20 border-success/30"
       >
         <CheckCircle2Icon className="h-3 w-3" />
-        Ready
+        {t("cell_locking.tower_locking.settings.failover_badge.ready")}
       </Badge>
     );
   };
@@ -223,7 +225,7 @@ const TowerLockingSettingsComponent = ({
           className="bg-muted/50 text-muted-foreground border-muted-foreground/30"
         >
           <Loader2 className="h-3 w-3 animate-spin" />
-          Loading
+          {t("cell_locking.tower_locking.settings.schedule_badge.loading")}
         </Badge>
       );
     }
@@ -235,7 +237,7 @@ const TowerLockingSettingsComponent = ({
           className="bg-muted/50 text-muted-foreground border-muted-foreground/30"
         >
           <MinusCircleIcon className="h-3 w-3" />
-          Unknown
+          {t("cell_locking.tower_locking.settings.schedule_badge.unknown")}
         </Badge>
       );
     }
@@ -247,7 +249,7 @@ const TowerLockingSettingsComponent = ({
           className="bg-success/15 text-success hover:bg-success/20 border-success/30"
         >
           <CheckCircle2Icon className="h-3 w-3" />
-          Active
+          {t("cell_locking.tower_locking.settings.schedule_badge.active")}
         </Badge>
       );
     }
@@ -258,7 +260,7 @@ const TowerLockingSettingsComponent = ({
         className="bg-muted/50 text-muted-foreground border-muted-foreground/30"
       >
         <MinusCircleIcon className="h-3 w-3" />
-        Inactive
+        {t("cell_locking.tower_locking.settings.schedule_badge.inactive")}
       </Badge>
     );
   };
@@ -274,7 +276,7 @@ const TowerLockingSettingsComponent = ({
           className="bg-muted/50 text-muted-foreground border-muted-foreground/30"
         >
           <Loader2 className="h-3 w-3 animate-spin" />
-          Loading
+          {t("cell_locking.tower_locking.settings.connection_badge.loading")}
         </Badge>
       );
     }
@@ -286,7 +288,7 @@ const TowerLockingSettingsComponent = ({
           className="bg-muted/50 text-muted-foreground border-muted-foreground/30"
         >
           <MinusCircleIcon className="h-3 w-3" />
-          Unknown
+          {t("cell_locking.tower_locking.settings.connection_badge.unknown")}
         </Badge>
       );
     }
@@ -300,7 +302,7 @@ const TowerLockingSettingsComponent = ({
             className="bg-success/15 text-success hover:bg-success/20 border-success/30"
           >
             <CheckCircle2Icon className="h-3 w-3" />
-            Connected
+            {t("cell_locking.tower_locking.settings.connection_badge.connected")}
           </Badge>
         );
       case "limited":
@@ -310,7 +312,7 @@ const TowerLockingSettingsComponent = ({
             className="bg-warning/15 text-warning hover:bg-warning/20 border-warning/30"
           >
             <TriangleAlertIcon className="h-3 w-3" />
-            Limited Service
+            {t("cell_locking.tower_locking.settings.connection_badge.limited")}
           </Badge>
         );
       case "searching":
@@ -320,7 +322,7 @@ const TowerLockingSettingsComponent = ({
             className="bg-warning/15 text-warning hover:bg-warning/20 border-warning/30"
           >
             <TriangleAlertIcon className="h-3 w-3" />
-            Searching
+            {t("cell_locking.tower_locking.settings.connection_badge.searching")}
           </Badge>
         );
       case "no_service":
@@ -330,7 +332,7 @@ const TowerLockingSettingsComponent = ({
             className="bg-destructive/15 text-destructive hover:bg-destructive/20 border-destructive/30"
           >
             <XCircleIcon className="h-3 w-3" />
-            No Service
+            {t("cell_locking.tower_locking.settings.connection_badge.no_service")}
           </Badge>
         );
       default:
@@ -349,9 +351,9 @@ const TowerLockingSettingsComponent = ({
     return (
       <Card className="@container/card">
         <CardHeader>
-          <CardTitle>Tower Locking Settings</CardTitle>
+          <CardTitle>{t("cell_locking.tower_locking.settings.title")}</CardTitle>
           <CardDescription>
-            Lock the modem to a specific cell tower. Keeps your connection stable instead of roaming between towers.
+            {t("cell_locking.tower_locking.settings.description_loading")}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -420,9 +422,9 @@ const TowerLockingSettingsComponent = ({
   return (
     <Card className="@container/card">
       <CardHeader>
-        <CardTitle>Tower Locking Settings</CardTitle>
+        <CardTitle>{t("cell_locking.tower_locking.settings.title")}</CardTitle>
         <CardDescription>
-          Lock the modem to a specific cell tower. Keeps your connection stable instead of roaming between towers. Not compatible with 5G NSA.
+          {t("cell_locking.tower_locking.settings.description")}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -432,19 +434,18 @@ const TowerLockingSettingsComponent = ({
             <div className="flex items-center gap-1.5">
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <button type="button" className="inline-flex" aria-label="Keep Lock After Reboot info">
+                  <button type="button" className="inline-flex" aria-label={t("cell_locking.tower_locking.settings.persist_info_aria")}>
                     <TbInfoCircleFilled className="size-5 text-info" />
                   </button>
                 </TooltipTrigger>
                 <TooltipContent>
                   <p>
-                    When enabled, tower lock is restored automatically
-                    after a reboot.
+                    {t("cell_locking.tower_locking.settings.persist_tooltip")}
                   </p>
                 </TooltipContent>
               </Tooltip>
               <span className="font-semibold text-muted-foreground text-sm">
-                Keep Lock After Reboot
+                {t("cell_locking.tower_locking.settings.persist_label")}
               </span>
             </div>
             <div className="flex items-center space-x-2">
@@ -455,7 +456,9 @@ const TowerLockingSettingsComponent = ({
                 onCheckedChange={onPersistChange}
               />
               <Label htmlFor="tower-persist">
-                {config?.persist ? "Enabled" : "Disabled"}
+                {config?.persist
+                  ? t("state.enabled", { ns: "common" })
+                  : t("state.disabled", { ns: "common" })}
               </Label>
             </div>
           </div>
@@ -465,21 +468,18 @@ const TowerLockingSettingsComponent = ({
               <div className="flex items-center gap-1.5">
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <button type="button" className="inline-flex" aria-label="Signal Failover info">
+                    <button type="button" className="inline-flex" aria-label={t("cell_locking.tower_locking.settings.failover_info_aria")}>
                       <TbInfoCircleFilled className="size-5 text-info" />
                     </button>
                   </TooltipTrigger>
                   <TooltipContent>
                     <p>
-                      When enabled, the device will unlock from the tower if
-                      signal quality
-                      <br />
-                      degrades below a certain threshold or becomes unavailable.
+                      {t("cell_locking.tower_locking.settings.failover_tooltip")}
                     </p>
                   </TooltipContent>
                 </Tooltip>
                 <span className="font-semibold text-muted-foreground text-sm">
-                  Signal Failover
+                  {t("cell_locking.tower_locking.settings.failover_label")}
                 </span>
               </div>
               <div className="flex items-center space-x-2">
@@ -490,22 +490,22 @@ const TowerLockingSettingsComponent = ({
                   onCheckedChange={(checked) => {
                     onFailoverChange(checked);
                     if (!checked) {
-                      toast.warning("Failover disabled");
+                      toast.warning(t("cell_locking.tower_locking.settings.failover_toast_disabled"));
                     }
                   }}
                 />
                 <Label htmlFor="tower-failover">
                   {!hasActiveLock
-                    ? "No active lock"
+                    ? t("cell_locking.tower_locking.settings.failover_no_lock")
                     : (config?.failover?.enabled ?? false)
-                      ? "Enabled"
-                      : "Disabled"}
+                      ? t("state.enabled", { ns: "common" })
+                      : t("state.disabled", { ns: "common" })}
                 </Label>
               </div>
             </div>
             {hasActiveLock && !(config?.failover?.enabled ?? false) && (
               <p className="text-xs text-muted-foreground pl-6">
-                Failover is off — enable it to auto-unlock on poor signal.
+                {t("cell_locking.tower_locking.settings.failover_hint")}
               </p>
             )}
           </div>
@@ -514,16 +514,13 @@ const TowerLockingSettingsComponent = ({
             <div className="flex items-center gap-1.5">
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <button type="button" className="inline-flex" aria-label="Failover Threshold info">
+                  <button type="button" className="inline-flex" aria-label={t("cell_locking.tower_locking.settings.threshold_info_aria")}>
                     <TbInfoCircleFilled className="size-5 text-info" />
                   </button>
                 </TooltipTrigger>
                 <TooltipContent>
                   <p>
-                    This will only take effect if Failover is enabled. Set the
-                    signal quality
-                    <br />
-                    threshold below which the device will unlock from the tower.
+                    {t("cell_locking.tower_locking.settings.threshold_tooltip")}
                   </p>
                 </TooltipContent>
               </Tooltip>
@@ -531,7 +528,7 @@ const TowerLockingSettingsComponent = ({
                 htmlFor="failover-threshold"
                 className="font-semibold text-muted-foreground text-sm"
               >
-                Failover Threshold (%)
+                {t("cell_locking.tower_locking.settings.threshold_label")}
               </label>
             </div>
             <div className="flex items-center space-x-2">
@@ -539,7 +536,7 @@ const TowerLockingSettingsComponent = ({
                 <InputGroupInput
                   id="failover-threshold"
                   type="text"
-                  placeholder="Enter threshold"
+                  placeholder={t("cell_locking.tower_locking.settings.threshold_placeholder")}
                   className="w-10 h-6"
                   value={thresholdInput}
                   onChange={(e) => setThresholdInput(e.target.value)}
@@ -557,7 +554,7 @@ const TowerLockingSettingsComponent = ({
                   className="h-8"
                   isSaving={isSavingThreshold}
                   saved={thresholdSaved}
-                  label="Update"
+                  label={t("cell_locking.tower_locking.settings.threshold_update")}
                   disabled={thresholdInput !== "" && (isNaN(Number(thresholdInput)) || Number(thresholdInput) < 0 || Number(thresholdInput) > 100)}
                   onClick={handleThresholdSave}
                 />
@@ -565,14 +562,14 @@ const TowerLockingSettingsComponent = ({
             </div>
             {thresholdInput !== "" && (isNaN(Number(thresholdInput)) || Number(thresholdInput) < 0 || Number(thresholdInput) > 100) && (
               <p className="text-sm text-destructive" role="alert">
-                Threshold must be between 0 and 100
+                {t("cell_locking.tower_locking.settings.threshold_error_range")}
               </p>
             )}
           </div>
           <Separator />
           <div className="flex items-center justify-between">
             <span className="text-sm font-semibold text-muted-foreground">
-              Current Signal Quality
+              {t("cell_locking.tower_locking.settings.signal_quality_label")}
             </span>
             <div className="flex items-center gap-1.5">
               <Badge
@@ -587,7 +584,7 @@ const TowerLockingSettingsComponent = ({
           <Separator />
           <div className="flex items-center justify-between">
             <span className="text-sm font-semibold text-muted-foreground">
-              Failover Status
+              {t("cell_locking.tower_locking.settings.failover_status_label")}
             </span>
             <div className="flex items-center gap-1.5">
               {renderFailoverBadge()}
@@ -596,7 +593,7 @@ const TowerLockingSettingsComponent = ({
           <Separator />
           <div className="flex items-center justify-between">
             <span className="text-sm font-semibold text-muted-foreground">
-              Connection State
+              {t("cell_locking.tower_locking.settings.connection_state_label")}
             </span>
             <div className="flex items-center gap-1.5">
               {renderConnectionStateBadge()}
@@ -605,7 +602,7 @@ const TowerLockingSettingsComponent = ({
           <Separator />
           <div className="flex items-center justify-between">
             <span className="text-sm font-semibold text-muted-foreground">
-              Schedule Locking Status
+              {t("cell_locking.tower_locking.settings.schedule_status_label")}
             </span>
             <div className="flex items-center gap-1.5">
               {renderScheduleBadge()}
@@ -614,7 +611,7 @@ const TowerLockingSettingsComponent = ({
           <Separator />
           <div className="flex items-center justify-between">
             <span className="text-sm font-semibold text-muted-foreground">
-              Current Channel (EARFCN)
+              {t("cell_locking.tower_locking.settings.earfcn_label")}
             </span>
             <div className="flex items-center gap-1.5">
               <span className="text-sm font-semibold">
@@ -625,7 +622,7 @@ const TowerLockingSettingsComponent = ({
           <Separator />
           <div className="flex items-center justify-between">
             <span className="text-sm font-semibold text-muted-foreground">
-              Current Cell ID (PCI)
+              {t("cell_locking.tower_locking.settings.pci_label")}
             </span>
             <div className="flex items-center gap-1.5">
               <span className="text-sm font-semibold">

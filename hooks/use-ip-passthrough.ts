@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { authFetch } from "@/lib/auth-fetch";
+import { resolveErrorMessage } from "@/lib/i18n/resolve-error";
 import type {
   PassthroughMode,
   UsbMode,
@@ -61,6 +63,7 @@ export interface UseIpPassthroughReturn {
 }
 
 export function useIpPassthrough(): UseIpPassthroughReturn {
+  const { t } = useTranslation("errors");
   const [passthroughMode, setPassthroughMode] =
     useState<PassthroughMode | null>(null);
   const [targetMac, setTargetMac] = useState<string | null>(null);
@@ -97,7 +100,7 @@ export function useIpPassthrough(): UseIpPassthroughReturn {
       if (!mountedRef.current) return;
 
       if (!data.success) {
-        setError(data.error || "Failed to fetch IP Passthrough settings");
+        setError(resolveErrorMessage(t, data.error, undefined, "Failed to fetch IP Passthrough settings"));
         return;
       }
 
@@ -118,7 +121,7 @@ export function useIpPassthrough(): UseIpPassthroughReturn {
         setIsLoading(false);
       }
     }
-  }, []);
+  }, [t]);
 
   // Fetch on mount
   useEffect(() => {
@@ -157,7 +160,7 @@ export function useIpPassthrough(): UseIpPassthroughReturn {
         if (!mountedRef.current) return false;
 
         if (!result.success) {
-          setError(result.detail || result.error || "Failed to apply settings");
+          setError(resolveErrorMessage(t, result.error, result.detail, "Failed to apply settings"));
           return false;
         }
 
@@ -174,7 +177,7 @@ export function useIpPassthrough(): UseIpPassthroughReturn {
         }
       }
     },
-    []
+    [t]
   );
 
   return {

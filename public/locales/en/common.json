@@ -19,6 +19,8 @@
     "applying": "Applying…",
     "disconnecting": "Disconnecting…",
     "reconnecting": "Reconnecting…",
+    "installing": "Installing…",
+    "removing": "Removing…",
     "enabled": "Enabled",
     "disabled": "Disabled",
     "on": "On",

@@ -281,6 +281,7 @@ QManager/
 | [API Reference](docs/API-REFERENCE.md) | Complete CGI endpoint reference |
 | [Design System](docs/DESIGN-SYSTEM.md) | Colors, typography, UI conventions |
 | [Deployment Guide](docs/DEPLOYMENT.md) | Building and deploying to OpenWRT |
+| [Translating QManager](docs/i18n/CONTRIBUTING.md) | Add a new language pack or improve existing translations |
 
 ---
 

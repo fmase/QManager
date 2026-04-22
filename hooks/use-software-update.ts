@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { authFetch } from "@/lib/auth-fetch";
+import { resolveErrorMessage } from "@/lib/i18n/resolve-error";
 
 // =============================================================================
 // useSoftwareUpdate — Check, download, install QManager updates
@@ -79,6 +81,7 @@ export interface UseSoftwareUpdateReturn {
 // ─── Hook ───────────────────────────────────────────────────────────────────
 
 export function useSoftwareUpdate(): UseSoftwareUpdateReturn {
+  const { t } = useTranslation("errors");
   const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
   const [updateStatus, setUpdateStatus] = useState<UpdateStatus>({ status: "idle" });
   const [isLoading, setIsLoading] = useState(true);
@@ -149,13 +152,13 @@ export function useSoftwareUpdate(): UseSoftwareUpdateReturn {
           if (pollRef.current) clearInterval(pollRef.current);
           pollRef.current = null;
           setIsDownloading(false);
-          setError(json.message || "Download failed");
+          setError(resolveErrorMessage(t, undefined, json.message, "Download failed"));
         }
       } catch {
         // Silently retry on next interval
       }
     }, POLL_INTERVAL);
-  }, []);
+  }, [t]);
 
   // ---------------------------------------------------------------------------
   // Fetch update info from CGI
@@ -172,7 +175,7 @@ export function useSoftwareUpdate(): UseSoftwareUpdateReturn {
       if (!mountedRef.current) return;
 
       if (!json.success) {
-        setError(json.detail || json.error || "Failed to check for updates");
+        setError(resolveErrorMessage(t, json.error, json.detail, "Failed to check for updates"));
         return;
       }
 
@@ -198,7 +201,7 @@ export function useSoftwareUpdate(): UseSoftwareUpdateReturn {
     } finally {
       if (mountedRef.current && !silent) setIsLoading(false);
     }
-  }, [startDownloadPolling]);
+  }, [startDownloadPolling, t]);
 
   // Fetch on mount
   useEffect(() => {
@@ -251,7 +254,7 @@ export function useSoftwareUpdate(): UseSoftwareUpdateReturn {
           if (pollRef.current) clearInterval(pollRef.current);
           pollRef.current = null;
           setIsUpdating(false);
-          setError(json.message || "Update failed");
+          setError(resolveErrorMessage(t, undefined, json.message, "Update failed"));
         }
       } catch {
         clearInstallStallTimer();
@@ -266,7 +269,7 @@ export function useSoftwareUpdate(): UseSoftwareUpdateReturn {
         }, 2000);
       }
     }, POLL_INTERVAL);
-  }, [armInstallStallTimer, clearInstallStallTimer]);
+  }, [armInstallStallTimer, clearInstallStallTimer, t]);
 
   // ---------------------------------------------------------------------------
   // Actions
@@ -294,7 +297,7 @@ export function useSoftwareUpdate(): UseSoftwareUpdateReturn {
 
       const json = await resp.json();
       if (!json.success) {
-        setError(json.detail || json.error || "Failed to start download");
+        setError(resolveErrorMessage(t, json.error, json.detail, "Failed to start download"));
         setIsDownloading(false);
         setDownloadState(null);
         return;
@@ -307,7 +310,7 @@ export function useSoftwareUpdate(): UseSoftwareUpdateReturn {
       setIsDownloading(false);
       setDownloadState(null);
     }
-  }, [updateInfo, startDownloadPolling]);
+  }, [updateInfo, startDownloadPolling, t]);
 
   const installStaged = useCallback(async () => {
     setError(null);
@@ -325,7 +328,7 @@ export function useSoftwareUpdate(): UseSoftwareUpdateReturn {
 
       const json = await resp.json();
       if (!json.success) {
-        setError(json.detail || json.error || "Failed to start installation");
+        setError(resolveErrorMessage(t, json.error, json.detail, "Failed to start installation"));
         setIsUpdating(false);
         return;
       }
@@ -336,7 +339,7 @@ export function useSoftwareUpdate(): UseSoftwareUpdateReturn {
       setError(err instanceof Error ? err.message : "Failed to start installation");
       setIsUpdating(false);
     }
-  }, [startPolling]);
+  }, [startPolling, t]);
 
   const installUpdate = useCallback(async () => {
     if (!updateInfo?.download_url || !updateInfo?.latest_version) return;
@@ -361,7 +364,7 @@ export function useSoftwareUpdate(): UseSoftwareUpdateReturn {
 
       const json = await resp.json();
       if (!json.success) {
-        setError(json.detail || json.error || "Failed to start update");
+        setError(resolveErrorMessage(t, json.error, json.detail, "Failed to start update"));
         setIsUpdating(false);
         return;
       }
@@ -372,7 +375,7 @@ export function useSoftwareUpdate(): UseSoftwareUpdateReturn {
       setError(err instanceof Error ? err.message : "Failed to start update");
       setIsUpdating(false);
     }
-  }, [updateInfo, startPolling]);
+  }, [updateInfo, startPolling, t]);
 
   const rebootDevice = useCallback(async () => {
     setError(null);
@@ -406,7 +409,7 @@ export function useSoftwareUpdate(): UseSoftwareUpdateReturn {
 
       const json = await resp.json();
       if (!json.success) {
-        setError(json.detail || json.error || "Failed to save preference");
+        setError(resolveErrorMessage(t, json.error, json.detail, "Failed to save preference"));
         return;
       }
 
@@ -416,7 +419,7 @@ export function useSoftwareUpdate(): UseSoftwareUpdateReturn {
       if (!mountedRef.current) return;
       setError(err instanceof Error ? err.message : "Failed to save preference");
     }
-  }, [fetchUpdateInfo]);
+  }, [fetchUpdateInfo, t]);
 
   const saveAutoUpdate = useCallback(async (enabled: boolean, time: string) => {
     try {
@@ -428,7 +431,7 @@ export function useSoftwareUpdate(): UseSoftwareUpdateReturn {
 
       const json = await resp.json();
       if (!json.success) {
-        setError(json.detail || json.error || "Failed to save auto-update preference");
+        setError(resolveErrorMessage(t, json.error, json.detail, "Failed to save auto-update preference"));
         return;
       }
 
@@ -437,7 +440,7 @@ export function useSoftwareUpdate(): UseSoftwareUpdateReturn {
       if (!mountedRef.current) return;
       setError(err instanceof Error ? err.message : "Failed to save auto-update preference");
     }
-  }, [fetchUpdateInfo]);
+  }, [fetchUpdateInfo, t]);
 
   return {
     updateInfo,

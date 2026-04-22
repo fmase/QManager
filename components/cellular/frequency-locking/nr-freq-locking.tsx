@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 
 import {
   Card,
@@ -99,6 +100,8 @@ const NrFreqLockingComponent = ({
   onUnlock,
   onRefresh,
 }: NrFreqLockingProps) => {
+  const { t } = useTranslation("cellular");
+
   // --- Array-based slot state ------------------------------------------------
   const [slots, setSlots] = useState<SlotState[]>(INITIAL_SLOTS);
 
@@ -199,8 +202,8 @@ const NrFreqLockingComponent = ({
     if (checked) {
       const entries = buildEntries();
       if (entries.length === 0) {
-        toast.warning("No frequencies entered", {
-          description: "Enter at least one NR-ARFCN and SCS before enabling.",
+        toast.warning(t("cell_locking.frequency_locking.nr.toast.no_frequencies_title"), {
+          description: t("cell_locking.frequency_locking.nr.toast.no_frequencies_description"),
         });
         return;
       }
@@ -209,9 +212,8 @@ const NrFreqLockingComponent = ({
       for (const slot of slots) {
         const a = parseInt(slot.arfcn, 10);
         if (!isNaN(a) && (slot.scs === "" || isNaN(parseInt(slot.scs, 10)))) {
-          toast.warning("Missing SCS", {
-            description:
-              "Each NR-ARFCN requires an SCS value. Please select the sub-carrier spacing.",
+          toast.warning(t("cell_locking.frequency_locking.nr.toast.missing_scs_title"), {
+            description: t("cell_locking.frequency_locking.nr.toast.missing_scs_description"),
           });
           return;
         }
@@ -240,9 +242,9 @@ const NrFreqLockingComponent = ({
     setShowUnsupportedWarning(false);
     const success = await onLock(pendingEntries);
     if (success) {
-      toast.success("NR5G frequency lock applied");
+      toast.success(t("cell_locking.frequency_locking.nr.toast.lock_success"));
     } else {
-      toast.error("Failed to apply NR5G frequency lock");
+      toast.error(t("cell_locking.frequency_locking.nr.toast.lock_error"));
     }
   };
 
@@ -250,9 +252,9 @@ const NrFreqLockingComponent = ({
     setShowUnlockDialog(false);
     const success = await onUnlock();
     if (success) {
-      toast.success("NR5G frequency lock cleared");
+      toast.success(t("cell_locking.frequency_locking.nr.toast.unlock_success"));
     } else {
-      toast.error("Failed to clear NR5G frequency lock");
+      toast.error(t("cell_locking.frequency_locking.nr.toast.unlock_error"));
     }
   };
 
@@ -273,9 +275,9 @@ const NrFreqLockingComponent = ({
       } else {
         updateSlotArfcn(0, String(nrArfcn));
       }
-      toast.info("Populated from active NR PCell");
+      toast.info(t("cell_locking.frequency_locking.nr.toast.filled_current"));
     } else {
-      toast.warning("No active NR cell");
+      toast.warning(t("cell_locking.frequency_locking.nr.toast.no_active_connection"));
     }
   };
 
@@ -286,9 +288,9 @@ const NrFreqLockingComponent = ({
     return (
       <Card className="@container/card">
         <CardHeader>
-          <CardTitle>NR5G Frequency Locking</CardTitle>
+          <CardTitle>{t("cell_locking.frequency_locking.nr.title")}</CardTitle>
           <CardDescription>
-            Lock to specific NR frequencies (NR-ARFCNs).
+            {t("cell_locking.frequency_locking.nr.description_loading")}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -321,9 +323,9 @@ const NrFreqLockingComponent = ({
     return (
       <Card className="@container/card">
         <CardHeader>
-          <CardTitle>NR5G Frequency Locking</CardTitle>
+          <CardTitle>{t("cell_locking.frequency_locking.nr.title")}</CardTitle>
           <CardDescription>
-            Lock to specific NR frequencies (NR-ARFCNs).
+            {t("cell_locking.frequency_locking.nr.description_loading")}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -334,12 +336,12 @@ const NrFreqLockingComponent = ({
             <AlertCircleIcon className="size-8 text-destructive" />
             <div className="space-y-1">
               <p className="text-sm font-medium">
-                Failed to load frequency lock status
+                {t("cell_locking.frequency_locking.nr.error_title")}
               </p>
               <p className="text-xs text-muted-foreground">{error}</p>
             </div>
             <Button variant="outline" size="sm" onClick={onRefresh}>
-              Retry
+              {t("actions.retry", { ns: "common" })}
             </Button>
           </div>
         </CardContent>
@@ -354,10 +356,9 @@ const NrFreqLockingComponent = ({
         aria-disabled={towerLockActive || undefined}
       >
         <CardHeader>
-          <CardTitle>NR5G Frequency Locking</CardTitle>
+          <CardTitle>{t("cell_locking.frequency_locking.nr.title")}</CardTitle>
           <CardDescription>
-            Lock to specific NR frequencies. Supports up to 32 entries (4
-            shown).
+            {t("cell_locking.frequency_locking.nr.description")}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -367,14 +368,15 @@ const NrFreqLockingComponent = ({
               <div className="flex items-start gap-2 p-2 rounded-md bg-destructive/10 border border-destructive/30 text-destructive text-sm">
                 <TbAlertTriangleFilled className="size-5 mt-0.5 shrink-0" />
                 <p className="font-semibold">
-                  NR Tower Lock is active. Disable it before using frequency
-                  locking.
+                  {t("cell_locking.frequency_locking.nr.tower_lock_active")}
                 </p>
               </div>
             ) : (
               <div className="flex items-start gap-2 p-2 rounded-md bg-warning/10 border border-warning/30 text-warning text-sm">
                 <TbAlertTriangleFilled className="size-5 mt-0.5 shrink-0" />
-                <p className="font-semibold">Experimental Feature</p>
+                <p className="font-semibold">
+                  {t("cell_locking.frequency_locking.nr.experimental_warning")}
+                </p>
               </div>
             )}
 
@@ -386,22 +388,20 @@ const NrFreqLockingComponent = ({
                     <button
                       type="button"
                       className="inline-flex"
-                      aria-label="More info"
+                      aria-label={t("cell_locking.frequency_locking.nr.enabled_info_aria")}
                     >
                       <TbInfoCircleFilled className="size-5 text-info" />
                     </button>
                   </TooltipTrigger>
                   <TooltipContent>
                     <p>
-                      Cannot be used together with NR Tower Lock (AT+QNWLOCK).
-                      <br />
-                      SCS is auto-detected from band type but can be overridden.
+                      {t("cell_locking.frequency_locking.nr.enabled_tooltip")}
                     </p>
                   </TooltipContent>
                 </Tooltip>
 
                 <p className="font-semibold text-muted-foreground text-sm">
-                  NR5G Frequency Lock Enabled
+                  {t("cell_locking.frequency_locking.nr.enabled_label")}
                 </p>
               </div>
               <div className="flex items-center space-x-2">
@@ -415,7 +415,9 @@ const NrFreqLockingComponent = ({
                   disabled={isDisabled}
                 />
                 <Label htmlFor="nr-freq-locking">
-                  {isEnabled ? "Enabled" : "Disabled"}
+                  {isEnabled
+                    ? t("state.enabled", { ns: "common" })
+                    : t("state.disabled", { ns: "common" })}
                 </Label>
               </div>
             </div>
@@ -456,23 +458,26 @@ const NrFreqLockingComponent = ({
       <AlertDialog open={showLockDialog} onOpenChange={setShowLockDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Lock NR5G Frequency?</AlertDialogTitle>
+            <AlertDialogTitle>
+              {t("cell_locking.frequency_locking.nr.lock_dialog.title")}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              This will lock your modem to{" "}
               {pendingEntries.length === 1
-                ? `NR-ARFCN ${pendingEntries[0].arfcn} (SCS ${pendingEntries[0].scs} kHz)`
-                : `${pendingEntries.length} NR frequencies`}
-              . The modem will only use{" "}
-              {pendingEntries.length === 1
-                ? "this frequency"
-                : "these frequencies"}{" "}
-              and may briefly disconnect.
+                ? t("cell_locking.frequency_locking.nr.lock_dialog.description_single", {
+                    arfcn: pendingEntries[0].arfcn,
+                    scs: pendingEntries[0].scs,
+                  })
+                : t("cell_locking.frequency_locking.nr.lock_dialog.description_multi", {
+                    count: pendingEntries.length,
+                  })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>
+              {t("actions.cancel", { ns: "common" })}
+            </AlertDialogCancel>
             <AlertDialogAction onClick={confirmLock}>
-              Lock Frequency
+              {t("cell_locking.frequency_locking.nr.lock_dialog.confirm")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -486,34 +491,34 @@ const NrFreqLockingComponent = ({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle className="text-destructive">
-              Unsupported Band Warning
+              {t("cell_locking.frequency_locking.nr.unsupported_dialog.title")}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              The NR-ARFCN(s) you entered map to bands not supported by your
-              modem. Locking to an unsupported frequency may cause unexpected
-              behavior.
+              {t("cell_locking.frequency_locking.nr.unsupported_dialog.description_prefix")}
               <br />
               <br />
-              <strong>Matched bands:</strong>{" "}
+              <strong>{t("cell_locking.frequency_locking.nr.unsupported_dialog.matched_bands_label")}</strong>{" "}
               {matchedBandsPerSlot
                 .flat()
                 .map((b) => `n${b.band}`)
-                .join(", ") || "Unknown"}
+                .join(", ") || t("cell_locking.frequency_locking.nr.unsupported_dialog.unknown")}
               <br />
-              <strong>Supported bands:</strong>{" "}
+              <strong>{t("cell_locking.frequency_locking.nr.unsupported_dialog.supported_bands_label")}</strong>{" "}
               {supportedBands.map((b) => `n${b}`).join(", ")}
               <br />
               <br />
-              Are you sure you want to proceed?
+              {t("cell_locking.frequency_locking.nr.unsupported_dialog.confirm_prompt")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>
+              {t("actions.cancel", { ns: "common" })}
+            </AlertDialogCancel>
             <AlertDialogAction
               onClick={confirmLock}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Lock Anyway
+              {t("cell_locking.frequency_locking.nr.unsupported_dialog.confirm")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -523,16 +528,19 @@ const NrFreqLockingComponent = ({
       <AlertDialog open={showUnlockDialog} onOpenChange={setShowUnlockDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Unlock NR5G Frequency?</AlertDialogTitle>
+            <AlertDialogTitle>
+              {t("cell_locking.frequency_locking.nr.unlock_dialog.title")}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              This will remove the NR5G frequency lock. The modem will be free
-              to use any available NR frequency and may briefly disconnect.
+              {t("cell_locking.frequency_locking.nr.unlock_dialog.description")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>
+              {t("actions.cancel", { ns: "common" })}
+            </AlertDialogCancel>
             <AlertDialogAction onClick={confirmUnlock}>
-              Unlock
+              {t("cell_locking.frequency_locking.nr.unlock_dialog.confirm")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -568,11 +576,17 @@ function NrFreqSlot({
   onUseCurrent,
   hasActiveCell,
 }: NrFreqSlotProps) {
+  const { t } = useTranslation("cellular");
   const slotNum = index + 1;
   const arfcnId = `nr-freq-arfcn${slotNum}`;
   const scsId = `nr-freq-scs${slotNum}`;
-  const arfcnLabel = index === 0 ? "NR-ARFCN" : `NR-ARFCN ${slotNum}`;
-  const scsLabel = index === 0 ? "SCS" : `SCS ${slotNum}`;
+
+  const arfcnLabel = index === 0
+    ? t("cell_locking.frequency_locking.nr.arfcn_label")
+    : t("cell_locking.frequency_locking.nr.arfcn_label_n", { n: slotNum });
+  const scsLabel = index === 0
+    ? t("cell_locking.frequency_locking.nr.scs_label")
+    : t("cell_locking.frequency_locking.nr.scs_label_n", { n: slotNum });
 
   return (
     <div className="grid grid-cols-1 @sm/card:grid-cols-2 gap-4">
@@ -587,14 +601,14 @@ function NrFreqSlot({
               onClick={onUseCurrent}
               disabled={disabled || !hasActiveCell}
             >
-              Use Current
+              {t("cell_locking.frequency_locking.nr.use_current")}
             </Button>
           )}
         </div>
         <Input
           id={arfcnId}
           type="text"
-          placeholder={`Enter ${arfcnLabel}`}
+          placeholder={t("cell_locking.frequency_locking.nr.arfcn_placeholder", { label: arfcnLabel })}
           value={slot.arfcn}
           onChange={(e) => onArfcnChange(index, e.target.value)}
           disabled={disabled}
@@ -604,7 +618,7 @@ function NrFreqSlot({
           hasInput={slot.arfcn.length > 0}
           supportedBands={supportedBands}
           prefix="n"
-          noMatchLabel="this NR-ARFCN"
+          noMatchLabelKey="this_nr_arfcn"
         />
       </Field>
       <Field>
@@ -614,8 +628,11 @@ function NrFreqSlot({
           onValueChange={(v) => onScsChange(index, v)}
           disabled={disabled}
         >
-          <SelectTrigger id={scsId} aria-label={`${scsLabel} slot ${slotNum}`}>
-            <SelectValue placeholder="SCS" />
+          <SelectTrigger
+            id={scsId}
+            aria-label={t("cell_locking.frequency_locking.nr.scs_slot_aria", { label: scsLabel, n: slotNum })}
+          >
+            <SelectValue placeholder={t("cell_locking.frequency_locking.nr.scs_placeholder")} />
           </SelectTrigger>
           <SelectContent>
             {SCS_OPTIONS.map((opt) => (

@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { authFetch } from "@/lib/auth-fetch";
+import { resolveErrorMessage } from "@/lib/i18n/resolve-error";
 import type {
   SystemSettings,
   ScheduleConfig,
@@ -63,6 +65,7 @@ export interface UseSystemSettingsReturn {
 // ─── Hook ──────────────────────────────────────────────────────────────────
 
 export function useSystemSettings(): UseSystemSettingsReturn {
+  const { t } = useTranslation("errors");
   const [settings, setSettings] = useState<SystemSettings | null>(null);
   const [scheduledReboot, setScheduledReboot] =
     useState<ScheduleConfig | null>(null);
@@ -148,7 +151,7 @@ export function useSystemSettings(): UseSystemSettingsReturn {
         if (!mountedRef.current) return false;
 
         if (!json.success) {
-          setError(json.detail || json.error || "Failed to save settings");
+          setError(resolveErrorMessage(t, json.error, json.detail, "Failed to save settings"));
           return false;
         }
 
@@ -167,7 +170,7 @@ export function useSystemSettings(): UseSystemSettingsReturn {
         }
       }
     },
-    [fetchSettings],
+    [fetchSettings, t],
   );
 
   // ---------------------------------------------------------------------------

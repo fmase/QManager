@@ -1,4 +1,7 @@
+"use client";
+
 import { ScanSearchIcon } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 interface ScanningViewProps {
   elapsedSeconds: number;
@@ -11,6 +14,8 @@ function formatElapsed(seconds: number): string {
 }
 
 export function ScanningView({ elapsedSeconds }: ScanningViewProps) {
+  const { t } = useTranslation("cellular");
+
   return (
     <div className="flex flex-col items-center justify-center py-16 text-center gap-4">
       {/* Animated icon — pulse is opacity-only (GPU composited, low power) */}
@@ -26,7 +31,7 @@ export function ScanningView({ elapsedSeconds }: ScanningViewProps) {
         className="text-2xl font-semibold tabular-nums tracking-tight text-foreground"
         role="timer"
         aria-live="off"
-        aria-label={`Scan elapsed time: ${formatElapsed(elapsedSeconds)}`}
+        aria-label={t("cell_scanner.scanner.scanning_elapsed_aria", { time: formatElapsed(elapsedSeconds) })}
       >
         {formatElapsed(elapsedSeconds)}
       </p>
@@ -34,17 +39,16 @@ export function ScanningView({ elapsedSeconds }: ScanningViewProps) {
       {/* Status copy */}
       <div className="max-w-xs space-y-1">
         <p className="text-sm font-medium text-foreground">
-          Scanning nearby towers...
+          {t("cell_scanner.scanner.scanning_title")}
         </p>
         <p className="text-xs text-muted-foreground">
-          This usually takes 2-3 minutes. Other modem operations are paused
-          during the scan.
+          {t("cell_scanner.scanner.scanning_hint")}
         </p>
       </div>
 
       {/* Navigation warning */}
       <p className="text-xs text-muted-foreground/60">
-        Please don&apos;t close the tab or refresh the page.
+        {t("cell_scanner.scanner.scanning_nav_warning")}
       </p>
     </div>
   );

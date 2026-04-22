@@ -236,6 +236,12 @@ write_state
 apply_apn() {
     mark_step_running "apn" "Checking APN configuration..."
 
+    # Skip if no APN specified (avoids writing empty APN to live WAN CID)
+    if [ -z "$p_apn_name" ]; then
+        mark_step_skipped "apn" "No APN specified in profile"
+        return
+    fi
+
     # Read current APN for this CID
     local cgdcont_resp
     cgdcont_resp=$(run_at "AT+CGDCONT?")
@@ -244,7 +250,7 @@ apply_apn() {
         return
     fi
 
-    # Parse current APN for the target CID
+    # Parse current APN for the profile's CID
     # Response format: +CGDCONT: <cid>,"<pdp_type>","<apn>",...
     # Using awk -F'"' — $2=pdp_type, $4=apn (same approach as current_settings.sh)
     local current_apn
@@ -256,11 +262,13 @@ apply_apn() {
         return
     fi
 
-    # Set APN
     local pdp="${p_pdp_type:-IPV4V6}"
     local at_cmd="AT+CGDCONT=${p_apn_cid},\"${pdp}\",\"${p_apn_name}\""
     mark_step_running "apn" "Setting APN to ${p_apn_name} (CID ${p_apn_cid})..."
 
+    # 1. Write new APN to NVM first — the modem must know the new config
+    #    before we cycle the network attachment, otherwise COPS=0 reattaches
+    #    against the previously-negotiated APN.
     local resp
     resp=$(run_at "$at_cmd")
     if [ $? -ne 0 ]; then
@@ -268,7 +276,20 @@ apply_apn() {
         return
     fi
 
-    sleep "$CMD_GAP"
+    # 2. Detach from network. At this point NVM holds the new APN.
+    mark_step_running "apn" "Detaching from network..."
+    run_at "AT+COPS=2" >/dev/null 2>&1 || qlog_warn "AT+COPS=2 failed; new APN may not take effect until reboot"
+
+    # 3. Let the detach settle.
+    sleep 2
+
+    # 4. Reattach with the new APN — this is what makes CGCONTRDP reflect
+    #    the new APN on the live session.
+    mark_step_running "apn" "Reattaching to network..."
+    run_at "AT+COPS=0" >/dev/null 2>&1 || qlog_warn "AT+COPS=0 reattach failed; modem may be stuck detached"
+
+    # 5. Let the attach settle before declaring the step done.
+    sleep 2
 
     mark_step_done "apn" "Set APN to ${p_apn_name} (CID ${p_apn_cid})"
 }

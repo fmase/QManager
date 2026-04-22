@@ -10,6 +10,7 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty";
+import { useTranslation } from "react-i18next";
 import { useModemStatus } from "@/hooks/use-modem-status";
 import { detectRadioMode } from "./utils";
 import { AntennaCard, AntennaCardSkeleton } from "./antenna-card";
@@ -42,6 +43,7 @@ const itemVariants: Variants = {
 // ---------------------------------------------------------------------------
 
 export default function AntennaAlignmentComponent() {
+  const { t } = useTranslation("cellular");
   const { data, isLoading, isStale, error } = useModemStatus();
   const spa = data?.signal_per_antenna ?? null;
   const mode = spa ? detectRadioMode(spa) : null;
@@ -65,10 +67,9 @@ export default function AntennaAlignmentComponent() {
   return (
     <div className="@container/main mx-auto p-2">
       <div className="mb-6">
-        <h1 className="text-3xl font-bold mb-2">Antenna Alignment</h1>
+        <h1 className="text-3xl font-bold mb-2">{t("antennas.alignment.page.title")}</h1>
         <p className="text-muted-foreground">
-          Per-antenna signal strength for each receiver chain. Record and
-          compare positions to find the best aim or placement.
+          {t("antennas.alignment.page.description")}
         </p>
       </div>
 
@@ -78,8 +79,8 @@ export default function AntennaAlignmentComponent() {
           className="rounded-lg bg-destructive/10 px-4 py-3 text-sm text-destructive mb-4"
         >
           {error
-            ? "Unable to reach the modem. Data shown may be outdated."
-            : "Signal data is stale — modem may be unresponsive."}
+            ? t("antennas.alignment.error_warning")
+            : t("antennas.alignment.stale_warning")}
         </div>
       )}
 
@@ -106,10 +107,9 @@ export default function AntennaAlignmentComponent() {
             <EmptyMedia variant="icon">
               <SignalIcon />
             </EmptyMedia>
-            <EmptyTitle>No Antenna Data</EmptyTitle>
+            <EmptyTitle>{t("antennas.alignment.empty_title")}</EmptyTitle>
             <EmptyDescription className="max-w-xs text-pretty">
-              Antenna metrics will appear when the modem poller is running and
-              reporting per-antenna signal data.
+              {t("antennas.alignment.empty_description")}
             </EmptyDescription>
           </EmptyHeader>
         </Empty>

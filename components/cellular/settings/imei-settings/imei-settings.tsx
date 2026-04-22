@@ -1,11 +1,13 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
 import IMEISettingsCard from "./imei-settings-card";
 import BackupIMEICard from "./backup-imei-card";
 import { useImeiSettings } from "@/hooks/use-imei-settings";
 import IMEIToolsCard from "./imei-tools-card";
 
 const IMEISettings = () => {
+  const { t } = useTranslation("cellular");
   const {
     currentImei,
     backupEnabled,
@@ -20,9 +22,11 @@ const IMEISettings = () => {
   return (
     <div className="@container/main mx-auto p-2">
       <div className="mb-6">
-        <h1 className="text-3xl font-bold mb-2">IMEI Settings</h1>
+        <h1 className="text-3xl font-bold mb-2">
+          {t("core_settings.imei.page.title")}
+        </h1>
         <p className="text-muted-foreground">
-          View, modify, or back up the device IMEI.
+          {t("core_settings.imei.page.description")}
         </p>
       </div>
       <div className="grid grid-cols-1 @3xl/main:grid-cols-2 grid-flow-row gap-4">

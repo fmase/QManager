@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { authFetch } from "@/lib/auth-fetch";
+import { resolveErrorMessage } from "@/lib/i18n/resolve-error";
 import type { AboutDeviceData, AboutDeviceResponse } from "@/types/about-device";
 
 // =============================================================================
@@ -23,6 +25,7 @@ export interface UseAboutDeviceReturn {
 }
 
 export function useAboutDevice(): UseAboutDeviceReturn {
+  const { t } = useTranslation("system-settings");
   const [data, setData] = useState<AboutDeviceData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -40,6 +43,10 @@ export function useAboutDevice(): UseAboutDeviceReturn {
     if (!silent) setIsLoading(true);
     setError(null);
 
+    // Compute fallback inside each call so language changes are picked up
+    // without re-creating fetchData (which would re-run the mount effect).
+    const fallback = t("about_device.errors.fetch_failed");
+
     try {
       const resp = await authFetch(CGI_ENDPOINT);
       if (!resp.ok) {
@@ -50,7 +57,14 @@ export function useAboutDevice(): UseAboutDeviceReturn {
       if (!mountedRef.current) return;
 
       if (!json.success) {
-        setError(json.error || "Failed to fetch device information");
+        setError(
+          resolveErrorMessage(
+            t,
+            json.error,
+            (json as { detail?: string }).detail,
+            fallback,
+          ),
+        );
         return;
       }
 
@@ -62,16 +76,14 @@ export function useAboutDevice(): UseAboutDeviceReturn {
       });
     } catch (err) {
       if (!mountedRef.current) return;
-      setError(
-        err instanceof Error
-          ? err.message
-          : "Failed to fetch device information",
-      );
+      setError(err instanceof Error ? err.message : fallback);
     } finally {
       if (mountedRef.current && !silent) {
         setIsLoading(false);
       }
     }
+    // t intentionally omitted from deps — see fallback comment above.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {

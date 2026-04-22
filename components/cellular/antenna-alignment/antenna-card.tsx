@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import { CheckCircle2Icon, MinusCircleIcon } from "lucide-react";
 import {
   Card,
@@ -11,6 +12,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import { useTranslation } from "react-i18next";
 import {
   RSRP_THRESHOLDS,
   RSRQ_THRESHOLDS,
@@ -19,7 +21,6 @@ import {
 } from "@/types/modem-status";
 import type { SignalPerAntenna } from "@/types/modem-status";
 import {
-  ANTENNA_PORTS,
   normalizeValue,
   formatValue,
   getQualityColor,
@@ -45,6 +46,7 @@ function MetricRow({
   unit: string;
   thresholds: typeof RSRP_THRESHOLDS;
 }) {
+  const { t } = useTranslation("cellular");
   const normalized = normalizeValue(rawValue ?? value ?? null);
   const quality = getSignalQuality(normalized, thresholds);
   const isNull = normalized === null;
@@ -69,7 +71,7 @@ function MetricRow({
               getQualityBadgeClasses(quality)
             )}
           >
-            {quality.charAt(0).toUpperCase() + quality.slice(1)}
+            {t(`antennas.quality.${quality}`)}
           </Badge>
         )}
       </div>
@@ -90,7 +92,14 @@ export function AntennaCard({
   spa: SignalPerAntenna;
   mode: RadioMode;
 }) {
-  const { name, description } = ANTENNA_PORTS[index];
+  const { t } = useTranslation("cellular");
+  const portMeta = useMemo(() => [
+    { name: t("antennas.ports.main_name"), description: t("antennas.ports.main_description") },
+    { name: t("antennas.ports.diversity_name"), description: t("antennas.ports.diversity_description") },
+    { name: t("antennas.ports.mimo3_name"), description: t("antennas.ports.mimo3_description") },
+    { name: t("antennas.ports.mimo4_name"), description: t("antennas.ports.mimo4_description") },
+  ], [t]);
+  const { name, description } = portMeta[index];
   const active = isAntennaActive(spa, index);
 
   const showLte = mode === "lte" || mode === "endc";
@@ -128,7 +137,7 @@ export function AntennaCard({
             ) : (
               <MinusCircleIcon className="size-3" />
             )}
-            {active ? "Active" : "Inactive"}
+            {active ? t("antennas.alignment.card.active") : t("antennas.alignment.card.inactive")}
           </Badge>
         </div>
       </CardHeader>
@@ -137,7 +146,9 @@ export function AntennaCard({
         {showLte && (
           <div>
             <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
-              4G / LTE{mode === "endc" && " (Anchor)"}
+              {mode === "endc"
+                ? t("antennas.alignment.card.lte_heading_anchor")
+                : t("antennas.alignment.card.lte_heading")}
             </p>
             <div
               className={cn(
@@ -170,7 +181,9 @@ export function AntennaCard({
         {showNr && (
           <div>
             <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
-              5G / NR{mode === "endc" && " (Secondary)"}
+              {mode === "endc"
+                ? t("antennas.alignment.card.nr_heading_secondary")
+                : t("antennas.alignment.card.nr_heading")}
             </p>
             <div
               className={cn(
