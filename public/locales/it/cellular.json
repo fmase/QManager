@@ -1047,8 +1047,8 @@
           "label": "Profilo di selezione automatica",
           "placeholder": "Scegli Selezione automatica",
           "options": {
-            "enabled": "Abilitato",
-            "disabled": "Disabilitato"
+            "enabled": "Abilita",
+            "disabled": "Disabilita"
           }
         },
         "configuration": {
