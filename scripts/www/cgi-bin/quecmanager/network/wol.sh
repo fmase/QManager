@@ -177,11 +177,16 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
     # --- Persist to UCI -------------------------------------------------------
     ensure_uci_section
     if [ "$disable_wol" = "true" ]; then
-        uci set quecmanager.network.disable_wol=1
+        uci set quecmanager.network.disable_wol=1 2>/dev/null
     else
-        uci set quecmanager.network.disable_wol=0
+        uci set quecmanager.network.disable_wol=0 2>/dev/null
     fi
-    uci commit quecmanager
+
+    if ! uci commit quecmanager 2>/dev/null; then
+        qlog_error "uci commit failed"
+        cgi_error "wol_save_failed" "Failed to persist Wake-on-LAN setting"
+        exit 0
+    fi
 
     # --- Emit network event ---------------------------------------------------
     if [ "$disable_wol" = "true" ]; then
@@ -201,11 +206,11 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
         }'
 
     # --- Fire-and-forget ethtool apply (double-fork) -------------------------
-    # 0.25 s delay ensures HTTP bytes flush before the PHY link bounce.
+    # 1 s delay ensures HTTP bytes flush before the PHY link bounce.
     if [ "$disable_wol" = "true" ]; then
-        ( ( sleep 0.25 && ethtool -s "$ETH_INTERFACE" wol d ) </dev/null >/dev/null 2>&1 & )
+        ( ( sleep 1 && ethtool -s "$ETH_INTERFACE" wol d ) </dev/null >/dev/null 2>&1 & )
     else
-        ( ( sleep 0.25 && ethtool -s "$ETH_INTERFACE" wol g ) </dev/null >/dev/null 2>&1 & )
+        ( ( sleep 1 && ethtool -s "$ETH_INTERFACE" wol g ) </dev/null >/dev/null 2>&1 & )
     fi
 
     exit 0

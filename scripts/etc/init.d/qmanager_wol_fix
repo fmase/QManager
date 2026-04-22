@@ -49,8 +49,11 @@ start() {
     fi
 
     # Apply the WoL disable
-    ethtool -s "$ETH_INTERFACE" wol d 2>/dev/null
-    logger -t qmanager_wol_fix "Wake-on-LAN disabled (was: ${current_wol:-unknown})"
+    if ethtool -s "$ETH_INTERFACE" wol d 2>/dev/null; then
+        logger -t qmanager_wol_fix "Wake-on-LAN disabled (was: ${current_wol:-unknown})"
+    else
+        logger -t qmanager_wol_fix "ethtool wol d failed — skipping"
+    fi
 }
 
 stop() {
