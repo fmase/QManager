@@ -3,15 +3,15 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { authFetch } from "@/lib/auth-fetch";
 
-const CGI_ENDPOINT = "/cgi-bin/quecmanager/at_cmd/send_command.sh";
+const CGI_ENDPOINT =
+  "/cgi-bin/quecmanager/at_cmd/reconnect_modem.sh";
 
 export type ReconnectStep = "disconnecting" | "reconnecting";
 
-interface AtCommandResponse {
+interface ReconnectResponse {
   success: boolean;
   error?: string;
   detail?: string;
-  response?: string;
 }
 
 interface ReconnectOptions {
@@ -48,23 +48,6 @@ export function useModemReconnect(): UseModemReconnectReturn {
     };
   }, []);
 
-  const sendAtCommand = useCallback(async (command: string): Promise<void> => {
-    const resp = await authFetch(CGI_ENDPOINT, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ command }),
-    });
-
-    if (!resp.ok) {
-      throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
-    }
-
-    const json: AtCommandResponse = await resp.json();
-    if (!json.success) {
-      throw new Error(json.detail || json.error || `Failed AT command: ${command}`);
-    }
-  }, []);
-
   const reconnectModem = useCallback(
     async (options?: ReconnectOptions): Promise<ReconnectResult> => {
       if (isReconnecting) {
@@ -76,7 +59,6 @@ export function useModemReconnect(): UseModemReconnectReturn {
         setIsReconnecting(true);
       }
 
-      let disconnected = false;
       const notifyStep = (nextStep: ReconnectStep) => {
         if (mountedRef.current) {
           setStep(nextStep);
@@ -85,32 +67,32 @@ export function useModemReconnect(): UseModemReconnectReturn {
       };
 
       try {
+        // Show "disconnecting" immediately; flip to "reconnecting" after ~1.5s
+        // for visual feedback while the server runs COPS=2 → 2s sleep → COPS=0.
         notifyStep("disconnecting");
-        await sendAtCommand("AT+COPS=2");
-        disconnected = true;
 
-        await sleep(3000);
+        const visualTimer = sleep(1500).then(() => notifyStep("reconnecting"));
 
-        notifyStep("reconnecting");
-        await sendAtCommand("AT+COPS=0");
+        const resp = await authFetch(CGI_ENDPOINT, { method: "POST" });
+
+        if (!resp.ok) {
+          throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
+        }
+
+        const json: ReconnectResponse = await resp.json();
+        if (!json.success) {
+          throw new Error(
+            json.detail || json.error || "Failed to reconnect modem",
+          );
+        }
+
+        // Ensure the visual step has fired before we resolve.
+        await visualTimer;
 
         return { success: true };
       } catch (err) {
-        let message =
+        const message =
           err instanceof Error ? err.message : "Failed to reconnect modem";
-
-        if (disconnected) {
-          try {
-            notifyStep("reconnecting");
-            await sendAtCommand("AT+COPS=0");
-          } catch (recoverErr) {
-            const recoverMessage =
-              recoverErr instanceof Error
-                ? recoverErr.message
-                : "Failed to restore network registration";
-            message = `${message}. Recovery failed: ${recoverMessage}`;
-          }
-        }
 
         if (mountedRef.current) {
           setError(message);
@@ -124,7 +106,7 @@ export function useModemReconnect(): UseModemReconnectReturn {
         }
       }
     },
-    [isReconnecting, sendAtCommand],
+    [isReconnecting],
   );
 
   return {
