@@ -146,6 +146,8 @@
   "updater_missing": "Updater binary not found",
   "updater_not_executable": "Updater binary is not executable",
   "usbnet_failed": "USB network interface configuration failed",
+  "wol_not_supported": "Wake-on-LAN control is not supported on this hardware",
+  "wol_save_failed": "Failed to save Wake-on-LAN setting",
   "write_failed": "Failed to write configuration to storage",
   "wrong_schema": "Backup schema version does not match the current version"
 }
