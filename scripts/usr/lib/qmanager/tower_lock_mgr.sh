@@ -507,47 +507,106 @@ mtu_reapply_after_bounce() {
     )
 }
 
+# Sleep for N milliseconds. Uses usleep when available, falls back to
+# `sleep 1` for >=1000ms values. Silently no-ops if neither exists.
+_mtu_sleep_ms() {
+    local ms="$1"
+    if command -v usleep >/dev/null 2>&1; then
+        usleep $((ms * 1000)) 2>/dev/null && return 0
+    fi
+    if [ "$ms" -ge 1000 ]; then
+        sleep $((ms / 1000))
+    else
+        sleep 1
+    fi
+}
+
 _mtu_reapply_worker() {
-    local elapsed=0
-    local max_wait=30
-    local interval=2
+    # Wait for an rmnet_data interface with carrier=1, then keep watching
+    # MTU until it stays at the expected value for two consecutive reads.
+    # The Quectel RMNET driver can reset MTU asynchronously after the
+    # carrier comes up, and again after we correct it. Budget: ~30s total.
 
-    while [ "$elapsed" -lt "$max_wait" ]; do
-        sleep "$interval"
-        elapsed=$((elapsed + interval))
+    local deadline max_wait
+    max_wait=30
+    deadline=$(( $(date +%s) + max_wait ))
 
-        # Find any rmnet_data interface that is up
-        local iface=""
+    # Phase 1: wait for carrier=1 on any rmnet_data* iface (poll every 500ms)
+    local iface=""
+    while [ "$(date +%s)" -lt "$deadline" ]; do
         for f in /sys/class/net/rmnet_data*; do
             [ -e "$f" ] || continue
-            local name
+            local name carrier
             name=$(basename "$f")
-            local carrier
             carrier=$(cat "/sys/class/net/${name}/carrier" 2>/dev/null)
             if [ "$carrier" = "1" ]; then
                 iface="$name"
                 break
             fi
         done
-
-        [ -z "$iface" ] && continue
-
-        # Interface is up — check if MTU needs re-applying
-        local current_mtu expected_mtu
-        current_mtu=$(cat "/sys/class/net/${iface}/mtu" 2>/dev/null)
-        expected_mtu=$(grep -oE 'mtu [0-9]+' "$MTU_FILE" | head -1 | awk '{print $2}')
-
-        if [ -n "$expected_mtu" ] && [ "$current_mtu" != "$expected_mtu" ]; then
-            . "$MTU_FILE"
-            logger -t qmanager_mtu "Re-applied MTU after interface bounce (was $current_mtu, now $expected_mtu)"
-        fi
-
-        # Done — exit regardless of whether we re-applied
-        rm -f "$MTU_REAPPLY_PID"
-        return 0
+        [ -n "$iface" ] && break
+        _mtu_sleep_ms 500
     done
 
-    # Timeout — clean up
-    logger -t qmanager_mtu "MTU re-apply timed out after ${max_wait}s (interface never came back)"
+    if [ -z "$iface" ]; then
+        logger -t qmanager_mtu "MTU re-apply timed out waiting for rmnet_data carrier"
+        rm -f "$MTU_REAPPLY_PID"
+        return 1
+    fi
+
+    # Parse expected MTU once. If unparseable, nothing to enforce.
+    local expected_mtu
+    expected_mtu=$(grep -oE 'mtu [0-9]+' "$MTU_FILE" | head -1 | awk '{print $2}')
+    if [ -z "$expected_mtu" ]; then
+        rm -f "$MTU_REAPPLY_PID"
+        return 0
+    fi
+
+    # Phase 2: settle + verify + retry loop.
+    # Goal: observe MTU == expected on two consecutive reads (1s apart) before
+    # declaring success. Re-apply on each mismatch. Max 3 re-apply attempts.
+    local retries=3
+    local stable_hits=0
+    local last_applied_from=""
+    local current_mtu=""
+
+    # Let the driver finish any pending reset before first measurement.
+    _mtu_sleep_ms 500
+
+    while [ "$(date +%s)" -lt "$deadline" ]; do
+        current_mtu=$(cat "/sys/class/net/${iface}/mtu" 2>/dev/null)
+
+        if [ "$current_mtu" = "$expected_mtu" ]; then
+            stable_hits=$((stable_hits + 1))
+            if [ "$stable_hits" -ge 2 ]; then
+                if [ -n "$last_applied_from" ]; then
+                    logger -t qmanager_mtu "MTU stable at ${expected_mtu} on ${iface} (re-applied from ${last_applied_from})"
+                fi
+                rm -f "$MTU_REAPPLY_PID"
+                return 0
+            fi
+            _mtu_sleep_ms 1000
+            continue
+        fi
+
+        # Mismatch — reset stability counter and try to re-apply.
+        stable_hits=0
+
+        if [ "$retries" -le 0 ]; then
+            logger -t qmanager_mtu "MTU re-apply exhausted retries (current=${current_mtu}, expected=${expected_mtu}, iface=${iface})"
+            rm -f "$MTU_REAPPLY_PID"
+            return 1
+        fi
+
+        last_applied_from="$current_mtu"
+        . "$MTU_FILE"
+        retries=$((retries - 1))
+
+        # Give the kernel a moment to apply, then fall through to re-check.
+        _mtu_sleep_ms 200
+    done
+
+    logger -t qmanager_mtu "MTU re-apply timed out after ${max_wait}s (iface=${iface}, last=${current_mtu:-unknown}, expected=${expected_mtu})"
     rm -f "$MTU_REAPPLY_PID"
+    return 1
 }
