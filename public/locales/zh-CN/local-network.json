@@ -31,6 +31,15 @@
     "label_duplex": "双工模式",
     "alt_device_icon": "设备图标"
   },
+  "ethernet_leds": {
+    "card_title": "以太网端口 LED",
+    "card_description": "部分载板（特别是 rework.network 的 5G2PHY 及其他基于 QCA8081 的设计）在启用 Wake-on-LAN 时会抑制 RJ45 端口 LED。关闭 WoL 可恢复正常的端口 LED 行为。此操作无功能影响 — 始终在线的网关设备不会使用 Wake-on-LAN。",
+    "label_disable_wol": "关闭 Wake-on-LAN",
+    "applying": "正在应用… 连接可能会短暂中断（{{seconds}} 秒）",
+    "toast_success_enabled": "已关闭 Wake-on-LAN — RJ45 LED 应恢复亮起",
+    "toast_success_disabled": "已恢复 Wake-on-LAN（默认）",
+    "toast_error_save": "保存 Wake-on-LAN 设置失败"
+  },
   "dns": {
     "page_title": "自定义 DNS 设置",
     "page_description": "使用您偏好的解析器覆盖运营商分配的 DNS 服务器，适用于本地网络内的所有设备。",
