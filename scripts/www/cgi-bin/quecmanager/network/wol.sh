@@ -148,20 +148,26 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
     cgi_read_post
 
     # --- Validate disable_wol field -------------------------------------------
-    disable_wol_raw=$(printf '%s' "$POST_DATA" | jq -r '.disable_wol // "MISSING"')
+    # Don't use `// default` — jq's `//` coalesces on false AND null, so
+    # {"disable_wol": false} would trip the missing path. Check presence and
+    # type explicitly via `has` + `type`.
+    disable_wol_check=$(printf '%s' "$POST_DATA" | jq -r '
+        if type != "object" then "not_object"
+        elif has("disable_wol") | not then "missing"
+        elif (.disable_wol | type) != "boolean" then "not_boolean"
+        else (.disable_wol | tostring)
+        end
+    ' 2>/dev/null)
 
-    if [ "$disable_wol_raw" = "MISSING" ]; then
-        cgi_error "missing_field" "disable_wol must be a boolean"
-        exit 0
-    fi
-
-    # Must be exactly true or false (jq -r renders JSON booleans as strings)
-    if [ "$disable_wol_raw" != "true" ] && [ "$disable_wol_raw" != "false" ]; then
-        cgi_error "missing_field" "disable_wol must be a boolean"
-        exit 0
-    fi
-
-    disable_wol="$disable_wol_raw"
+    case "$disable_wol_check" in
+        true|false)
+            disable_wol="$disable_wol_check"
+            ;;
+        *)
+            cgi_error "missing_field" "disable_wol must be a boolean"
+            exit 0
+            ;;
+    esac
 
     # --- Re-run support probe -------------------------------------------------
     probe_wol_support
