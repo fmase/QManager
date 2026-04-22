@@ -407,7 +407,14 @@ remove_runtime_state() {
              /tmp/qmanager_watchcat.json \
              /tmp/qmanager_band_failover_state.json \
              /tmp/qmanager_tower_failover_state.json \
-             /tmp/qmanager_update.json; do
+             /tmp/qmanager_update.json \
+             /tmp/qmanager_config_restore.json \
+             /tmp/qmanager_config_restore_input.json \
+             /tmp/qmanager_config_restore.cancel \
+             /tmp/qmanager_config_restore.reboot_required \
+             /tmp/qmanager_language_install.json \
+             /tmp/qmanager_language_install_input.json \
+             /tmp/qmanager_language_install.cancel; do
         [ -f "$f" ] && rm -f "$f" && tmp_count=$(( tmp_count + 1 ))
     done
 
@@ -416,7 +423,7 @@ remove_runtime_state() {
         [ -f "$f" ] && rm -f "$f" && tmp_count=$(( tmp_count + 1 ))
     done
 
-    # Lock/PID/flag files
+    # Lock/PID/flag files (/tmp)
     rm -f /tmp/qmanager_*.lock \
           /tmp/qmanager_*.pid \
           /tmp/qmanager_email_reload \
@@ -429,6 +436,11 @@ remove_runtime_state() {
           /tmp/qm_tmo_out.* \
           2>/dev/null || true
 
+    # PID files in /var/run (config-restore and language-install workers)
+    rm -f /var/run/qmanager_config_restore.pid \
+          /var/run/qmanager_language_install.pid \
+          2>/dev/null || true
+
     # Staged update artifacts
     rm -f /tmp/qmanager_staged.tar.gz \
           /tmp/qmanager_staged_version \
@@ -436,6 +448,11 @@ remove_runtime_state() {
           /tmp/qmanager_rollback.tar.gz \
           /tmp/qmanager_update_new.tar.gz \
           2>/dev/null || true
+
+    # Language-pack install staging/download scratch dirs
+    rm -rf /tmp/qmanager_lp_staging \
+           /tmp/qmanager_lp_download \
+           2>/dev/null || true
 
     # Bandwidth monitor runtime
     rm -rf /tmp/quecmanager 2>/dev/null || true
@@ -449,7 +466,7 @@ remove_runtime_state() {
     # Leftover install scratch
     rm -rf /tmp/qmanager_install 2>/dev/null || true
 
-    info "Removed $tmp_count tracked file(s) from /tmp (plus lock/flag files)"
+    info "Removed $tmp_count tracked file(s) from /tmp (plus lock/flag/pid files)"
 }
 
 # --- Config Directory Handling -----------------------------------------------
