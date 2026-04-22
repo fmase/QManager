@@ -500,15 +500,16 @@ mtu_reapply_after_bounce() {
 
     qlog_info "Spawning MTU re-apply watcher (polling up to 30s)"
 
-    # Double-fork for BusyBox (no setsid)
+    # Double-fork for BusyBox (no setsid). Worker writes its own PID as
+    # the very first action, eliminating the race between fork and PID write.
     (
         _mtu_reapply_worker </dev/null >/dev/null 2>&1 &
-        echo $! > "$MTU_REAPPLY_PID"
     )
 }
 
-# Sleep for N milliseconds. Uses usleep when available, falls back to
-# `sleep 1` for >=1000ms values. Silently no-ops if neither exists.
+# Sleep for N milliseconds. Uses usleep when available. On systems
+# without usleep, sleeps 1s for <1000ms requests (BusyBox sleep is
+# integer seconds only) or (ms/1000)s for >=1000ms requests.
 _mtu_sleep_ms() {
     local ms="$1"
     if command -v usleep >/dev/null 2>&1; then
@@ -522,6 +523,10 @@ _mtu_sleep_ms() {
 }
 
 _mtu_reapply_worker() {
+    # Worker writes its own PID first — eliminates the race window between
+    # fork in mtu_reapply_after_bounce and a second caller's guard check.
+    echo $$ > "$MTU_REAPPLY_PID"
+
     # Wait for an rmnet_data interface with carrier=1, then keep watching
     # MTU until it stays at the expected value for two consecutive reads.
     # The Quectel RMNET driver can reset MTU asynchronously after the
@@ -556,7 +561,7 @@ _mtu_reapply_worker() {
 
     # Parse expected MTU once. If unparseable, nothing to enforce.
     local expected_mtu
-    expected_mtu=$(grep -oE 'mtu [0-9]+' "$MTU_FILE" | head -1 | awk '{print $2}')
+    expected_mtu=$(awk '/mtu [0-9]/{for(i=1;i<=NF;i++) if($i=="mtu") {print $(i+1); exit}}' "$MTU_FILE")
     if [ -z "$expected_mtu" ]; then
         rm -f "$MTU_REAPPLY_PID"
         return 0
@@ -581,6 +586,8 @@ _mtu_reapply_worker() {
             if [ "$stable_hits" -ge 2 ]; then
                 if [ -n "$last_applied_from" ]; then
                     logger -t qmanager_mtu "MTU stable at ${expected_mtu} on ${iface} (re-applied from ${last_applied_from})"
+                else
+                    logger -t qmanager_mtu "MTU already correct at ${expected_mtu} on ${iface} — no re-apply needed"
                 fi
                 rm -f "$MTU_REAPPLY_PID"
                 return 0
@@ -599,6 +606,9 @@ _mtu_reapply_worker() {
         fi
 
         last_applied_from="$current_mtu"
+        # MTU_FILE is written exclusively by the MTU CGI (mtu.sh) and
+        # contains only "ip link set <iface> mtu <value>" lines. Sourcing
+        # it as root is intentional; treat it as trusted input.
         . "$MTU_FILE"
         retries=$((retries - 1))
 
