@@ -298,12 +298,18 @@ async function main() {
   }
   log(`  Archive: ${archivePath}`);
 
-  // 7. Compute sha256 and size
+  // 7. Compute sha256 and size, write .sha256 sidecar for upload
   log("Computing SHA-256...");
   const bytes = await Bun.file(archivePath).bytes();
   const sha256 = createHash("sha256").update(bytes).digest("hex");
   const sizeBytes = bytes.length;
   log(`  ${sizeBytes} bytes, sha256: ${sha256}`);
+
+  // Sidecar format matches `sha256sum <file>`: "<hash>  <filename>\n" (two spaces).
+  // Upload alongside the tarball for human verification against the manifest.
+  const sidecarPath = `${archivePath}.sha256`;
+  await Bun.write(sidecarPath, `${sha256}  ${archiveName}\n`);
+  log(`  Sidecar: ${sidecarPath}`);
 
   // 8. Compute completeness vs EN reference locale
   log("Computing translation completeness...");
