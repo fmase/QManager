@@ -411,6 +411,7 @@
       "install_started": "Installazione di {{name}}…",
       "install_success": "{{name}} installato",
       "install_failed": "Impossibile installare {{name}}",
+      "install_failed_generic": "Impossibile installare il pacchetto lingua",
       "install_cancelled": "Installazione annullata",
       "install_in_progress": "Un'altra installazione è già in corso",
       "remove_success": "{{name}} rimosso",
