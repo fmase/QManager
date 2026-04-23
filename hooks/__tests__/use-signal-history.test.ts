@@ -17,7 +17,9 @@ describe("formatRelativeTime", () => {
   });
 
   it("rounds to the nearest second for fractional drift", () => {
-    expect(formatRelativeTime(latest - 3, latest)).toBe("-3s");
+    // ts is whole seconds in the NDJSON, but guard against unexpected input
+    expect(formatRelativeTime(latest - 2.6, latest)).toBe("-3s");
+    expect(formatRelativeTime(latest - 2.4, latest)).toBe("-2s");
   });
 
   it("clamps future-dated entries to 'Now' (clock skew safety)", () => {
