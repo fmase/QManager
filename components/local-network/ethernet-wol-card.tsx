@@ -21,13 +21,11 @@ import { useWolSetting } from "@/hooks/use-wol-setting";
 import { resolveErrorMessage } from "@/lib/i18n/resolve-error";
 
 // =============================================================================
-// EthernetWolCard — Wake-on-LAN / RJ45 LED Fix
+// EthernetWolCard — Wake-on-LAN Toggle
 // =============================================================================
-// Renders an opt-in toggle that disables eth0 WoL to restore RJ45 port LED
-// behaviour on carrier boards using QCA8081 PHYs (rework.network 5G2PHY etc.).
-//
-// Returns null when data.supported === false so the card is invisible on
-// hardware where WoL control is unavailable.
+// Enables or disables Wake-on-LAN on eth0. Returns null when
+// data.supported === false so the card is invisible on hardware where WoL
+// control is unavailable.
 // =============================================================================
 
 const EthernetWolCard = () => {

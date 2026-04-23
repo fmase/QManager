@@ -1,10 +1,10 @@
 # 🚀 QManager BETA v0.1.21
 
-A small quality-of-life release: a new **Ethernet Port LEDs** control for carrier boards that suppress RJ45 LEDs, and two community-contributed language packs — **Italian** 🇮🇹 and **Indonesian** 🇮🇩.
+A small quality-of-life release: a new **Wake-on-LAN** control on the Local Network page, and two community-contributed language packs — **Italian** 🇮🇹 and **Indonesian** 🇮🇩.
 
 ## ✨ New Features
 
-- **Ethernet Port LEDs card (Local Network).** Opt-in toggle that disables Wake-on-LAN on `eth0` to restore RJ45 port LEDs on carrier boards that suppress them while WoL is armed — notably **rework.network's 5G2PHY** and other QCA8081-based designs. No functional impact: Wake-on-LAN is unused on always-on gateway devices. The card auto-hides on hardware where WoL control isn't available, so you'll only see it if it's useful. Toggling the switch briefly bounces the Ethernet link (~2–5 seconds) — the UI shows a countdown and reconnects automatically.
+- **Wake-on-LAN card (Local Network).** Simple toggle to enable or disable Wake-on-LAN on the Ethernet port. When enabled, another device on the network can power this unit out of sleep by sending a magic packet; leave it disabled if you don't use it (most always-on modem gateways don't). The card auto-hides on hardware where WoL control isn't available. Toggling briefly bounces the Ethernet link (~2–5 seconds) — the UI shows a countdown and reconnects automatically.
 - **Italian language pack 🇮🇹.** QManager's first community-contributed translation, courtesy of **@fmase**. Install it from **System Settings → Languages → Available** — the pack downloads directly to the device, no firmware update needed. Partial translations fall back to English, so you'll never see an untranslated blank string.
 - **Indonesian language pack 🇮🇩.** Second community translation, courtesy of **@ikhsanh**. Install from the same Languages card. A handful of strings added late in this release cycle still fall back to English — a follow-up update is already requested.
 

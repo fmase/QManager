@@ -32,12 +32,12 @@
     "alt_device_icon": "Device Icon"
   },
   "ethernet_leds": {
-    "card_title": "Ethernet Port LEDs",
-    "card_description": "Some carrier boards (notably rework.network's 5G2PHY and other QCA8081-based designs) suppress the RJ45 port LEDs while Wake-on-LAN is armed. Disable WoL to restore normal port LED behavior. This has no functional impact — Wake-on-LAN is unused on always-on gateway devices.",
+    "card_title": "Wake-on-LAN",
+    "card_description": "Enable or disable Wake-on-LAN on the Ethernet port. When enabled, another device on the network can power this unit out of sleep by sending a magic packet. Leave disabled if you don't use it — most always-on modem gateways have no need for it.",
     "label_disable_wol": "Disable Wake-on-LAN",
     "applying": "Applying… your connection may briefly drop ({{seconds}}s)",
-    "toast_success_enabled": "Wake-on-LAN disabled — RJ45 LEDs should now light up",
-    "toast_success_disabled": "Wake-on-LAN re-enabled (default)",
+    "toast_success_enabled": "Wake-on-LAN disabled",
+    "toast_success_disabled": "Wake-on-LAN enabled",
     "toast_error_save": "Failed to save Wake-on-LAN setting"
   },
   "dns": {
