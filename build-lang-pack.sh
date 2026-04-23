@@ -83,7 +83,35 @@ esac
 
 command -v sha256sum >/dev/null 2>&1 || fail "sha256sum not found in PATH"
 command -v tar >/dev/null 2>&1 || fail "tar not found in PATH"
-command -v bun >/dev/null 2>&1 || fail "bun not found in PATH (required to run scripts/build-lang-pack-helpers.mjs)"
+# Helper is plain ESM — bun or node both work. Prefer node for portability:
+# when bun spawns this script on Windows, bun itself isn't always resolvable
+# from inside the bash subshell, but node usually is.
+if command -v node >/dev/null 2>&1; then
+  HELPER_RUNNER="node"
+elif command -v bun >/dev/null 2>&1; then
+  HELPER_RUNNER="bun run"
+else
+  fail "Neither node nor bun found in PATH (one is required to run build-lang-pack-helpers.mjs)"
+fi
+
+# Resolve bun for i18n:check. command -v alone misses bun.exe when bun spawned
+# this bash subshell from a parent shell whose PATH didn't propagate cleanly
+# (common on Windows Git Bash). Fall back to BUN_INSTALL / ~/.bun/bin.
+BUN_BIN=""
+if command -v bun >/dev/null 2>&1; then
+  BUN_BIN="bun"
+else
+  for cand in \
+    "${BUN_INSTALL:-}/bin/bun" \
+    "${BUN_INSTALL:-}/bin/bun.exe" \
+    "$HOME/.bun/bin/bun" \
+    "$HOME/.bun/bin/bun.exe"; do
+    if [ -n "$cand" ] && [ -x "$cand" ]; then
+      BUN_BIN="$cand"
+      break
+    fi
+  done
+fi
 
 [ -f "$AVAIL_TS" ] || fail "Missing $AVAIL_TS"
 [ -f "$LP_LIB" ] || fail "Missing $LP_LIB"
@@ -91,7 +119,7 @@ command -v bun >/dev/null 2>&1 || fail "bun not found in PATH (required to run s
 [ -d "$LOCALES_DIR/$CODE" ] || fail "Locale directory does not exist: public/locales/$CODE"
 
 # helper <subcommand> ...args
-helper() { bun run "$HELPER" "$@"; }
+helper() { $HELPER_RUNNER "$HELPER" "$@"; }
 
 step "Validating '$CODE' is registered in available-languages.ts..."
 set +e
@@ -139,13 +167,17 @@ for f in "$LOCALES_DIR/$CODE"/*.json; do
 done
 
 if [ "$SKIP_CHECK" -eq 0 ]; then
-  step "Running 'bun run i18n:check' (warnings OK, errors abort)..."
-  CHECK_OUT=$(bun run i18n:check 2>&1) || {
-    printf "%s\n" "$CHECK_OUT"
-    fail "i18n:check failed — fix errors before building the pack (pass --skip-check to bypass)"
-  }
-  SUMMARY=$(printf "%s\n" "$CHECK_OUT" | grep -E '^\[i18n:check\]' || true)
-  [ -n "$SUMMARY" ] && printf "  %s\n" "$SUMMARY"
+  if [ -z "$BUN_BIN" ]; then
+    warn "bun not resolvable from this shell — skipping i18n:check (install bun or run with --skip-check to suppress this warning)"
+  else
+    step "Running '$BUN_BIN run i18n:check' (warnings OK, errors abort)..."
+    CHECK_OUT=$("$BUN_BIN" run i18n:check 2>&1) || {
+      printf "%s\n" "$CHECK_OUT"
+      fail "i18n:check failed — fix errors before building the pack (pass --skip-check to bypass)"
+    }
+    SUMMARY=$(printf "%s\n" "$CHECK_OUT" | grep -E '^\[i18n:check\]' || true)
+    [ -n "$SUMMARY" ] && printf "  %s\n" "$SUMMARY"
+  fi
 else
   warn "Skipping i18n:check (--skip-check)"
 fi
