@@ -1,5 +1,5 @@
 import { readFileSync, readdirSync, existsSync, mkdirSync, renameSync } from "node:fs";
-import { join } from "node:path";
+import { join, relative } from "node:path";
 import { createHash } from "node:crypto";
 
 // ---------------------------------------------------------------------------
@@ -12,11 +12,13 @@ const publicLocalesDir = join(repoRoot, "public/locales");
 const manifestPath = join(repoRoot, "language-packs/manifest.json");
 const outDir = join(repoRoot, "qmanager-build/lang");
 
-// On win32, bun uses Windows paths but spawned MSYS2/Git-Bash tar expects POSIX
-// paths (/d/foo/bar). Convert only the path arguments passed to tar.
-function toTarPath(p: string): string {
-  if (process.platform !== "win32") return p;
-  return p.replace(/^([A-Za-z]):\\/, (_, d) => `/${d.toLowerCase()}/`).replace(/\\/g, "/");
+// Normalize backslashes to forward slashes. Used for relative paths passed to
+// tar — safe across all tar flavors (GNU/MSYS2/bsdtar) and all platforms.
+// Absolute Windows paths (D:/foo or /d/foo) are NOT safe: bsdtar and MSYS2 tar
+// have incompatible expectations. We avoid the issue by spawning tar with
+// cwd = outDir and passing all paths relative to that cwd.
+function fwd(p: string): string {
+  return p.replace(/\\/g, "/");
 }
 
 // ---------------------------------------------------------------------------
@@ -288,9 +290,17 @@ async function main() {
   // Flat layout: -C <localeDir> changes into the locale dir so entries are just
   // <ns>.json at the tarball root. The on-device worker (language_packs.sh)
   // extracts to a staging dir and expects files at the top level, no subdir prefix.
+  //
+  // Spawn with cwd = outDir and pass all paths as RELATIVE to outDir. Absolute
+  // Windows paths (D:/foo vs /d/foo) have incompatible forms across tar flavors
+  // (MSYS2 GNU tar vs Windows System32 bsdtar); relative paths sidestep the issue
+  // entirely and work identically on Git Bash, pwsh, WSL, macOS, and Linux.
   const jsonFiles = readdirSync(localeDir).filter((f) => f.endsWith(".json"));
-  const tarResult = Bun.spawnSync(["tar", "-czf", toTarPath(archivePath), "-C", toTarPath(localeDir), ...jsonFiles], {
-    stdout: "pipe", stderr: "pipe",
+  const relLocaleDir = fwd(relative(outDir, localeDir));
+  const tarResult = Bun.spawnSync(["tar", "-czf", archiveName, "-C", relLocaleDir, ...jsonFiles], {
+    cwd: outDir,
+    stdout: "pipe",
+    stderr: "pipe",
   });
   if (tarResult.exitCode !== 0) {
     const tarStderr = tarResult.stderr ? new TextDecoder().decode(tarResult.stderr) : "(no output)";
