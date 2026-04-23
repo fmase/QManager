@@ -55,6 +55,9 @@ Arguments:
 
 Options:
   --update-manifest <url>  Patch language-packs/manifest.json with the entry.
+  --contributors <csv>     Comma-separated list of contributor names/handles
+                           (e.g. "@fmase" or "@fmase,@other"). Rendered in
+                           the Languages card.
   --skip-check             Skip the 'bun run i18n:check' step.
   -h, --help               Print this help and exit.
 
@@ -64,6 +67,7 @@ Examples:
   bun run package:lang it
   bun run package:lang fr 2026.04.23
   bun run package:lang de --update-manifest https://example.com/de.tar.gz
+  bun run package:lang it --contributors "@fmase" --update-manifest https://...
 `.trim());
 }
 
@@ -75,6 +79,7 @@ interface Args {
   version: string;
   updateManifestUrl: string | null;
   skipCheck: boolean;
+  contributors: string[];
 }
 
 function parseArgs(): Args {
@@ -83,6 +88,7 @@ function parseArgs(): Args {
   const positional: string[] = [];
   let updateManifestUrl: string | null = null;
   let skipCheck = false;
+  let contributors: string[] = [];
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     if (arg === "--update-manifest") {
@@ -91,6 +97,10 @@ function parseArgs(): Args {
       updateManifestUrl = url;
     } else if (arg === "--skip-check") {
       skipCheck = true;
+    } else if (arg === "--contributors") {
+      const csv = argv[++i];
+      if (!csv || csv.startsWith("--")) fail("--contributors requires a comma-separated list of names.");
+      contributors = csv.split(",").map((s) => s.trim()).filter((s) => s.length > 0);
     } else if (arg.startsWith("--")) {
       fail(`Unknown option: ${arg}`);
     } else {
@@ -120,7 +130,7 @@ function parseArgs(): Args {
       warn(`Version '${version}' is not YYYY.MM.DD format. Frontend compareVersion() does lexicographic comparison - verify ordering is intentional.`);
     }
   }
-  return { code, version, updateManifestUrl, skipCheck };
+  return { code, version, updateManifestUrl, skipCheck, contributors };
 }
 
 // ---------------------------------------------------------------------------
@@ -210,7 +220,7 @@ function collectLocaleKeys(localeDir: string): Set<string> {
 // ---------------------------------------------------------------------------
 async function main() {
   const args = parseArgs();
-  const { code, version, updateManifestUrl, skipCheck } = args;
+  const { code, version, updateManifestUrl, skipCheck, contributors } = args;
 
   log(`Building language pack for: ${code} @ ${version}`);
 
@@ -316,6 +326,7 @@ async function main() {
     size_bytes: sizeBytes,
     sha256,
     url: updateManifestUrl ?? "<FILL_URL>",
+    ...(contributors.length > 0 ? { contributors } : {}),
   };
 
   // 10. Patch manifest.json if --update-manifest was supplied

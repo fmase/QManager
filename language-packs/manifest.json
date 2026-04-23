@@ -11,7 +11,8 @@
       "completeness": 1,
       "size_bytes": 38950,
       "sha256": "acaa90cb45b62f535501e8e37d619e30b98373b33a483f07eb29b1ed25117209",
-      "url": "https://github.com/dr-dolomite/QManager/releases/download/lang-it-2026.04.23/qmanager-lang-it-2026.04.23.tar.gz"
+      "url": "https://github.com/dr-dolomite/QManager/releases/download/lang-it-2026.04.23/qmanager-lang-it-2026.04.23.tar.gz",
+      "contributors": ["@fmase"]
     }
   ]
 }
