@@ -127,6 +127,7 @@
   "payload_too_large": "Il corpo della richiesta è troppo grande",
   "rate_limited": "Troppi tentativi falliti: riprova più tardi",
   "remove_failed": "Impossibile rimuovere l'elemento",
+  "save_failed": "Impossibile salvare l'impostazione",
   "select_failed": "Impossibile selezionare la modalità di rete",
   "send_failed": "Impossibile inviare il messaggio",
   "service_running": "Il servizio è attualmente in esecuzione: interrompilo prima",
@@ -146,6 +147,8 @@
   "updater_missing": "Binario di aggiornamento non trovato",
   "updater_not_executable": "Il file binario dell'aggiornamento non è eseguibile",
   "usbnet_failed": "La configurazione dell'interfaccia di rete USB non è riuscita",
+  "wol_not_supported": "Il controllo Wake-on-LAN non è supportato su questo hardware",
+  "wol_save_failed": "Impossibile salvare l'impostazione Wake-on-LAN",
   "write_failed": "Impossibile scrivere la configurazione nell'archivio",
   "wrong_schema": "La versione dello schema di backup non corrisponde alla versione corrente"
 }

@@ -31,6 +31,15 @@
     "label_duplex": "Duplex",
     "alt_device_icon": "Icona del dispositivo"
   },
+  "ethernet_leds": {
+    "card_title": "LED delle porte Ethernet",
+    "card_description": "Alcune schede carrier (in particolare 5G2PHY di rework.network e altri design basati su QCA8081) disattivano i LED delle porte RJ45 quando Wake-on-LAN è attivo. Disabilita WoL per ripristinare il normale comportamento dei LED delle porte. Non ha alcun impatto funzionale: Wake-on-LAN non viene utilizzato su gateway sempre accesi.",
+    "label_disable_wol": "Disabilita Wake-on-LAN",
+    "applying": "Applicazione in corso… la connessione potrebbe interrompersi brevemente ({{seconds}}s)",
+    "toast_success_enabled": "Wake-on-LAN disabilitato — i LED RJ45 dovrebbero ora accendersi",
+    "toast_success_disabled": "Wake-on-LAN riabilitato (predefinito)",
+    "toast_error_save": "Impossibile salvare l'impostazione Wake-on-LAN"
+  },
   "dns": {
     "page_title": "Impostazioni DNS personalizzate",
     "page_description": "Sostituisci i server DNS assegnati dall'operatore con i tuoi risolutori preferiti per tutti i dispositivi sulla rete locale.",
