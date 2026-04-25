@@ -105,6 +105,7 @@ const NRSALockingComponent = ({
 
   const handleSimpleModeToggle = (on: boolean) => {
     setSimpleMode(on);
+    setScsSource("manual");
     if (typeof window !== "undefined") {
       window.localStorage.setItem(STORAGE_KEY_NR_SIMPLE_MODE, String(on));
     }
