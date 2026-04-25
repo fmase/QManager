@@ -44,7 +44,17 @@ import type {
 } from "@/types/tower-locking";
 import type { ModemStatus } from "@/types/modem-status";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   lteCarriersFromQcainfo,
+  formatCarrierLabel,
+  compositeValue,
+  parseCompositeValue,
   type CarrierOption,
 } from "./simple-mode-utils";
 
@@ -100,6 +110,30 @@ const LTELockingComponent = ({
     [modemData],
   );
   const hasOptions = carrierOptions.length > 0;
+
+  const slotComposites = useMemo(
+    () =>
+      [
+        [earfcn1, pci1],
+        [earfcn2, pci2],
+        [earfcn3, pci3],
+      ].map(([e, p]) => {
+        const eNum = parseInt(e!, 10);
+        const pNum = parseInt(p!, 10);
+        if (Number.isNaN(eNum) || Number.isNaN(pNum)) return "";
+        return compositeValue(eNum, pNum);
+      }),
+    [earfcn1, pci1, earfcn2, pci2, earfcn3, pci3],
+  );
+
+  const handleSlotPick = (slotIndex: 0 | 1 | 2, value: string) => {
+    const parsed = parseCompositeValue(value);
+    if (!parsed) return;
+    const setEarfcn = [setEarfcn1, setEarfcn2, setEarfcn3][slotIndex]!;
+    const setPci = [setPci1, setPci2, setPci3][slotIndex]!;
+    setEarfcn(String(parsed.earfcn));
+    setPci(String(parsed.pci));
+  };
 
   // Confirmation dialog state
   const [showLockDialog, setShowLockDialog] = useState(false);
@@ -187,6 +221,61 @@ const LTELockingComponent = ({
     } else {
       toast.error(t("cell_locking.tower_locking.lte.toast.unlock_error"));
     }
+  };
+
+  const renderSlotSelect = (slotIndex: 0 | 1 | 2, idPrefix: string) => {
+    const currentValue = slotComposites[slotIndex] ?? "";
+    const currentEarfcn = [earfcn1, earfcn2, earfcn3][slotIndex] ?? "";
+    const currentPci = [pci1, pci2, pci3][slotIndex] ?? "";
+    const inListOption = carrierOptions.find(
+      (o) => compositeValue(o.earfcn, o.pci) === currentValue,
+    );
+
+    return (
+      <Select
+        value={inListOption ? currentValue : ""}
+        onValueChange={(v) => handleSlotPick(slotIndex, v)}
+        disabled={isLocking}
+      >
+        <SelectTrigger id={idPrefix} className="w-full">
+          {inListOption ? (
+            <SelectValue />
+          ) : currentEarfcn && currentPci ? (
+            <span className="italic text-muted-foreground line-clamp-1">
+              {t("cell_locking.tower_locking.lte.simple_mode.custom_value_label", {
+                earfcn: currentEarfcn,
+                pci: currentPci,
+              })}
+            </span>
+          ) : (
+            <SelectValue placeholder={t("cell_locking.tower_locking.lte.simple_mode.select_placeholder")} />
+          )}
+        </SelectTrigger>
+        <SelectContent>
+          {carrierOptions.map((opt) => {
+            const value = compositeValue(opt.earfcn, opt.pci);
+            const usedInIndex = slotComposites.findIndex(
+              (sc, idx) => sc === value && idx !== slotIndex,
+            );
+            const disabled = usedInIndex !== -1;
+            return (
+              <SelectItem key={value} value={value} disabled={disabled}>
+                <span className="flex items-center gap-2">
+                  <span>{formatCarrierLabel(opt)}</span>
+                  {disabled && (
+                    <span className="text-xs text-muted-foreground">
+                      {t("cell_locking.tower_locking.lte.simple_mode.slot_used_suffix", {
+                        n: usedInIndex + 1,
+                      })}
+                    </span>
+                  )}
+                </span>
+              </SelectItem>
+            );
+          })}
+        </SelectContent>
+      </Select>
+    );
   };
 
   if (isLoading) {
@@ -313,14 +402,18 @@ const LTELockingComponent = ({
                     <div className="grid grid-cols-2 gap-4">
                       <Field>
                         <FieldLabel htmlFor="earfcn1">{t("cell_locking.tower_locking.lte.channel_label")}</FieldLabel>
-                        <Input
-                          id="earfcn1"
-                          type="text"
-                          placeholder={t("cell_locking.tower_locking.lte.channel_placeholder")}
-                          value={earfcn1}
-                          onChange={(e) => setEarfcn1(e.target.value)}
-                          disabled={isLocking}
-                        />
+                        {simpleMode && hasOptions ? (
+                          renderSlotSelect(0, "earfcn1")
+                        ) : (
+                          <Input
+                            id="earfcn1"
+                            type="text"
+                            placeholder={t("cell_locking.tower_locking.lte.channel_placeholder")}
+                            value={earfcn1}
+                            onChange={(e) => setEarfcn1(e.target.value)}
+                            disabled={isLocking}
+                          />
+                        )}
                       </Field>
                       <Field>
                         <FieldLabel htmlFor="pci1">{t("cell_locking.tower_locking.lte.pci_label")}</FieldLabel>
@@ -338,14 +431,18 @@ const LTELockingComponent = ({
                     <div className="grid grid-cols-2 gap-4">
                       <Field>
                         <FieldLabel htmlFor="earfcn2">{t("cell_locking.tower_locking.lte.channel_label_n", { n: 2 })}</FieldLabel>
-                        <Input
-                          id="earfcn2"
-                          type="text"
-                          placeholder={t("cell_locking.tower_locking.lte.channel_placeholder_n", { n: 2 })}
-                          value={earfcn2}
-                          onChange={(e) => setEarfcn2(e.target.value)}
-                          disabled={isLocking}
-                        />
+                        {simpleMode && hasOptions ? (
+                          renderSlotSelect(1, "earfcn2")
+                        ) : (
+                          <Input
+                            id="earfcn2"
+                            type="text"
+                            placeholder={t("cell_locking.tower_locking.lte.channel_placeholder_n", { n: 2 })}
+                            value={earfcn2}
+                            onChange={(e) => setEarfcn2(e.target.value)}
+                            disabled={isLocking}
+                          />
+                        )}
                       </Field>
                       <Field>
                         <FieldLabel htmlFor="pci2">{t("cell_locking.tower_locking.lte.pci_label_n", { n: 2 })}</FieldLabel>
@@ -363,14 +460,18 @@ const LTELockingComponent = ({
                     <div className="grid grid-cols-2 gap-4">
                       <Field>
                         <FieldLabel htmlFor="earfcn3">{t("cell_locking.tower_locking.lte.channel_label_n", { n: 3 })}</FieldLabel>
-                        <Input
-                          id="earfcn3"
-                          type="text"
-                          placeholder={t("cell_locking.tower_locking.lte.channel_placeholder_n", { n: 3 })}
-                          value={earfcn3}
-                          onChange={(e) => setEarfcn3(e.target.value)}
-                          disabled={isLocking}
-                        />
+                        {simpleMode && hasOptions ? (
+                          renderSlotSelect(2, "earfcn3")
+                        ) : (
+                          <Input
+                            id="earfcn3"
+                            type="text"
+                            placeholder={t("cell_locking.tower_locking.lte.channel_placeholder_n", { n: 3 })}
+                            value={earfcn3}
+                            onChange={(e) => setEarfcn3(e.target.value)}
+                            disabled={isLocking}
+                          />
+                        )}
                       </Field>
                       <Field>
                         <FieldLabel htmlFor="pci3">{t("cell_locking.tower_locking.lte.pci_label_n", { n: 3 })}</FieldLabel>
