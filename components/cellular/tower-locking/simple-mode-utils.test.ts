@@ -205,4 +205,19 @@ describe("compositeValue / parseCompositeValue", () => {
     expect(parseCompositeValue("1850:abc")).toBeNull();
     expect(parseCompositeValue("")).toBeNull();
   });
+
+  it("returns null when either half is empty", () => {
+    expect(parseCompositeValue(":100")).toBeNull();
+    expect(parseCompositeValue("1850:")).toBeNull();
+    expect(parseCompositeValue(":")).toBeNull();
+  });
+});
+
+describe("nrCarriersFromQcainfo — FR2", () => {
+  it("parses FR2 band numbers from NR carrier", () => {
+    const result = nrCarriersFromQcainfo(
+      modemWith([nrCC({ band: "N257", earfcn: 2070000, pci: 555 })]) as ModemStatus,
+    );
+    expect(result[0]?.bandNumber).toBe(257);
+  });
 });

@@ -80,6 +80,7 @@ export function parseCompositeValue(
 ): { earfcn: number; pci: number } | null {
   if (!value || !value.includes(":")) return null;
   const [eStr, pStr] = value.split(":", 2);
+  if (!eStr || !pStr) return null;
   const earfcn = Number(eStr);
   const pci = Number(pStr);
   if (!Number.isFinite(earfcn) || !Number.isFinite(pci)) return null;
