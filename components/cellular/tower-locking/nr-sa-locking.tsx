@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 
@@ -31,13 +31,22 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Button } from "@/components/ui/button";
 import { TbInfoCircleFilled } from "react-icons/tb";
 import { Input } from "@/components/ui/input";
-import { Loader2, Crosshair } from "lucide-react";
+import { Loader2 } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { Skeleton } from "@/components/ui/skeleton";
 
 import { Field, FieldGroup, FieldLabel, FieldSet } from "@/components/ui/field";
+import {
+  nrCarriersFromQcainfo,
+  type CarrierOption,
+} from "./simple-mode-utils";
 
 import type {
   TowerLockConfig,
@@ -59,15 +68,9 @@ interface NRSALockingProps {
   onUnlock: () => Promise<boolean>;
 }
 
-/**
- * Extract numeric band from 3GPP band string.
- * e.g., "N41" → 41, "N78" → 78
- */
-function extractBandNumber(band: string | null | undefined): number | null {
-  if (!band) return null;
-  const match = band.match(/\d+/);
-  return match ? parseInt(match[0], 10) : null;
-}
+const STORAGE_KEY_NR_SIMPLE_MODE = "qmanager_tower_nr_simple_mode";
+
+type ScsSource = "manual" | "band_default" | "servingcell";
 
 const NRSALockingComponent = ({
   config,
@@ -88,6 +91,21 @@ const NRSALockingComponent = ({
   const [band, setBand] = useState("");
   const [scs, setScs] = useState("");
 
+  // Simple Mode state (persisted to localStorage)
+  const [simpleMode, setSimpleMode] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return window.localStorage.getItem(STORAGE_KEY_NR_SIMPLE_MODE) === "true";
+  });
+
+  const [scsSource, setScsSource] = useState<ScsSource>("manual");
+
+  const handleSimpleModeToggle = (on: boolean) => {
+    setSimpleMode(on);
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(STORAGE_KEY_NR_SIMPLE_MODE, String(on));
+    }
+  };
+
   // Confirmation dialog state
   const [showLockDialog, setShowLockDialog] = useState(false);
   const [showUnlockDialog, setShowUnlockDialog] = useState(false);
@@ -102,6 +120,13 @@ const NRSALockingComponent = ({
       if (config.nr_sa.scs !== null) setScs(String(config.nr_sa.scs));
     }
   }, [config?.nr_sa]);
+
+  // Derive carrier options for Simple Mode
+  const carrierOptions = useMemo<CarrierOption[]>(
+    () => (modemData ? nrCarriersFromQcainfo(modemData) : []),
+    [modemData],
+  );
+  const hasOptions = carrierOptions.length > 0;
 
   // Derive enabled state from modem state or config
   const isEnabled = modemState?.nr_locked ?? config?.nr_sa?.enabled ?? false;
@@ -172,27 +197,6 @@ const NRSALockingComponent = ({
     }
   };
 
-  // "Use Current" — copy active NR PCell into form fields
-  const handleUseCurrent = () => {
-    const nrArfcn = modemData?.nr?.arfcn;
-    const nrPci = modemData?.nr?.pci;
-    const nrBandNum = extractBandNumber(modemData?.nr?.band);
-    const nrScs = modemData?.nr?.scs;
-
-    if (nrArfcn != null && nrPci != null) {
-      setArfcn(String(nrArfcn));
-      setPci(String(nrPci));
-      if (nrBandNum != null) setBand(String(nrBandNum));
-      if (nrScs != null) setScs(String(nrScs));
-      toast.info(t("cell_locking.tower_locking.nr_sa.toast.filled_current"));
-    } else {
-      toast.warning(t("cell_locking.tower_locking.nr_sa.toast.no_active_connection"));
-    }
-  };
-
-  const hasActiveNrCell =
-    modemData?.nr?.arfcn != null && modemData?.nr?.pci != null;
-
   if (isLoading) {
     return (
       <Card className="@container/card">
@@ -241,13 +245,37 @@ const NRSALockingComponent = ({
   return (
     <>
       <Card className={`@container/card ${isCardDisabled ? "opacity-60" : ""}`}>
-        <CardHeader>
-          <CardTitle>{t("cell_locking.tower_locking.nr_sa.title")}</CardTitle>
-          <CardDescription>
-            {t("cell_locking.tower_locking.nr_sa.description")}
-            {isNsaMode && t("cell_locking.tower_locking.nr_sa.description_suffix_nsa_mode")}
-            {isLteOnly && t("cell_locking.tower_locking.nr_sa.description_suffix_lte_only")}
-          </CardDescription>
+        <CardHeader className="flex flex-row items-start justify-between gap-4">
+          <div className="grid gap-1.5">
+            <CardTitle>{t("cell_locking.tower_locking.nr_sa.title")}</CardTitle>
+            <CardDescription>
+              {t("cell_locking.tower_locking.nr_sa.description")}
+              {isNsaMode && t("cell_locking.tower_locking.nr_sa.description_suffix_nsa_mode")}
+              {isLteOnly && t("cell_locking.tower_locking.nr_sa.description_suffix_lte_only")}
+            </CardDescription>
+          </div>
+          <TooltipProvider delayDuration={200}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="flex items-center gap-2 shrink-0">
+                  <Label htmlFor="nr-sa-simple-mode" className="text-sm font-medium">
+                    {t("cell_locking.tower_locking.nr_sa.simple_mode.toggle_label")}
+                  </Label>
+                  <Switch
+                    id="nr-sa-simple-mode"
+                    checked={simpleMode && hasOptions}
+                    onCheckedChange={handleSimpleModeToggle}
+                    disabled={!hasOptions || isDisabled}
+                  />
+                </div>
+              </TooltipTrigger>
+              <TooltipContent>
+                {hasOptions
+                  ? t("cell_locking.tower_locking.nr_sa.simple_mode.info_tooltip")
+                  : t("cell_locking.tower_locking.nr_sa.simple_mode.empty_tooltip")}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </CardHeader>
         <CardContent>
           <div className="grid gap-2">
@@ -284,18 +312,7 @@ const NRSALockingComponent = ({
                   <FieldGroup>
                     <div className="grid grid-cols-2 gap-4">
                       <Field>
-                        <div className="flex items-center justify-between">
-                          <FieldLabel htmlFor="nrarfcn1">{t("cell_locking.tower_locking.nr_sa.arfcn_label")}</FieldLabel>
-                          <Button
-                            type="button"
-                            size="sm"
-                            className="h-6 px-2 text-xs"
-                            onClick={handleUseCurrent}
-                            disabled={isDisabled || !hasActiveNrCell}
-                          >
-                            {t("cell_locking.tower_locking.nr_sa.use_current")}
-                          </Button>
-                        </div>
+                        <FieldLabel htmlFor="nrarfcn1">{t("cell_locking.tower_locking.nr_sa.arfcn_label")}</FieldLabel>
                         <Input
                           id="nrarfcn1"
                           type="text"
@@ -333,7 +350,10 @@ const NRSALockingComponent = ({
                         <FieldLabel htmlFor="scs">{t("cell_locking.tower_locking.nr_sa.scs_label")}</FieldLabel>
                         <Select
                           value={scs}
-                          onValueChange={setScs}
+                          onValueChange={(v) => {
+                            setScs(v);
+                            setScsSource("manual");
+                          }}
                           disabled={isDisabled}
                         >
                           <SelectTrigger>
