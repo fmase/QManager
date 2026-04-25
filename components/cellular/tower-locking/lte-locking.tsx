@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 
@@ -21,13 +21,18 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { Separator } from "@/components/ui/separator";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Button } from "@/components/ui/button";
 import { TbInfoCircleFilled } from "react-icons/tb";
 import { Input } from "@/components/ui/input";
-import { Loader2, Crosshair } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
 import { Field, FieldGroup, FieldLabel, FieldSet } from "@/components/ui/field";
@@ -38,6 +43,12 @@ import type {
   LteLockCell,
 } from "@/types/tower-locking";
 import type { ModemStatus } from "@/types/modem-status";
+import {
+  lteCarriersFromQcainfo,
+  type CarrierOption,
+} from "./simple-mode-utils";
+
+const STORAGE_KEY_LTE_SIMPLE_MODE = "qmanager_tower_lte_simple_mode";
 
 interface LTELockingProps {
   config: TowerLockConfig | null;
@@ -69,6 +80,26 @@ const LTELockingComponent = ({
   const [pci2, setPci2] = useState("");
   const [earfcn3, setEarfcn3] = useState("");
   const [pci3, setPci3] = useState("");
+
+  // Simple Mode state + localStorage persistence (lazy init avoids SSR mismatch)
+  const [simpleMode, setSimpleMode] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return window.localStorage.getItem(STORAGE_KEY_LTE_SIMPLE_MODE) === "true";
+  });
+
+  const handleSimpleModeToggle = (on: boolean) => {
+    setSimpleMode(on);
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(STORAGE_KEY_LTE_SIMPLE_MODE, String(on));
+    }
+  };
+
+  // Derive available carrier options from live modem data
+  const carrierOptions = useMemo<CarrierOption[]>(
+    () => (modemData ? lteCarriersFromQcainfo(modemData) : []),
+    [modemData],
+  );
+  const hasOptions = carrierOptions.length > 0;
 
   // Confirmation dialog state
   const [showLockDialog, setShowLockDialog] = useState(false);
@@ -158,22 +189,6 @@ const LTELockingComponent = ({
     }
   };
 
-  // "Use Current" — copy active PCell into slot 1
-  const handleUseCurrent = () => {
-    const earfcn = modemData?.lte?.earfcn;
-    const pci = modemData?.lte?.pci;
-    if (earfcn != null && pci != null) {
-      setEarfcn1(String(earfcn));
-      setPci1(String(pci));
-      toast.info(t("cell_locking.tower_locking.lte.toast.filled_current"));
-    } else {
-      toast.warning(t("cell_locking.tower_locking.lte.toast.no_active_connection"));
-    }
-  };
-
-  const hasActiveLteCell =
-    modemData?.lte?.earfcn != null && modemData?.lte?.pci != null;
-
   if (isLoading) {
     return (
       <Card className="@container/card">
@@ -232,11 +247,35 @@ const LTELockingComponent = ({
   return (
     <>
       <Card className="@container/card">
-        <CardHeader>
-          <CardTitle>{t("cell_locking.tower_locking.lte.title")}</CardTitle>
-          <CardDescription>
-            {t("cell_locking.tower_locking.lte.description")}
-          </CardDescription>
+        <CardHeader className="flex flex-row items-start justify-between gap-4">
+          <div className="grid gap-1.5">
+            <CardTitle>{t("cell_locking.tower_locking.lte.title")}</CardTitle>
+            <CardDescription>
+              {t("cell_locking.tower_locking.lte.description")}
+            </CardDescription>
+          </div>
+          <TooltipProvider delayDuration={200}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="flex items-center gap-2 shrink-0">
+                  <Label htmlFor="lte-simple-mode" className="text-sm font-medium">
+                    {t("cell_locking.tower_locking.lte.simple_mode.toggle_label")}
+                  </Label>
+                  <Switch
+                    id="lte-simple-mode"
+                    checked={simpleMode && hasOptions}
+                    onCheckedChange={handleSimpleModeToggle}
+                    disabled={!hasOptions || isLocking}
+                  />
+                </div>
+              </TooltipTrigger>
+              <TooltipContent>
+                {hasOptions
+                  ? t("cell_locking.tower_locking.lte.simple_mode.info_tooltip")
+                  : t("cell_locking.tower_locking.lte.simple_mode.empty_tooltip")}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </CardHeader>
         <CardContent>
           <div className="grid gap-2">
@@ -273,18 +312,7 @@ const LTELockingComponent = ({
                   <FieldGroup>
                     <div className="grid grid-cols-2 gap-4">
                       <Field>
-                        <div className="flex items-center justify-between">
-                          <FieldLabel htmlFor="earfcn1">{t("cell_locking.tower_locking.lte.channel_label")}</FieldLabel>
-                          <Button
-                            type="button"
-                            size="sm"
-                            className="h-6 px-2 text-xs"
-                            onClick={handleUseCurrent}
-                            disabled={isLocking || !hasActiveLteCell}
-                          >
-                            {t("cell_locking.tower_locking.lte.use_current")}
-                          </Button>
-                        </div>
+                        <FieldLabel htmlFor="earfcn1">{t("cell_locking.tower_locking.lte.channel_label")}</FieldLabel>
                         <Input
                           id="earfcn1"
                           type="text"
