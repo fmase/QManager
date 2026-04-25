@@ -477,6 +477,14 @@
         "pci_placeholder": "Enter PCI",
         "pci_placeholder_n": "Enter PCI {{n}}",
         "use_current": "Use Current",
+        "simple_mode": {
+          "toggle_label": "Simple Mode",
+          "info_tooltip": "Pick from your modem's currently active carriers",
+          "empty_tooltip": "No active LTE carriers detected — connect first, or use Custom mode",
+          "select_placeholder": "Select an active carrier",
+          "custom_value_label": "Custom: {{earfcn}} / PCI {{pci}}",
+          "slot_used_suffix": "(used in slot {{n}})"
+        },
         "lock_dialog": {
           "title": "Lock to LTE Tower?",
           "description_single": "This will lock your modem to EARFCN {{earfcn}}, PCI {{pci}}. The modem will only connect to this tower and may briefly disconnect during the switch.",
@@ -517,6 +525,14 @@
         "scs_label": "Subcarrier Spacing",
         "scs_placeholder": "SCS",
         "use_current": "Use Current",
+        "simple_mode": {
+          "toggle_label": "Simple Mode",
+          "info_tooltip": "Pick from your modem's currently active carriers",
+          "empty_tooltip": "No active 5G NR carriers detected — connect first, or use Custom mode",
+          "select_placeholder": "Select an active carrier",
+          "custom_value_label": "Custom: {{arfcn}} / PCI {{pci}}",
+          "scs_band_default_warning": "This is the typical SCS for N{{band}}. Your operator may use a different value — verify before locking."
+        },
         "lock_dialog": {
           "title": "Lock to NR-SA Tower?",
           "description": "This will lock your modem to NR ARFCN {{arfcn}}, PCI {{pci}} (Band {{band}}). The modem will only connect to this tower and may briefly disconnect during the switch.",

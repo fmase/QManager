@@ -477,6 +477,14 @@
         "pci_placeholder": "输入 PCI",
         "pci_placeholder_n": "输入 PCI {{n}}",
         "use_current": "使用当前",
+        "simple_mode": {
+          "toggle_label": "简易模式",
+          "info_tooltip": "从调制解调器当前活动的载波中选择",
+          "empty_tooltip": "未检测到活动的 LTE 载波 — 请先连接，或使用自定义模式",
+          "select_placeholder": "选择一个活动载波",
+          "custom_value_label": "自定义：{{earfcn}} / PCI {{pci}}",
+          "slot_used_suffix": "（已在槽 {{n}} 中使用）"
+        },
         "lock_dialog": {
           "title": "锁定到 LTE 基站？",
           "description_single": "这将把您的调制解调器锁定到 EARFCN {{earfcn}}、PCI {{pci}}。调制解调器将只连接到此基站，切换过程中可能短暂断线。",
@@ -517,6 +525,14 @@
         "scs_label": "子载波间隔",
         "scs_placeholder": "SCS",
         "use_current": "使用当前",
+        "simple_mode": {
+          "toggle_label": "简易模式",
+          "info_tooltip": "从调制解调器当前活动的载波中选择",
+          "empty_tooltip": "未检测到活动的 5G NR 载波 — 请先连接，或使用自定义模式",
+          "select_placeholder": "选择一个活动载波",
+          "custom_value_label": "自定义：{{arfcn}} / PCI {{pci}}",
+          "scs_band_default_warning": "这是 N{{band}} 的典型 SCS。您的运营商可能使用不同的值 — 请在锁定前确认。"
+        },
         "lock_dialog": {
           "title": "锁定到 NR-SA 基站？",
           "description": "这将把您的调制解调器锁定到 NR ARFCN {{arfcn}}、PCI {{pci}}（频段 {{band}}）。调制解调器将只连接到此基站，切换过程中可能短暂断线。",
