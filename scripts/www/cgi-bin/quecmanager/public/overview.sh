@@ -13,6 +13,7 @@ _SKIP_AUTH=1
 . /usr/lib/qmanager/cgi_base.sh
 qlog_init "cgi_public_overview"
 cgi_headers
+cgi_handle_options
 
 STATUS_FILE="/tmp/qmanager_status.json"
 
@@ -43,8 +44,8 @@ jq '{
     nr_state: .nr.state
   },
   signal: {
-    rsrp: (.lte.rsrp // .nr.rsrp // null),
-    sinr: (.lte.sinr // .nr.sinr // null)
+    rsrp: (if .lte.rsrp != null then .lte.rsrp elif .nr.rsrp != null then .nr.rsrp else null end),
+    sinr: (if .lte.sinr != null then .lte.sinr elif .nr.sinr != null then .nr.sinr else null end)
   },
   device: {
     model: .device.model
