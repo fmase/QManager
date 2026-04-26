@@ -5,7 +5,6 @@ import {
   defaultScsForBand,
   compositeValue,
   parseCompositeValue,
-  type CarrierOption,
 } from "./simple-mode-utils";
 import type { CarrierComponent, ModemStatus } from "@/types/modem-status";
 
