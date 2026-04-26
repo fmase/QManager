@@ -305,33 +305,66 @@ const NRSALockingComponent = ({
         <CardContent>
           <div className="grid gap-2">
             <Separator />
-            <div className="flex items-center justify-end gap-2">
-              <TooltipProvider delayDuration={200}>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <div className="flex items-center gap-2">
-                      <Label htmlFor="nr-sa-simple-mode" className="text-sm font-medium">
-                        {t("cell_locking.tower_locking.nr_sa.simple_mode.toggle_label")}
-                      </Label>
-                      <Switch
-                        id="nr-sa-simple-mode"
-                        checked={simpleMode && hasOptions}
-                        onCheckedChange={handleSimpleModeToggle}
-                        disabled={!hasOptions || isDisabled}
-                      />
-                    </div>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    {hasOptions
-                      ? t("cell_locking.tower_locking.nr_sa.simple_mode.info_tooltip")
-                      : t("cell_locking.tower_locking.nr_sa.simple_mode.empty_tooltip")}
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5">
+                <TooltipProvider delayDuration={200}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        aria-label={t("cell_locking.tower_locking.nr_sa.simple_mode.toggle_label")}
+                        className="cursor-help"
+                      >
+                        <TbInfoCircleFilled className="size-5 text-info" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      {hasOptions
+                        ? t("cell_locking.tower_locking.nr_sa.simple_mode.info_tooltip")
+                        : t("cell_locking.tower_locking.nr_sa.simple_mode.empty_tooltip")}
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+
+                <p className="font-semibold text-muted-foreground text-sm">
+                  {t("cell_locking.tower_locking.nr_sa.simple_mode.toggle_label")}
+                </p>
+              </div>
+              <div className="flex items-center space-x-2">
+                {isLocking ? (
+                  <Loader2 className="size-4 animate-spin text-muted-foreground" />
+                ) : null}
+                <Switch
+                  id="nr-sa-simple-mode"
+                  checked={simpleMode && hasOptions}
+                  onCheckedChange={handleSimpleModeToggle}
+                  disabled={!hasOptions || isDisabled}
+                />
+                <Label htmlFor="nr-sa-simple-mode">
+                  {simpleMode && hasOptions
+                    ? t("state.on", { ns: "common" })
+                    : t("state.off", { ns: "common" })}
+                </Label>
+              </div>
             </div>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1.5">
-                <TbInfoCircleFilled className="size-5 text-info" />
+                <TooltipProvider delayDuration={200}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        aria-label={t("cell_locking.tower_locking.nr_sa.enabled_info_aria")}
+                        className="cursor-help"
+                      >
+                        <TbInfoCircleFilled className="size-5 text-info" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      {t("cell_locking.tower_locking.nr_sa.enabled_tooltip")}
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
                 <p className="font-semibold text-muted-foreground text-sm">
                   {t("cell_locking.tower_locking.nr_sa.enabled_label")}
                 </p>
