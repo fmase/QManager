@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useMemo } from "react";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 
@@ -88,6 +88,7 @@ const NRSALockingComponent = ({
   const [pci, setPci] = useState("");
   const [band, setBand] = useState("");
   const [scs, setScs] = useState("");
+  const [prevNrSa, setPrevNrSa] = useState(config?.nr_sa);
 
   // Simple Mode state (persisted to localStorage)
   const [simpleMode, setSimpleMode] = useState<boolean>(() => {
@@ -110,15 +111,16 @@ const NRSALockingComponent = ({
   const [showUnlockDialog, setShowUnlockDialog] = useState(false);
   const [pendingCell, setPendingCell] = useState<NrSaLockCell | null>(null);
 
-  // Sync form from config when data loads
-  useEffect(() => {
+  // Sync form from config when data loads (render-time update avoids effect cascade)
+  if (config?.nr_sa !== prevNrSa) {
+    setPrevNrSa(config?.nr_sa);
     if (config?.nr_sa) {
       if (config.nr_sa.arfcn !== null) setArfcn(String(config.nr_sa.arfcn));
       if (config.nr_sa.pci !== null) setPci(String(config.nr_sa.pci));
       if (config.nr_sa.band !== null) setBand(String(config.nr_sa.band));
       if (config.nr_sa.scs !== null) setScs(String(config.nr_sa.scs));
     }
-  }, [config?.nr_sa]);
+  }
 
   // Derive carrier options for Simple Mode
   const carrierOptions = useMemo<CarrierOption[]>(

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useMemo } from "react";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 
@@ -84,6 +84,7 @@ const LTELockingComponent = ({
   const [pci2, setPci2] = useState("");
   const [earfcn3, setEarfcn3] = useState("");
   const [pci3, setPci3] = useState("");
+  const [prevCells, setPrevCells] = useState(config?.lte?.cells);
 
   // Simple Mode state + localStorage persistence (lazy init avoids SSR mismatch)
   const [simpleMode, setSimpleMode] = useState<boolean>(() => {
@@ -134,24 +135,17 @@ const LTELockingComponent = ({
   const [showUnlockDialog, setShowUnlockDialog] = useState(false);
   const [pendingCells, setPendingCells] = useState<LteLockCell[]>([]);
 
-  // Sync form from config when data loads
-  useEffect(() => {
-    if (config?.lte?.cells) {
-      const cells = config.lte.cells;
-      if (cells[0]) {
-        setEarfcn1(String(cells[0].earfcn));
-        setPci1(String(cells[0].pci));
-      }
-      if (cells[1]) {
-        setEarfcn2(String(cells[1].earfcn));
-        setPci2(String(cells[1].pci));
-      }
-      if (cells[2]) {
-        setEarfcn3(String(cells[2].earfcn));
-        setPci3(String(cells[2].pci));
-      }
-    }
-  }, [config?.lte?.cells]);
+  // Sync form from config when data loads (render-time update avoids effect cascade)
+  if (config?.lte?.cells !== prevCells) {
+    setPrevCells(config?.lte?.cells);
+    const cells = config?.lte?.cells ?? [];
+    setEarfcn1(cells[0] ? String(cells[0].earfcn) : "");
+    setPci1(cells[0] ? String(cells[0].pci) : "");
+    setEarfcn2(cells[1] ? String(cells[1].earfcn) : "");
+    setPci2(cells[1] ? String(cells[1].pci) : "");
+    setEarfcn3(cells[2] ? String(cells[2].earfcn) : "");
+    setPci3(cells[2] ? String(cells[2].pci) : "");
+  }
 
   // Derive enabled state from modem state (actual lock) or config
   const isEnabled = modemState?.lte_locked ?? config?.lte?.enabled ?? false;
