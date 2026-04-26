@@ -178,18 +178,26 @@ describe("formatCarrierLabel", () => {
     rsrp: -85,
   };
 
-  it("formats PCC carrier with signal", () => {
-    expect(formatCarrierLabel(opt)).toBe("1850 (B3) — PCC · PCI 100 · -85 dBm");
+  it("formats carrier with signal", () => {
+    expect(formatCarrierLabel(opt)).toBe("1850 (B3) · -85 dBm");
   });
 
-  it("formats SCC carrier", () => {
-    expect(formatCarrierLabel({ ...opt, type: "SCC", earfcn: 41690, pci: 444, rsrp: -92 })).toBe(
-      "41690 (B3) — SCC · PCI 444 · -92 dBm",
+  it("ignores PCC vs SCC distinction in label", () => {
+    expect(formatCarrierLabel({ ...opt, type: "SCC" })).toBe("1850 (B3) · -85 dBm");
+  });
+
+  it("ignores PCI in label", () => {
+    expect(formatCarrierLabel({ ...opt, pci: 999 })).toBe("1850 (B3) · -85 dBm");
+  });
+
+  it("formats NR carrier with band name", () => {
+    expect(formatCarrierLabel({ ...opt, band: "N41", earfcn: 506700, rsrp: -88 })).toBe(
+      "506700 (N41) · -88 dBm",
     );
   });
 
   it("omits dBm when rsrp is null", () => {
-    expect(formatCarrierLabel({ ...opt, rsrp: null })).toBe("1850 (B3) — PCC · PCI 100");
+    expect(formatCarrierLabel({ ...opt, rsrp: null })).toBe("1850 (B3)");
   });
 });
 
