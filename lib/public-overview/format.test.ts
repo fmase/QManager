@@ -1,0 +1,95 @@
+import { describe, it, expect } from "bun:test";
+import {
+  deriveConnectionLabel,
+  formatBands,
+  formatUptime,
+} from "./format";
+
+describe("deriveConnectionLabel", () => {
+  it("returns 'connected' when LTE state is connected", () => {
+    expect(deriveConnectionLabel("connected", "disconnected")).toBe("connected");
+  });
+
+  it("returns 'connected' when NR state is connected (SA)", () => {
+    expect(deriveConnectionLabel("disconnected", "connected")).toBe("connected");
+  });
+
+  it("returns 'connected' when both are connected (NSA)", () => {
+    expect(deriveConnectionLabel("connected", "connected")).toBe("connected");
+  });
+
+  it("returns 'searching' when either state is searching and neither is connected", () => {
+    expect(deriveConnectionLabel("searching", "disconnected")).toBe("searching");
+    expect(deriveConnectionLabel("disconnected", "searching")).toBe("searching");
+  });
+
+  it("returns 'limited' when either state is limited and neither is connected/searching", () => {
+    expect(deriveConnectionLabel("limited", "disconnected")).toBe("limited");
+    expect(deriveConnectionLabel("disconnected", "limited")).toBe("limited");
+  });
+
+  it("returns 'inactive' when either state is inactive and neither is connected/searching/limited", () => {
+    expect(deriveConnectionLabel("inactive", "disconnected")).toBe("inactive");
+    expect(deriveConnectionLabel("inactive", "unknown")).toBe("inactive");
+  });
+
+  it("returns 'disconnected' for the all-disconnected fallback", () => {
+    expect(deriveConnectionLabel("disconnected", "disconnected")).toBe("disconnected");
+  });
+
+  it("returns 'unknown' for two unknowns", () => {
+    expect(deriveConnectionLabel("unknown", "unknown")).toBe("unknown");
+  });
+
+  it("returns 'error' when either side errored and nothing better is true", () => {
+    expect(deriveConnectionLabel("error", "disconnected")).toBe("error");
+  });
+});
+
+describe("formatBands", () => {
+  it("joins bands with ' + '", () => {
+    expect(formatBands(["B3", "n78"])).toBe("B3 + n78");
+  });
+
+  it("handles a single band", () => {
+    expect(formatBands(["B3"])).toBe("B3");
+  });
+
+  it("returns an em dash for an empty array", () => {
+    expect(formatBands([])).toBe("—");
+  });
+
+  it("filters out empty strings", () => {
+    expect(formatBands(["B3", "", "n78"])).toBe("B3 + n78");
+  });
+});
+
+describe("formatUptime", () => {
+  it("formats >= 1 day as '<d>d <h>h'", () => {
+    const seconds = 3 * 86400 + 14 * 3600 + 7 * 60;
+    expect(formatUptime(seconds)).toEqual({ key: "days", days: 3, hours: 14 });
+  });
+
+  it("formats >= 1 hour, < 1 day as '<h>h <m>m'", () => {
+    const seconds = 5 * 3600 + 23 * 60;
+    expect(formatUptime(seconds)).toEqual({ key: "hours", hours: 5, minutes: 23 });
+  });
+
+  it("formats < 1 hour as '<m>m'", () => {
+    expect(formatUptime(42 * 60)).toEqual({ key: "minutes", minutes: 42 });
+  });
+
+  it("formats 0 as '0m'", () => {
+    expect(formatUptime(0)).toEqual({ key: "minutes", minutes: 0 });
+  });
+
+  it("treats negative or non-finite values as 0", () => {
+    expect(formatUptime(-100)).toEqual({ key: "minutes", minutes: 0 });
+    expect(formatUptime(NaN)).toEqual({ key: "minutes", minutes: 0 });
+  });
+
+  it("rounds 23h 59m 59s up to next hour bucket cleanly", () => {
+    const seconds = 23 * 3600 + 59 * 60 + 59;
+    expect(formatUptime(seconds)).toEqual({ key: "hours", hours: 23, minutes: 59 });
+  });
+});
