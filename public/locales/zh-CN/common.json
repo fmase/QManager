@@ -52,7 +52,6 @@
       "uptime": "运行时间"
     },
     "signal": {
-      "label": "信号",
       "dual": "{{rsrp}} dBm · {{sinr}} dB SINR",
       "rsrp_only": "{{rsrp}} dBm",
       "sinr_only": "{{sinr}} dB SINR",

@@ -194,9 +194,14 @@ function renderBody({ data, isLoading, isStale, error, t }: BodyProps) {
   const rowsMutedClass = reachable ? "" : "text-muted-foreground";
 
   return (
-    <div className="flex flex-col gap-5" aria-live="polite" aria-atomic="true">
-      {/* Connection state row */}
-      <div className="flex flex-wrap items-center gap-2">
+    <div className="flex flex-col gap-5">
+      {/* Connection state row — aria-live scoped here so only badge transitions
+          (e.g. connected → searching) are announced, not per-poll uptime ticks. */}
+      <div
+        className="flex flex-wrap items-center gap-2"
+        aria-live="polite"
+        aria-atomic="true"
+      >
         <Badge variant="outline" className={badge.classes}>
           <badge.Icon
             className={`size-3 ${badge.spin ? "animate-spin" : ""}`}
