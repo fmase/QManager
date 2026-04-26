@@ -336,39 +336,39 @@ const LTELockingComponent = ({
   return (
     <>
       <Card className="@container/card">
-        <CardHeader className="flex flex-row items-start justify-between gap-4">
-          <div className="grid gap-1.5">
-            <CardTitle>{t("cell_locking.tower_locking.lte.title")}</CardTitle>
-            <CardDescription>
-              {t("cell_locking.tower_locking.lte.description")}
-            </CardDescription>
-          </div>
-          <TooltipProvider delayDuration={200}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <div className="flex items-center gap-2 shrink-0">
-                  <Label htmlFor="lte-simple-mode" className="text-sm font-medium">
-                    {t("cell_locking.tower_locking.lte.simple_mode.toggle_label")}
-                  </Label>
-                  <Switch
-                    id="lte-simple-mode"
-                    checked={simpleMode && hasOptions}
-                    onCheckedChange={handleSimpleModeToggle}
-                    disabled={!hasOptions || isLocking}
-                  />
-                </div>
-              </TooltipTrigger>
-              <TooltipContent>
-                {hasOptions
-                  ? t("cell_locking.tower_locking.lte.simple_mode.info_tooltip")
-                  : t("cell_locking.tower_locking.lte.simple_mode.empty_tooltip")}
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+        <CardHeader>
+          <CardTitle>{t("cell_locking.tower_locking.lte.title")}</CardTitle>
+          <CardDescription>
+            {t("cell_locking.tower_locking.lte.description")}
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid gap-2">
             <Separator />
+            <div className="flex items-center justify-end gap-2">
+              <TooltipProvider delayDuration={200}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="flex items-center gap-2">
+                      <Label htmlFor="lte-simple-mode" className="text-sm font-medium">
+                        {t("cell_locking.tower_locking.lte.simple_mode.toggle_label")}
+                      </Label>
+                      <Switch
+                        id="lte-simple-mode"
+                        checked={simpleMode && hasOptions}
+                        onCheckedChange={handleSimpleModeToggle}
+                        disabled={!hasOptions || isLocking}
+                      />
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {hasOptions
+                      ? t("cell_locking.tower_locking.lte.simple_mode.info_tooltip")
+                      : t("cell_locking.tower_locking.lte.simple_mode.empty_tooltip")}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1.5">
                 <TbInfoCircleFilled className="size-5 text-info" />
