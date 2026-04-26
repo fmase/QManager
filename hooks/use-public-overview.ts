@@ -52,6 +52,8 @@ export function usePublicOverview(): UsePublicOverviewReturn {
         const age = now - json.timestamp;
         setIsStale(age > STALE_THRESHOLD_SECONDS);
       } else {
+        // Non-ok states (setup_required / unavailable) are explicit backend
+        // states, not stale data — the empty-state UI handles them.
         setIsStale(false);
       }
       setIsLoading(false);
