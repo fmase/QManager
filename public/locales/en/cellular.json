@@ -476,7 +476,6 @@
         "pci_label_n": "Cell ID (PCI) {{n}}",
         "pci_placeholder": "Enter PCI",
         "pci_placeholder_n": "Enter PCI {{n}}",
-        "use_current": "Use Current",
         "simple_mode": {
           "toggle_label": "Simple Mode",
           "info_tooltip": "Pick from your modem's currently active carriers",
@@ -524,7 +523,6 @@
         "band_placeholder": "Enter NR Band",
         "scs_label": "Subcarrier Spacing",
         "scs_placeholder": "SCS",
-        "use_current": "Use Current",
         "simple_mode": {
           "toggle_label": "Simple Mode",
           "info_tooltip": "Pick from your modem's currently active carriers",

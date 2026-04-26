@@ -476,7 +476,6 @@
         "pci_label_n": "ID Sel (PCI) {{n}}",
         "pci_placeholder": "Masukkan PCI",
         "pci_placeholder_n": "Masukkan PCI {{n}}",
-        "use_current": "Gunakan Saat Ini",
         "lock_dialog": {
           "title": "Kunci ke Tower LTE?",
           "description_single": "Ini akan mengunci modem Anda ke EARFCN {{earfcn}}, PCI {{pci}}. Modem hanya akan terhubung ke tower ini dan mungkin akan terputus sebentar saat proses perpindahan.",
@@ -516,7 +515,6 @@
         "band_placeholder": "Masukkan Band NR",
         "scs_label": "Subcarrier Spacing",
         "scs_placeholder": "SCS",
-        "use_current": "Gunakan Saat Ini",
         "lock_dialog": {
           "title": "Kunci ke Tower NR-SA?",
           "description": "Ini akan mengunci modem Anda ke NR ARFCN {{arfcn}}, PCI {{pci}} (Band {{band}}). Modem hanya akan terhubung ke tower ini dan mungkin akan terputus sebentar saat proses perpindahan.",

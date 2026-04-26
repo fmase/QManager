@@ -476,7 +476,6 @@
         "pci_label_n": "小区 ID (PCI) {{n}}",
         "pci_placeholder": "输入 PCI",
         "pci_placeholder_n": "输入 PCI {{n}}",
-        "use_current": "使用当前",
         "simple_mode": {
           "toggle_label": "简易模式",
           "info_tooltip": "从调制解调器当前活动的载波中选择",
@@ -524,7 +523,6 @@
         "band_placeholder": "输入 NR 频段",
         "scs_label": "子载波间隔",
         "scs_placeholder": "SCS",
-        "use_current": "使用当前",
         "simple_mode": {
           "toggle_label": "简易模式",
           "info_tooltip": "从调制解调器当前活动的载波中选择",

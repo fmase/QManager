@@ -476,7 +476,6 @@
         "pci_label_n": "ID cella (PCI) {{n}}",
         "pci_placeholder": "Inserisci PCI",
         "pci_placeholder_n": "Inserisci PCI {{n}}",
-        "use_current": "Usa corrente",
         "lock_dialog": {
           "title": "Blocca sulla torre LTE?",
           "description_single": "In questo modo il modem verrà bloccato su EARFCN {{earfcn}}, PCI {{pci}}. Il modem si collegherà solo a questa torre e potrebbe disconnettersi brevemente durante il passaggio.",
@@ -516,7 +515,6 @@
         "band_placeholder": "Inserisci NR Banda",
         "scs_label": "Spaziatura sottoportante",
         "scs_placeholder": "SCS",
-        "use_current": "Usa corrente",
         "lock_dialog": {
           "title": "Blocca la Torre NR-SA?",
           "description": "In questo modo il modem verrà bloccato su NR ARFCN {{arfcn}}, PCI {{pci}} (banda {{band}}). Il modem si collegherà solo a questa torre e potrebbe disconnettersi brevemente durante il passaggio.",
