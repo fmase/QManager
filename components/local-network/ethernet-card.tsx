@@ -50,6 +50,7 @@ interface EthernetStatus {
   duplex: string;
   auto_negotiation: string;
   speed_limit: string;
+  supports_2500?: boolean;
 }
 
 const EthernetStatusCard = () => {
@@ -521,6 +522,9 @@ const EthernetStatusCard = () => {
                     <SelectItem value="10">{t("ethernet.option_speed_10")}</SelectItem>
                     <SelectItem value="100">{t("ethernet.option_speed_100")}</SelectItem>
                     <SelectItem value="1000">{t("ethernet.option_speed_1000")}</SelectItem>
+                    {status?.supports_2500 ? (
+                      <SelectItem value="2500">{t("ethernet.option_speed_2500")}</SelectItem>
+                    ) : null}
                   </SelectGroup>
                 </SelectContent>
               </Select>
