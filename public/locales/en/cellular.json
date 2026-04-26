@@ -480,6 +480,8 @@
         "pci_placeholder_n": "Enter PCI {{n}}",
         "simple_mode": {
           "toggle_label": "Simple Mode",
+          "switch_aria": "LTE Simple Mode",
+          "info_aria": "LTE Simple Mode info",
           "info_tooltip": "Pick from your modem's currently active carriers",
           "empty_tooltip": "No active LTE carriers detected — connect first, or use Custom mode",
           "select_placeholder": "Select an active carrier",
@@ -529,11 +531,14 @@
         "scs_placeholder": "SCS",
         "simple_mode": {
           "toggle_label": "Simple Mode",
+          "switch_aria": "NR Simple Mode",
+          "info_aria": "NR Simple Mode info",
           "info_tooltip": "Pick from your modem's currently active carriers",
           "empty_tooltip": "No active 5G NR carriers detected — connect first, or use Custom mode",
           "select_placeholder": "Select an active carrier",
           "custom_value_label": "Custom: {{arfcn}} / PCI {{pci}}",
-          "scs_band_default_warning": "This is the typical SCS for N{{band}}. Your operator may use a different value — verify before locking."
+          "scs_band_default_warning": "This is the typical SCS for N{{band}}. Your operator may use a different value — verify before locking.",
+          "scs_warning_aria": "Subcarrier spacing warning"
         },
         "lock_dialog": {
           "title": "Lock to NR-SA Tower?",

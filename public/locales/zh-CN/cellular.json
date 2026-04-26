@@ -480,6 +480,8 @@
         "pci_placeholder_n": "输入 PCI {{n}}",
         "simple_mode": {
           "toggle_label": "简易模式",
+          "switch_aria": "LTE 简易模式",
+          "info_aria": "LTE 简易模式信息",
           "info_tooltip": "从调制解调器当前活动的载波中选择",
           "empty_tooltip": "未检测到活动的 LTE 载波 — 请先连接，或使用自定义模式",
           "select_placeholder": "选择一个活动载波",
@@ -529,11 +531,14 @@
         "scs_placeholder": "SCS",
         "simple_mode": {
           "toggle_label": "简易模式",
+          "switch_aria": "NR 简易模式",
+          "info_aria": "NR 简易模式信息",
           "info_tooltip": "从调制解调器当前活动的载波中选择",
           "empty_tooltip": "未检测到活动的 5G NR 载波 — 请先连接，或使用自定义模式",
           "select_placeholder": "选择一个活动载波",
           "custom_value_label": "自定义：{{arfcn}} / PCI {{pci}}",
-          "scs_band_default_warning": "这是 N{{band}} 的典型 SCS。您的运营商可能使用不同的值 — 请在锁定前确认。"
+          "scs_band_default_warning": "这是 N{{band}} 的典型 SCS。您的运营商可能使用不同的值 — 请在锁定前确认。",
+          "scs_warning_aria": "子载波间隔警告"
         },
         "lock_dialog": {
           "title": "锁定到 NR-SA 基站？",

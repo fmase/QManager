@@ -21,16 +21,10 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { HintIcon } from "@/components/ui/hint-icon";
 import { Separator } from "@/components/ui/separator";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { TbInfoCircleFilled } from "react-icons/tb";
 import { Input } from "@/components/ui/input";
 import { Loader2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -167,15 +161,15 @@ const LTELockingComponent = ({
     const cells: LteLockCell[] = [];
     const e1 = parseInt(earfcn1, 10);
     const p1 = parseInt(pci1, 10);
-    if (!isNaN(e1) && !isNaN(p1)) cells.push({ earfcn: e1, pci: p1 });
+    if (!Number.isNaN(e1) && !Number.isNaN(p1)) cells.push({ earfcn: e1, pci: p1 });
 
     const e2 = parseInt(earfcn2, 10);
     const p2 = parseInt(pci2, 10);
-    if (!isNaN(e2) && !isNaN(p2)) cells.push({ earfcn: e2, pci: p2 });
+    if (!Number.isNaN(e2) && !Number.isNaN(p2)) cells.push({ earfcn: e2, pci: p2 });
 
     const e3 = parseInt(earfcn3, 10);
     const p3 = parseInt(pci3, 10);
-    if (!isNaN(e3) && !isNaN(p3)) cells.push({ earfcn: e3, pci: p3 });
+    if (!Number.isNaN(e3) && !Number.isNaN(p3)) cells.push({ earfcn: e3, pci: p3 });
 
     return cells;
   };
@@ -251,7 +245,16 @@ const LTELockingComponent = ({
           {inListOption ? (
             <SelectValue />
           ) : currentEarfcn && currentPci ? (
-            <span className="italic text-muted-foreground line-clamp-1">
+            <span
+              className="min-w-0 italic text-muted-foreground line-clamp-1"
+              title={t(
+                "cell_locking.tower_locking.lte.simple_mode.custom_value_label",
+                {
+                  earfcn: currentEarfcn,
+                  pci: currentPci,
+                },
+              )}
+            >
               {t(
                 "cell_locking.tower_locking.lte.simple_mode.custom_value_label",
                 {
@@ -311,7 +314,17 @@ const LTELockingComponent = ({
           <div className="grid gap-2">
             <Separator />
             <div className="flex items-center justify-between">
-              <Skeleton className="h-4 w-44" />
+              <div className="flex items-center gap-1.5">
+                <Skeleton className="size-4 rounded-full" />
+                <Skeleton className="h-4 w-28" />
+              </div>
+              <Skeleton className="h-5 w-20" />
+            </div>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5">
+                <Skeleton className="size-5 rounded-full" />
+                <Skeleton className="h-4 w-44" />
+              </div>
               <Skeleton className="h-5 w-20" />
             </div>
             <Separator />
@@ -365,70 +378,54 @@ const LTELockingComponent = ({
         <CardContent>
           <div className="grid gap-2">
             <Separator />
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-1.5">
-                <TooltipProvider delayDuration={200}>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button
-                        type="button"
-                        aria-label={t("cell_locking.tower_locking.lte.simple_mode.toggle_label")}
-                        className="cursor-help"
-                      >
-                        <TbInfoCircleFilled className="size-5 text-info" />
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      {hasOptions
-                        ? t(
-                            "cell_locking.tower_locking.lte.simple_mode.info_tooltip",
-                          )
-                        : t(
-                            "cell_locking.tower_locking.lte.simple_mode.empty_tooltip",
-                          )}
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
+            <div className="flex flex-col gap-1">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5">
+                  <HintIcon
+                    label={t("cell_locking.tower_locking.lte.simple_mode.info_aria")}
+                    variant="muted"
+                    size="sm"
+                  >
+                    {hasOptions
+                      ? t("cell_locking.tower_locking.lte.simple_mode.info_tooltip")
+                      : t("cell_locking.tower_locking.lte.simple_mode.empty_tooltip")}
+                  </HintIcon>
 
-                <p className="font-semibold text-muted-foreground text-sm">
-                  {t("cell_locking.tower_locking.lte.simple_mode.toggle_label")}
+                  <p className="font-medium text-muted-foreground text-sm">
+                    {t("cell_locking.tower_locking.lte.simple_mode.toggle_label")}
+                  </p>
+                </div>
+                <div className="flex items-center space-x-2">
+                  {isLocking ? (
+                    <Loader2 className="size-4 animate-spin text-muted-foreground" />
+                  ) : null}
+                  <Switch
+                    id="lte-simple-mode"
+                    aria-label={t("cell_locking.tower_locking.lte.simple_mode.switch_aria")}
+                    checked={simpleMode && hasOptions}
+                    onCheckedChange={handleSimpleModeToggle}
+                    disabled={!hasOptions || isLocking}
+                  />
+                  <Label htmlFor="lte-simple-mode">
+                    {simpleMode && hasOptions
+                      ? t("state.on", { ns: "common" })
+                      : t("state.off", { ns: "common" })}
+                  </Label>
+                </div>
+              </div>
+              {!hasOptions && (
+                <p className="text-xs text-muted-foreground">
+                  {t("cell_locking.tower_locking.lte.simple_mode.empty_tooltip")}
                 </p>
-              </div>
-              <div className="flex items-center space-x-2">
-                {isLocking ? (
-                  <Loader2 className="size-4 animate-spin text-muted-foreground" />
-                ) : null}
-                <Switch
-                  id="lte-simple-mode"
-                  checked={simpleMode && hasOptions}
-                  onCheckedChange={handleSimpleModeToggle}
-                  disabled={!hasOptions || isLocking}
-                />
-                <Label htmlFor="lte-simple-mode">
-                  {simpleMode && hasOptions
-                    ? t("state.on", { ns: "common" })
-                    : t("state.off", { ns: "common" })}
-                </Label>
-              </div>
+              )}
             </div>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1.5">
-                <TooltipProvider delayDuration={200}>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button
-                        type="button"
-                        aria-label={t("cell_locking.tower_locking.lte.enabled_info_aria")}
-                        className="cursor-help"
-                      >
-                        <TbInfoCircleFilled className="size-5 text-info" />
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      {t("cell_locking.tower_locking.lte.enabled_tooltip")}
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
+                <HintIcon
+                  label={t("cell_locking.tower_locking.lte.enabled_info_aria")}
+                >
+                  {t("cell_locking.tower_locking.lte.enabled_tooltip")}
+                </HintIcon>
                 <p className="font-semibold text-muted-foreground text-sm">
                   {t("cell_locking.tower_locking.lte.enabled_label")}
                 </p>
@@ -439,6 +436,7 @@ const LTELockingComponent = ({
                 ) : null}
                 <Switch
                   id="lte-tower-locking"
+                  aria-label={t("cell_locking.tower_locking.lte.enabled_label")}
                   checked={isEnabled}
                   onCheckedChange={handleToggle}
                   disabled={isLocking}
@@ -451,10 +449,7 @@ const LTELockingComponent = ({
               </div>
             </div>
             <Separator />
-            <form
-              className="grid gap-4 mt-6"
-              onSubmit={(e) => e.preventDefault()}
-            >
+            <div className="grid gap-4 mt-6">
               <div className="w-full">
                 <FieldSet>
                   <FieldGroup>
@@ -583,7 +578,7 @@ const LTELockingComponent = ({
                   </FieldGroup>
                 </FieldSet>
               </div>
-            </form>
+            </div>
           </div>
         </CardContent>
       </Card>

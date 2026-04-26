@@ -31,15 +31,9 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { TbInfoCircleFilled } from "react-icons/tb";
 import { Input } from "@/components/ui/input";
-import { Loader2, TriangleAlertIcon } from "lucide-react";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { Loader2 } from "lucide-react";
+import { HintIcon } from "@/components/ui/hint-icon";
 import { Skeleton } from "@/components/ui/skeleton";
 
 import { Field, FieldGroup, FieldLabel, FieldSet } from "@/components/ui/field";
@@ -200,10 +194,10 @@ const NRSALockingComponent = ({
       const parsedScs = parseInt(scs, 10);
 
       if (
-        isNaN(parsedArfcn) ||
-        isNaN(parsedPci) ||
-        isNaN(parsedBand) ||
-        isNaN(parsedScs)
+        Number.isNaN(parsedArfcn) ||
+        Number.isNaN(parsedPci) ||
+        Number.isNaN(parsedBand) ||
+        Number.isNaN(parsedScs)
       ) {
         toast.warning(t("cell_locking.tower_locking.nr_sa.toast.incomplete_title"), {
           description: t("cell_locking.tower_locking.nr_sa.toast.incomplete_description"),
@@ -259,7 +253,17 @@ const NRSALockingComponent = ({
           <div className="grid gap-2">
             <Separator />
             <div className="flex items-center justify-between">
-              <Skeleton className="h-4 w-48" />
+              <div className="flex items-center gap-1.5">
+                <Skeleton className="size-4 rounded-full" />
+                <Skeleton className="h-4 w-28" />
+              </div>
+              <Skeleton className="h-5 w-20" />
+            </div>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5">
+                <Skeleton className="size-5 rounded-full" />
+                <Skeleton className="h-4 w-48" />
+              </div>
               <Skeleton className="h-5 w-20" />
             </div>
             <Separator />
@@ -305,66 +309,54 @@ const NRSALockingComponent = ({
         <CardContent>
           <div className="grid gap-2">
             <Separator />
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-1.5">
-                <TooltipProvider delayDuration={200}>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button
-                        type="button"
-                        aria-label={t("cell_locking.tower_locking.nr_sa.simple_mode.toggle_label")}
-                        className="cursor-help"
-                      >
-                        <TbInfoCircleFilled className="size-5 text-info" />
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      {hasOptions
-                        ? t("cell_locking.tower_locking.nr_sa.simple_mode.info_tooltip")
-                        : t("cell_locking.tower_locking.nr_sa.simple_mode.empty_tooltip")}
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
+            <div className="flex flex-col gap-1">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5">
+                  <HintIcon
+                    label={t("cell_locking.tower_locking.nr_sa.simple_mode.info_aria")}
+                    variant="muted"
+                    size="sm"
+                  >
+                    {hasOptions
+                      ? t("cell_locking.tower_locking.nr_sa.simple_mode.info_tooltip")
+                      : t("cell_locking.tower_locking.nr_sa.simple_mode.empty_tooltip")}
+                  </HintIcon>
 
-                <p className="font-semibold text-muted-foreground text-sm">
-                  {t("cell_locking.tower_locking.nr_sa.simple_mode.toggle_label")}
+                  <p className="font-medium text-muted-foreground text-sm">
+                    {t("cell_locking.tower_locking.nr_sa.simple_mode.toggle_label")}
+                  </p>
+                </div>
+                <div className="flex items-center space-x-2">
+                  {isLocking ? (
+                    <Loader2 className="size-4 animate-spin text-muted-foreground" />
+                  ) : null}
+                  <Switch
+                    id="nr-sa-simple-mode"
+                    aria-label={t("cell_locking.tower_locking.nr_sa.simple_mode.switch_aria")}
+                    checked={simpleMode && hasOptions}
+                    onCheckedChange={handleSimpleModeToggle}
+                    disabled={!hasOptions || isDisabled}
+                  />
+                  <Label htmlFor="nr-sa-simple-mode">
+                    {simpleMode && hasOptions
+                      ? t("state.on", { ns: "common" })
+                      : t("state.off", { ns: "common" })}
+                  </Label>
+                </div>
+              </div>
+              {!hasOptions && (
+                <p className="text-xs text-muted-foreground">
+                  {t("cell_locking.tower_locking.nr_sa.simple_mode.empty_tooltip")}
                 </p>
-              </div>
-              <div className="flex items-center space-x-2">
-                {isLocking ? (
-                  <Loader2 className="size-4 animate-spin text-muted-foreground" />
-                ) : null}
-                <Switch
-                  id="nr-sa-simple-mode"
-                  checked={simpleMode && hasOptions}
-                  onCheckedChange={handleSimpleModeToggle}
-                  disabled={!hasOptions || isDisabled}
-                />
-                <Label htmlFor="nr-sa-simple-mode">
-                  {simpleMode && hasOptions
-                    ? t("state.on", { ns: "common" })
-                    : t("state.off", { ns: "common" })}
-                </Label>
-              </div>
+              )}
             </div>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1.5">
-                <TooltipProvider delayDuration={200}>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button
-                        type="button"
-                        aria-label={t("cell_locking.tower_locking.nr_sa.enabled_info_aria")}
-                        className="cursor-help"
-                      >
-                        <TbInfoCircleFilled className="size-5 text-info" />
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      {t("cell_locking.tower_locking.nr_sa.enabled_tooltip")}
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
+                <HintIcon
+                  label={t("cell_locking.tower_locking.nr_sa.enabled_info_aria")}
+                >
+                  {t("cell_locking.tower_locking.nr_sa.enabled_tooltip")}
+                </HintIcon>
                 <p className="font-semibold text-muted-foreground text-sm">
                   {t("cell_locking.tower_locking.nr_sa.enabled_label")}
                 </p>
@@ -375,6 +367,7 @@ const NRSALockingComponent = ({
                 ) : null}
                 <Switch
                   id="nr-sa-tower-locking"
+                  aria-label={t("cell_locking.tower_locking.nr_sa.enabled_label")}
                   checked={isEnabled}
                   onCheckedChange={handleToggle}
                   disabled={isDisabled}
@@ -385,10 +378,7 @@ const NRSALockingComponent = ({
               </div>
             </div>
             <Separator />
-            <form
-              className="grid gap-4 mt-6"
-              onSubmit={(e) => e.preventDefault()}
-            >
+            <div className="grid gap-4 mt-6">
               <div className="w-full">
                 <FieldSet>
                   <FieldGroup>
@@ -405,7 +395,13 @@ const NRSALockingComponent = ({
                               {arfcnInList ? (
                                 <SelectValue />
                               ) : arfcn && pci ? (
-                                <span className="italic text-muted-foreground line-clamp-1">
+                                <span
+                                  className="min-w-0 italic text-muted-foreground line-clamp-1"
+                                  title={t("cell_locking.tower_locking.nr_sa.simple_mode.custom_value_label", {
+                                    arfcn,
+                                    pci,
+                                  })}
+                                >
                                   {t("cell_locking.tower_locking.nr_sa.simple_mode.custom_value_label", {
                                     arfcn,
                                     pci,
@@ -465,20 +461,15 @@ const NRSALockingComponent = ({
                         <div className="flex items-center justify-between gap-2">
                           <FieldLabel htmlFor="scs">{t("cell_locking.tower_locking.nr_sa.scs_label")}</FieldLabel>
                           {simpleMode && scsSource === "band_default" && band && (
-                            <TooltipProvider delayDuration={200}>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <span className="cursor-help">
-                                    <TriangleAlertIcon className="size-3.5 text-warning" aria-hidden="true" />
-                                  </span>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  {t("cell_locking.tower_locking.nr_sa.simple_mode.scs_band_default_warning", {
-                                    band,
-                                  })}
-                                </TooltipContent>
-                              </Tooltip>
-                            </TooltipProvider>
+                            <HintIcon
+                              label={t("cell_locking.tower_locking.nr_sa.simple_mode.scs_warning_aria")}
+                              variant="warning"
+                              size="sm"
+                            >
+                              {t("cell_locking.tower_locking.nr_sa.simple_mode.scs_band_default_warning", {
+                                band,
+                              })}
+                            </HintIcon>
                           )}
                         </div>
                         <Select
@@ -508,7 +499,7 @@ const NRSALockingComponent = ({
                   </FieldGroup>
                 </FieldSet>
               </div>
-            </form>
+            </div>
           </div>
         </CardContent>
       </Card>
