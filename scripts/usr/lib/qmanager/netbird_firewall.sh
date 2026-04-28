@@ -183,10 +183,16 @@ netbird_fw_remove_zone() {
     qlog_info "Removing firewall zone '$zone_name'"
 
     # --- Remove forwarding rules (reverse order) ---
+    # Build fwd_indices high-to-low via the prepend form so the deletion
+    # loop tears tail-first; UCI renumbers entries in place after each
+    # delete, and deleting low-to-high would shift our remaining targets.
+    # Only break on src lookup failure (end-of-list). A missing dest is
+    # treated as a non-match so manual or partial UCI edits don't truncate
+    # the scan early.
     local fwd_indices="" i=0 src dest
     while true; do
         src=$(uci -q get "firewall.@forwarding[$i].src") || break
-        dest=$(uci -q get "firewall.@forwarding[$i].dest") || break
+        dest=$(uci -q get "firewall.@forwarding[$i].dest" 2>/dev/null || echo "")
         if [ "$src" = "$zone_name" ] || [ "$dest" = "$zone_name" ]; then
             fwd_indices="$i $fwd_indices"
         fi
