@@ -43,6 +43,7 @@ start() {
 
     logger -t qmanager_netbird_zone "Zone 'netbird' missing for installed netbird — creating"
     netbird_fw_ensure_zone "netbird" "wt0"
+    return 0
 }
 
 # stop() is intentionally a no-op. Zone removal on stop would force a
