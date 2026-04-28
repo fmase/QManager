@@ -1,6 +1,5 @@
 #!/bin/sh
 . /usr/lib/qmanager/cgi_base.sh
-. /usr/lib/qmanager/vpn_firewall.sh
 # =============================================================================
 # tailscale.sh — CGI Endpoint: Tailscale VPN Management (GET + POST)
 # =============================================================================
@@ -84,7 +83,11 @@ get_ts_version() {
 # =============================================================================
 if [ "$REQUEST_METHOD" = "GET" ]; then
 
-    other_vpn_installed=$(vpn_check_other_installed "netbird")
+    if command -v netbird >/dev/null 2>&1; then
+        other_vpn_installed="true"
+    else
+        other_vpn_installed="false"
+    fi
 
     # --- Tier 1: Not installed -----------------------------------------------
     if ! is_installed; then
@@ -293,7 +296,6 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
 
             # Verify
             if command -v tailscale >/dev/null 2>&1; then
-                vpn_fw_ensure_zone "tailscale" "tailscale0"
                 printf '{"success":true,"status":"complete","message":"Tailscale installed successfully"}' > "$TS_INSTALL_RESULT"
             else
                 printf '{"success":false,"status":"error","message":"Package installed but binary not found"}' > "$TS_INSTALL_RESULT"
@@ -561,12 +563,6 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
 
         qlog_info "Tailscale uninstalled successfully"
         cgi_success
-
-        # Remove firewall zone in background AFTER response is sent.
-        # vpn_fw_remove_zone restarts the firewall which kills the HTTP
-        # connection — doing it after cgi_success ensures the frontend
-        # receives a clean JSON response.
-        ( vpn_fw_remove_zone "tailscale" ) </dev/null >/dev/null 2>&1 &
         exit 0
     fi
 
