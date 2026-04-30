@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import i18next from "i18next";
 import { authFetch } from "@/lib/auth-fetch";
+import { resolveErrorMessage } from "@/lib/i18n/resolve-error";
 import type {
   SimProfile,
   ProfileSummary,
@@ -245,7 +247,12 @@ export function useSimProfiles(): UseSimProfilesReturn {
 
       if (!result.success) {
         setError(
-          result.detail || result.error || "Failed to deactivate profile"
+          resolveErrorMessage(
+            i18next.t.bind(i18next),
+            result.error,
+            result.detail,
+            "Failed to deactivate profile",
+          ),
         );
         return { success: false, requiresReboot: false };
       }
