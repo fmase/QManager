@@ -21,6 +21,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { setPendingReboot } from "@/lib/config-backup/pending-reboot";
 
 // =============================================================================
 // CustomProfileComponent — Page Layout & State Coordinator
@@ -165,7 +166,10 @@ const CustomProfileComponent = () => {
 
   const handleDeactivateConfirm = useCallback(async () => {
     setIsDeactivating(true);
-    await deactivateProfile();
+    const result = await deactivateProfile();
+    if (result.requiresReboot) {
+      setPendingReboot("verizon_revert");
+    }
     setIsDeactivating(false);
     setShowDeactivateConfirm(false);
   }, [deactivateProfile]);
