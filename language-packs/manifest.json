@@ -1,17 +1,17 @@
 {
   "manifest_version": 1,
-  "generated_at": "2026-04-23T07:21:59Z",
+  "generated_at": "2026-04-30T03:54:44Z",
   "packs": [
     {
       "code": "id",
       "native_name": "Indonesia",
       "english_name": "Indonesian",
       "rtl": false,
-      "version": "2026.04.23",
-      "completeness": 0.995,
-      "size_bytes": 35801,
-      "sha256": "92ba9022f8024d813d29ccbb60ac86d795da2c01a23dfb0b247576ef74f83e7d",
-      "url": "https://github.com/dr-dolomite/QManager/releases/download/lang-id-2026.04.23/qmanager-lang-id-2026.04.23.tar.gz",
+      "version": "2026.04.30",
+      "completeness": 0.974,
+      "size_bytes": 36437,
+      "sha256": "d027003755353c7d72ce89c9fff90e3bec00a450c4dacbc61df49ccebf074690",
+      "url": "https://github.com/dr-dolomite/QManager/releases/download/lang-id-2026.04.23/qmanager-lang-id-2026.04.30.tar.gz",
       "contributors": [
         "@ikhsanh"
       ]
@@ -21,11 +21,11 @@
       "native_name": "Italiano",
       "english_name": "Italian",
       "rtl": false,
-      "version": "2026.04.23",
-      "completeness": 1,
-      "size_bytes": 38928,
-      "sha256": "7a3d52446404674842e753c711cd799731000c8bb731586739e7a6784de85c44",
-      "url": "https://github.com/dr-dolomite/QManager/releases/download/lang-it-2026.04.23/qmanager-lang-it-2026.04.23.tar.gz",
+      "version": "2026.04.30",
+      "completeness": 0.978,
+      "size_bytes": 39575,
+      "sha256": "4d0dcf0e3a447849ad394fcda99ac43d17bcfc9a69d0d83582a6dbe106b6b54a",
+      "url": "https://github.com/dr-dolomite/QManager/releases/download/lang-it-2026.04.23/qmanager-lang-it-2026.04.30.tar.gz",
       "contributors": [
         "@fmase"
       ]
