@@ -518,21 +518,11 @@ profile_acquire_lock() {
 mpdn_get_active_pdp() {
     local response pdp
     response=$(qcmd 'AT+QMAP="WWAN"' 2>/dev/null)
-    # Extract the third comma-separated field from the +QMAP: "WWAN",... line.
     # Line format: +QMAP: "WWAN",<connected>,<pdp>,"IPV4","..."
-    # Use awk: match the line, split on comma, strip leading/trailing whitespace.
-    pdp=$(printf '%s' "$response" | awk '
-        /\+QMAP:.*"WWAN"/ {
-            # Remove the "+QMAP: " prefix, then split by comma
-            sub(/^\+QMAP:[[:space:]]*/, "")
-            n = split($0, a, ",")
-            if (n >= 3) {
-                gsub(/[[:space:]]/, "", a[3])
-                print a[3]
-            }
-            exit
-        }
-    ')
+    # $1=+QMAP: "WWAN"  $2=<connected>  $3=<pdp>
+    pdp=$(printf '%s' "$response" | awk -F',' '/\+QMAP:.*"WWAN"/{
+        cid=$3; gsub(/[^0-9]/, "", cid); if (cid != "") { print cid; exit }
+    }')
     printf '%s' "$pdp"
     return 0
 }
@@ -543,17 +533,7 @@ mpdn_get_active_pdp() {
 usb_mode_supports_mpdn() {
     local response mode
     response=$(qcmd 'AT+QCFG="usbnet"' 2>/dev/null)
-    # Extract the integer after +QCFG: "usbnet",
-    mode=$(printf '%s' "$response" | awk '
-        /\+QCFG:.*"usbnet"/ {
-            sub(/^\+QCFG:[[:space:]]*"usbnet",[[:space:]]*/, "")
-            gsub(/[[:space:]]/, "", $0)
-            # Take only leading digits
-            match($0, /^[0-9]+/)
-            if (RLENGTH > 0) print substr($0, 1, RLENGTH)
-            exit
-        }
-    ')
+    mode=$(printf '%s' "$response" | awk -F',' '/\+QCFG:.*"usbnet"/{print $2+0; exit}')
     case "$mode" in
         1|3) return 0 ;;
         *)   return 1 ;;
