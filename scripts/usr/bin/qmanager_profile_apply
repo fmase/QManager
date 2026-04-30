@@ -464,6 +464,7 @@ apply_mpdn_rule() {
         fi
     else
         # --- Non-Verizon path: revert if a Verizon rule is still active ---
+        mark_step_running "mpdn_rule" "Checking for leftover Verizon routing..."
         local current_pdp
         current_pdp=$(mpdn_get_active_pdp)
         if [ "$current_pdp" != "3" ]; then
@@ -491,8 +492,8 @@ apply_mpdn_rule() {
 if [ "$p_mno" = "vzw" ]; then
     if ! usb_mode_supports_mpdn; then
         qlog_warn "USB mode incompatible with Verizon MPDN — skipping all steps"
-        _skip_detail="Skipped: USB mode incompatible with Verizon (requires ECM or RNDIS)"
-        mark_step_skipped "apn"       "$_skip_detail"
+        _skip_detail="Blocked: USB mode incompatible with Verizon (requires ECM or RNDIS)"
+        mark_step_failed  "apn"       "usb_mode_incompatible_for_verizon"
         mark_step_skipped "ttl_hl"    "$_skip_detail"
         mark_step_skipped "imei"      "$_skip_detail"
         mark_step_skipped "mpdn_rule" "$_skip_detail"
@@ -522,10 +523,10 @@ apply_mpdn_rule
 # Determine final status
 if [ "$steps_failed" -gt 0 ] && [ "$steps_done" -gt 0 ]; then
     apply_status="partial"
-    apply_error="$steps_failed step(s) failed, $steps_done succeeded"
+    apply_error="partial_apply"
 elif [ "$steps_failed" -gt 0 ]; then
     apply_status="failed"
-    apply_error="All steps failed"
+    apply_error="all_steps_failed"
 else
     apply_status="complete"
 fi
