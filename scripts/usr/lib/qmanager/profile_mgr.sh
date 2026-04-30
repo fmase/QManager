@@ -440,6 +440,15 @@ auto_apply_profile() {
             _ap_iccid=$(jq -r '(.sim_iccid) | if . == null then empty else . end' "$PROFILE_DIR/${_ap_id}.json" 2>/dev/null)
             if [ -n "$_ap_iccid" ] && [ "$_ap_iccid" != "$current_iccid" ]; then
                 _ap_name=$(jq -r '(.name) | if . == null then empty else . end' "$PROFILE_DIR/${_ap_id}.json" 2>/dev/null)
+                _ap_mno=$(jq -r '(.mno) | if . == null then empty else . end' "$PROFILE_DIR/${_ap_id}.json" 2>/dev/null)
+                if [ "$_ap_mno" = "vzw" ]; then
+                    if mpdn_revert_to_default; then
+                        _profile_emit_event "verizon_mpdn_reverted" "Verizon profile '${_ap_name:-unknown}' auto-deactivated (SIM mismatch). Data routing reverted — reboot required." "warning"
+                    else
+                        _profile_emit_event "verizon_mpdn_reverted" "Verizon profile '${_ap_name:-unknown}' auto-deactivated (SIM mismatch). MPDN revert verification failed — reboot recommended." "warning"
+                    fi
+                    : > /tmp/qmanager_pending_reboot_verizon
+                fi
                 clear_active_profile
                 _profile_emit_event "profile_deactivated" "Profile '${_ap_name:-unknown}' auto-deactivated (SIM mismatch)" "warning"
                 qlog_info "[$caller] Deactivated profile $_ap_id (SIM mismatch: current ICCID ...$iccid_suffix)" 2>/dev/null
