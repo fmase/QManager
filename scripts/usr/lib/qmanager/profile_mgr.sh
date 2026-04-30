@@ -590,6 +590,8 @@ mpdn_revert_to_default() {
 
     # Release then immediately re-pin — NO sleep between (firmware quirk).
     qcmd 'AT+QMAP="mpdn_rule",0' >/dev/null 2>&1
+    # !!! DO NOT INSERT ANYTHING BETWEEN THESE TWO LINES !!!
+    # A bare release followed by reboot bricks the modem until firmware reflash.
     qcmd 'AT+QMAP="mpdn_rule",0,1,0,0,1' >/dev/null 2>&1
 
     sleep 1
