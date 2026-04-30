@@ -114,7 +114,7 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
     _ippt_active=$(get_active_profile)
     if [ -n "$_ippt_active" ] && [ -f "$PROFILE_DIR/${_ippt_active}.json" ]; then
         _ippt_mno=$(jq -r '.mno // empty' "$PROFILE_DIR/${_ippt_active}.json" 2>/dev/null)
-        if [ "$_ippt_mno" = "vzw" ]; then
+        if [ "$_ippt_mno" = "Verizon" ]; then
             cgi_error "ip_passthrough_locked_by_verizon_profile" "IP Passthrough is managed by the active Verizon profile"
             exit 0
         fi

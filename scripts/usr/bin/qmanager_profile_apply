@@ -233,7 +233,7 @@ p_mno=$(printf '%s' "$profile_json" | jq -r '.mno // empty')
 [ -z "$p_hl" ] && p_hl=0
 
 # Verizon profiles must always use CID 3 for MPDN routing
-if [ "$p_mno" = "vzw" ]; then
+if [ "$p_mno" = "Verizon" ]; then
     p_apn_cid=3
     qlog_info "Verizon profile: forcing APN CID to 3"
 fi
@@ -446,7 +446,7 @@ apply_imei() {
 # Step 4: MPDN rule (Verizon CID routing or revert on carrier switch)
 # =============================================================================
 apply_mpdn_rule() {
-    if [ "$p_mno" = "vzw" ]; then
+    if [ "$p_mno" = "Verizon" ]; then
         # --- Verizon path: ensure PDP context 3 is active ---
         mark_step_running "mpdn_rule" "Configuring data routing for Verizon..."
 
@@ -489,7 +489,7 @@ apply_mpdn_rule() {
 # =============================================================================
 
 # USB-mode pre-flight for Verizon profiles only
-if [ "$p_mno" = "vzw" ]; then
+if [ "$p_mno" = "Verizon" ]; then
     if ! usb_mode_supports_mpdn; then
         qlog_warn "USB mode incompatible with Verizon MPDN — skipping all steps"
         _skip_detail="Blocked: USB mode incompatible with Verizon (requires ECM or RNDIS)"

@@ -441,7 +441,7 @@ auto_apply_profile() {
             if [ -n "$_ap_iccid" ] && [ "$_ap_iccid" != "$current_iccid" ]; then
                 _ap_name=$(jq -r '(.name) | if . == null then empty else . end' "$PROFILE_DIR/${_ap_id}.json" 2>/dev/null)
                 _ap_mno=$(jq -r '(.mno) | if . == null then empty else . end' "$PROFILE_DIR/${_ap_id}.json" 2>/dev/null)
-                if [ "$_ap_mno" = "vzw" ]; then
+                if [ "$_ap_mno" = "Verizon" ]; then
                     if mpdn_revert_to_default; then
                         _profile_emit_event "verizon_mpdn_reverted" "Verizon profile '${_ap_name:-unknown}' auto-deactivated (SIM mismatch). Data routing reverted — reboot required." "warning"
                     else
