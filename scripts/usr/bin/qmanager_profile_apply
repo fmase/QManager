@@ -460,7 +460,7 @@ apply_mpdn_rule() {
         if mpdn_apply_verizon; then
             mark_step_done "mpdn_rule" "Routed data via PDP context 3"
         else
-            mark_step_failed "mpdn_rule" "mpdn_rule_failed"
+            mark_step_failed "mpdn_rule" "Failed to set Verizon data routing rule"
         fi
     else
         # --- Non-Verizon path: revert if a Verizon rule is still active ---
@@ -479,7 +479,7 @@ apply_mpdn_rule() {
             mark_step_done "mpdn_rule" "Restored default data routing"
             apply_requires_reboot="true"
         else
-            mark_step_failed "mpdn_rule" "mpdn_rule_revert_failed"
+            mark_step_failed "mpdn_rule" "Failed to restore default data routing — a reboot is recommended"
         fi
     fi
 }
