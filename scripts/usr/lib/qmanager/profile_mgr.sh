@@ -406,7 +406,7 @@ _profile_emit_event() {
 auto_apply_profile() {
     local current_iccid="$1"
     local caller="${2:-unknown}"
-    local iccid_suffix pf pf_iccid match_id _ap_id _ap_iccid _ap_name
+    local iccid_suffix pf pf_iccid match_id _ap_id _ap_iccid _ap_name _ap_mno
 
     if [ -z "$current_iccid" ]; then
         qlog_info "[$caller] auto_apply_profile: empty ICCID, skipping" 2>/dev/null
