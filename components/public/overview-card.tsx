@@ -229,7 +229,7 @@ function renderBody({ data, isLoading, isStale, error, t }: BodyProps) {
         <div className="text-muted-foreground text-sm">{signalLine}</div>
       </div>
 
-      {/* Grid — carrier / bands / model / uptime */}
+      {/* Grid — carrier / bands / pci / uptime */}
       <dl
         className={`grid grid-cols-1 gap-4 @[18rem]/overview:grid-cols-2 ${rowsMutedClass}`}
       >
