@@ -80,6 +80,7 @@
   "list_failed": "Gagal mengambil daftar",
   "logout_failed": "Gagal keluar",
   "method_not_allowed": "Metode HTTP tidak diizinkan — gunakan GET atau POST",
+  "migration_in_progress": "Migrasi paket Tailscale sedang berlangsung. Mohon tunggu sebentar dan coba lagi.",
   "missing_action": "Kolom aksi diperlukan",
   "missing_code": "Kolom kode bahasa diperlukan",
   "missing_enabled": "Kolom enabled diperlukan",

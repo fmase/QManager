@@ -80,6 +80,7 @@
   "list_failed": "Impossibile recuperare l'elenco",
   "logout_failed": "Impossibile disconnettersi",
   "method_not_allowed": "Metodo HTTP non consentito: utilizza GET o POST",
+  "migration_in_progress": "Migrazione dei pacchetti Tailscale in corso. Attendere un momento e riprovare.",
   "missing_action": "Il campo azione è obbligatorio",
   "missing_code": "Il campo del codice lingua è obbligatorio",
   "missing_enabled": "Il campo abilitato è obbligatorio",

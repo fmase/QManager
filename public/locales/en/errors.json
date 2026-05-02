@@ -80,6 +80,7 @@
   "list_failed": "Failed to fetch list",
   "logout_failed": "Failed to logout",
   "method_not_allowed": "HTTP method not allowed — use GET or POST",
+  "migration_in_progress": "Tailscale package migration is in progress. Please wait a moment and try again.",
   "missing_action": "Action field is required",
   "missing_code": "Language code field is required",
   "missing_enabled": "Enabled field is required",
