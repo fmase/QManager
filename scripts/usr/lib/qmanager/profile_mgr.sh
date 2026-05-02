@@ -30,6 +30,7 @@ _PROFILE_MGR_LOADED=1
 PROFILE_DIR="/etc/qmanager/profiles"
 ACTIVE_PROFILE_FILE="/etc/qmanager/active_profile"
 PROFILE_APPLY_PID_FILE="/tmp/qmanager_profile_apply.pid"
+PROFILE_SPAWN_LOCK_FILE="/tmp/qmanager_profile_spawn.lock"
 MAX_PROFILES=10
 
 # Ensure profile directory exists
@@ -475,7 +476,15 @@ auto_apply_profile() {
 # be reimplemented in the Connection Scenarios library when that feature is built.
 
 # =============================================================================
-# PID File Lock (Profile Apply Singleton)
+# Apply Lock Helpers (Worker PID Lock + CGI Spawn Lock)
+# =============================================================================
+# Two distinct concerns, two files:
+#   - $PROFILE_APPLY_PID_FILE  — owned by the worker (qmanager_profile_apply).
+#                                 Singleton enforcement.
+#   - $PROFILE_SPAWN_LOCK_FILE — owned by the CGI (apply.sh). Rejects
+#                                 concurrent POSTs while the worker comes up.
+# Collapsing both onto one file caused the worker to abort because the CGI's
+# kill -0 check found the still-sleeping CGI parent. See plan 2026-05-03.
 # =============================================================================
 
 # profile_check_lock
@@ -504,6 +513,40 @@ profile_acquire_lock() {
         return 1
     }
     return 0
+}
+
+# profile_acquire_spawn_lock
+# CGI-side spawn mutex. Atomically creates $PROFILE_SPAWN_LOCK_FILE with the
+# caller's PID. Distinct from profile_acquire_lock — that one belongs to the
+# worker. Stale spawn-locks (PID dead) are reaped before acquire.
+# Returns 0 on success, 1 if a live spawner already holds it.
+# Global _profile_spawn_lock_pid: cleared on success (caller holds the lock);
+# set to the holding PID on failure (caller may log it).
+profile_acquire_spawn_lock() {
+    if [ -f "$PROFILE_SPAWN_LOCK_FILE" ]; then
+        _profile_spawn_lock_pid=$(cat "$PROFILE_SPAWN_LOCK_FILE" 2>/dev/null)
+        if [ -n "$_profile_spawn_lock_pid" ] && kill -0 "$_profile_spawn_lock_pid" 2>/dev/null; then
+            return 1
+        fi
+        rm -f "$PROFILE_SPAWN_LOCK_FILE"
+    fi
+    # Atomic create via noclobber. If another shell wins the race, the redirect
+    # fails and we return 1 without clobbering. The subshell isolates `set -C`
+    # so the caller's shell options are unaffected.
+    ( set -C; echo $$ > "$PROFILE_SPAWN_LOCK_FILE" ) 2>/dev/null || {
+        # Re-read in case the winner is alive — caller treats either as "locked".
+        _profile_spawn_lock_pid=$(cat "$PROFILE_SPAWN_LOCK_FILE" 2>/dev/null)
+        return 1
+    }
+    _profile_spawn_lock_pid=""
+    return 0
+}
+
+# profile_release_spawn_lock
+# Removes the spawn-lock file. Safe to call unconditionally on every CGI exit
+# path — rm -f does not fail on a missing file.
+profile_release_spawn_lock() {
+    rm -f "$PROFILE_SPAWN_LOCK_FILE"
 }
 
 # =============================================================================
