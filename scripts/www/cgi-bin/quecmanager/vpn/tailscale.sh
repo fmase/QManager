@@ -97,7 +97,7 @@ if [ "$REQUEST_METHOD" = "GET" ]; then
             '{
                 success: true,
                 installed: false,
-                install_hint: "opkg update && opkg install luci-app-tailscale",
+                install_hint: "opkg update && opkg install luci-app-tailscale-community-tiny",
                 other_vpn_installed: $other_vpn_installed,
                 other_vpn_name: "NetBird"
             }'
@@ -289,7 +289,7 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
             fi
 
             printf '{"success":true,"status":"running","message":"Installing tailscale..."}' > "$TS_INSTALL_RESULT"
-            if ! opkg install luci-app-tailscale >/dev/null 2>&1; then
+            if ! opkg install luci-app-tailscale-community-tiny >/dev/null 2>&1; then
                 printf '{"success":false,"status":"error","message":"opkg install failed","detail":"Package may not be available for this architecture"}' > "$TS_INSTALL_RESULT"
                 exit 1
             fi
