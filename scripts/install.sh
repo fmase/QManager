@@ -1035,8 +1035,8 @@ migrate_tailscale_packages() {
     installed=$(opkg list-installed 2>/dev/null | awk '{print $1}')
 
     local has_legacy=0 has_tiny=0
-    echo "$installed" | grep -qE '^(tailscale|tailscaled|luci-app-tailscale)$' && has_legacy=1
-    echo "$installed" | grep -qE '^(tailscale-tiny|luci-app-tailscale-community-tiny)$' && has_tiny=1
+    echo "$installed" | grep -qE '^(tailscale|tailscaled|luci-app-tailscale)$' && has_legacy=1 || true
+    echo "$installed" | grep -qE '^(tailscale-tiny|luci-app-tailscale-community-tiny)$' && has_tiny=1 || true
 
     if [ "$has_legacy" = "0" ] && [ "$has_tiny" = "0" ]; then
         info "Tailscale not installed — nothing to migrate"
@@ -1083,7 +1083,7 @@ migrate_tailscale_packages() {
     info "Prior state: boot_enabled=$was_boot_enabled running=$was_running"
 
     # Stop daemon.
-    [ -x /etc/init.d/tailscale ] && /etc/init.d/tailscale stop >/dev/null 2>&1
+    [ -x /etc/init.d/tailscale ] && /etc/init.d/tailscale stop >/dev/null 2>&1 || true
 
     # Poll for tailscaled to actually exit (≤10s), then SIGKILL.
     waited=0
@@ -1098,7 +1098,7 @@ migrate_tailscale_packages() {
     fi
 
     # Clear /etc/rc.d symlinks so the legacy init script doesn't re-trigger.
-    [ -x /etc/init.d/tailscale ] && /etc/init.d/tailscale disable >/dev/null 2>&1
+    [ -x /etc/init.d/tailscale ] && /etc/init.d/tailscale disable >/dev/null 2>&1 || true
 
     # Copy the state file BEFORE opkg remove. If this fails we abort with
     # legacy intact — user retries via UI later.
@@ -1132,12 +1132,12 @@ migrate_tailscale_packages() {
     if [ "$was_boot_enabled" = "1" ]; then
         uci -q set tailscale.settings.service_enabled='1' 2>/dev/null
         uci -q commit tailscale 2>/dev/null
-        [ -x /etc/init.d/tailscale ] && /etc/init.d/tailscale enable >/dev/null 2>&1
+        [ -x /etc/init.d/tailscale ] && /etc/init.d/tailscale enable >/dev/null 2>&1 || true
     fi
 
     # Restore run state.
     if [ "$was_running" = "1" ] || [ "$was_boot_enabled" = "1" ]; then
-        [ -x /etc/init.d/tailscale ] && /etc/init.d/tailscale start >/dev/null 2>&1
+        [ -x /etc/init.d/tailscale ] && /etc/init.d/tailscale start >/dev/null 2>&1 || true
     fi
 
     # Clean up legacy state dir.
