@@ -1004,6 +1004,150 @@ migrate_tailscale_firewall_zone() {
     info "Legacy Tailscale firewall zone removed"
 }
 
+# --- Tailscale Package Migration ---------------------------------------------
+# Migrates from legacy {tailscale, tailscaled, luci-app-tailscale} to
+# {tailscale-tiny, luci-app-tailscale-community-tiny}.
+#
+# - Preserves the user's node identity by copying the state file from
+#   /var/lib/tailscale/tailscaled.state to /etc/tailscale/tailscaled.state
+#   BEFORE removing legacy packages.
+# - Restores the prior boot-enable + run state after the swap.
+# - Lock-protected so concurrent CGI install/uninstall POSTs back off cleanly.
+# - Reliability over speed: aborts before opkg remove if state copy fails.
+# Idempotent — fast no-op when already on tiny or no Tailscale installed.
+
+migrate_tailscale_packages() {
+    step "Migrating Tailscale to community-tiny"
+
+    if ! command -v opkg >/dev/null 2>&1; then
+        info "opkg not available — skipping Tailscale package migration"
+        return 0
+    fi
+
+    local lock="/var/lock/qmanager_tailscale_migrate.lock"
+    if ! ( set -C; echo $$ > "$lock" ) 2>/dev/null; then
+        warn "Tailscale migration lock held by another process — skipping"
+        return 0
+    fi
+    trap 'rm -f "$lock"' EXIT INT TERM
+
+    local installed
+    installed=$(opkg list-installed 2>/dev/null | awk '{print $1}')
+
+    local has_legacy=0 has_tiny=0
+    echo "$installed" | grep -qE '^(tailscale|tailscaled|luci-app-tailscale)$' && has_legacy=1
+    echo "$installed" | grep -qE '^(tailscale-tiny|luci-app-tailscale-community-tiny)$' && has_tiny=1
+
+    if [ "$has_legacy" = "0" ] && [ "$has_tiny" = "0" ]; then
+        info "Tailscale not installed — nothing to migrate"
+        rm -f "$lock"; trap - EXIT INT TERM
+        return 0
+    fi
+
+    if [ "$has_legacy" = "0" ] && [ "$has_tiny" = "1" ]; then
+        info "Already on tailscale-tiny — nothing to migrate"
+        rm -f "$lock"; trap - EXIT INT TERM
+        return 0
+    fi
+
+    if [ "$has_legacy" = "1" ] && [ "$has_tiny" = "1" ]; then
+        warn "Both legacy and tiny packages present — opkg conflict, manual cleanup required"
+        rm -f "$lock"; trap - EXIT INT TERM
+        return 0
+    fi
+
+    # ---- has_legacy=1, has_tiny=0 → MIGRATE ---------------------------------
+    info "Legacy Tailscale detected — migrating to community-tiny"
+
+    # Wait for any in-flight opkg operation to release its lock (≤30s).
+    local waited=0
+    while [ -f /var/lock/opkg.lock ] && [ "$waited" -lt 30 ]; do
+        sleep 1
+        waited=$((waited + 1))
+    done
+    if [ -f /var/lock/opkg.lock ]; then
+        warn "opkg lock still held after 30s — aborting Tailscale migration"
+        rm -f "$lock"; trap - EXIT INT TERM
+        return 1
+    fi
+
+    # Snapshot prior state.
+    local was_boot_enabled was_running
+    was_boot_enabled=$(uci -q get tailscale.@tailscale[0].enabled 2>/dev/null)
+    [ "$was_boot_enabled" = "1" ] || was_boot_enabled="0"
+    if pidof tailscaled >/dev/null 2>&1; then
+        was_running=1
+    else
+        was_running=0
+    fi
+    info "Prior state: boot_enabled=$was_boot_enabled running=$was_running"
+
+    # Stop daemon.
+    [ -x /etc/init.d/tailscale ] && /etc/init.d/tailscale stop >/dev/null 2>&1
+
+    # Poll for tailscaled to actually exit (≤10s), then SIGKILL.
+    waited=0
+    while pidof tailscaled >/dev/null 2>&1 && [ "$waited" -lt 10 ]; do
+        sleep 1
+        waited=$((waited + 1))
+    done
+    if pidof tailscaled >/dev/null 2>&1; then
+        warn "tailscaled did not exit cleanly — sending SIGKILL"
+        killall -9 tailscaled 2>/dev/null
+        sleep 1
+    fi
+
+    # Clear /etc/rc.d symlinks so the legacy init script doesn't re-trigger.
+    [ -x /etc/init.d/tailscale ] && /etc/init.d/tailscale disable >/dev/null 2>&1
+
+    # Copy the state file BEFORE opkg remove. If this fails we abort with
+    # legacy intact — user retries via UI later.
+    if [ -s /var/lib/tailscale/tailscaled.state ]; then
+        if ! mkdir -p /etc/tailscale 2>/dev/null; then
+            warn "Failed to create /etc/tailscale — aborting migration (legacy intact)"
+            rm -f "$lock"; trap - EXIT INT TERM
+            return 1
+        fi
+        if ! cp -p /var/lib/tailscale/tailscaled.state /etc/tailscale/tailscaled.state 2>/dev/null; then
+            warn "Failed to copy Tailscale state file — aborting migration (legacy intact)"
+            rm -f "$lock"; trap - EXIT INT TERM
+            return 1
+        fi
+        info "Tailscale state file copied to /etc/tailscale/tailscaled.state"
+    else
+        info "No Tailscale state file to migrate (device was never connected)"
+    fi
+
+    # Swap packages.
+    if ! opkg remove luci-app-tailscale tailscale tailscaled >/dev/null 2>&1; then
+        warn "opkg remove of legacy Tailscale packages reported errors — continuing"
+    fi
+    if ! opkg install luci-app-tailscale-community-tiny >/dev/null 2>&1; then
+        warn "opkg install luci-app-tailscale-community-tiny FAILED — Tailscale uninstalled, state preserved in /etc/tailscale/"
+        rm -f "$lock"; trap - EXIT INT TERM
+        return 1
+    fi
+
+    # Restore boot-enable.
+    if [ "$was_boot_enabled" = "1" ]; then
+        uci -q set tailscale.settings.service_enabled='1' 2>/dev/null
+        uci -q commit tailscale 2>/dev/null
+        [ -x /etc/init.d/tailscale ] && /etc/init.d/tailscale enable >/dev/null 2>&1
+    fi
+
+    # Restore run state.
+    if [ "$was_running" = "1" ] || [ "$was_boot_enabled" = "1" ]; then
+        [ -x /etc/init.d/tailscale ] && /etc/init.d/tailscale start >/dev/null 2>&1
+    fi
+
+    # Clean up legacy state dir.
+    rm -rf /var/lib/tailscale 2>/dev/null
+
+    rm -f "$lock"; trap - EXIT INT TERM
+    info "Tailscale migration complete"
+    return 0
+}
+
 # --- Cleanup Legacy ----------------------------------------------------------
 # Removes qmanager_* files on disk that are NOT in the fresh source tree.
 # This is the ONLY place where legacy cleanup happens — integrated into the
