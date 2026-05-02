@@ -2,6 +2,12 @@
 
 A polish release with UI fixes and quality-of-life improvements.
 
+## ⚠️ Important Before Updating
+
+**Tailscale users — read before updating.** This release migrates Tailscale from the legacy `tailscale` / `tailscaled` / `luci-app-tailscale` packages to the smaller, firmware-upgrade-resilient `tailscale-tiny` + `luci-app-tailscale-community-tiny` packages. Your node identity and authorization are preserved automatically — no re-login required.
+
+However, the Tailscale tunnel will briefly drop (~5–15 seconds) during the package swap. **If you administer this device remotely *through* its Tailscale IP, please update from a local network connection instead, or be prepared to reconnect after the update completes.**
+
 ## ✨ New Features
 
 *(none this release)*
@@ -10,6 +16,7 @@ A polish release with UI fixes and quality-of-life improvements.
 
 - **Fixed Custom SIM Profile activation failing immediately.** Activating a profile from the UI returned a "start_failed" error while boot-time auto-activation continued to work. The CGI's spawn-mutex and the apply worker's singleton lock were sharing one PID file, causing the worker to see its parent CGI as a foreign process and abort. The two locks now live in separate files.
 - **Fixed Cancel / Close buttons not respecting the active language.** Dialog buttons labelled "Cancel" and "Close" across Custom Profiles, Connection Scenarios, SMS, and the AT Terminal were falling back to lowercase English (`cancel`, `close`) instead of the proper translated label. Affects the Activate, Deactivate, and Delete confirmation dialogs in Custom Profiles; the Add / Edit / Delete dialogs in Connection Scenarios; all three delete confirmations and the Compose dialog in SMS; and the warning banner in the AT Terminal.
+- Tailscale now uses the smaller `tailscale-tiny` + `luci-app-tailscale-community-tiny` packages and survives firmware upgrades natively.
 
 ## 📥 Installation
 
