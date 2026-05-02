@@ -499,17 +499,17 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
         fi
         case "$boot_enabled" in
             true)
-                # Toggle UCI flag (authoritative for luci-app-tailscale)
-                if uci -q get tailscale.@tailscale[0] >/dev/null 2>&1; then
-                    uci set tailscale.@tailscale[0].enabled='1'
+                # Toggle UCI flag (authoritative for luci-app-tailscale-community-tiny)
+                if uci -q get tailscale.settings >/dev/null 2>&1; then
+                    uci set tailscale.settings.service_enabled='1'
                     uci commit tailscale
                 fi
                 /etc/init.d/tailscale enable >/dev/null 2>&1
                 qlog_info "Tailscale enabled on boot"
                 ;;
             false)
-                if uci -q get tailscale.@tailscale[0] >/dev/null 2>&1; then
-                    uci set tailscale.@tailscale[0].enabled='0'
+                if uci -q get tailscale.settings >/dev/null 2>&1; then
+                    uci set tailscale.settings.service_enabled='0'
                     uci commit tailscale
                 fi
                 /etc/init.d/tailscale disable >/dev/null 2>&1
