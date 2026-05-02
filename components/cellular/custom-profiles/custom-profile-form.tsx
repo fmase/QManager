@@ -537,7 +537,7 @@ const CustomProfileFormComponent = ({
                     disabled={isSaving}
                   >
                     {isEditing
-                      ? t("cancel", { ns: "common" })
+                      ? t("actions.cancel", { ns: "common" })
                       : t("custom_profiles.form.buttons.reset")}
                   </Button>
                 </div>

@@ -224,7 +224,7 @@ const CustomProfileComponent = () => {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>{t("cancel", { ns: "common" })}</AlertDialogCancel>
+            <AlertDialogCancel>{t("actions.cancel", { ns: "common" })}</AlertDialogCancel>
             <AlertDialogAction onClick={handleActivateConfirm}>
               {t("custom_profiles.activate_dialog.confirm")}
             </AlertDialogAction>
@@ -246,7 +246,7 @@ const CustomProfileComponent = () => {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isDeactivating}>
-              {t("cancel", { ns: "common" })}
+              {t("actions.cancel", { ns: "common" })}
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDeactivateConfirm}

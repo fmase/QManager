@@ -197,7 +197,7 @@ export function ApplyProgressDialog({
         {(isTerminal || (error && !applyState)) && (
           <div className="flex justify-end pt-2">
             <Button variant="outline" onClick={onClose}>
-              {t("close", { ns: "common" })}
+              {t("actions.close", { ns: "common" })}
             </Button>
           </div>
         )}
