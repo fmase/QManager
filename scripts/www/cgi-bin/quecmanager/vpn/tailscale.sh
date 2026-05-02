@@ -6,7 +6,7 @@
 # GET:  Returns installation status, daemon state, connection info, and peers.
 # POST: Connect/disconnect, start/stop daemon, enable/disable on boot, logout.
 #
-# Tailscale manages its own config in /var/lib/tailscale/ — we are a thin
+# Tailscale manages its own config in /etc/tailscale/ — we are a thin
 # control layer, not a service owner. No UCI config needed.
 #
 # Data sources:
@@ -530,7 +530,7 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
     if [ "$ACTION" = "uninstall" ]; then
         qlog_info "Uninstalling Tailscale packages"
 
-        # Stop service if running
+        # Stop service if running.
         if is_daemon_running; then
             qlog_info "Stopping Tailscale daemon before uninstall"
             kill_stale_ts_up
@@ -543,19 +543,29 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
             sleep 1
         fi
 
-        # Disable boot entry if init script exists
+        # Disable boot entry if init script exists (covers both legacy and tiny).
         [ -x /etc/init.d/tailscale ] && /etc/init.d/tailscale disable >/dev/null 2>&1
 
-        # Remove packages
-        opkg remove luci-app-tailscale tailscale tailscaled >/dev/null 2>&1
+        # Smart removal: enumerate which of the 6 known package names are
+        # installed and remove only those. Handles pure-legacy, pure-tiny,
+        # and any partial state.
+        PKGS=$(opkg list-installed 2>/dev/null | awk '{print $1}' | grep -E \
+            '^(tailscale|tailscaled|tailscale-tiny|luci-app-tailscale|luci-app-tailscale-community|luci-app-tailscale-community-tiny)$' \
+            | tr '\n' ' ')
+        if [ -n "$PKGS" ]; then
+            qlog_info "Removing packages: $PKGS"
+            opkg remove $PKGS >/dev/null 2>&1
+        else
+            qlog_info "No Tailscale packages found to remove"
+        fi
 
-        # Clean up state files
-        rm -rf /var/lib/tailscale/
+        # Clean up state from BOTH legacy and tiny locations.
+        rm -rf /var/lib/tailscale/ /etc/tailscale/
         rm -f /tmp/qmanager_tailscale_auth_url /tmp/qmanager_tailscale_up_output /tmp/qmanager_tailscale_up_pid
 
-        # Verify removal (check actual binary paths, not command -v which can be cached)
+        # Verify removal (check actual binary paths, not command -v which can be cached).
         hash -r 2>/dev/null
-        if [ -x /usr/sbin/tailscale ] || [ -x /usr/bin/tailscale ]; then
+        if [ -x /usr/sbin/tailscale ] || [ -x /usr/bin/tailscale ] || [ -x /usr/sbin/tailscaled ]; then
             qlog_error "Tailscale binary still present after opkg remove"
             cgi_error "uninstall_failed" "Failed to remove Tailscale packages"
             exit 0
