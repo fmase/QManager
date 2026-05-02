@@ -336,7 +336,7 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
             if [ -x /etc/init.d/tailscale ]; then
                 /etc/init.d/tailscale start >/dev/null 2>&1
             else
-                tailscaled --state=/var/lib/tailscale/tailscaled.state >/dev/null 2>&1 &
+                tailscaled --state=/etc/tailscale/tailscaled.state >/dev/null 2>&1 &
             fi
             # Wait for daemon to be ready (up to 5 seconds)
             attempts=0
@@ -455,7 +455,7 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
         if [ -x /etc/init.d/tailscale ]; then
             /etc/init.d/tailscale start >/dev/null 2>&1
         else
-            tailscaled --state=/var/lib/tailscale/tailscaled.state >/dev/null 2>&1 &
+            tailscaled --state=/etc/tailscale/tailscaled.state >/dev/null 2>&1 &
         fi
         sleep 1
         if is_daemon_running; then
