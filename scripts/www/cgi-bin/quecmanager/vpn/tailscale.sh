@@ -73,6 +73,14 @@ kill_stale_ts_up() {
     fi
 }
 
+# --- Helper: refuse to mutate while install.sh migration is in-flight -------
+check_migration_lock() {
+    if [ -f /var/lock/qmanager_tailscale_migrate.lock ]; then
+        cgi_error "migration_in_progress" "Tailscale package migration is in progress — try again in a moment"
+        exit 0
+    fi
+}
+
 # --- Helper: get tailscale version string ------------------------------------
 get_ts_version() {
     tailscale version 2>/dev/null | head -1 | awk '{print $1}'
@@ -254,6 +262,7 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
     # action: install — install tailscale via opkg (background)
     # -------------------------------------------------------------------------
     if [ "$ACTION" = "install" ]; then
+        check_migration_lock
         TS_INSTALL_RESULT="/tmp/qmanager_tailscale_install.json"
         TS_INSTALL_PID="/tmp/qmanager_tailscale_install.pid"
 
@@ -329,6 +338,7 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
     # action: connect — start tailscale up, capture auth URL
     # -------------------------------------------------------------------------
     if [ "$ACTION" = "connect" ]; then
+        check_migration_lock
         qlog_info "Connecting to Tailscale"
 
         # Ensure daemon is running first
@@ -410,6 +420,7 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
     # action: disconnect — disconnect from tailnet (stay registered)
     # -------------------------------------------------------------------------
     if [ "$ACTION" = "disconnect" ]; then
+        check_migration_lock
         qlog_info "Disconnecting Tailscale"
         result=$(tailscale down 2>&1)
         rc=$?
@@ -428,6 +439,7 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
     # action: logout — full deauthentication (removes device from tailnet)
     # -------------------------------------------------------------------------
     if [ "$ACTION" = "logout" ]; then
+        check_migration_lock
         qlog_info "Logging out of Tailscale"
         kill_stale_ts_up
         result=$(tailscale logout 2>&1)
@@ -447,6 +459,7 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
     # action: start_service — start tailscaled daemon
     # -------------------------------------------------------------------------
     if [ "$ACTION" = "start_service" ]; then
+        check_migration_lock
         if is_daemon_running; then
             cgi_error "already_running" "Tailscale daemon is already running"
             exit 0
@@ -471,6 +484,7 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
     # action: stop_service — stop tailscaled daemon
     # -------------------------------------------------------------------------
     if [ "$ACTION" = "stop_service" ]; then
+        check_migration_lock
         qlog_info "Stopping tailscale daemon"
         kill_stale_ts_up
         if [ -x /etc/init.d/tailscale ]; then
@@ -488,6 +502,7 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
     # action: set_boot_enabled — enable/disable tailscale on boot
     # -------------------------------------------------------------------------
     if [ "$ACTION" = "set_boot_enabled" ]; then
+        check_migration_lock
         boot_enabled=$(printf '%s' "$POST_DATA" | jq -r '.enabled | if . == null then empty else tostring end')
         if [ -z "$boot_enabled" ]; then
             cgi_error "missing_field" "enabled field is required"
@@ -528,6 +543,7 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
     # action: uninstall — remove tailscale packages from the device
     # -------------------------------------------------------------------------
     if [ "$ACTION" = "uninstall" ]; then
+        check_migration_lock
         qlog_info "Uninstalling Tailscale packages"
 
         # Stop service if running.
