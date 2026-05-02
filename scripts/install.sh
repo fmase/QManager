@@ -1421,7 +1421,7 @@ main() {
         TOTAL_STEPS=$(( TOTAL_STEPS + 2 ))                            # backup + frontend
     fi
     if [ "$DO_BACKEND" = "1" ]; then
-        TOTAL_STEPS=$(( TOTAL_STEPS + 5 ))                            # backend + bundled + cleanup + migrate_tailscale_fw + seed
+        TOTAL_STEPS=$(( TOTAL_STEPS + 6 ))                            # backend + bundled + cleanup + migrate_tailscale_fw + migrate_tailscale_pkg + seed
         [ "$DO_ENABLE" = "1" ] && TOTAL_STEPS=$(( TOTAL_STEPS + 1 ))  # enable
         if [ "$DO_START" = "1" ]; then
             TOTAL_STEPS=$(( TOTAL_STEPS + 3 ))                        # start + health + at_stack_check
@@ -1461,6 +1461,7 @@ main() {
         install_bundled_binaries
         cleanup_legacy_scripts
         migrate_tailscale_firewall_zone
+        migrate_tailscale_packages
         seed_uci_defaults
 
         [ "$DO_ENABLE" = "1" ] && enable_services
