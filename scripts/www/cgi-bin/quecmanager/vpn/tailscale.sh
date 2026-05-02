@@ -44,17 +44,17 @@ is_daemon_running() {
 }
 
 # --- Helper: check if tailscale is enabled on boot --------------------------
-# luci-app-tailscale uses UCI enabled flag as the authoritative control.
-# The init script's section_enabled() checks this, AND a WAN interface
-# trigger can fire reload even without the /etc/rc.d symlink.
+# luci-app-tailscale-community-tiny stores its enabled flag at
+# tailscale.settings.service_enabled (see /etc/config/tailscale shipped
+# by the package). Fall back to the init.d enabled check if the UCI
+# section is absent for any reason.
 get_boot_enabled() {
     local uci_enabled
-    uci_enabled=$(uci -q get tailscale.@tailscale[0].enabled 2>/dev/null)
+    uci_enabled=$(uci -q get tailscale.settings.service_enabled 2>/dev/null)
     if [ -n "$uci_enabled" ]; then
         [ "$uci_enabled" = "1" ] && echo "true" || echo "false"
         return
     fi
-    # Fallback for non-luci-app installs: check init.d symlink
     if [ -x /etc/init.d/tailscale ]; then
         /etc/init.d/tailscale enabled && echo "true" || echo "false"
     else
