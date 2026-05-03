@@ -864,6 +864,25 @@ install_backend() {
         info "Init.d: $svc_count services -> $INITD_DIR"
     fi
 
+    # --- nftables.d files (persistent firewall rules) ---
+    if [ -d "$SRC_SCRIPTS/etc/nftables.d" ]; then
+        mkdir -p /etc/nftables.d
+        local nft_count=0
+        for f in "$SRC_SCRIPTS/etc/nftables.d"/*.nft; do
+            [ -f "$f" ] || continue
+            local fname
+            fname="$(basename "$f")"
+            if install_file "$f" "/etc/nftables.d/$fname" 644; then
+                nft_count=$(( nft_count + 1 ))
+            fi
+        done
+        info "nftables.d: $nft_count rule files -> /etc/nftables.d"
+        # Trigger fw4 reload so rules take effect on running system (OTA --no-reboot path)
+        if command -v fw4 >/dev/null 2>&1; then
+            fw4 reload >/dev/null 2>&1 || true
+        fi
+    fi
+
     # --- Required runtime directories ---
     mkdir -p "$CONF_DIR/profiles" "$SESSION_DIR" "$UPDATES_DIR" /var/lock
 
