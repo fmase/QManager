@@ -1,23 +1,43 @@
 # 🚀 QManager BETA v0.1.23
 
-A polish release with UI fixes and quality-of-life improvements.
+A reliability and polish release.
 
-## ⚠️ Important Before Updating
+## ⚠️ Heads Up Before Updating
 
-**Tailscale users — read before updating.** This release migrates Tailscale from the legacy `tailscale` / `tailscaled` / `luci-app-tailscale` packages to the smaller, firmware-upgrade-resilient `tailscale-tiny` + `luci-app-tailscale-community-tiny` packages. Your node identity and authorization are preserved automatically — no re-login required.
-
-However, the Tailscale tunnel will briefly drop (~5–15 seconds) during the package swap. **If you administer this device remotely *through* its Tailscale IP, please update from a local network connection instead, or be prepared to reconnect after the update completes.**
+**Tailscale users:** This update swaps Tailscale to a smaller, firmware-upgrade-friendly package (`tailscale-tiny`). Your node stays authorized — no re-login needed. Expect a ~5–15 second tunnel drop during the swap. **If you're managing this device remotely over Tailscale, update from a local connection instead.**
 
 ## ✨ New Features
 
-*(none this release)*
+- **Force Tailscale Fixes toggle.** New opt-in switch in System Settings re-applies QManager's own firewall zone and mwan3 routing fixes for `tailscale0` on top of any firmware. Recommended for R02 firmware users where outbound reply packets get marked for WAN egress and never traverse the tunnel. Off by default; survives reboots once enabled. Hover the info icon next to the toggle for the full explanation.
 
 ## ✅ Improvements
 
-- Video Optimizer and Traffic Masquerade now survive `fw4 reload` and reboot reliably. Previously, any firewall change anywhere in the system (VPN install, port forward, mwan3 refresh) would silently strip the DPI rules and leave nfqws receiving zero packets until the next service restart. Rules are now shipped as a permanent fw4 fragment — verified active on-device after a full reboot using the in-app Verify Service test.
-- **Fixed Custom SIM Profile activation failing immediately.** Activating a profile from the UI returned a "start_failed" error while boot-time auto-activation continued to work. The CGI's spawn-mutex and the apply worker's singleton lock were sharing one PID file, causing the worker to see its parent CGI as a foreign process and abort. The two locks now live in separate files.
-- **Fixed Cancel / Close buttons not respecting the active language.** Dialog buttons labelled "Cancel" and "Close" across Custom Profiles, Connection Scenarios, SMS, and the AT Terminal were falling back to lowercase English (`cancel`, `close`) instead of the proper translated label. Affects the Activate, Deactivate, and Delete confirmation dialogs in Custom Profiles; the Add / Edit / Delete dialogs in Connection Scenarios; all three delete confirmations and the Compose dialog in SMS; and the warning banner in the AT Terminal.
-- Tailscale now uses the smaller `tailscale-tiny` + `luci-app-tailscale-community-tiny` packages and survives firmware upgrades natively.
+- **Fixed Video Optimizer / Traffic Masquerade going silent after firewall changes.** Any firewall reload — VPN install, port forward save, mwan3 refresh — would silently wipe the DPI rules, leaving the feature appearing active but doing nothing. Rules now survive all firewall reloads and reboots. *(Deployed as a permanent fw4 nftables fragment.)*
+- **Fixed Custom SIM Profile activation failing with "start_failed".** Manual activation from the UI consistently failed while boot auto-activation worked fine. The backend's two concurrency locks were sharing one file, causing the apply worker to treat its own launcher as a conflict and abort. Locks are now separate.
+- **Fixed Cancel / Close buttons showing English in translated UIs.** Buttons in Custom Profiles, Connection Scenarios, SMS, and AT Terminal dialogs now respect the active language instead of falling back to `cancel` / `close`.
+- **Tailscale migrated to `tailscale-tiny`.** Smaller install, survives firmware upgrades without reinstall.
+
+## 🌐 Translations
+
+- Italian (it) and Indonesian (id) language packs updated to v2026.04.30.
+
+### Changes in v0.1.23 (for contributors)
+
+**Added** — `system-settings.json` → `system.*`:
+
+| Key | English source string |
+|---|---|
+| `force_tailscale_fixes_label` | `Force Tailscale Fixes` |
+| `force_tailscale_fixes_info_aria` | `Force Tailscale Fixes info` |
+| `force_tailscale_fixes_tooltip` | `Applies QManager's own Tailscale firewall and routing fixes on top of your firmware. Recommended for R02 firmware.` |
+| `force_tailscale_fixes_toast_enabled` | `Force Tailscale Fixes enabled — applying firewall zone and mwan3 exception` |
+| `force_tailscale_fixes_toast_disabled` | `Force Tailscale Fixes disabled — removing firewall zone` |
+| `force_tailscale_fixes_toast_failed` | `Failed to update Force Tailscale Fixes` |
+
+**Modified:** none.
+**Removed:** none.
+
+Want to contribute? No coding needed — see [`docs/i18n/CONTRIBUTING.md`](https://github.com/dr-dolomite/QManager/blob/development-home/docs/i18n/CONTRIBUTING.md).
 
 ## 📥 Installation
 
@@ -29,18 +49,12 @@ curl -fsSL -o /tmp/qmanager-installer.sh https://raw.githubusercontent.com/dr-do
 
 ### Upgrading from v0.1.22
 
-Head to **System Settings → Software Update** and run the update. **No migration steps required.**
-
-Your Custom SIM Profiles, tower locks, Signal Failover settings, VPN config, watchdog preferences, SMS alerts, and installed language packs are all preserved.
+**System Settings → Software Update.** No migration steps needed. All settings preserved.
 
 ## 💙 Thank You
 
-Thank you to everyone using, sharing, and supporting QManager — it means a lot. If you'd like to contribute a translation, the guide at [`docs/i18n/CONTRIBUTING.md`](https://github.com/dr-dolomite/QManager/blob/development-home/docs/i18n/CONTRIBUTING.md) walks you through it — no coding required.
+Bug reports and feature requests welcome on [GitHub Issues](https://github.com/dr-dolomite/QManager/issues).
 
-Bug reports and feature requests are always welcome on [GitHub Issues](https://github.com/dr-dolomite/QManager/issues).
+If QManager saves you time, consider [sponsoring on GitHub](https://github.com/sponsors/dr-dolomite) or sending GCash via Remitly to **Russel Yasol** (+639544817486).
 
-If you find QManager useful, consider [sponsoring on GitHub](https://github.com/sponsors/dr-dolomite) or sending GCash via Remitly to **Russel Yasol** (+639544817486).
-
-**License:** MIT + Commons Clause
-
-**Happy connecting!**
+**License:** MIT + Commons Clause — **Happy connecting!**

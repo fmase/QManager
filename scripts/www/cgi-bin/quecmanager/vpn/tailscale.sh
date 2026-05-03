@@ -86,6 +86,21 @@ get_ts_version() {
     tailscale version 2>/dev/null | head -1 | awk '{print $1}'
 }
 
+# --- Force Tailscale Fixes gate ---------------------------------------------
+# Opt-in toggle owned by /cgi-bin/quecmanager/system/settings.sh + the
+# qmanager_vpn_zone init.d boot self-heal. When enabled, this CGI re-acquires
+# the historical fw4 zone + mwan3 ipset workarounds for tailscale0:
+#   - install success: vpn_fw_ensure_zone "tailscale" "tailscale0"
+#   - uninstall success: background vpn_fw_remove_zone "tailscale"
+# Process-lifecycle fixes (orphan double-fork, --accept-dns=false,
+# --accept-routes ban, migration lock) are unconditional and not gated here.
+if [ "$(uci -q get quecmanager.tailscale_workarounds.enabled 2>/dev/null)" = "1" ]; then
+    . /usr/lib/qmanager/vpn_firewall.sh
+    _TS_WORKAROUNDS=1
+else
+    _TS_WORKAROUNDS=0
+fi
+
 # =============================================================================
 # GET — Fetch installation status, daemon state, connection info, peers
 # =============================================================================
@@ -305,6 +320,14 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
 
             # Verify
             if command -v tailscale >/dev/null 2>&1; then
+                # If Force Tailscale Fixes is enabled, ensure the fw4 zone
+                # for tailscale0 + mwan3 ipset entry exist now that the
+                # binary is on disk. Already running in an orphaned
+                # subshell so the fw4 restart inside vpn_fw_ensure_zone
+                # cannot kill the parent CGI.
+                if [ "$_TS_WORKAROUNDS" = "1" ]; then
+                    vpn_fw_ensure_zone "tailscale" "tailscale0"
+                fi
                 printf '{"success":true,"status":"complete","message":"Tailscale installed successfully"}' > "$TS_INSTALL_RESULT"
             else
                 printf '{"success":false,"status":"error","message":"Package installed but binary not found"}' > "$TS_INSTALL_RESULT"
@@ -589,6 +612,16 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
 
         qlog_info "Tailscale uninstalled successfully"
         cgi_success
+
+        # If Force Tailscale Fixes was enabled, remove the fw4 zone in
+        # background AFTER the response is sent. vpn_fw_remove_zone runs
+        # /etc/init.d/firewall restart which would kill the HTTP connection
+        # if run synchronously (firewall-restart-kills-http rule). The
+        # function preserves the mwan3 ipset entry when NetBird is still
+        # installed, per the historical guard.
+        if [ "$_TS_WORKAROUNDS" = "1" ]; then
+            ( vpn_fw_remove_zone "tailscale" ) </dev/null >/dev/null 2>&1 &
+        fi
         exit 0
     fi
 

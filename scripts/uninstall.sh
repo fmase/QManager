@@ -295,6 +295,21 @@ remove_backend() {
     done
     info "Removed $bin_count binary/daemon file(s) from $BIN_DIR"
 
+    # --- Tailscale Force-Fixes firewall cleanup ---
+    # If the user opted into Force Tailscale Fixes, an explicit fw4 zone for
+    # tailscale0 + a mwan3 ipset entry for the CGNAT range were created. Drop
+    # them before /usr/lib/qmanager is wiped (vpn_firewall.sh must still be
+    # sourceable). The library is idempotent — fast no-op if no zone exists,
+    # and preserves the mwan3 entry when NetBird is also installed.
+    if [ -f "$LIB_DIR/vpn_firewall.sh" ]; then
+        # shellcheck disable=SC1091
+        . "$LIB_DIR/vpn_firewall.sh" 2>/dev/null || true
+        if command -v vpn_fw_remove_zone >/dev/null 2>&1; then
+            vpn_fw_remove_zone "tailscale" 2>/dev/null || true
+            info "Cleaned up Tailscale firewall workarounds (if present)"
+        fi
+    fi
+
     # --- Shared libraries ---
     if [ -d "$LIB_DIR" ]; then
         rm -rf "$LIB_DIR"

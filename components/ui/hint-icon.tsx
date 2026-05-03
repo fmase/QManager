@@ -73,7 +73,9 @@ export function HintIcon({
           <Icon className={cn(SIZE_CLASS[size], iconClass)} />
         </button>
       </TooltipTrigger>
-      <TooltipContent>{children}</TooltipContent>
+      <TooltipContent>
+        <p className="text-balance max-w-sm">{children}</p>
+      </TooltipContent>
     </Tooltip>
   );
 }

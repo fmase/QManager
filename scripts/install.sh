@@ -82,7 +82,7 @@ CONFLICT_PACKAGES="sms-tool socat-at-bridge socat"
 # UCI-gated services — only enabled if a prior install had them enabled.
 # Everything else is enabled unconditionally. This is the ONLY hardcoded
 # service list in this script.
-UCI_GATED_SERVICES="qmanager_tower_failover qmanager_watchcat qmanager_bandwidth qmanager_dpi qmanager_wan_guard"
+UCI_GATED_SERVICES="qmanager_tower_failover qmanager_watchcat qmanager_bandwidth qmanager_dpi qmanager_wan_guard qmanager_vpn_zone"
 
 # Expected modem firmware signature (after normalization: upper + alnum only)
 REQUIRED_FIRMWARE="RM551EGL"
@@ -732,6 +732,23 @@ seed_uci_defaults() {
     else
         info "quecmanager.network.disable_wol already set — preserving user choice"
     fi
+
+    # Force Tailscale Fixes — opt-in toggle, default OFF. Re-enables the
+    # historical fw4 zone + mwan3 ipset workarounds for tailscale0 on top of
+    # any firmware that already handles routing (sdxpinn-patch). Recommended
+    # for R02 firmware users where outbound reply packets get marked for WAN
+    # egress and never traverse the tunnel. Owned by system/settings.sh and
+    # the qmanager_vpn_zone boot self-heal.
+    if ! uci -q get quecmanager.tailscale_workarounds >/dev/null 2>&1; then
+        uci set quecmanager.tailscale_workarounds=tailscale_workarounds
+    fi
+    if ! uci -q get quecmanager.tailscale_workarounds.enabled >/dev/null 2>&1; then
+        uci set quecmanager.tailscale_workarounds.enabled=0
+        info "Seeded quecmanager.tailscale_workarounds.enabled=0 (off by default)"
+    else
+        info "quecmanager.tailscale_workarounds.enabled already set — preserving user choice"
+    fi
+
     uci commit quecmanager 2>/dev/null || warn "uci commit quecmanager failed"
 }
 
@@ -942,12 +959,22 @@ install_bundled_binaries() {
 # handles routing/firewall for tailscale0 on its own, so the zone is dead
 # config and is removed unconditionally on every install.
 # Idempotent — fast no-op when no 'tailscale' zone exists (the steady state).
+#
+# EXCEPTION: when the user has explicitly opted into Force Tailscale Fixes
+# (quecmanager.tailscale_workarounds.enabled=1), this migration is skipped —
+# the zone is what the user asked to keep. The opt-in path owns lifecycle of
+# the zone via system/settings.sh + qmanager_vpn_zone.
 
 migrate_tailscale_firewall_zone() {
     step "Migrating legacy Tailscale firewall zone"
 
     if ! command -v uci >/dev/null 2>&1; then
         info "uci not available — skipping firewall zone migration"
+        return 0
+    fi
+
+    if [ "$(uci -q get quecmanager.tailscale_workarounds.enabled 2>/dev/null)" = "1" ]; then
+        info "Force Tailscale Fixes enabled — preserving Tailscale firewall zone"
         return 0
     fi
 
