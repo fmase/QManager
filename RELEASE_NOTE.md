@@ -14,6 +14,7 @@ However, the Tailscale tunnel will briefly drop (~5–15 seconds) during the pac
 
 ## ✅ Improvements
 
+- Video Optimizer and Traffic Masquerade now survive `fw4 reload` and reboot reliably. Previously, any firewall change anywhere in the system (VPN install, port forward, mwan3 refresh) would silently strip the DPI rules and leave nfqws receiving zero packets until the next service restart. Rules are now shipped as a permanent fw4 fragment.
 - **Fixed Custom SIM Profile activation failing immediately.** Activating a profile from the UI returned a "start_failed" error while boot-time auto-activation continued to work. The CGI's spawn-mutex and the apply worker's singleton lock were sharing one PID file, causing the worker to see its parent CGI as a foreign process and abort. The two locks now live in separate files.
 - **Fixed Cancel / Close buttons not respecting the active language.** Dialog buttons labelled "Cancel" and "Close" across Custom Profiles, Connection Scenarios, SMS, and the AT Terminal were falling back to lowercase English (`cancel`, `close`) instead of the proper translated label. Affects the Activate, Deactivate, and Delete confirmation dialogs in Custom Profiles; the Add / Edit / Delete dialogs in Connection Scenarios; all three delete confirmations and the Compose dialog in SMS; and the warning banner in the AT Terminal.
 - Tailscale now uses the smaller `tailscale-tiny` + `luci-app-tailscale-community-tiny` packages and survives firmware upgrades natively.
