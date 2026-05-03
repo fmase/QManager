@@ -20,7 +20,7 @@
 #   - Restores /www/index.html from index.html.old if present
 #   - UCI config (quecmanager.*)
 #   - Firewall rule files (/etc/firewall.user.ttl, /etc/firewall.user.mtu)
-#   - nftables DPI rules (qmanager_dpi table)
+#   - nftables DPI rules (/etc/nftables.d/12-mangle-qmanager-dpi.nft + live chain)
 #   - Runtime state in /tmp (JSON cache, logs, PID files, sessions)
 #   - Cron jobs
 #   - Optionally: /etc/qmanager/ (password, profiles, backups)
@@ -333,11 +333,16 @@ remove_backend() {
         info "Removed /etc/firewall.user.mtu"
     fi
 
-    # --- nftables DPI rules ---
+    # --- nftables DPI rules (persistent .nft file + live chain) ---
+    if [ -f /etc/nftables.d/12-mangle-qmanager-dpi.nft ]; then
+        rm -f /etc/nftables.d/12-mangle-qmanager-dpi.nft
+        info "Removed /etc/nftables.d/12-mangle-qmanager-dpi.nft"
+    fi
+    # Drop the live chain too so rules clear without waiting for fw4 reload
     if command -v nft >/dev/null 2>&1; then
-        if nft list ruleset 2>/dev/null | grep -q "qmanager_dpi"; then
-            nft delete table inet qmanager_dpi 2>/dev/null || true
-            info "Removed nftables DPI rules"
+        if nft list chain inet fw4 mangle_postrouting_qmanager_dpi >/dev/null 2>&1; then
+            nft delete chain inet fw4 mangle_postrouting_qmanager_dpi 2>/dev/null || true
+            info "Removed live nftables DPI chain"
         fi
     fi
 
@@ -550,7 +555,7 @@ What is removed:
   /tmp/              Runtime JSON, logs, sessions, lock/PID files
   UCI                quecmanager.* config namespace
   /etc/firewall.*    TTL/MTU rule files
-  nftables           qmanager_dpi table (if present)
+  nftables           qmanager_dpi rules in /etc/nftables.d/ (if present)
   Cron               qmanager-related entries
 
 Optional (asked or via flag):
