@@ -311,11 +311,11 @@ QManager menjalankan 11 layanan init.d di perangkat:
   <h3>Dukung Pengembangan QManager</h3>
   <p>Kontribusi Anda membantu memelihara proyek dan mendanai pengembangan berkelanjutan, pengujian pada jaringan seluler baru, dan biaya perangkat keras.</p>
   <br/>
-  <a href="https://github.com/sponsors/dr-dolomite" target="_blank">
-    <img height="40" src="https://img.shields.io/badge/Sponsor-%E2%9D%A4-EA4AAA?style=for-the-badge&logo=githubsponsors&logoColor=white" alt="Sponsor di GitHub" />
+  <a href="https://wise.com/pay/business/blackcatdev?currency=USD" target="_blank">
+    <img height="40" src="https://img.shields.io/badge/Donate-Wise-9FE870?style=for-the-badge&logo=wise&logoColor=white" alt="Donate via Wise" />
   </a>
   <br/><br/>
-  <p><strong>GCash via Remitly</strong><br/>Nama: Russel Yasol<br/>Nomor: +639544817486</p>
+  <p>Anda juga bisa <a href="https://github.com/sponsors/dr-dolomite" target="_blank">menjadi sponsor di GitHub</a>.</p>
 </div>
 
 ---
