@@ -1,5 +1,7 @@
 # QManager
 
+[English](./README.en.md) | [Italiano](./README.it.md)
+
 <div align="center">
   <img src="public/qmanager-logo.svg" alt="QManager Logo" width="120" />
   <h3>A modern, custom GUI for Quectel modem management</h3>
@@ -10,6 +12,16 @@
   ![Platform](https://img.shields.io/badge/platform-OpenWRT-orange?style=flat-square)
   ![Next.js](https://img.shields.io/badge/Next.js-16-black?style=flat-square)
   ![React](https://img.shields.io/badge/React-19-61DAFB?style=flat-square)
+
+  ---
+
+  ### 🌐 Select Language / Pilih Bahasa
+
+  | Language | Link |
+  |----------|------|
+  | 🇬🇧 English | [README.en.md](README.en.md) |
+  | 🇮🇩 Bahasa Indonesia | [README.id.md](README.id.md) |
+
 </div>
 
 ---
@@ -311,11 +323,11 @@ QManager runs 11 init.d services on the device:
   <h3>Support QManager's Development</h3>
   <p>Your contribution helps maintain the project and fund continued development, testing on new cellular networks, and hardware costs.</p>
   <br/>
-  <a href="https://github.com/sponsors/dr-dolomite" target="_blank">
-    <img height="40" src="https://img.shields.io/badge/Sponsor-%E2%9D%A4-EA4AAA?style=for-the-badge&logo=githubsponsors&logoColor=white" alt="Sponsor on GitHub" />
+  <a href="https://wise.com/pay/business/blackcatdev?currency=USD" target="_blank">
+    <img height="40" src="https://img.shields.io/badge/Donate-Wise-9FE870?style=for-the-badge&logo=wise&logoColor=white" alt="Donate via Wise" />
   </a>
   <br/><br/>
-  <p><strong>GCash via Remitly</strong><br/>Name: Russel Yasol<br/>Number: +639544817486</p>
+  <p>You can also <a href="https://github.com/sponsors/dr-dolomite" target="_blank">sponsor on GitHub</a>.</p>
 </div>
 
 ---

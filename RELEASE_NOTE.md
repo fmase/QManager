@@ -1,21 +1,8 @@
-# 🚀 QManager BETA v0.1.20
-
-A small but important reliability release for remote operators. The **Reconnect Modem** action in the user menu is now safe to use over Tailscale (or any VPN riding on the cellular link) without locking yourself out of your device.
-
-## 🛠️ Fix — Reconnect Modem no longer locks out remote users
-
-- **The bug.** Reconnect Modem issued `AT+COPS=2` (detach) and `AT+COPS=0` (reattach) as two separate HTTP requests from the browser, with a 3-second delay in between. When you were connected over Tailscale, the first request succeeded and immediately killed the cellular link — which killed Tailscale — which meant the second request (the one that tells the modem to reattach) never arrived. The modem was stranded deregistered and only a physical reboot could recover it.
-- **The fix.** The full detach → wait → reattach sequence now runs on-device via a single CGI call (`/cgi-bin/quecmanager/at_cmd/reconnect_modem.sh`). The browser fires one request and the device completes the whole procedure locally, including a deliberate 2-second gap so the modem fully detaches before reselecting. Your browser session may still blip while the cellular link cycles, but the modem always reattaches on its own.
-- **Safe over Tailscale, WireGuard, NetBird, or any tunnel that rides the modem's data path.** Also safer on flaky Wi-Fi admin sessions — no more "I clicked Reconnect and now I can't reach the modem."
-
-## 🛠️ Fix — Tower Lock no longer resets your custom MTU
-
-Locking/unlocking a cell (manual, Signal Failover, or scheduled) briefly bounced the data interface and the Quectel driver reset MTU to 1500. The old watcher gave up after one attempt and lost the race. The watcher now verifies MTU is stable across two consecutive reads and re-applies up to 3 times if the driver resets it again. Covers all lock/unlock paths.
+# 🚀 QManager BETA v0.1.24
 
 ## ✅ Improvements
 
-- **Cleaner reconnect UX.** The "Disconnecting… / Reconnecting…" step indicator still transitions exactly as before — the visual flow is unchanged, only the transport underneath is fixed.
-- **MTU watcher logs its outcome.** Every lock/unlock emits `MTU stable at <value>` or `MTU already correct at <value>` to `logread` — quick confirmation your MTU survived.
+- **Tower Locking carrier picker now shows EARFCN/ARFCN values.** Each option in the LTE and NR-SA Simple Mode dropdowns now displays a PCC/SCC tag, the band, the channel number in parentheses, and RSRP in dBm — making it easier to identify the right carrier at a glance.
 
 ## 📥 Installation
 
@@ -25,26 +12,77 @@ Locking/unlocking a cell (manual, Signal Failover, or scheduled) briefly bounced
 curl -fsSL -o /tmp/qmanager-installer.sh https://raw.githubusercontent.com/dr-dolomite/QManager/development-home/qmanager-installer.sh && sh /tmp/qmanager-installer.sh
 ```
 
-### Upgrading from v0.1.19
+### Upgrading from v0.1.23
 
-Head to **System Settings → Software Update** and run the update. **No migration steps required.**
-
-Your Custom SIM Profiles, tower locks, Signal Failover settings, VPN config, watchdog preferences, SMS alerts, and language packs are all preserved.
+**System Settings → Software Update.** No migration steps needed. All settings preserved.
 
 ## 💙 Thank You
 
-Special shout-out to **Outright** for the continued support and the field-side bug reports that drove this release — the Tailscale lockout in particular was exactly the kind of "works on my desk, breaks in the wild" issue that only surfaces with real-world remote operators. Thank you for the careful testing and detailed reproductions.
+Bug reports and feature requests welcome on [GitHub Issues](https://github.com/dr-dolomite/QManager/issues).
 
-Bug reports and feature requests are always welcome on [GitHub Issues](https://github.com/dr-dolomite/QManager/issues).
+If QManager saves you time, consider [donating via Wise](https://wise.com/pay/business/blackcatdev?currency=USD). You can also [sponsor on GitHub](https://github.com/sponsors/dr-dolomite).
 
-If you find QManager useful, consider [sponsoring on GitHub](https://github.com/sponsors/dr-dolomite) or sending GCash via Remitly to **Russel Yasol** (+639544817486).
+**License:** MIT + Commons Clause — **Happy connecting!**
 
-<p align="center">
-  <a href="https://github.com/sponsors/dr-dolomite">
-    <img src="https://img.shields.io/badge/Sponsor%20QManager-ea4aaa?style=for-the-badge" alt="Sponsor QManager on GitHub" height="44">
-  </a>
-</p>
+---
 
-**License:** MIT + Commons Clause
+# 🚀 QManager BETA v0.1.23
 
-**Happy connecting!**
+A reliability and polish release.
+
+## ⚠️ Heads Up Before Updating
+
+**Tailscale users:** This update swaps Tailscale to a smaller, firmware-upgrade-friendly package (`tailscale-tiny`). Your node stays authorized — no re-login needed. Expect a ~5–15 second tunnel drop during the swap. **If you're managing this device remotely over Tailscale, update from a local connection instead.**
+
+## ✨ New Features
+
+- **Force Tailscale Fixes toggle.** New opt-in switch in System Settings re-applies QManager's own firewall zone and mwan3 routing fixes for `tailscale0` on top of any firmware. Recommended for R02 firmware users where outbound reply packets get marked for WAN egress and never traverse the tunnel. Off by default; survives reboots once enabled.
+
+## ✅ Improvements
+
+- **Fixed Video Optimizer / Traffic Masquerade going silent after firewall changes.** Any firewall reload — VPN install, port forward save, mwan3 refresh — would silently wipe the DPI rules, leaving the feature appearing active but doing nothing. Rules now survive all firewall reloads and reboots. *(Deployed as a permanent fw4 nftables fragment.)*
+- **Fixed Custom SIM Profile activation failing with "start_failed".** Manual activation from the UI consistently failed while boot auto-activation worked fine. The backend's two concurrency locks were sharing one file, causing the apply worker to treat its own launcher as a conflict and abort. Locks are now separate.
+- **Fixed Cancel / Close buttons showing English in translated UIs.** Buttons in Custom Profiles, Connection Scenarios, SMS, and AT Terminal dialogs now respect the active language instead of falling back to `cancel` / `close`.
+- **Tailscale migrated to `tailscale-tiny`.** Smaller install, survives firmware upgrades without reinstall.
+
+## 🌐 Translations
+
+- Italian (it) and Indonesian (id) language packs updated to v2026.05.03.
+
+### Changes in v0.1.23 (for contributors)
+
+**Added** — `system-settings.json` → `system.*`:
+
+| Key | English source string |
+|---|---|
+| `force_tailscale_fixes_label` | `Force Tailscale Fixes` |
+| `force_tailscale_fixes_info_aria` | `Force Tailscale Fixes info` |
+| `force_tailscale_fixes_tooltip` | `Applies QManager's own Tailscale firewall and routing fixes on top of your firmware. Recommended for R02 firmware.` |
+| `force_tailscale_fixes_toast_enabled` | `Force Tailscale Fixes enabled — applying firewall zone and mwan3 exception` |
+| `force_tailscale_fixes_toast_disabled` | `Force Tailscale Fixes disabled — removing firewall zone` |
+| `force_tailscale_fixes_toast_failed` | `Failed to update Force Tailscale Fixes` |
+
+**Modified:** none.
+**Removed:** none.
+
+Want to contribute? No coding needed — see [`docs/i18n/CONTRIBUTING.md`](https://github.com/dr-dolomite/QManager/blob/development-home/docs/i18n/CONTRIBUTING.md).
+
+## 📥 Installation
+
+### Fresh Install
+
+```sh
+curl -fsSL -o /tmp/qmanager-installer.sh https://raw.githubusercontent.com/dr-dolomite/QManager/development-home/qmanager-installer.sh && sh /tmp/qmanager-installer.sh
+```
+
+### Upgrading from v0.1.22
+
+**System Settings → Software Update.** No migration steps needed. All settings preserved.
+
+## 💙 Thank You
+
+Bug reports and feature requests welcome on [GitHub Issues](https://github.com/dr-dolomite/QManager/issues).
+
+If QManager saves you time, consider [donating via Wise](https://wise.com/pay/business/blackcatdev?currency=USD). You can also [sponsor on GitHub](https://github.com/sponsors/dr-dolomite).
+
+**License:** MIT + Commons Clause — **Happy connecting!**

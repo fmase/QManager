@@ -50,6 +50,7 @@ interface EthernetStatus {
   duplex: string;
   auto_negotiation: string;
   speed_limit: string;
+  supports_2500?: boolean;
 }
 
 const EthernetStatusCard = () => {
@@ -96,6 +97,7 @@ const EthernetStatusCard = () => {
           duplex: data.duplex,
           auto_negotiation: data.auto_negotiation,
           speed_limit: data.speed_limit,
+          supports_2500: data.supports_2500,
         });
       }
     } catch {
@@ -142,11 +144,60 @@ const EthernetStatusCard = () => {
         markSaved();
         toast.success(t("ethernet.toast_speed_updated"));
 
-        // Recovery delay for link renegotiation
-        await new Promise((resolve) => setTimeout(resolve, 3000));
+        // Backend reports how long the PHY link bounce takes. Fall back to
+        // 5 s if the field is missing (older builds / non-ethtool paths).
+        const windowSec =
+          typeof data.disconnect_window_seconds === "number"
+            ? data.disconnect_window_seconds
+            : 5;
 
-        // Silent re-fetch to get new negotiated speed
-        await fetchStatus(true);
+        // Wait for the quiet period, then poll silently until we see a
+        // definitive status (link up + known speed) or the timeout elapses.
+        // Some 2.5G negotiations take longer than 5 s; keep retrying rather
+        // than latching onto a momentary "Unknown" reading.
+        await new Promise((resolve) => setTimeout(resolve, windowSec * 1000));
+
+        const MAX_POLLS = 6;
+        const POLL_INTERVAL_MS = 1500;
+        for (let i = 0; i < MAX_POLLS; i++) {
+          if (!mountedRef.current) return;
+          try {
+            const pollResp = await authFetch(CGI_ENDPOINT);
+            if (pollResp.ok) {
+              const pollData = await pollResp.json();
+              if (!mountedRef.current) return;
+              if (
+                pollData.success &&
+                pollData.link_status === "up" &&
+                pollData.speed &&
+                pollData.speed !== "Unknown"
+              ) {
+                setStatus({
+                  link_status: pollData.link_status,
+                  speed: pollData.speed,
+                  duplex: pollData.duplex,
+                  auto_negotiation: pollData.auto_negotiation,
+                  speed_limit: pollData.speed_limit,
+                  supports_2500: pollData.supports_2500,
+                });
+                setError(null);
+                hasDataRef.current = true;
+                return;
+              }
+            }
+          } catch {
+            // Swallow — PHY may still be renegotiating; retry.
+          }
+          if (i < MAX_POLLS - 1) {
+            await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
+          }
+        }
+
+        // Poll loop exhausted — fall back to a normal refetch so the card
+        // reflects whatever state we can observe (may show "Unknown").
+        if (mountedRef.current) {
+          await fetchStatus(true);
+        }
       } else {
         toast.error(resolveErrorMessage(t, undefined, data.detail, t("ethernet.toast_error_set_speed")));
       }
@@ -473,6 +524,9 @@ const EthernetStatusCard = () => {
                     <SelectItem value="10">{t("ethernet.option_speed_10")}</SelectItem>
                     <SelectItem value="100">{t("ethernet.option_speed_100")}</SelectItem>
                     <SelectItem value="1000">{t("ethernet.option_speed_1000")}</SelectItem>
+                    {status?.supports_2500 ? (
+                      <SelectItem value="2500">{t("ethernet.option_speed_2500")}</SelectItem>
+                    ) : null}
                   </SelectGroup>
                 </SelectContent>
               </Select>

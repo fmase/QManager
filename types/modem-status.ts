@@ -418,7 +418,7 @@ export interface SignalPerAntenna {
 
 /**
  * A single entry from the signal history NDJSON file.
- * One line is appended every 10 seconds (Tier 1.5 interval).
+ * One line is appended every 2 seconds (Tier 1 interval).
  */
 export interface SignalHistoryEntry {
   /** Unix epoch (seconds) */
@@ -521,12 +521,15 @@ export type NetworkEventType =
   | "profile_applied" // Custom SIM Profile applied (complete or partial)
   | "profile_failed" // Custom SIM Profile apply failed (all steps)
   | "profile_deactivated" // Custom SIM Profile deactivated by user
+  | "verizon_mpdn_applied" // Verizon MPDN rule set to PDP context 3
+  | "verizon_mpdn_reverted" // Verizon MPDN rule reverted to default PDP context 1
   | "config_backup_collected" // Configuration backup collected
   | "config_restore_started" // Configuration restore started
   | "config_restore_section_success" // Single section restored
   | "config_restore_section_failed" // Single section failed after retries
   | "config_restore_section_skipped" // Single section skipped (incompatible or sim_mismatch)
-  | "config_restore_completed"; // Configuration restore completed
+  | "config_restore_completed" // Configuration restore completed
+  | "wol_changed"; // Wake-on-LAN setting changed by user
 
 /** Severity level for UI icon coloring */
 export type EventSeverity = "info" | "warning" | "error";

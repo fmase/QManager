@@ -14,14 +14,15 @@
 #   ethtool eth0                        -> auto-negotiation status
 #   UCI quecmanager.eth_link.speed_limit -> configured speed limit
 #
-# POST body: { "speed_limit": "auto"|"10"|"100"|"1000" }
+# POST body: { "speed_limit": "auto"|"10"|"100"|"1000"|"2500" }
 #
 # Ethtool advertise values (for restricted modes):
-#   0x003 = 10baseT Half+Full           (10 Mbps only)
-#   0x00f = 10baseT + 100baseT Half+Full (up to 100 Mbps)
-#   0x02f = 10/100 + 1000baseT Full     (up to 1000 Mbps)
-#   auto  = all supported link mode names parsed from ethtool
-#           (covers 2.5G, 5G, etc. which don't fit in legacy hex masks)
+#   0x003          = 10baseT Half+Full              (10 Mbps only)
+#   0x00f          = 10baseT + 100baseT Half+Full   (up to 100 Mbps)
+#   0x02f          = 10/100 + 1000baseT Full        (up to 1000 Mbps)
+#   0x80000000002f = above + 2500baseT/Full bit 47  (up to 2.5 Gbps)
+#   auto           = all supported link mode names parsed from ethtool
+#                    (covers 5G+ and any future modes that don't fit a fixed mask)
 #
 # Endpoint: GET/POST /cgi-bin/quecmanager/network/ethernet.sh
 # Install location: /www/cgi-bin/quecmanager/network/ethernet.sh
@@ -33,6 +34,24 @@ cgi_headers
 cgi_handle_options
 
 ETH_INTERFACE="eth0"
+
+# --- Helper: probe 2.5 Gbps support -------------------------------------------
+# Returns "true" if ethtool reports 2500baseT/Full as a Supported link mode.
+# Same parse window as get_supported_advertise_hex — kept inline to avoid
+# re-running ethtool from the helper library on every GET.
+probe_supports_2500() {
+    if ! command -v ethtool >/dev/null 2>&1; then
+        echo "false"
+        return 0
+    fi
+    if ethtool "$ETH_INTERFACE" 2>/dev/null \
+        | sed -n '/Supported link modes:/,/Supported pause frame use:/p' \
+        | grep -q '2500baseT/Full'; then
+        echo "true"
+    else
+        echo "false"
+    fi
+}
 
 # --- Helper: ensure UCI section exists ----------------------------------------
 ensure_uci_section() {
@@ -60,6 +79,10 @@ get_advertise_value() {
         "10")   echo "0x003" ;;
         "100")  echo "0x00f" ;;
         "1000") echo "0x02f" ;;
+        # 2500baseT/Full = bit 47 (linux/ethtool.h ETHTOOL_LINK_MODE_2500baseT_Full_BIT).
+        # Cumulative with 1000baseT mask: hi=0x8000 (bit 47-32=15), lo=0x2f.
+        # Format matches ethtool_helper.sh's printf "0x%x%08x" convention.
+        "2500") echo "0x80000000002f" ;;
         *)      echo "" ;;
     esac
 }
@@ -140,6 +163,7 @@ if [ "$REQUEST_METHOD" = "GET" ]; then
 
     # Get configured speed limit from UCI
     speed_limit=$(get_speed_limit)
+    supports_2500=$(probe_supports_2500)
 
     # Set defaults for missing values
     [ -z "$speed" ] && speed="Unknown"
@@ -154,13 +178,15 @@ if [ "$REQUEST_METHOD" = "GET" ]; then
         --arg duplex "$duplex" \
         --arg auto_negotiation "$auto_neg" \
         --arg speed_limit "$speed_limit" \
+        --argjson supports_2500 "$supports_2500" \
         '{
             success: true,
             link_status: $link_status,
             speed: $speed,
             duplex: $duplex,
             auto_negotiation: $auto_negotiation,
-            speed_limit: $speed_limit
+            speed_limit: $speed_limit,
+            supports_2500: $supports_2500
         }'
     exit 0
 fi
@@ -181,9 +207,9 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
 
     # Validate speed_limit value
     case "$speed_limit" in
-        auto|10|100|1000) ;;
+        auto|10|100|1000|2500) ;;
         *)
-            cgi_error "invalid_value" "speed_limit must be: auto, 10, 100, or 1000"
+            cgi_error "invalid_value" "speed_limit must be: auto, 10, 100, 1000, or 2500"
             exit 0
             ;;
     esac
@@ -204,30 +230,43 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
         exit 0
     fi
 
-    # Apply speed limit via ethtool
-    if ! apply_speed_limit "$speed_limit"; then
-        qlog_error "Failed to apply speed limit: $speed_limit"
-        cgi_error "ethtool_failed" "Failed to set link speed limit"
+    # --- Persist to UCI BEFORE applying (cheap, no link bounce) --------------
+    ensure_uci_section
+    uci set quecmanager.eth_link.speed_limit="$speed_limit" 2>/dev/null
+
+    if ! uci commit quecmanager 2>/dev/null; then
+        qlog_error "uci commit failed for speed_limit=$speed_limit"
+        cgi_error "save_failed" "Failed to persist link speed setting"
         exit 0
     fi
 
-    # Force renegotiation
-    ethtool -r "$ETH_INTERFACE" 2>/dev/null
-
-    # Save to UCI
-    ensure_uci_section
-    uci set quecmanager.eth_link.speed_limit="$speed_limit"
-    uci commit quecmanager
-
-    # Setup boot persistence
+    # Setup boot persistence (cheap)
     init_script="/etc/init.d/qmanager_eth_link"
     if [ -x "$init_script" ]; then
         "$init_script" enable 2>/dev/null
     fi
 
-    qlog_info "Link speed limit set to: $speed_limit"
+    qlog_info "Link speed limit saved: $speed_limit (applying asynchronously)"
 
-    jq -n --arg speed_limit "$speed_limit" '{success: true, speed_limit: $speed_limit}'
+    # --- Emit HTTP response BEFORE the PHY link bounce -----------------------
+    # ethtool -s / ethtool -r cause a 2-5 s link renegotiation that kills
+    # in-flight HTTP responses. Send the JSON first, then background the
+    # apply so the client never sees a spurious network error.
+    jq -n --arg speed_limit "$speed_limit" '{
+        success: true,
+        apply_in_progress: true,
+        disconnect_window_seconds: 5,
+        speed_limit: $speed_limit
+    }'
+
+    # --- Fire-and-forget ethtool apply (double-fork) -------------------------
+    # 1 s delay ensures HTTP bytes flush before the PHY bounce.
+    ( (
+        sleep 1
+        apply_speed_limit "$speed_limit"
+        ethtool -r "$ETH_INTERFACE" 2>/dev/null
+    ) </dev/null >/dev/null 2>&1 & )
+
     exit 0
 fi
 

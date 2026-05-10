@@ -27,10 +27,13 @@ export const EVENT_TAB_CATEGORIES: Record<NetworkEventType, EventTabCategory> =
     profile_applied: "dataConnection",
     profile_failed: "dataConnection",
     profile_deactivated: "dataConnection",
+    verizon_mpdn_applied: "dataConnection",
+    verizon_mpdn_reverted: "dataConnection",
     config_backup_collected: "dataConnection",
     config_restore_started: "dataConnection",
     config_restore_section_success: "dataConnection",
     config_restore_section_failed: "dataConnection",
     config_restore_section_skipped: "dataConnection",
     config_restore_completed: "dataConnection",
+    wol_changed: "dataConnection",
   };

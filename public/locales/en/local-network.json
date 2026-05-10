@@ -28,8 +28,18 @@
     "option_speed_10": "10 Mbps",
     "option_speed_100": "100 Mbps",
     "option_speed_1000": "1000 Mbps",
+    "option_speed_2500": "2500 Mbps",
     "label_duplex": "Duplex",
     "alt_device_icon": "Device Icon"
+  },
+  "ethernet_leds": {
+    "card_title": "Wake-on-LAN",
+    "card_description": "Enable or disable Wake-on-LAN on the Ethernet port. When enabled, another device on the network can power this unit out of sleep by sending a magic packet. Leave disabled if you don't use it — most always-on modem gateways have no need for it.",
+    "label_disable_wol": "Disable Wake-on-LAN",
+    "applying": "Applying… your connection may briefly drop ({{seconds}}s)",
+    "toast_success_enabled": "Wake-on-LAN disabled",
+    "toast_success_disabled": "Wake-on-LAN enabled",
+    "toast_error_save": "Failed to save Wake-on-LAN setting"
   },
   "dns": {
     "page_title": "Custom DNS Settings",
@@ -124,7 +134,12 @@
     "aria_mac_address": "MAC address",
     "placeholder_nat_mode": "Select NAT Mode",
     "placeholder_usb_mode": "Choose USB Modem Protocol",
-    "placeholder_dns_proxy": "Select DNS mode"
+    "placeholder_dns_proxy": "Select DNS mode",
+    "locked_by_verizon": {
+      "title": "IP Passthrough is managed by your Verizon profile",
+      "body": "Active profile: \"{{name}}\". To change these settings, deactivate the profile from Custom Profiles.",
+      "cta": "Open Custom Profiles"
+    }
   },
   "masquerade": {
     "page_title": "Traffic Masquerade",
