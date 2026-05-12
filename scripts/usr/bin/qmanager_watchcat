@@ -85,6 +85,7 @@ sim_failover_active="false"
 original_sim_slot="null"
 current_sim_slot="null"
 reboots_this_hour=0
+cooldown_stale_retries=0
 
 # =============================================================================
 # CONFIGURATION
@@ -564,22 +565,56 @@ do_recovery() {
 # COOLDOWN COMPLETION
 # =============================================================================
 
+# Shared failure path for cooldown — fallback if Tier 3, then escalate.
+_cooldown_handle_failure() {
+    qlog_warn "COOLDOWN failure path entered for Tier $current_tier"
+
+    # If Tier 3 failed to restore connectivity, fall back to original SIM
+    if [ "$current_tier" -eq 3 ] && [ "$current_sim_slot" != "$original_sim_slot" ] && [ "$original_sim_slot" != "null" ]; then
+        sim_failover_fallback
+    fi
+
+    # Escalate to next enabled tier
+    if find_next_tier $((current_tier + 1)); then
+        state="suspect"
+        failure_counter="$CFG_MAX_FAILURES"
+        qlog_info "Escalating to Tier $current_tier"
+    else
+        qlog_error "All recovery tiers exhausted — returning to monitor"
+        state="monitor"
+        current_tier=0
+        failure_counter=0
+    fi
+}
+
 finish_cooldown() {
     rm -f "$RECOVERY_FLAG"
 
-    # Re-read ping data to check if recovery worked
-    if read_ping && [ "$ping_reachable" = "true" ]; then
+    # Try to read fresh ping data
+    if ! read_ping; then
+        if [ "$cooldown_stale_retries" -lt 3 ]; then
+            cooldown_stale_retries=$((cooldown_stale_retries + 1))
+            qlog_warn "COOLDOWN: ping data stale (retry $cooldown_stale_retries/3) — extending by ${CFG_CHECK_INTERVAL}s"
+            cooldown_remaining="$CFG_CHECK_INTERVAL"
+            touch "$RECOVERY_FLAG"   # keep events suppressed during extension
+            return
+        fi
+        qlog_error "COOLDOWN: ping data still stale after 3 retries — treating as recovery failure"
+        cooldown_stale_retries=0
+        _cooldown_handle_failure
+        return
+    fi
+    cooldown_stale_retries=0
+
+    if [ "$ping_reachable" = "true" ]; then
         qlog_info "COOLDOWN complete: connectivity RESTORED after Tier $current_tier"
 
         # If this was Tier 3 SIM failover, finalize the failover state
         if [ "$current_tier" -eq 3 ] && [ "$current_sim_slot" != "$original_sim_slot" ] && [ "$original_sim_slot" != "null" ]; then
             sim_failover_active="true"
 
-            # Read ICCIDs for the state file
-            local orig_iccid curr_iccid_raw curr_iccid
-            orig_iccid=""  # we don't have it cached
-            # 3×1s retry — matches sim_failover_fallback and cellular/settings.sh
-            local _try
+            # Read ICCID with 3×1s retry — matches sim_failover_fallback pattern
+            local curr_iccid_raw curr_iccid _try
             curr_iccid=""
             for _try in 1 2 3; do
                 curr_iccid_raw=$(qcmd 'AT+QCCID' 2>/dev/null)
@@ -590,8 +625,12 @@ finish_cooldown() {
 
             local ts
             ts=$(date +%s)
-            printf '{"active":true,"original_slot":%s,"current_slot":%s,"switched_at":%d,"reason":"connectivity_failure","original_iccid":"","current_iccid":"%s"}\n' \
-                "$original_sim_slot" "$current_sim_slot" "$ts" "$curr_iccid" \
+            jq -n -c \
+                --argjson orig "$original_sim_slot" \
+                --argjson curr "$current_sim_slot" \
+                --argjson ts "$ts" \
+                --arg iccid "$curr_iccid" \
+                '{active:true, original_slot:$orig, current_slot:$curr, switched_at:$ts, reason:"connectivity_failure", original_iccid:"", current_iccid:$iccid}' \
                 > "$SIM_FAILOVER_FILE"
 
             # Update last_iccid so poller's boot-time SIM swap detector treats
@@ -601,6 +640,7 @@ finish_cooldown() {
             fi
 
             qlog_info "SIM failover state saved: slot $original_sim_slot → $current_sim_slot"
+            append_event "sim_failover" "Watchcat: SIM failover confirmed — running on slot $current_sim_slot" "info"
 
             # Auto-apply profile matching new SIM (watchdog)
             if [ -n "$curr_iccid" ]; then
@@ -612,26 +652,11 @@ finish_cooldown() {
         state="monitor"
         current_tier=0
         failure_counter=0
-    else
-        qlog_warn "COOLDOWN complete: connectivity NOT restored after Tier $current_tier"
-
-        # If Tier 3 failed to restore connectivity, fall back
-        if [ "$current_tier" -eq 3 ] && [ "$current_sim_slot" != "$original_sim_slot" ] && [ "$original_sim_slot" != "null" ]; then
-            sim_failover_fallback
-        fi
-
-        # Escalate to next tier
-        if find_next_tier $((current_tier + 1)); then
-            state="suspect"
-            failure_counter="$CFG_MAX_FAILURES"  # will trigger recovery immediately
-            qlog_info "Escalating to Tier $current_tier"
-        else
-            qlog_error "All recovery tiers exhausted — returning to monitor"
-            state="monitor"
-            current_tier=0
-            failure_counter=0
-        fi
+        return
     fi
+
+    qlog_warn "COOLDOWN complete: connectivity NOT restored after Tier $current_tier"
+    _cooldown_handle_failure
 }
 
 # =============================================================================
@@ -739,6 +764,7 @@ main() {
                 rm -f "$RECOVERY_FLAG"
                 current_tier=0
                 failure_counter=0
+                cooldown_stale_retries=0
             fi
             write_state
             sleep "$CFG_CHECK_INTERVAL"
@@ -751,6 +777,7 @@ main() {
             state="monitor"
             current_tier=0
             failure_counter=0
+            cooldown_stale_retries=0
         fi
 
         # --- COOLDOWN state ---
