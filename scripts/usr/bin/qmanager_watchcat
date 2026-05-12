@@ -408,7 +408,16 @@ sim_failover_fallback() {
     sleep 2
     qcmd 'AT+CFUN=1' >/dev/null 2>&1
 
-    wait_for_modem
+    if ! wait_for_modem; then
+        qlog_error "SIM revert: modem unresponsive after CFUN=1, skipping profile auto-apply"
+        append_event "sim_failover" "Watchcat: SIM reverted but modem unresponsive — manual check needed" "error"
+        # Slot command was sent; record the intended state. Tower failover daemon
+        # will be (re)started by the next normal recovery cycle if modem recovers.
+        current_sim_slot="$original_sim_slot"
+        sim_failover_active="false"
+        original_sim_slot="null"
+        return
+    fi
 
     # Auto-apply profile matching reverted SIM (watchdog_revert)
     local _rv_iccid_raw _rv_iccid _try
