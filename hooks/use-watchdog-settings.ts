@@ -134,6 +134,10 @@ export function useWatchdogSettings(): UseWatchdogSettingsReturn {
 
   useEffect(() => {
     fetchSettings();
+    const id = setInterval(() => {
+      fetchSettings(true);
+    }, 30_000);
+    return () => clearInterval(id);
   }, [fetchSettings]);
 
   // ---------------------------------------------------------------------------
