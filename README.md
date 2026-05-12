@@ -326,6 +326,10 @@ QManager runs 11 init.d services on the device:
   <a href="https://wise.com/pay/business/blackcatdev?currency=USD" target="_blank">
     <img height="40" src="https://img.shields.io/badge/Donate-Wise-9FE870?style=for-the-badge&logo=wise&logoColor=white" alt="Donate via Wise" />
   </a>
+  &nbsp;
+  <a href="https://paypal.me/iamrusss" target="_blank">
+    <img height="40" src="https://img.shields.io/badge/Donate-PayPal-003087?style=for-the-badge&logo=paypal&logoColor=white" alt="Donate via PayPal" />
+  </a>
   <br/><br/>
   <p>You can also <a href="https://github.com/sponsors/dr-dolomite" target="_blank">sponsor on GitHub</a>.</p>
 </div>

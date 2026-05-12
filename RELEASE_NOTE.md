@@ -20,7 +20,7 @@ curl -fsSL -o /tmp/qmanager-installer.sh https://raw.githubusercontent.com/dr-do
 
 Bug reports and feature requests welcome on [GitHub Issues](https://github.com/dr-dolomite/QManager/issues).
 
-If QManager saves you time, consider [donating via Wise](https://wise.com/pay/business/blackcatdev?currency=USD). You can also [sponsor on GitHub](https://github.com/sponsors/dr-dolomite).
+If QManager saves you time, consider [donating via Wise](https://wise.com/pay/business/blackcatdev?currency=USD) or [PayPal](https://paypal.me/iamrusss). You can also [sponsor on GitHub](https://github.com/sponsors/dr-dolomite).
 
 **License:** MIT + Commons Clause — **Happy connecting!**
 
@@ -83,6 +83,6 @@ curl -fsSL -o /tmp/qmanager-installer.sh https://raw.githubusercontent.com/dr-do
 
 Bug reports and feature requests welcome on [GitHub Issues](https://github.com/dr-dolomite/QManager/issues).
 
-If QManager saves you time, consider [donating via Wise](https://wise.com/pay/business/blackcatdev?currency=USD). You can also [sponsor on GitHub](https://github.com/sponsors/dr-dolomite).
+If QManager saves you time, consider [donating via Wise](https://wise.com/pay/business/blackcatdev?currency=USD) or [PayPal](https://paypal.me/iamrusss). You can also [sponsor on GitHub](https://github.com/sponsors/dr-dolomite).
 
 **License:** MIT + Commons Clause — **Happy connecting!**
