@@ -719,15 +719,28 @@ main() {
     count_recent_reboots
     qlog_info "Reboots in last hour: $reboots_this_hour"
 
-    # Check for stale SIM failover state from before reboot
+    # Check for stale SIM failover state from before reboot, verifying the
+    # live slot matches what the file records. If the modem is on a
+    # different slot than recorded, clear the file rather than carry stale
+    # state forward.
     if [ -f "$SIM_FAILOVER_FILE" ]; then
         local sf_active_val
         sf_active_val=$(jq -r '(.active) | if . == null then "false" else tostring end' "$SIM_FAILOVER_FILE" 2>/dev/null)
         if [ "$sf_active_val" = "true" ]; then
-            sim_failover_active="true"
-            original_sim_slot=$(jq -r '(.original_slot) | if . == null then "null" else tostring end' "$SIM_FAILOVER_FILE" 2>/dev/null)
-            current_sim_slot=$(jq -r '(.current_slot) | if . == null then "null" else tostring end' "$SIM_FAILOVER_FILE" 2>/dev/null)
-            qlog_info "Resuming SIM failover state: slot $original_sim_slot → $current_sim_slot"
+            local _sf_orig _sf_curr _live_slot
+            _sf_orig=$(jq -r '(.original_slot) | if . == null then "null" else tostring end' "$SIM_FAILOVER_FILE" 2>/dev/null)
+            _sf_curr=$(jq -r '(.current_slot) | if . == null then "null" else tostring end' "$SIM_FAILOVER_FILE" 2>/dev/null)
+            _live_slot=$(qcmd 'AT+QUIMSLOT?' 2>/dev/null | grep '+QUIMSLOT:' | sed 's/.*: *//' | tr -d '\r ')
+
+            if [ -n "$_live_slot" ] && [ "$_live_slot" = "$_sf_curr" ]; then
+                sim_failover_active="true"
+                original_sim_slot="$_sf_orig"
+                current_sim_slot="$_sf_curr"
+                qlog_info "Resumed SIM failover state: slot $original_sim_slot → $current_sim_slot (verified)"
+            else
+                qlog_warn "SIM failover file recorded slot $_sf_curr but modem is on slot ${_live_slot:-unknown} — clearing stale state"
+                rm -f "$SIM_FAILOVER_FILE"
+            fi
         fi
     fi
 
