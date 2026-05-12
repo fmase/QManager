@@ -382,31 +382,17 @@ execute_tier3() {
         return 0
     fi
 
-    # Read new ICCID for logging AND for auto-apply (3×1s retry)
-    local new_iccid_raw new_iccid iccid_suffix _try
-    new_iccid=""
-    for _try in 1 2 3; do
-        new_iccid_raw=$(qcmd 'AT+QCCID' 2>/dev/null)
-        new_iccid=$(printf '%s' "$new_iccid_raw" | grep '+QCCID:' | sed 's/+QCCID: //g' | tr -d '\r ')
-        [ -n "$new_iccid" ] && break
-        sleep 1
-    done
+    # Read new ICCID for logging
+    local new_iccid_raw new_iccid iccid_suffix
+    new_iccid_raw=$(qcmd 'AT+QCCID' 2>/dev/null)
+    new_iccid=$(printf '%s' "$new_iccid_raw" | grep '+QCCID:' | sed 's/+QCCID: //g' | tr -d '\r ')
     iccid_suffix=$(printf '%s' "$new_iccid" | tail -c 4)
 
     current_sim_slot="$CFG_BACKUP_SIM_SLOT"
     qlog_info "TIER 3: Switched to slot $CFG_BACKUP_SIM_SLOT (ICCID: ...$iccid_suffix)"
 
-    # Apply matching profile NOW (before cooldown) so a custom-APN backup SIM
-    # (e.g. Verizon needing PDP 3) can attach in time for the ping check.
-    # finish_cooldown waits for the worker to complete before reading ping.
-    if [ -n "$new_iccid" ]; then
-        ( . /usr/lib/qmanager/profile_mgr.sh && auto_apply_profile "$new_iccid" "watchdog_tier3" )
-    else
-        qlog_info "[watchdog_tier3] ICCID query failed after SIM switch, skipping pre-cooldown auto-apply"
-    fi
-
-    # Don't write SIM failover state yet — wait for cooldown to verify connectivity.
-    # The cooldown handler will check reachability and finalize.
+    # Don't write SIM failover state yet — wait for cooldown to verify connectivity
+    # The cooldown handler will check reachability and finalize
     return 0
 }
 
@@ -571,22 +557,6 @@ do_recovery() {
 
 finish_cooldown() {
     rm -f "$RECOVERY_FLAG"
-
-    # If a profile apply is in progress (typically spawned by execute_tier3 for
-    # a SIM-switch recovery), wait up to 90s for it to complete before judging
-    # connectivity. The worker's IMEI step can do AT+CFUN=1,1 which takes ~30s.
-    if [ -f /tmp/qmanager_profile_apply.pid ]; then
-        local _wp_waited=0 _wp_pid
-        qlog_info "Waiting for in-flight profile apply before connectivity check"
-        while [ "$_wp_waited" -lt 90 ]; do
-            _wp_pid=$(cat /tmp/qmanager_profile_apply.pid 2>/dev/null)
-            [ -z "$_wp_pid" ] && break
-            kill -0 "$_wp_pid" 2>/dev/null || break
-            sleep 2
-            _wp_waited=$((_wp_waited + 2))
-        done
-        qlog_info "Profile apply wait finished (waited ${_wp_waited}s)"
-    fi
 
     # Re-read ping data to check if recovery worked
     if read_ping && [ "$ping_reachable" = "true" ]; then
