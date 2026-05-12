@@ -563,8 +563,15 @@ finish_cooldown() {
             # Read ICCIDs for the state file
             local orig_iccid curr_iccid_raw curr_iccid
             orig_iccid=""  # we don't have it cached
-            curr_iccid_raw=$(qcmd 'AT+QCCID' 2>/dev/null)
-            curr_iccid=$(printf '%s' "$curr_iccid_raw" | grep '+QCCID:' | sed 's/+QCCID: //g' | tr -d '\r ')
+            # 3×1s retry — matches sim_failover_fallback and cellular/settings.sh
+            local _try
+            curr_iccid=""
+            for _try in 1 2 3; do
+                curr_iccid_raw=$(qcmd 'AT+QCCID' 2>/dev/null)
+                curr_iccid=$(printf '%s' "$curr_iccid_raw" | grep '+QCCID:' | sed 's/+QCCID: //g' | tr -d '\r ')
+                [ -n "$curr_iccid" ] && break
+                sleep 1
+            done
 
             local ts
             ts=$(date +%s)
