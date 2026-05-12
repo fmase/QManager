@@ -182,6 +182,7 @@
     "backup_sim_slot_1": "卡槽 1",
     "backup_sim_slot_2": "卡槽 2",
     "backup_sim_description": "Tier 3 触发时要切换到的 SIM 槽。",
+    "backup_sim_required_error": "请选择备用 SIM 槽，或关闭 Tier 3。",
     "recovery_steps_title": "恢复步骤",
     "recovery_steps_description": "按顺序尝试，从影响最小到最大。",
     "tier_2_tooltip": "在铁塔锁定激活时自动跳过，以保留已锁定的小区。",

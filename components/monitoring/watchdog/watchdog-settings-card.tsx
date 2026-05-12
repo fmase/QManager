@@ -171,10 +171,16 @@ function WatchdogSettingsForm({
       ? t("watchdog.max_reboots_error")
       : null;
 
+  const backupSimSlotError =
+    tier3Enabled && !backupSimSlot
+      ? t("watchdog.backup_sim_required_error")
+      : null;
+
   const hasValidationErrors = !!(
     maxFailuresError ||
     cooldownError ||
-    maxRebootsError
+    maxRebootsError ||
+    backupSimSlotError
   );
 
   // --- Dirty check ---
@@ -426,6 +432,10 @@ function WatchdogSettingsForm({
                         <SelectTrigger
                           id="backup-sim-slot"
                           className="max-w-sm"
+                          aria-invalid={!!backupSimSlotError}
+                          aria-describedby={
+                            backupSimSlotError ? "backup-sim-error" : undefined
+                          }
                         >
                           <SelectValue placeholder={t("watchdog.backup_sim_placeholder")} />
                         </SelectTrigger>
@@ -434,9 +444,15 @@ function WatchdogSettingsForm({
                           <SelectItem value="2">{t("watchdog.backup_sim_slot_2")}</SelectItem>
                         </SelectContent>
                       </Select>
-                      <FieldDescription>
-                        {t("watchdog.backup_sim_description")}
-                      </FieldDescription>
+                      {backupSimSlotError ? (
+                        <FieldError id="backup-sim-error">
+                          {backupSimSlotError}
+                        </FieldError>
+                      ) : (
+                        <FieldDescription>
+                          {t("watchdog.backup_sim_description")}
+                        </FieldDescription>
+                      )}
                     </Field>
                   )}
                 </div>

@@ -182,6 +182,7 @@
     "backup_sim_slot_1": "Slot 1",
     "backup_sim_slot_2": "Slot 2",
     "backup_sim_description": "Slot SIM mana yang digunakan saat Tier 3 aktif.",
+    "backup_sim_required_error": "Pilih slot SIM cadangan atau nonaktifkan Tier 3.",
     "recovery_steps_title": "Langkah Pemulihan",
     "recovery_steps_description": "Dicoba berurutan, dari yang paling ringan hingga paling mengganggu.",
     "tier_2_tooltip": "Dilewati secara otomatis saat penguncian tower aktif untuk menjaga sel yang terkunci.",

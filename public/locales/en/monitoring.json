@@ -182,6 +182,7 @@
     "backup_sim_slot_1": "Slot 1",
     "backup_sim_slot_2": "Slot 2",
     "backup_sim_description": "Which SIM slot to fail over to when Tier 3 activates.",
+    "backup_sim_required_error": "Choose a backup SIM slot or disable Tier 3.",
     "recovery_steps_title": "Recovery Steps",
     "recovery_steps_description": "Tried in order, from gentlest to most disruptive.",
     "tier_2_tooltip": "Automatically skipped when tower lock is active to preserve your locked cells.",
