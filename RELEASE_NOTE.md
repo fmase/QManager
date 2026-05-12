@@ -3,6 +3,13 @@
 ## ✅ Improvements
 
 - **Tower Locking carrier picker now shows EARFCN/ARFCN values.** Each option in the LTE and NR-SA Simple Mode dropdowns now displays a PCC/SCC tag, the band, the channel number in parentheses, and RSRP in dBm — making it easier to identify the right carrier at a glance.
+- **Watchdog: spurious "New SIM card detected" notification after recovery is fixed.** When the watchdog switched to your backup SIM and you later rebooted, you'd see a misleading "physical SIM swap" banner. The active SIM is now remembered properly across reboots.
+- **Watchdog: settings now require picking a backup slot when "Switch to Backup SIM" is enabled.** Previously you could turn the option on without choosing a slot — the watchdog would silently skip that recovery step. The form now blocks Save until a slot is selected.
+- **Watchdog: status page reflects auto-disabled state within 30 seconds without needing a refresh.** If the watchdog disabled itself after too many reboots, the warning banner now appears automatically while you're on the page.
+- **Watchdog: brief gaps in connectivity-check data no longer trigger spurious recovery escalation.** A momentary hiccup in the ping daemon used to push the watchdog one step closer to a reboot. It now waits briefly for fresh data before deciding.
+- **Watchdog: Network Events log now records "SIM failover confirmed" once a swap is verified to have restored connectivity** — complementing the existing "switching SIM" notice so you can see at a glance whether the failover actually worked.
+- **Watchdog: SIM revert now logs and surfaces a clear error if the modem fails to come back, instead of silently chasing a dead modem.**
+- **Watchdog: at startup, the watchdog now verifies the modem is on the recorded SIM slot before resuming SIM failover state** — preventing a stale state if anything else changed slots while the watchdog was down.
 
 ## 📥 Installation
 
