@@ -1,5 +1,9 @@
 # 🚀 QManager BETA v0.1.24
 
+## ✨ New Features
+
+- **Modem temperature now shown on the login page.** The pre-login "Live Modem Status" card displays the current modem temperature. A warning badge appears automatically when the modem is running hot (≥ 60 °C) or overheating (≥ 75 °C).
+
 ## ✅ Improvements
 
 - **Tower Locking carrier picker now shows EARFCN/ARFCN values.** Each option in the LTE and NR-SA Simple Mode dropdowns now displays a PCC/SCC tag, the band, the channel number in parentheses, and RSRP in dBm — making it easier to identify the right carrier at a glance.
