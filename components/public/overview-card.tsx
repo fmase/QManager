@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useTranslation } from "react-i18next";
 import { motion, useReducedMotion } from "motion/react";
 import {
+  AlertCircleIcon,
   CheckCircle2Icon,
   Loader2Icon,
   MinusCircleIcon,
@@ -31,7 +32,7 @@ import {
   formatUptime,
 } from "@/lib/public-overview/format";
 import type { CarrierComponentRow } from "@/lib/public-overview/format";
-import { getSignalQuality, RSRP_THRESHOLDS } from "@/types/modem-status";
+import { formatTemperature, getSignalQuality, RSRP_THRESHOLDS } from "@/types/modem-status";
 import type { ConnectionState } from "@/types/modem-status";
 import { useEffect } from "react";
 
@@ -81,6 +82,10 @@ function badgeStyleFor(label: ConnectionState | "modem_unreachable"): BadgeStyle
       };
   }
 }
+
+// Temperature warning thresholds — kept in sync with device-metrics.tsx
+const TEMP_WARN = 60; // °C
+const TEMP_DANGER = 75; // °C
 
 // ---------- Component ------------------------------------------------------
 
@@ -253,6 +258,25 @@ function renderBody({
             {t("overview.stale_indicator")}
           </Badge>
         )}
+        {data.temperature !== null && data.temperature >= TEMP_WARN && (
+          <Badge
+            variant="outline"
+            className={
+              data.temperature >= TEMP_DANGER
+                ? "bg-destructive/15 text-destructive hover:bg-destructive/20 border-destructive/30"
+                : "bg-warning/15 text-warning hover:bg-warning/20 border-warning/30"
+            }
+          >
+            {data.temperature >= TEMP_DANGER ? (
+              <AlertCircleIcon className="size-3" aria-hidden />
+            ) : (
+              <TriangleAlertIcon className="size-3" aria-hidden />
+            )}
+            {data.temperature >= TEMP_DANGER
+              ? t("overview.field.temp_danger")
+              : t("overview.field.temp_warn")}
+          </Badge>
+        )}
       </div>
 
       {/* Hero — signal quality */}
@@ -263,9 +287,9 @@ function renderBody({
         <div className="text-muted-foreground text-sm">{signalLine}</div>
       </div>
 
-      {/* Grid — carrier / uptime (short, predictable values stay 2-col) */}
+      {/* Grid — carrier / uptime / temperature */}
       <dl
-        className={`grid grid-cols-1 gap-4 @[18rem]/overview:grid-cols-2 ${rowsMutedClass}`}
+        className={`grid grid-cols-1 gap-4 @[18rem]/overview:grid-cols-2 @[28rem]/overview:grid-cols-3 ${rowsMutedClass}`}
       >
         <Field
           label={t("overview.field.carrier")}
@@ -274,6 +298,11 @@ function renderBody({
         <Field
           label={t("overview.field.uptime")}
           value={uptimeText}
+          numeric
+        />
+        <Field
+          label={t("overview.field.temperature")}
+          value={formatTemperature(data.temperature)}
           numeric
         />
       </dl>
@@ -382,7 +411,7 @@ function SkeletonBody() {
         <Skeleton className="h-4 w-40" />
       </div>
 
-      <div className="grid grid-cols-1 gap-4 @[18rem]/overview:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 @[18rem]/overview:grid-cols-2 @[28rem]/overview:grid-cols-3">
         <div className="flex flex-col gap-1.5">
           <Skeleton className="h-3 w-16" />
           <Skeleton className="h-4 w-24" />
@@ -390,6 +419,10 @@ function SkeletonBody() {
         <div className="flex flex-col gap-1.5">
           <Skeleton className="h-3 w-14" />
           <Skeleton className="h-4 w-20" />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <Skeleton className="h-3 w-10" />
+          <Skeleton className="h-4 w-16" />
         </div>
       </div>
 
