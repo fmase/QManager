@@ -49,6 +49,9 @@
       "carrier": "运营商",
       "aggregation": "频段",
       "uptime": "运行时间",
+      "temperature": "温度",
+      "temp_warn": "温度偏高",
+      "temp_danger": "温度过高",
       "empty": "—"
     },
     "aggregation": {

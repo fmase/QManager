@@ -49,6 +49,9 @@
       "carrier": "Carrier",
       "aggregation": "Bands",
       "uptime": "Uptime",
+      "temperature": "Temp",
+      "temp_warn": "Running hot",
+      "temp_danger": "Overheating",
       "empty": "—"
     },
     "aggregation": {
