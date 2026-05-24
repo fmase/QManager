@@ -1,0 +1,46 @@
+# Language Packs (Plan 11+)
+
+Route: `/system-settings/languages`.
+
+## Runtime
+
+- **Hybrid delivery**: EN + zh-CN bundled via `public/locales/` static imports (`lib/i18n/resources.ts`). Additional packs downloaded from a remote manifest → installed to `/www/locales/<code>/` on-device.
+- **i18next-http-backend** wired in `lib/i18n/config.ts`. Load path `/locales/{{lng}}/{{ns}}.json`. Detection accepts any catalog code (`AVAILABLE_LANGUAGES`), not just `BUNDLED_CODES` — the backend lazy-loads non-bundled packs.
+- **CGI contract** (`/cgi-bin/quecmanager/system/language-packs/`):
+  - `list.sh` GET → `{ installed:[{code,version}], manifest, manifest_error? }`
+  - `install.sh` POST `{code, manifest_url}` → 202 `{ok,state:"running",code}` or 409 on active install
+  - `install_status.sh` GET → `{ state, code, progress, message }` — polled 1500ms
+  - `install_cancel.sh` POST → `{ok:true}` (touches `/tmp/qmanager_language_install.cancel`)
+  - `remove.sh` POST `{code}` → `{ok:true}`. Rejects `en` / `zh-CN` with `cannot_remove_bundled`.
+- **Shared library**: `/usr/lib/qmanager/language_packs.sh` — `lp_list_installed`, `lp_pack_is_code_safe`, `lp_fetch_manifest`, `lp_manifest_find_pack`, `lp_verify_sha256`, `lp_validate_pack_tree`, `lp_remove_pack`, `lp_disk_free_kb`, `lp_write_progress`. Callers own `qlog_init`.
+- **Install worker**: `/usr/bin/qmanager_language_install` — double-fork pattern mirror of `qmanager_config_restore`. Progress JSON `/tmp/qmanager_language_install.json`; PID `/var/run/qmanager_language_install.pid`; cancel flag `/tmp/qmanager_language_install.cancel`; input `/tmp/qmanager_language_install_input.json`. Pipeline: fetch manifest → find pack → disk-space pre-flight → curl tarball → sha256 verify → extract to staging → validate namespace tree → atomic `mv` to `/www/locales/<code>/` → write `.version`.
+- **Manifest shape** (spec §6.2): `{ manifest_version:1, generated_at, packs:[{ code, native_name, english_name, rtl, version, completeness, size_bytes, sha256, url, contributors? }] }`. Default URL: `lib/i18n/language-pack-manifest.ts::DEFAULT_MANIFEST_URL`. Overridable per-install via the `manifest_url` body field.
+- **Pack tarball layout**: flat — `<ns>.json` files at top level (same shape as bundled `public/locales/<code>/<ns>.json`). Must contain every namespace in `LP_REQUIRED_NS` (matches `ALL_NAMESPACES`). Missing or invalid JSON → worker fails with "Pack is missing required namespaces".
+- **Firmware updates wipe `/www/*`** — `install.sh::install_frontend` preserves only `cgi-bin`, `luci-static`, `index.html.old`. Downloaded language packs are wiped on each firmware update; user re-installs via the Languages card. Spec §2 accepts this as a non-goal.
+- **Remove-active-language flow**: frontend switches i18n to `en` and flips `<html lang dir>` BEFORE calling `remove.sh`, so i18next doesn't fail to resolve a freshly-deleted pack.
+- **Concurrency**: `install.sh` returns 409 if `/var/run/qmanager_language_install.pid` is live. `remove.sh` has no concurrency guard — fast enough to race-safely.
+- **Disk-space pre-flight**: worker checks `df /www` against `pack.size_bytes / 1024 + 64 KB slack`; fails fast with "Not enough disk space".
+- **Sidebar**: Languages entry under System Settings (sibling of Software Update / AT Terminal / Luci, not inside the System Settings collapsible). `t_key: "languages"` resolves via `sidebar.items.languages`.
+- **LanguageSwitcher** lists bundled + installed packs. Downloadable-but-not-installed packs are hidden from the switcher — they only surface in the Languages card's Available section.
+- **i18next-icu is PINNED OUT** — native `_one`/`_other` plurals + default `{{var}}` interpolation handle every shipped string. Re-adding the plugin breaks plurals (Plan 4 post-ship incident — commit `00bdd9e`).
+
+## Publishing Workflow
+
+- **Builder**: `bun run package:lang <code> [version] [--publish] [--push] [--update-manifest <url>] [--contributors <csv>] [--skip-check]`. Implemented as a pure TypeScript file at `scripts-dev/build-lang-pack.ts` (not `scripts/` — that dir is OpenWRT staging and gets shipped to devices). Runs entirely inside one bun process to avoid bash→node/bun PATH resolution hell (see commit `c4f3708` for the bash-based attempt that was reverted).
+- **`scripts-dev/` convention**: dev-only tooling. Excluded from `tsconfig.json` (Bun ambient globals, different target). NOT copied into the firmware tarball by `build.sh`.
+- **Pipeline**: validates code registration in `available-languages.ts` → extracts `LP_REQUIRED_NS` from `language_packs.sh` → verifies namespace files → JSON-parses every `*.json` → runs `bun run i18n:check` → tars flat (`tar -czf <archive> -C <localeDir> *.json`, spawned with cwd=outDir and RELATIVE paths for cross-shell compat) → sha256 + size → writes `.sha256` sidecar → walks dotted scalar paths for `completeness` ratio vs EN → optionally patches `language-packs/manifest.json` (dedupe by code, sort, atomic tmp+rename).
+- **Windows tar quirk**: Windows ships two tar variants — `System32\tar.exe` (bsdtar, used in pwsh/cmd) and MSYS2 GNU tar (used in Git Bash). Absolute-path forms are incompatible between them (`D:/foo/bar` fails under MSYS2 tar which reads `D:` as an rcp remote host; `/d/foo/bar` fails under bsdtar). Builder sidesteps this by spawning tar with `cwd=outDir` + relative paths. **Different tar flavors produce different sha256 for the same source files** (header format, file ordering, gzip params all differ) — pick one shell per pack so the manifest-hosted sha stays stable across republishes. Recommended: pwsh (matches typical dev default).
+- **Recommended one-command publish** (same-day republish OK, tarball is deterministic if source files unchanged and shell is the same):
+  ```
+  bun run package:lang <code> --publish --push
+  bun run package:lang <code> --publish --push --contributors "@handle"
+  ```
+  `--publish` requires `gh` CLI + `gh auth login`. It uploads the tarball to the persistent `language-packs` GitHub Release (creates it on first run with `--latest=false` so it stays out of the firmware feed), replaces any existing asset of the same filename (`--clobber`), and auto-patches `language-packs/manifest.json`. `--push` then commits and pushes the manifest; skips gracefully if manifest is already up to date in git.
+- **Persistent release**: all language pack tarballs live as assets under a single `language-packs` release tag. Never delete this release. Per-code-version releases (`lang-it-2026.04.23` etc.) are legacy and no longer created.
+- **Manual publish** (fallback if `gh` unavailable):
+  1. `bun run package:lang <code> [--contributors "@handle"]` → writes tarball.
+  2. Upload asset to the `language-packs` GitHub Release manually.
+  3. `bun run package:lang <code> --update-manifest <asset-url> --push` → patches and commits manifest.
+- **`--contributors` preservation**: re-running without `--contributors` automatically reads the existing manifest entry and preserves the contributors field. Pass `--contributors` explicitly only to change or set it.
+- **GitHub raw CDN caches `raw.githubusercontent.com/.../development-home/manifest.json` for 5 min** (`max-age=300`). After push, devices see stale manifest until cache expires. Verify with `curl -sI <url> | grep -iE "cache-control|source-age"`. No workaround — inherent to the CDN choice. Manual install commands shown in the Languages card are generated from the (possibly stale) manifest sha — use the new command after the CDN revalidates if sha verification fails on-device.
+- **Default manifest URL**: `lib/i18n/language-pack-manifest.ts::DEFAULT_MANIFEST_URL` points at the `development-home` raw URL. Change here if switching branches or CDNs.
