@@ -1,4 +1,4 @@
-# 🚀 QManager BETA v0.1.24
+# 🚀 QManager BETA v0.1.24-draft
 
 ## ✨ New Features
 

@@ -9,7 +9,7 @@ import { I18nProvider } from "@/components/i18n/i18n-provider";
 
 // Google Fonts can be imported from remote
 const manrope = Manrope({
-  variable: "--font-euclid",
+  variable: "--font-manrope",
   subsets: ["latin"],
 });
 
