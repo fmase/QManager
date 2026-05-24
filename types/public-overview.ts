@@ -40,6 +40,7 @@ export interface PublicOverviewOk {
   uptime_seconds: number;
   network: PublicOverviewNetwork;
   signal: PublicOverviewSignal;
+  temperature: number | null;
 }
 
 export interface PublicOverviewSetupRequired {
