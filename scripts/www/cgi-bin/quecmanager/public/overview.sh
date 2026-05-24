@@ -46,5 +46,6 @@ jq '{
   signal: {
     rsrp: (if .lte.rsrp != null then .lte.rsrp elif .nr.rsrp != null then .nr.rsrp else null end),
     sinr: (if .lte.sinr != null then .lte.sinr elif .nr.sinr != null then .nr.sinr else null end)
-  }
+  },
+  temperature: (.device.temperature // null)
 }' "$STATUS_FILE" 2>/dev/null || jq -n '{"state":"unavailable","reason":"parse_error"}'
