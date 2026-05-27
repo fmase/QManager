@@ -43,20 +43,25 @@
   },
   "login": {
     "brand_label": "QManager operator console",
+    "welcome": "Welcome to QManager",
     "password_label": "Password",
-    "submit": "Login",
-    "signing_in": "Logging in…",
+    "submit": "Sign in",
+    "signing_in": "Signing in…",
     "locked": "Locked ({{seconds}}s)",
     "show_password": "Show password",
     "hide_password": "Hide password",
-    "logo_alt": "QManager Logo",
-    "loading_hostname": "Loading device name",
-    "session_expired": "Your session ended because the device was unreachable for too long."
+    "session_expired": "Your session ended because the device was unreachable for too long.",
+    "recovery": {
+      "toggle": "Can't sign in?",
+      "intro": "If you've lost the admin password, you have two recovery paths:",
+      "option_reset": "Open an SSH session to the device and run <code>qmanager_reset_password</code> to set a new admin password. (Requires SSH access to be enabled.)",
+      "option_backup": "If you saved a .qmbackup file, re-flash the device firmware and restore from it."
+    }
   },
   "overview": {
     "title": "QManager",
     "tagline": "Live modem status",
-    "login_button": "Login",
+    "login_button": "Sign in",
     "header": {
       "carrier": "Carrier",
       "network": "Network",
@@ -68,7 +73,7 @@
       "temperature": "Temperature"
     },
     "actions": {
-      "login": "Login",
+      "login": "Sign in",
       "luci": "LuCI",
       "luci_aria": "Open LuCI advanced interface",
       "theme_toggle_aria": "Toggle theme",

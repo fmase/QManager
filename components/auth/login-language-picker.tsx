@@ -88,13 +88,14 @@ export function LoginLanguagePicker({
           aria-label={t("language.switch_aria")}
           // text-foreground (not muted) for outdoor-readable contrast against
           // a tablet glass in direct sunlight, per PRODUCT.md accessibility
-          // floor; size-5 glyph (not size-4) for shape recognition at that
-          // viewing distance and angle. Size-5 also matches the Sun/Moon glyph
-          // in ModeToggle (h-[1.2rem]) so the CardAction cluster reads as one
-          // rhythm when this picker sits next to it on the login card.
+          // floor. Glyph size adapts to the button size: size-5 (20px) inside
+          // the 44px icon-touch button gives outdoor-readable shape recognition
+          // and matches the Sun/Moon glyph in ModeToggle (h-[1.2rem]);
+          // size-4 (16px) inside the 32px icon-sm button keeps the icon-to-
+          // button ratio in the ~0.5 sweet spot on the indoor login surface.
           className={cn(variant === "ghost" && "text-foreground", className)}
         >
-          <Languages className="size-5" />
+          <Languages className={size === "icon-sm" ? "size-4" : "size-5"} />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" sideOffset={8} className="min-w-[10rem]">

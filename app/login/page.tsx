@@ -1,23 +1,31 @@
 import LoginComponent from "@/components/auth/login-component";
+import {
+  LoginChromeFooter,
+  LoginChromeHeader,
+} from "@/components/auth/login-chrome";
 
 // =============================================================================
 // /login page wrapper
 // =============================================================================
-// Mirrors app/page.tsx (the public Overview): same background, same vertical
-// centering, same body font. Only the max-width narrows from `max-w-lg`
-// (Overview, 3-column data grid earns the width) to `max-w-md` (Login, single
-// password field). The Card silhouette stays recognisably the same family;
-// the width step signals the user has crossed from "at a glance" into "focused
-// task." LoginLanguagePicker no longer floats in the corner — it lives inside
-// the Card's CardAction next to ModeToggle, so the chrome is one rectangle.
+// Three-row viewport scaffold: chrome header (wordmark + lang/theme cluster)
+// pinned top, login form centered in the middle, copyright pinned bottom.
+// No Card chrome wraps the form: a one-input gate doesn't earn a container,
+// and stripping it lets the hostname-led title block be the page subject
+// rather than something inside a rectangle. Continuity with `/` (the
+// Overview) is carried by typography, motion, and the banner pattern, not
+// by a shared silhouette.
 // =============================================================================
 
 const LoginPage = () => {
   return (
-    <div className="bg-background flex min-h-svh items-center justify-center p-4 font-sans">
-      <main className="w-full max-w-md">
-        <LoginComponent />
+    <div className="bg-background flex min-h-svh flex-col font-sans">
+      <LoginChromeHeader />
+      <main className="flex flex-1 items-center justify-center px-4 pb-6">
+        <div className="w-full max-w-sm">
+          <LoginComponent />
+        </div>
       </main>
+      <LoginChromeFooter />
     </div>
   );
 };

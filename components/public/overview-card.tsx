@@ -205,7 +205,7 @@ function HeaderCell({
   title?: string;
 }) {
   return (
-    <div className="flex min-w-0 flex-col items-start gap-1.5 py-3">
+    <div className="flex min-w-0 flex-col items-start gap-1.5">
       <span className={EYEBROW_CLASS}>{label}</span>
       <span
         className="text-foreground w-full truncate text-sm font-semibold leading-none tracking-tight"
@@ -645,7 +645,7 @@ function SkeletonBody({ loadingLabel }: { loadingLabel?: string } = {}) {
         {[0, 1, 2].map((i) => (
           <div
             key={i}
-            className="flex flex-col items-start gap-1.5 py-3"
+            className="flex flex-col items-start gap-1.5"
           >
             <Skeleton className="h-2.5 w-12" />
             <Skeleton className="h-3.5 w-16" />

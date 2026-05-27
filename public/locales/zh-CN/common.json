@@ -43,15 +43,20 @@
   },
   "login": {
     "brand_label": "QManager 操作员控制台",
+    "welcome": "欢迎使用 QManager",
     "password_label": "密码",
     "submit": "登录",
     "signing_in": "登录中…",
     "locked": "已锁定 ({{seconds}}秒)",
     "show_password": "显示密码",
     "hide_password": "隐藏密码",
-    "logo_alt": "QManager 标志",
-    "loading_hostname": "正在加载设备名称",
-    "session_expired": "由于设备长时间无法连接,您的会话已结束。"
+    "session_expired": "由于设备长时间无法连接,您的会话已结束。",
+    "recovery": {
+      "toggle": "无法登录?",
+      "intro": "如果您忘记了管理员密码,有两种恢复方式:",
+      "option_reset": "通过 SSH 连接到设备并运行 <code>qmanager_reset_password</code> 以设置新的管理员密码。(需要先启用 SSH 访问。)",
+      "option_backup": "如果您保存了 .qmbackup 文件,请重新刷写设备固件,然后从该文件中恢复。"
+    }
   },
   "overview": {
     "title": "QManager",

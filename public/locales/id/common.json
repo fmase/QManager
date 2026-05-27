@@ -43,14 +43,19 @@
   },
   "login": {
     "brand_label": "Konsol operator QManager",
+    "welcome": "Selamat datang di QManager",
     "password_label": "Kata sandi",
     "submit": "Masuk",
     "signing_in": "Sedang masuk…",
     "locked": "Terkunci ({{seconds}}s)",
     "show_password": "Tampilkan kata sandi",
     "hide_password": "Sembunyikan kata sandi",
-    "logo_alt": "Logo QManager",
-    "loading_hostname": "Memuat nama perangkat",
-    "session_expired": "Sesi Anda berakhir karena perangkat tidak dapat dijangkau terlalu lama."
+    "session_expired": "Sesi Anda berakhir karena perangkat tidak dapat dijangkau terlalu lama.",
+    "recovery": {
+      "toggle": "Tidak bisa masuk?",
+      "intro": "Jika Anda kehilangan kata sandi admin, ada dua jalur pemulihan:",
+      "option_reset": "Buka sesi SSH ke perangkat dan jalankan <code>qmanager_reset_password</code> untuk menetapkan kata sandi admin baru. (Memerlukan akses SSH yang sudah diaktifkan.)",
+      "option_backup": "Jika Anda menyimpan file .qmbackup, flash ulang firmware perangkat lalu pulihkan dari file tersebut."
+    }
   }
 }
