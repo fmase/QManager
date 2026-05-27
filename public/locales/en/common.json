@@ -54,9 +54,28 @@
     "session_expired": "Your session ended because the device was unreachable for too long."
   },
   "overview": {
-    "title": "Welcome to QManager",
+    "title": "QManager",
     "tagline": "Live modem status",
     "login_button": "Login",
+    "header": {
+      "carrier": "Carrier",
+      "network": "Network",
+      "bands": "Bands"
+    },
+    "status": {
+      "overall": "Overall",
+      "connectivity": "Internet",
+      "temperature": "Temperature"
+    },
+    "actions": {
+      "login": "Login",
+      "luci": "LuCI",
+      "luci_aria": "Open LuCI advanced interface",
+      "theme_toggle_aria": "Toggle theme",
+      "theme_light": "Light",
+      "theme_dark": "Dark",
+      "theme_system": "System"
+    },
     "field": {
       "carrier": "Carrier",
       "aggregation": "Bands",
@@ -109,6 +128,8 @@
       "modem_unreachable": "Modem unreachable"
     },
     "stale_indicator": "Data may be outdated",
+    "redirecting_setup": "Redirecting to first-time setup…",
+    "loading_status": "Loading modem status…",
     "empty": {
       "title": "Modem status unavailable",
       "subtitle": "Log in for diagnostic details.",

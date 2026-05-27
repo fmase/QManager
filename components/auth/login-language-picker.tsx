@@ -33,9 +33,19 @@ import type { LanguageCode } from "@/types/i18n";
 
 interface LoginLanguagePickerProps {
   className?: string;
+  // Defaults preserve the original ghost / icon-sm floating-button treatment so
+  // existing callers (legacy /setup/ chrome, anywhere else this gets dropped in
+  // unstyled) keep their look. The login Card overrides to outline / icon-touch
+  // so the trigger matches the ModeToggle sitting next to it in CardAction.
+  variant?: "ghost" | "outline";
+  size?: "icon-sm" | "icon-touch";
 }
 
-export function LoginLanguagePicker({ className }: LoginLanguagePickerProps) {
+export function LoginLanguagePicker({
+  className,
+  variant = "ghost",
+  size = "icon-sm",
+}: LoginLanguagePickerProps) {
   const { t, i18n } = useTranslation("common");
   const [installedCodes, setInstalledCodes] = React.useState<LanguageCode[]>([]);
 
@@ -73,15 +83,16 @@ export function LoginLanguagePicker({ className }: LoginLanguagePickerProps) {
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button
-          variant="ghost"
-          size="icon-sm"
+          variant={variant}
+          size={size}
           aria-label={t("language.switch_aria")}
           // text-foreground (not muted) for outdoor-readable contrast against
           // a tablet glass in direct sunlight, per PRODUCT.md accessibility
           // floor; size-5 glyph (not size-4) for shape recognition at that
-          // viewing distance and angle. The button is small and corner-pinned,
-          // so a full-strength glyph won't compete with the heading.
-          className={cn("text-foreground", className)}
+          // viewing distance and angle. Size-5 also matches the Sun/Moon glyph
+          // in ModeToggle (h-[1.2rem]) so the CardAction cluster reads as one
+          // rhythm when this picker sits next to it on the login card.
+          className={cn(variant === "ghost" && "text-foreground", className)}
         >
           <Languages className="size-5" />
         </Button>

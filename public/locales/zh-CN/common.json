@@ -54,9 +54,28 @@
     "session_expired": "由于设备长时间无法连接,您的会话已结束。"
   },
   "overview": {
-    "title": "欢迎使用 QManager",
+    "title": "QManager",
     "tagline": "实时调制解调器状态",
     "login_button": "登录",
+    "header": {
+      "carrier": "运营商",
+      "network": "网络",
+      "bands": "频段"
+    },
+    "status": {
+      "overall": "总体",
+      "connectivity": "互联网",
+      "temperature": "温度"
+    },
+    "actions": {
+      "login": "登录",
+      "luci": "LuCI",
+      "luci_aria": "打开 LuCI 高级界面",
+      "theme_toggle_aria": "切换主题",
+      "theme_light": "浅色",
+      "theme_dark": "深色",
+      "theme_system": "跟随系统"
+    },
     "field": {
       "carrier": "运营商",
       "aggregation": "频段",
@@ -109,6 +128,8 @@
       "modem_unreachable": "无法连接到调制解调器"
     },
     "stale_indicator": "数据可能已过期",
+    "redirecting_setup": "正在跳转到初次设置…",
+    "loading_status": "正在加载调制解调器状态…",
     "empty": {
       "title": "调制解调器状态不可用",
       "subtitle": "登录以查看诊断详情。",
