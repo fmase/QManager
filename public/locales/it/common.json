@@ -40,5 +40,17 @@
   "language": {
     "label": "Lingua",
     "switch_aria": "Cambia lingua"
+  },
+  "login": {
+    "brand_label": "Console operatore QManager",
+    "password_label": "Password",
+    "submit": "Accedi",
+    "signing_in": "Accesso in corso…",
+    "locked": "Bloccato ({{seconds}}s)",
+    "show_password": "Mostra password",
+    "hide_password": "Nascondi password",
+    "logo_alt": "Logo QManager",
+    "loading_hostname": "Caricamento nome dispositivo",
+    "session_expired": "La sessione è terminata perché il dispositivo è stato irraggiungibile troppo a lungo."
   }
 }

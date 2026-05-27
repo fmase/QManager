@@ -41,6 +41,18 @@
     "label": "Language",
     "switch_aria": "Switch language"
   },
+  "login": {
+    "brand_label": "QManager operator console",
+    "password_label": "Password",
+    "submit": "Login",
+    "signing_in": "Logging in…",
+    "locked": "Locked ({{seconds}}s)",
+    "show_password": "Show password",
+    "hide_password": "Hide password",
+    "logo_alt": "QManager Logo",
+    "loading_hostname": "Loading device name",
+    "session_expired": "Your session ended because the device was unreachable for too long."
+  },
   "overview": {
     "title": "Welcome to QManager",
     "tagline": "Live modem status",
@@ -59,6 +71,19 @@
       "band_only": "{{band}}",
       "pci_label": "PCI"
     },
+    "bands": {
+      "toggle_multi_band": "Active bands",
+      "toggle_single_band": "Single carrier",
+      "rsrp_unit": "{{rsrp}} dBm"
+    },
+    "metrics": {
+      "rsrp": "RSRP",
+      "rsrq": "RSRQ",
+      "sinr": "SINR",
+      "rsrp_value": "{{rsrp}} dBm",
+      "rsrq_value": "{{rsrq}} dB",
+      "sinr_value": "{{sinr}} dB"
+    },
     "signal": {
       "dual": "{{rsrp}} dBm · {{sinr}} dB SINR",
       "rsrp_only": "{{rsrp}} dBm",
@@ -66,6 +91,7 @@
       "none": "—"
     },
     "quality": {
+      "overall_label": "Overall",
       "excellent": "Excellent",
       "good": "Good",
       "fair": "Fair",
@@ -94,6 +120,6 @@
       "hours": "{{hours}}h {{minutes}}m",
       "minutes": "{{minutes}}m"
     },
-    "copyright": "© {{year}} QManager. All rights reserved."
+    "copyright": "© {{year}} QManager"
   }
 }

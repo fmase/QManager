@@ -17,6 +17,12 @@ export interface PublicOverviewBand {
   band: string;
   bandwidth_mhz: number;
   pci: number | null;
+  /** RSRP for this carrier component (dBm). Null when unreported. */
+  rsrp: number | null;
+  /** RSRQ for this carrier component (dB). Null when unreported. */
+  rsrq: number | null;
+  /** SINR for this carrier component (dB). Null when unreported. */
+  sinr: number | null;
 }
 
 export interface PublicOverviewNetwork {
@@ -30,6 +36,7 @@ export interface PublicOverviewNetwork {
 
 export interface PublicOverviewSignal {
   rsrp: number | null;
+  rsrq: number | null;
   sinr: number | null;
 }
 

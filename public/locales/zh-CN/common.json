@@ -41,6 +41,18 @@
     "label": "语言",
     "switch_aria": "切换语言"
   },
+  "login": {
+    "brand_label": "QManager 操作员控制台",
+    "password_label": "密码",
+    "submit": "登录",
+    "signing_in": "登录中…",
+    "locked": "已锁定 ({{seconds}}秒)",
+    "show_password": "显示密码",
+    "hide_password": "隐藏密码",
+    "logo_alt": "QManager 标志",
+    "loading_hostname": "正在加载设备名称",
+    "session_expired": "由于设备长时间无法连接,您的会话已结束。"
+  },
   "overview": {
     "title": "欢迎使用 QManager",
     "tagline": "实时调制解调器状态",
@@ -59,6 +71,19 @@
       "band_only": "{{band}}",
       "pci_label": "PCI"
     },
+    "bands": {
+      "toggle_multi_band": "活动频段",
+      "toggle_single_band": "单载波",
+      "rsrp_unit": "{{rsrp}} dBm"
+    },
+    "metrics": {
+      "rsrp": "RSRP",
+      "rsrq": "RSRQ",
+      "sinr": "SINR",
+      "rsrp_value": "{{rsrp}} dBm",
+      "rsrq_value": "{{rsrq}} dB",
+      "sinr_value": "{{sinr}} dB"
+    },
     "signal": {
       "dual": "{{rsrp}} dBm · {{sinr}} dB SINR",
       "rsrp_only": "{{rsrp}} dBm",
@@ -66,6 +91,7 @@
       "none": "—"
     },
     "quality": {
+      "overall_label": "总体",
       "excellent": "极佳",
       "good": "良好",
       "fair": "一般",
@@ -94,6 +120,6 @@
       "hours": "{{hours}}小时 {{minutes}}分钟",
       "minutes": "{{minutes}}分钟"
     },
-    "copyright": "© {{year}} QManager 版权所有"
+    "copyright": "© {{year}} QManager"
   }
 }

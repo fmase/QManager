@@ -33,20 +33,20 @@ export function deriveConnectionLabel(
 
 /**
  * One row per active carrier component (PCC + SCCs in input order). Bandwidth
- * is `null` when missing (0 or non-finite); PCI is `null` when not reported.
- * Renderer decides how to format each side independently.
+ * is `null` when missing (0 or non-finite); PCI / RSRP are `null` when not
+ * reported. Renderer decides how to format each side independently.
  */
 export interface CarrierComponentRow {
   band: string;
   bandwidth: number | null;
   pci: number | null;
+  rsrp: number | null;
 }
 
 /**
  * Builds the per-component rows for the "Bands" section. Entries with empty
  * `band` are skipped; remaining fields are normalized to a flat shape so the
- * renderer can lay each row out as a 2-col grid (band+bandwidth on the left,
- * PCI on the right) without juggling discriminated variants.
+ * renderer can lay each row out without juggling discriminated variants.
  */
 export function formatCarrierComponents(
   bands: PublicOverviewBand[],
@@ -60,6 +60,7 @@ export function formatCarrierComponents(
           ? b.bandwidth_mhz
           : null,
       pci: b.pci != null ? b.pci : null,
+      rsrp: b.rsrp != null ? b.rsrp : null,
     }));
 }
 

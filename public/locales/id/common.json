@@ -40,5 +40,17 @@
   "language": {
     "label": "Bahasa",
     "switch_aria": "Ganti bahasa"
+  },
+  "login": {
+    "brand_label": "Konsol operator QManager",
+    "password_label": "Kata sandi",
+    "submit": "Masuk",
+    "signing_in": "Sedang masuk…",
+    "locked": "Terkunci ({{seconds}}s)",
+    "show_password": "Tampilkan kata sandi",
+    "hide_password": "Sembunyikan kata sandi",
+    "logo_alt": "Logo QManager",
+    "loading_hostname": "Memuat nama perangkat",
+    "session_expired": "Sesi Anda berakhir karena perangkat tidak dapat dijangkau terlalu lama."
   }
 }
