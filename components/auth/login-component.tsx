@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useId, useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
-import { motion, useReducedMotion } from "motion/react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import {
   EyeIcon,
   EyeOffIcon,
@@ -16,7 +16,6 @@ import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { resolveErrorMessage } from "@/lib/i18n/resolve-error";
-import { cn } from "@/lib/utils";
 
 // =============================================================================
 // LoginComponent — centered brand mark, product headline, in-place recovery.
@@ -154,12 +153,12 @@ export default function LoginComponent() {
                 the shadcn Field reference: gap-2 cluster, size-8 logo slot,
                 text-xl/bold heading, muted helper text below. */}
             <div className="flex flex-col items-center gap-2 text-center">
-              <div className="flex size-8 items-center justify-center rounded-md">
+              <div className="flex size-12 items-center justify-center rounded-md">
                 <img
                   src="/qmanager-logo.svg"
                   alt=""
                   aria-hidden="true"
-                  className="size-6"
+                  className="size-full"
                 />
               </div>
               <span className="sr-only">{t("overview.title")}</span>
@@ -175,47 +174,54 @@ export default function LoginComponent() {
               </button>
             </div>
 
-            {/* In-place recovery disclosure. CSS-grid 0fr ↔ 1fr is the
-                cheapest smooth-height animation: no JS measurement, no
-                AnimatePresence flicker, and the inner panel always reflects
-                its real content height (useful if i18n swaps the language
-                while the panel is open). Reduced-motion users get an instant
-                toggle via the inline-style override. */}
-            <div
-              id={recoveryPanelId}
-              aria-hidden={!recoveryOpen}
-              className={cn(
-                "grid transition-[grid-template-rows] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]",
-                recoveryOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr]",
+            {/* In-place recovery disclosure. The panel only exists in the
+                DOM when open: flex/grid gap is applied between *existing*
+                children regardless of their rendered height, so an always-
+                mounted collapsed wrapper would stack two FieldGroup gap-7s
+                (~56px) between the toggle and the password field. Mounting
+                conditionally lets the gap collapse to a single 28px when
+                closed. AnimatePresence drives the smooth height: 0 ↔ auto
+                enter/exit, with motion's built-in measurement; the inline
+                style cuts duration to 0 for reduced-motion users. */}
+            <AnimatePresence initial={false}>
+              {recoveryOpen && (
+                <motion.div
+                  key="recovery"
+                  id={recoveryPanelId}
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={
+                    shouldReduceMotion
+                      ? { duration: 0 }
+                      : { duration: 0.3, ease: [0.16, 1, 0.3, 1] }
+                  }
+                  style={{ overflow: "hidden" }}
+                >
+                  <div className="border-border bg-muted/40 text-muted-foreground space-y-2 rounded-lg border px-4 py-3 text-left text-sm leading-relaxed">
+                    <p>{t("login.recovery.intro")}</p>
+                    <ul className="list-disc space-y-1.5 pl-5">
+                      <li>
+                        {/* Trans + <code> mapping keeps the command semantic
+                            and translatable without fragmenting the sentence
+                            into before/after tokens that break under different
+                            word orders. */}
+                        <Trans
+                          i18nKey="login.recovery.option_reset"
+                          ns="common"
+                          components={{
+                            code: (
+                              <code className="bg-background text-foreground border-border rounded border px-1 py-0.5 font-mono text-[0.85em]" />
+                            ),
+                          }}
+                        />
+                      </li>
+                      <li>{t("login.recovery.option_backup")}</li>
+                    </ul>
+                  </div>
+                </motion.div>
               )}
-              style={
-                shouldReduceMotion ? { transitionDuration: "0ms" } : undefined
-              }
-            >
-              <div className="min-h-0 overflow-hidden">
-                <div className="border-border bg-muted/40 text-muted-foreground space-y-2 rounded-lg border px-4 py-3 text-left text-sm leading-relaxed">
-                  <p>{t("login.recovery.intro")}</p>
-                  <ul className="list-disc space-y-1.5 pl-5">
-                    <li>
-                      {/* Trans + <code> mapping keeps the command semantic
-                          and translatable without fragmenting the sentence
-                          into before/after tokens that break under different
-                          word orders. */}
-                      <Trans
-                        i18nKey="login.recovery.option_reset"
-                        ns="common"
-                        components={{
-                          code: (
-                            <code className="bg-background text-foreground border-border rounded border px-1 py-0.5 font-mono text-[0.85em]" />
-                          ),
-                        }}
-                      />
-                    </li>
-                    <li>{t("login.recovery.option_backup")}</li>
-                  </ul>
-                </div>
-              </div>
-            </div>
+            </AnimatePresence>
 
             {/* Banners share one shape: rounded-lg + tinted border + tinted
                 bg + leading icon + tinted text. The role is carried by
