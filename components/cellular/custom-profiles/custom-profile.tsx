@@ -21,7 +21,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { setPendingReboot } from "@/lib/config-backup/pending-reboot";
+import { setPendingReboot } from "@/lib/reboot/pending";
 
 // =============================================================================
 // CustomProfileComponent — Page Layout & State Coordinator

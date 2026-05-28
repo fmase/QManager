@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { authFetch } from "@/lib/auth-fetch";
-import { setPendingReboot } from "@/lib/config-backup/pending-reboot";
+import { setPendingReboot } from "@/lib/reboot/pending";
 
 const ENDPOINT = "/cgi-bin/quecmanager/system/pending_reboot.sh";
 

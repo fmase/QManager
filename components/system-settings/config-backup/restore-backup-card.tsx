@@ -37,7 +37,7 @@ import { authFetch } from "@/lib/auth-fetch";
 import {
   setPendingReboot,
   clearPendingReboot,
-} from "@/lib/config-backup/pending-reboot";
+} from "@/lib/reboot/pending";
 import { cn } from "@/lib/utils";
 import { useTranslation, Trans } from "react-i18next";
 

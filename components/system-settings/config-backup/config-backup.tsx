@@ -22,7 +22,7 @@ import {
   usePendingReboot,
   clearPendingReboot,
   setPendingReboot,
-} from "@/lib/config-backup/pending-reboot";
+} from "@/lib/reboot/pending";
 import { useTranslation } from "react-i18next";
 
 const ConfigurationBackupComponent = () => {

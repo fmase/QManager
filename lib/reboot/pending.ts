@@ -1,16 +1,18 @@
-// lib/config-backup/pending-reboot.ts
+// lib/reboot/pending.ts
 //
 // Local-storage helper for tracking whether the user has a pending modem
-// reboot queued by a config restore. The reboot itself is user-initiated
-// (we cannot reboot the modem from the modem without killing our own UI),
-// so this key persists across navigation/reload until the user dismisses
-// or reboots.
+// reboot queued (e.g. by a config restore or a Verizon profile revert). The
+// reboot itself is user-initiated — we cannot reboot the modem from the modem
+// without killing our own UI — so this key persists across navigation/reload
+// until the user reboots or dismisses it.
 
 const STORAGE_KEY = "qmanager_pending_reboot";
 
+export type PendingRebootSource = "config_restore" | "verizon_revert";
+
 export interface PendingReboot {
   since: number;
-  source: "config_restore" | "verizon_revert";
+  source: PendingRebootSource;
 }
 
 export function readPendingReboot(): PendingReboot | null {
@@ -26,7 +28,7 @@ export function readPendingReboot(): PendingReboot | null {
   }
 }
 
-export function setPendingReboot(source: PendingReboot["source"] = "config_restore"): void {
+export function setPendingReboot(source: PendingRebootSource = "config_restore"): void {
   if (typeof window === "undefined") return;
   const value: PendingReboot = { since: Date.now(), source };
   try {
