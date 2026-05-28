@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { cn } from "@/lib/utils";
 
 import { ModeToggle } from "@/components/public/mode-toggle";
@@ -150,44 +151,56 @@ function SignalBar({
 
 // ---------- Per-band rows --------------------------------------------------
 //
-// One dense line per aggregated carrier: band label · bandwidth pill · RSRP
-// fill bar · RSRP value. Replaces the single aggregate RSRP bar so the
-// pre-login card now tells RSRP per-carrier (carrier aggregation runs 1→5
-// bands). Reuses SignalBar's growth motion and the shared qualityVisual /
-// TONE_CLASSES tonal map so no new visual vocabulary enters the system.
+// One dense line per aggregated carrier: band label · bandwidth pill · signal
+// fill bar · signal value. The metric (RSRP or SINR) is chosen by the header
+// toggle and applies to every row. RSRQ is intentionally not a per-band view
+// (it still feeds the Overall verdict) so the toggle stays binary. Reuses
+// SignalBar's growth motion and the shared qualityVisual / TONE_CLASSES tonal
+// map so no new visual vocabulary enters the system.
 
 type TranslateFn = (key: string, opts?: Record<string, unknown>) => string;
+
+// Per-band readout can show RSRP or SINR; thresholds switch with the metric so
+// quality tinting stays correct under either view.
+type BandMetric = "rsrp" | "sinr";
+
+const BAND_METRIC_THRESHOLDS: Record<BandMetric, SignalThresholds> = {
+  rsrp: RSRP_THRESHOLDS,
+  sinr: SINR_THRESHOLDS,
+};
 
 function BandRow({
   band,
   reachable,
+  metric,
   t,
 }: {
   band: PublicOverviewBand;
   reachable: boolean;
+  metric: BandMetric;
   t: TranslateFn;
 }) {
   const reduceMotion = useReducedMotion();
+  const value = metric === "rsrp" ? band.rsrp : band.sinr;
+  const thresholds = BAND_METRIC_THRESHOLDS[metric];
   const quality: SignalQuality = reachable
-    ? getSignalQuality(band.rsrp, RSRP_THRESHOLDS)
+    ? getSignalQuality(value, thresholds)
     : "none";
-  const percent = reachable ? signalToProgress(band.rsrp, RSRP_THRESHOLDS) : 0;
+  const percent = reachable ? signalToProgress(value, thresholds) : 0;
   const { tone } = qualityVisual(quality, reachable);
   const { text: textClass, bar: barClass } = TONE_CLASSES[tone];
 
   return (
     <div className="flex items-center gap-3 text-sm">
-      {/* Band label — e.g. N41 / B66. Tabular so a multi-band column aligns. */}
-      <span className="text-foreground w-12 shrink-0 truncate font-semibold tabular-nums">
+      {/* Band label — fixed, snug, left-aligned column. The fixed width is what
+          keeps every RSRP/SINR bar the same length (the bar starts at a constant
+          x, so fills are comparable across carriers); left alignment keeps the
+          label flush at the row edge. Per-band bandwidth now lives in the header
+          total, so the row is simply band -> bar -> value. */}
+      <span className="text-foreground w-10 shrink-0 truncate font-semibold tabular-nums">
         {band.band}
       </span>
-      {/* Bandwidth pill — muted outline, the channel width for this carrier. */}
-      <span className="bg-muted/60 text-muted-foreground border-border inline-flex h-5 w-16 shrink-0 items-center justify-center rounded-full border text-[0.6875rem] font-medium tabular-nums">
-        {band.bandwidth_mhz > 0
-          ? t("overview.bands.bandwidth", { bandwidth: band.bandwidth_mhz })
-          : t("overview.field.empty")}
-      </span>
-      {/* RSRP fill bar — same growth + tonal tint as the aggregate SignalBar. */}
+      {/* Signal fill bar — same growth + tonal tint as the aggregate SignalBar. */}
       <div className="bg-muted h-1.5 min-w-0 flex-1 overflow-hidden rounded-full">
         <motion.div
           className={cn(
@@ -203,18 +216,64 @@ function BandRow({
           }
         />
       </div>
-      {/* RSRP value — tinted by this carrier's own quality, not the aggregate. */}
+      {/* Signal value — tinted by this carrier's own quality, not the aggregate. */}
       <span
         className={cn(
           "w-[4.25rem] shrink-0 text-right font-semibold tabular-nums transition-colors duration-200",
           textClass,
         )}
       >
-        {band.rsrp != null
-          ? t("overview.bands.rsrp_unit", { rsrp: band.rsrp })
+        {value != null
+          ? t(`overview.metrics.${metric}_value`, { [metric]: value })
           : t("overview.field.empty")}
       </span>
     </div>
+  );
+}
+
+// ---------- Metric toggle --------------------------------------------------
+//
+// Small segmented control that flips the per-band readout between RSRP and
+// SINR. Sits in the signal-section header where the static metric label used
+// to be, so it both labels the value column and switches it. Outline + joined
+// segments echo the UniFi dense-pill vocabulary. The selected segment uses the
+// shared Toggle on-state (a faint primary/10 tint, the same selected treatment
+// as the active sidebar item), not a solid fill, so it stays within the
+// Signal-Indigo Reserve rather than reading as a second primary CTA.
+
+function MetricToggle({
+  value,
+  onChange,
+  t,
+}: {
+  value: BandMetric;
+  onChange: (metric: BandMetric) => void;
+  t: TranslateFn;
+}) {
+  return (
+    <ToggleGroup
+      type="single"
+      size="sm"
+      variant="outline"
+      value={value}
+      onValueChange={(next) => {
+        // Radix emits "" when the active item is re-pressed; ignore it so one
+        // metric is always selected.
+        if (next) onChange(next as BandMetric);
+      }}
+      aria-label={t("overview.metrics.toggle_aria")}
+      className="h-6"
+    >
+      {(["rsrp", "sinr"] as const).map((m) => (
+        <ToggleGroupItem
+          key={m}
+          value={m}
+          className="text-muted-foreground data-[state=on]:text-foreground h-6 px-2.5 text-[0.6875rem] font-semibold uppercase tracking-wide"
+        >
+          {t(`overview.metrics.${m}`)}
+        </ToggleGroupItem>
+      ))}
+    </ToggleGroup>
   );
 }
 
@@ -254,6 +313,7 @@ function StatusCell({
   value,
   tone,
   Icon,
+  iconClassName,
   spin = false,
   stale = false,
   numeric = false,
@@ -262,6 +322,10 @@ function StatusCell({
   value: string;
   tone?: Tone;
   Icon?: LucideIcon;
+  // Lets a cell tint only its icon (e.g. the temperature warning triangle)
+  // without recoloring the numeric value, so the digits stay neutral while
+  // the icon carries the state. Falls through to the inherited text color.
+  iconClassName?: string;
   spin?: boolean;
   stale?: boolean;
   // Temperature shows digits ("48 °C") that benefit from tabular-nums so
@@ -287,6 +351,7 @@ function StatusCell({
             className={cn(
               "size-4 shrink-0",
               spin && "motion-safe:animate-spin",
+              iconClassName,
             )}
           />
         )}
@@ -309,6 +374,10 @@ export default function OverviewCard() {
   // trio on every tick.
   const [announcement, setAnnouncement] = useState("");
   const prevVerdictRef = useRef<string>("");
+
+  // Per-band signal metric shown by the band rows (RSRP or SINR), driven by the
+  // header toggle. Pre-login read-only view state; not persisted.
+  const [bandMetric, setBandMetric] = useState<BandMetric>("rsrp");
 
   // Setup gate: bounce to /setup/ on a fresh-install device.
   useEffect(() => {
@@ -419,6 +488,8 @@ export default function OverviewCard() {
             consecutiveFailures,
             t,
             refresh,
+            bandMetric,
+            onBandMetricChange: setBandMetric,
           })}
           {/* Single visually-hidden announcer for verdict transitions. Lives
               outside the polled UI surfaces so SR users hear deltas
@@ -450,6 +521,8 @@ interface BodyProps {
   consecutiveFailures: number;
   t: (key: string, opts?: Record<string, unknown>) => string;
   refresh: () => void;
+  bandMetric: BandMetric;
+  onBandMetricChange: (metric: BandMetric) => void;
 }
 
 // After this many consecutive fetch failures, swap from "stale data + chip"
@@ -465,6 +538,8 @@ function renderBody({
   consecutiveFailures,
   t,
   refresh,
+  bandMetric,
+  onBandMetricChange,
 }: BodyProps) {
   if (isLoading && !data) {
     return <SkeletonBody loadingLabel={t("overview.loading_status")} />;
@@ -522,17 +597,24 @@ function renderBody({
 
   const carrier = data.network.carrier || t("overview.field.empty");
   const networkType = data.network.type || t("overview.field.empty");
-  // Per-carrier band readout. The header-trio cell stays a compact count
-  // ("3 active"); the detail (per-band bandwidth + RSRP) lives in the signal
-  // section below. The joined "B1, N41" list survives as the cell's tooltip.
+  // Per-carrier band readout. The header-trio cell shows aggregate channel
+  // bandwidth ("95 MHz") summed across carriers; the per-band detail lives in
+  // the signal section below. The joined "B1, N41" list survives as the cell's
+  // tooltip so the individual bands stay one hover away.
   const bands = data.network.bands ?? [];
   const bandList = bands
     .map((b) => b.band)
     .filter(Boolean)
     .join(", ");
+  // Round to one decimal so float channel widths (e.g. 1.4 MHz LTE) don't
+  // surface FP noise like "46.40000001 MHz" once summed.
+  const totalBandwidth =
+    Math.round(
+      bands.reduce((sum, b) => sum + (b.bandwidth_mhz || 0), 0) * 10,
+    ) / 10;
   const bandsHeaderValue =
-    bands.length > 0
-      ? t("overview.bands.count", { count: bands.length })
+    totalBandwidth > 0
+      ? t("overview.bands.bandwidth", { bandwidth: totalBandwidth })
       : t("overview.field.empty");
 
   // Overall = worst of RSRP/RSRQ/SINR. RSRP-alone would mask a strong-signal /
@@ -545,9 +627,19 @@ function renderBody({
   const qualityLabel = t(`overview.quality.${quality}`);
   const connectionText = t(`overview.connection.${connectionLabel}`);
   const tempText = formatTemperature(data.temperature);
+  // Thermal state shown visually, not just announced: warn/danger surface a
+  // tinted TriangleAlertIcon beside the value so a sighted tech (often beside
+  // a hot device in sunlight) sees the rise. The digits stay neutral; the icon
+  // carries the state. warn -> amber, danger -> red, normal/unknown -> none.
+  const tempTone: Tone | undefined =
+    temperatureBand(data.temperature) === "danger"
+      ? "destructive"
+      : temperatureBand(data.temperature) === "warn"
+        ? "warning"
+        : undefined;
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-6">
       {/* Stale indicator stays as a chip above the header trio so screen
           readers (aria-live) catch the warning without re-announcing every
           poll tick from the cells themselves. */}
@@ -583,6 +675,10 @@ function renderBody({
           label={t("overview.header.network")}
           value={networkType}
         />
+        {/* Legacy key id `header.bands` now reads "Bandwidth" — the cell shows
+            aggregate channel bandwidth, with the band list kept in the tooltip.
+            Key kept (not renamed to .bandwidth) so installed language packs that
+            mirror this id don't lose their translation. */}
         <HeaderCell
           label={t("overview.header.bands")}
           value={bandsHeaderValue}
@@ -590,59 +686,51 @@ function renderBody({
         />
       </div>
 
-      {/* Signal section — per-band RSRP rows carry the per-carrier read; RSRQ
-          and SINR stay aggregate as the overall link-quality verdict. Each
-          fill is tinted by its own quality so a weak SINR under good RSRP
-          shows up immediately. */}
+      {/* Signal section — per-band rows carry the per-carrier read for the
+          metric chosen by the header toggle (RSRP or SINR). The aggregate
+          RSRQ/SINR bars were removed to give the band rows room; RSRQ still
+          feeds the Overall verdict below. Each fill is tinted by its own
+          quality so a weak carrier stands out immediately. */}
       <div
         className={cn(
           "flex flex-col gap-3 transition-opacity duration-200",
           isStale && "opacity-70",
         )}
       >
+        {/* Eyebrow + metric toggle. The active segment labels the value column
+            and flips every band row (and the fallback bar) between RSRP/SINR. */}
+        <div className="flex items-center justify-between gap-3">
+          <span className={EYEBROW_CLASS}>{t("overview.bands.section")}</span>
+          <MetricToggle
+            value={bandMetric}
+            onChange={onBandMetricChange}
+            t={t}
+          />
+        </div>
         {bands.length > 0 ? (
-          <div className="flex flex-col gap-2">
-            {/* Eyebrow row labels the band column and its RSRP value column. */}
-            <div className="flex items-center justify-between">
-              <span className={EYEBROW_CLASS}>{t("overview.bands.section")}</span>
-              <span className={EYEBROW_CLASS}>{t("overview.metrics.rsrp")}</span>
-            </div>
-            <div className="flex flex-col gap-2">
-              {bands.map((b, i) => (
-                <BandRow
-                  key={`${b.band}-${b.pci ?? "x"}-${i}`}
-                  band={b}
-                  reachable={reachable}
-                  t={t}
-                />
-              ))}
-            </div>
+          <div className="flex flex-col gap-3">
+            {bands.map((b, i) => (
+              <BandRow
+                key={`${b.band}-${b.pci ?? "x"}-${i}`}
+                band={b}
+                reachable={reachable}
+                metric={bandMetric}
+                t={t}
+              />
+            ))}
           </div>
         ) : (
           // No carrier components reported (e.g. attach in progress): fall back
-          // to the aggregate RSRP bar so the metric is never simply dropped.
+          // to a single aggregate bar for the selected metric so it's never
+          // simply dropped.
           <SignalBar
-            metric={t("overview.metrics.rsrp")}
-            value={data.signal.rsrp}
-            unit="dBm"
-            thresholds={RSRP_THRESHOLDS}
+            metric={t(`overview.metrics.${bandMetric}`)}
+            value={bandMetric === "rsrp" ? data.signal.rsrp : data.signal.sinr}
+            unit={bandMetric === "rsrp" ? "dBm" : "dB"}
+            thresholds={BAND_METRIC_THRESHOLDS[bandMetric]}
             reachable={reachable}
           />
         )}
-        <SignalBar
-          metric={t("overview.metrics.rsrq")}
-          value={data.signal.rsrq}
-          unit="dB"
-          thresholds={RSRQ_THRESHOLDS}
-          reachable={reachable}
-        />
-        <SignalBar
-          metric={t("overview.metrics.sinr")}
-          value={data.signal.sinr}
-          unit="dB"
-          thresholds={SINR_THRESHOLDS}
-          reachable={reachable}
-        />
       </div>
 
       {/* Status trio — Overall · Internet · Temperature. No aria-live here —
@@ -663,6 +751,8 @@ function renderBody({
         <StatusCell
           label={t("overview.status.temperature")}
           value={tempText}
+          Icon={tempTone ? TriangleAlertIcon : undefined}
+          iconClassName={tempTone ? TONE_CLASSES[tempTone].text : undefined}
           stale={isStale}
           numeric
         />
@@ -677,7 +767,7 @@ function SkeletonBody({ loadingLabel }: { loadingLabel?: string } = {}) {
   // Mirrors the rendered layout (header trio → 3 bars → status trio) so the
   // first paint → data arrival transition does not shift.
   return (
-    <div className="flex flex-col gap-5" aria-busy="true">
+    <div className="flex flex-col gap-6" aria-busy="true">
       {loadingLabel && <span className="sr-only">{loadingLabel}</span>}
       {/* Header trio skeleton — heights mirror the rendered cell so first
           paint → data arrival doesn't shift. Eyebrow h-2.5 ≈ 11px text;
@@ -694,36 +784,27 @@ function SkeletonBody({ loadingLabel }: { loadingLabel?: string } = {}) {
         ))}
       </div>
 
-      {/* Signal section skeleton — mirrors the live shape (per-band rows +
-          two aggregate bars) so the first paint → data arrival doesn't shift.
-          Three band rows is the typical NSA/CA case; fewer real bands simply
+      {/* Signal section skeleton — mirrors the live shape (eyebrow + metric
+          toggle, then per-band rows) so the first paint → data arrival doesn't
+          shift. Three band rows is the typical NSA/CA case; fewer real bands
           settle shorter. */}
       <div className="flex flex-col gap-3">
-        <div className="flex flex-col gap-2">
-          <div className="flex items-center justify-between">
-            <Skeleton className="h-2.5 w-12" />
-            <Skeleton className="h-2.5 w-10" />
-          </div>
-          <div className="flex flex-col gap-2">
-            {[0, 1, 2].map((i) => (
-              <div key={i} className="flex items-center gap-3">
-                <Skeleton className="h-3.5 w-12" />
-                <Skeleton className="h-5 w-16 rounded-full" />
-                <Skeleton className="h-1.5 min-w-0 flex-1 rounded-full" />
-                <Skeleton className="h-3.5 w-[4.25rem]" />
-              </div>
-            ))}
-          </div>
+        <div className="flex items-center justify-between gap-3">
+          <Skeleton className="h-2.5 w-12" />
+          {/* Metric toggle placeholder. */}
+          <Skeleton className="h-6 w-[5.5rem] rounded-md" />
         </div>
-        {[0, 1].map((i) => (
-          <div key={i} className="flex flex-col gap-1.5">
-            <div className="flex justify-between">
-              <Skeleton className="h-4 w-10" />
-              <Skeleton className="h-4 w-16" />
+        <div className="flex flex-col gap-3">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="flex items-center gap-3">
+              {/* Label mirrors the live fixed-width band column so the bar
+                  start lines up; no pill placeholder anymore. */}
+              <Skeleton className="h-3.5 w-10" />
+              <Skeleton className="h-1.5 min-w-0 flex-1 rounded-full" />
+              <Skeleton className="h-3.5 w-[4.25rem]" />
             </div>
-            <Skeleton className="h-1.5 w-full rounded-full" />
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
 
       {/* Status trio skeleton — eyebrow h-2.5 ≈ 11px; value h-4 matches the

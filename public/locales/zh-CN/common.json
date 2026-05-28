@@ -68,7 +68,7 @@
     "header": {
       "carrier": "运营商",
       "network": "网络",
-      "bands": "频段"
+      "bands": "带宽"
     },
     "status": {
       "overall": "总体",
@@ -113,7 +113,8 @@
       "sinr": "SINR",
       "rsrp_value": "{{rsrp}} dBm",
       "rsrq_value": "{{rsrq}} dB",
-      "sinr_value": "{{sinr}} dB"
+      "sinr_value": "{{sinr}} dB",
+      "toggle_aria": "切换频段信号指标"
     },
     "signal": {
       "dual": "{{rsrp}} dBm · {{sinr}} dB SINR",

@@ -68,7 +68,7 @@
     "header": {
       "carrier": "Carrier",
       "network": "Network",
-      "bands": "Bands"
+      "bands": "Bandwidth"
     },
     "status": {
       "overall": "Overall",
@@ -113,7 +113,8 @@
       "sinr": "SINR",
       "rsrp_value": "{{rsrp}} dBm",
       "rsrq_value": "{{rsrq}} dB",
-      "sinr_value": "{{sinr}} dB"
+      "sinr_value": "{{sinr}} dB",
+      "toggle_aria": "Switch band signal metric"
     },
     "signal": {
       "dual": "{{rsrp}} dBm · {{sinr}} dB SINR",
