@@ -3,6 +3,7 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { authFetch } from "@/lib/auth-fetch";
+import { enterRebootFlow } from "@/lib/reboot";
 import { resolveErrorMessage } from "@/lib/i18n/resolve-error";
 import type {
   MbnProfile,
@@ -160,6 +161,9 @@ export function useMbnSettings(): UseMbnSettingsReturn {
       }
 
       const data: MbnSaveResponse = await resp.json();
+      if (data.success) {
+        enterRebootFlow("mbn");
+      }
       return data.success;
     } catch {
       return false;
