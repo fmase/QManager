@@ -36,9 +36,15 @@ export function RebootCountdown() {
   const [remaining, setRemaining] = useState(TOTAL_SECONDS);
   const pollingRef = useRef(false);
   const remainingRef = useRef(TOTAL_SECONDS);
+  const guardRanRef = useRef(false);
 
-  // Direct-access guard: only show countdown if a reboot was actually triggered
+  // Direct-access guard: only show countdown if a reboot was actually triggered.
+  // The flag is consumed (one-shot), so this must run exactly once — the ref
+  // makes it survive StrictMode's dev double-invoke, which would otherwise
+  // re-read the already-removed flag as missing and bounce home mid-reboot.
   useEffect(() => {
+    if (guardRanRef.current) return;
+    guardRanRef.current = true;
     const flag = sessionStorage.getItem(SESSION_KEY);
     if (!flag) {
       window.location.href = "/";

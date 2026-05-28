@@ -2,6 +2,7 @@
 
 ## ✨ New Features
 
+- **Redesigned APN Management with multiple connection profiles.** Manage all six of your modem's APN profiles from a single page — name each one, edit its APN, IP type, and authentication, and switch profiles on or off independently. Carrier-provisioned IMS (VoLTE) and emergency (SOS) profiles are clearly tagged and locked, so you can't accidentally break voice or 911 service. Available in all supported languages.
 - **Modem temperature now shown on the login page.** The pre-login "Live Modem Status" card displays the current modem temperature. A warning badge appears automatically when the modem is running hot (≥ 60 °C) or overheating (≥ 75 °C).
 
 ## ✅ Improvements
