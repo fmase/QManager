@@ -4,6 +4,7 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { authFetch } from "@/lib/auth-fetch";
 import { resolveErrorMessage } from "@/lib/i18n/resolve-error";
+import { enterRebootFlow } from "@/lib/reboot";
 
 // =============================================================================
 // useSoftwareUpdate — Check, download, install QManager updates
@@ -241,11 +242,7 @@ export function useSoftwareUpdate(): UseSoftwareUpdateReturn {
           // Stop polling, navigate to reboot page
           if (pollRef.current) clearInterval(pollRef.current);
           pollRef.current = null;
-          setTimeout(() => {
-            sessionStorage.setItem("qm_rebooting", "1");
-            document.cookie = "qm_logged_in=; Path=/; Max-Age=0";
-            window.location.href = "/reboot/";
-          }, 2000);
+          enterRebootFlow("software_update");
         }
 
         if (json.status === "error") {
@@ -262,11 +259,7 @@ export function useSoftwareUpdate(): UseSoftwareUpdateReturn {
         if (pollRef.current) clearInterval(pollRef.current);
         pollRef.current = null;
 
-        setTimeout(() => {
-          sessionStorage.setItem("qm_rebooting", "1");
-          document.cookie = "qm_logged_in=; Path=/; Max-Age=0";
-          window.location.href = "/reboot/";
-        }, 2000);
+        enterRebootFlow("software_update");
       }
     }, POLL_INTERVAL);
   }, [armInstallStallTimer, clearInstallStallTimer, t]);
@@ -388,11 +381,7 @@ export function useSoftwareUpdate(): UseSoftwareUpdateReturn {
       }
 
       setUpdateStatus({ status: "rebooting", message: "Rebooting device..." });
-      setTimeout(() => {
-        sessionStorage.setItem("qm_rebooting", "1");
-        document.cookie = "qm_logged_in=; Path=/; Max-Age=0";
-        window.location.href = "/reboot/";
-      }, 1000);
+      enterRebootFlow("software_update");
     } catch (err) {
       if (!mountedRef.current) return;
       setError(err instanceof Error ? err.message : "Failed to request reboot");
