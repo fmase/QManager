@@ -26,6 +26,9 @@
     "on": "开",
     "off": "关"
   },
+  "profile_override": {
+    "banner": "{{controls}} 由自定义 SIM 配置文件 <strong>{{profile_name}}</strong> 管理。"
+  },
   "time": {
     "just_now": "刚刚",
     "now": "现在",

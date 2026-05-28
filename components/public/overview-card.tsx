@@ -4,11 +4,9 @@ import Link from "next/link";
 import { useTranslation } from "react-i18next";
 import { motion, useReducedMotion } from "motion/react";
 import {
-  AlertCircleIcon,
   CheckCircle2Icon,
   Loader2Icon,
   MinusCircleIcon,
-  ThermometerIcon,
   TriangleAlertIcon,
   XCircleIcon,
   type LucideIcon,
@@ -45,41 +43,6 @@ import {
 import type { ConnectionState } from "@/types/modem-status";
 import { useEffect, useRef, useState } from "react";
 
-// ---------- Connection → status mapping ------------------------------------
-//
-// Single source of truth for how a derived connection label maps to a
-// functional-color tone and a lucide icon. Used by the Internet status
-// cell below.
-
-type Tone = "success" | "warning" | "info" | "destructive" | "muted";
-
-interface ConnectionVisual {
-  tone: Tone;
-  Icon: LucideIcon;
-  spin?: boolean;
-}
-
-function connectionVisual(
-  label: ConnectionState | "modem_unreachable",
-): ConnectionVisual {
-  switch (label) {
-    case "connected":
-      return { tone: "success", Icon: CheckCircle2Icon };
-    case "limited":
-      return { tone: "warning", Icon: TriangleAlertIcon };
-    case "searching":
-      return { tone: "info", Icon: Loader2Icon, spin: true };
-    case "inactive":
-    case "unknown":
-      return { tone: "muted", Icon: MinusCircleIcon };
-    case "disconnected":
-    case "error":
-    case "modem_unreachable":
-    default:
-      return { tone: "destructive", Icon: XCircleIcon };
-  }
-}
-
 // Temperature warning thresholds — kept in sync with device-metrics.tsx
 const TEMP_WARN = 60; // °C
 const TEMP_DANGER = 75; // °C
@@ -93,16 +56,7 @@ function temperatureBand(temp: number | null): TempBand {
   return "normal";
 }
 
-function temperatureVisual(temp: number | null): {
-  tone: Tone;
-  Icon: LucideIcon;
-} {
-  const band = temperatureBand(temp);
-  if (band === "unknown") return { tone: "muted", Icon: ThermometerIcon };
-  if (band === "danger") return { tone: "destructive", Icon: AlertCircleIcon };
-  if (band === "warn") return { tone: "warning", Icon: TriangleAlertIcon };
-  return { tone: "success", Icon: ThermometerIcon };
-}
+type Tone = "success" | "warning" | "info" | "destructive" | "muted";
 
 function qualityVisual(quality: SignalQuality, reachable: boolean): {
   tone: Tone;
@@ -235,8 +189,8 @@ function StatusCell({
 }: {
   label: string;
   value: string;
-  tone: Tone;
-  Icon: LucideIcon;
+  tone?: Tone;
+  Icon?: LucideIcon;
   spin?: boolean;
   stale?: boolean;
   // Temperature shows digits ("48 °C") that benefit from tabular-nums so
@@ -244,25 +198,27 @@ function StatusCell({
   // are alphabetic ("Good", "Connected") and don't need the feature.
   numeric?: boolean;
 }) {
-  const { text } = TONE_CLASSES[tone];
+  const textClass = tone ? TONE_CLASSES[tone].text : "text-foreground";
   return (
     <div className="flex min-w-0 flex-col gap-1.5">
       <span className={EYEBROW_CLASS}>{label}</span>
       <span
         className={cn(
           "flex items-center gap-1.5 text-base font-semibold leading-none tracking-tight transition-colors duration-200",
-          text,
+          textClass,
           numeric && "tabular-nums",
           stale && "opacity-70",
         )}
       >
-        <Icon
-          aria-hidden
-          className={cn(
-            "size-4 shrink-0",
-            spin && "motion-safe:animate-spin",
-          )}
-        />
+        {Icon && (
+          <Icon
+            aria-hidden
+            className={cn(
+              "size-4 shrink-0",
+              spin && "motion-safe:animate-spin",
+            )}
+          />
+        )}
         <span className="truncate">{value}</span>
       </span>
     </div>
@@ -363,7 +319,7 @@ export default function OverviewCard() {
           <CardAction className="flex items-center gap-1.5">
             <Button
               variant="outline"
-              size="icon-touch"
+              size="icon"
               asChild
               aria-label={t("overview.actions.luci_aria")}
               title={t("overview.actions.luci")}
@@ -514,12 +470,7 @@ function renderBody({
     getSignalQuality(data.signal.sinr, SINR_THRESHOLDS),
   );
   const qualityLabel = t(`overview.quality.${quality}`);
-  const qualityV = qualityVisual(quality, reachable);
-
-  const connV = connectionVisual(connectionLabel);
   const connectionText = t(`overview.connection.${connectionLabel}`);
-
-  const tempV = temperatureVisual(data.temperature);
   const tempText = formatTemperature(data.temperature);
 
   return (
@@ -605,23 +556,16 @@ function renderBody({
         <StatusCell
           label={t("overview.status.overall")}
           value={qualityLabel}
-          tone={qualityV.tone}
-          Icon={qualityV.Icon}
           stale={isStale}
         />
         <StatusCell
           label={t("overview.status.connectivity")}
           value={connectionText}
-          tone={connV.tone}
-          Icon={connV.Icon}
-          spin={connV.spin}
           stale={isStale}
         />
         <StatusCell
           label={t("overview.status.temperature")}
           value={tempText}
-          tone={tempV.tone}
-          Icon={tempV.Icon}
           stale={isStale}
           numeric
         />

@@ -699,6 +699,7 @@
       "scanning_hint": "Di solito ci vogliono 2-3 minuti. Le altre operazioni del modem vengono messe in pausa durante la scansione.",
       "scanning_nav_warning": "Si prega di non chiudere la scheda o aggiornare la pagina.",
       "scanning_elapsed_aria": "Tempo trascorso della scansione: {{time}}",
+      "scanning_loading_aria": "Scansione in corso",
       "error_fallback": "Scansione non riuscita",
       "error_description": "Il modem potrebbe essere occupato o irraggiungibile. Controlla la connessione e riprova.",
       "retry_scan": "Riprovare la scansione"
@@ -1005,46 +1006,137 @@
     "apn": {
       "page": {
         "title": "Gestione APN",
-        "description": "Configura gli APN e i profili firmware dell'operatore.",
-        "error_load": "Impossibile caricare le impostazioni APN. I valori visualizzati potrebbero essere obsoleti."
+        "description": "Gestisci i profili di connessione APN cellulare e la configurazione dell'operatore.",
+        "error_load_title": "Impossibile caricare i profili WAN",
+        "error_load_description": "I valori visualizzati potrebbero essere obsoleti."
       },
-      "card": {
-        "title": "APN Impostazioni",
-        "description": "Configura e gestisci i nomi dei punti di accesso (APN) per le tue connessioni cellulari."
-      },
-      "fields": {
-        "active_apn": {
-          "label": "Attivo APN *",
-          "placeholder": "Inserisci Attivo APN"
+      "controls_label": "Configurazione APN",
+      "managed_by_profile_fallback": "profilo SIM personalizzato attivo",
+      "list": {
+        "card": {
+          "title": "Profili APN",
+          "description": "Gestisci i profili di connessione WAN del tuo modem. Attiva/disattiva i profili o modifica la loro configurazione."
         },
-        "carrier_preset": {
-          "label": "Preimpostazione portante",
-          "placeholder": "Scegli Preimpostazione operatore",
-          "option_none": "Nessuno"
+        "empty": {
+          "title": "Nessun profilo WAN trovato",
+          "subtitle": "Il modem non ha restituito alcuno slot di profilo."
         },
-        "connection_profile": {
-          "label": "Profilo di connessione",
-          "placeholder": "Scegli Profilo di connessione",
-          "option_template": "Profilo {{cid}} — {{apn}}",
-          "option_empty_apn": "(vuoto)",
-          "option_active_suffix": " (Attivo)"
+        "unnamed": "Senza nome",
+        "no_apn": "Nessun APN impostato",
+        "status": {
+          "connected": "Connesso",
+          "error": "Errore",
+          "disconnected": "Disconnesso"
         },
-        "ip_protocol": {
-          "label": "IP Protocollo",
-          "placeholder": "Scegli IP Protocollo",
-          "options": {
-            "ipv4v6": "IPv4 + IPv6 (predefinito)",
-            "ipv4": "IPv4 Solo",
-            "ipv6": "IPv6 Solo"
-          }
+        "apn_type": {
+          "ims_label": "IMS",
+          "sos_label": "SOS",
+          "ims_tooltip": "Profilo IMS — gestisce Voice over LTE (VoLTE) e SMS over IMS",
+          "sos_tooltip": "Profilo servizi di emergenza (SOS) — necessario per le chiamate 911 / E911",
+          "other_tooltip": "Profilo {{label}} fornito dall'operatore"
+        },
+        "aria": {
+          "enable_switch": "Abilita profilo {{index}}",
+          "disable_switch": "Disabilita profilo {{index}}",
+          "edit_button": "Modifica profilo {{index}}"
+        },
+        "toast": {
+          "enabled": "Profilo {{index}} abilitato",
+          "disabled": "Profilo {{index}} disabilitato",
+          "enable_error": "Impossibile abilitare il profilo {{index}}",
+          "disable_error": "Impossibile disabilitare il profilo {{index}}"
         }
       },
-      "managed_by_profile": "Le impostazioni di APN sono gestite da <strong>{{profile_name}}</strong>.",
-      "managed_by_profile_fallback": "profilo SIM personalizzato attivo",
-      "reset_aria": "Ripristina i valori salvati",
-      "toast": {
-        "success": "Le impostazioni APN sono state applicate correttamente",
-        "error": "Impossibile applicare le impostazioni APN"
+      "edit": {
+        "title": "Modifica profilo {{index}}",
+        "description_default": "Configura APN, autenticazione e impostazioni di connessione per il profilo {{index}}.",
+        "description_carrier": "Profilo fornito dall'operatore: {{type}}",
+        "carrier_type": {
+          "ims": "IMS (Voice over LTE)",
+          "sos": "Servizi di emergenza (SOS)"
+        },
+        "carrier_alert": {
+          "title": "Profilo fornito dall'operatore",
+          "description": "Questo profilo è gestito dal tuo operatore e non può essere modificato. Le modifiche ai profili IMS e di emergenza possono interrompere i servizi voce e di emergenza."
+        },
+        "fields": {
+          "name": {
+            "label": "Nome",
+            "placeholder": "Il mio profilo dati"
+          },
+          "apn": {
+            "label": "APN *",
+            "placeholder": "fast.t-mobile.com",
+            "error_required": "L'APN è obbligatorio"
+          },
+          "pdp_type": {
+            "label": "Tipo PDP",
+            "placeholder": "Seleziona tipo PDP",
+            "aria": "Tipo PDP",
+            "options": {
+              "ipv4": "IPv4",
+              "ipv6": "IPv6",
+              "ipv4v6": "IPv4v6"
+            }
+          },
+          "auth_type": {
+            "label": "Tipo di autenticazione",
+            "placeholder": "Seleziona tipo di autenticazione",
+            "aria": "Tipo di autenticazione",
+            "options": {
+              "none": "Nessuno",
+              "pap": "PAP",
+              "chap": "CHAP"
+            }
+          },
+          "username": {
+            "label": "Nome utente",
+            "placeholder": "Nome utente"
+          },
+          "password": {
+            "label": "Password",
+            "placeholder": "Password",
+            "show_aria": "Mostra password",
+            "hide_aria": "Nascondi password"
+          },
+          "mtu": {
+            "label": "MTU",
+            "placeholder": "1500 (predefinito)",
+            "error_range": "L'MTU deve essere compreso tra 1 e 1500"
+          },
+          "modem_profile": {
+            "label": "Profilo modem",
+            "placeholder": "Seleziona CID",
+            "aria": "Profilo modem (CID)",
+            "option_template": "CID {{cid}}"
+          },
+          "vlan": {
+            "label": "Mappa su LAN / VLAN",
+            "placeholder": "Predefinito (bridge0)",
+            "aria": "Mappatura VLAN",
+            "option_default": "Predefinito (bridge0)",
+            "option_vlan": "VLAN {{n}}"
+          },
+          "default_route": {
+            "label": "Route predefinita",
+            "tooltip": "Invia il traffico internet di questo dispositivo attraverso la connessione di questo profilo. Solo un profilo alla volta può essere la route predefinita.",
+            "info_aria": "Che cos'è la route predefinita?",
+            "aria": "Imposta come route predefinita"
+          },
+          "ip_passthrough": {
+            "label": "IP Passthrough",
+            "tooltip": "Passa l'IP WAN pubblico del modem direttamente a un dispositivo connesso, bypassando il NAT. Utile per un router a valle, una console o un server.",
+            "info_aria": "Che cos'è l'IP Passthrough?",
+            "aria": "Abilita IP passthrough"
+          }
+        },
+        "save_button": "Salva profilo",
+        "cancel": "Annulla",
+        "back": "Indietro",
+        "toast": {
+          "saved": "Profilo {{index}} salvato correttamente",
+          "save_error": "Impossibile salvare il profilo {{index}}"
+        }
       },
       "mbn": {
         "card": {

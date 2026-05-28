@@ -6,6 +6,10 @@
 
 ## ✅ Improvements
 
+- **Cell Scanner & Neighbour Cells: loading state is now responsive on phones.** The previous skeleton overflowed the card on screens narrower than ~375px. Both scanners now share one scanning view with an elapsed-time counter, and result tables scroll horizontally on narrow viewports instead of breaking the page layout.
+- **Cell scan result tables: pagination footer stacks on narrow screens and meets mobile touch-target sizes.** Previous/Next buttons grow to a thumb-friendly 44px when stacked, and the row count moves above them so nothing gets clipped.
+- **Neighbour Cells: column-visibility menu now shows translated column names** instead of raw IDs like `networkType` or `signalStrength`.
+- **Scan loading state now announces to screen readers** via an ARIA live region while a scan is in progress.
 - **Tower Locking carrier picker now shows EARFCN/ARFCN values.** Each option in the LTE and NR-SA Simple Mode dropdowns now displays a PCC/SCC tag, the band, the channel number in parentheses, and RSRP in dBm — making it easier to identify the right carrier at a glance.
 - **Watchdog: spurious "New SIM card detected" notification after recovery is fixed.** When the watchdog switched to your backup SIM and you later rebooted, you'd see a misleading "physical SIM swap" banner. The active SIM is now remembered properly across reboots.
 - **Watchdog: settings now require picking a backup slot when "Switch to Backup SIM" is enabled.** Previously you could turn the option on without choosing a slot — the watchdog would silently skip that recovery step. The form now blocks Save until a slot is selected.

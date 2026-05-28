@@ -724,6 +724,7 @@
       "scanning_hint": "通常需要 2-3 分钟。扫描期间其他调制解调器操作将暂停。",
       "scanning_nav_warning": "请不要关闭标签页或刷新页面。",
       "scanning_elapsed_aria": "扫描已用时间：{{time}}",
+      "scanning_loading_aria": "正在扫描",
       "error_fallback": "扫描失败",
       "error_description": "调制解调器可能繁忙或无法访问。请检查连接后重试。",
       "retry_scan": "重试扫描"
@@ -1030,46 +1031,137 @@
     "apn": {
       "page": {
         "title": "APN 管理",
-        "description": "配置 APN 和运营商固件配置。",
-        "error_load": "加载 APN 设置失败。显示的值可能已过时。"
+        "description": "管理蜂窝 APN 连接配置和运营商配置。",
+        "error_load_title": "加载 WAN 配置失败",
+        "error_load_description": "显示的值可能已过时。"
       },
-      "card": {
-        "title": "APN 设置",
-        "description": "配置和管理蜂窝连接的接入点名称（APN）。"
-      },
-      "fields": {
-        "active_apn": {
-          "label": "活动 APN *",
-          "placeholder": "输入活动 APN"
+      "controls_label": "APN 配置",
+      "managed_by_profile_fallback": "活动的自定义 SIM 配置",
+      "list": {
+        "card": {
+          "title": "APN 配置文件",
+          "description": "管理调制解调器的 WAN 连接配置文件。开启/关闭配置文件或编辑其配置。"
         },
-        "carrier_preset": {
-          "label": "运营商预设",
-          "placeholder": "选择运营商预设",
-          "option_none": "无"
+        "empty": {
+          "title": "未找到 WAN 配置文件",
+          "subtitle": "调制解调器未返回任何配置文件槽位。"
         },
-        "connection_profile": {
-          "label": "连接配置",
-          "placeholder": "选择连接配置",
-          "option_template": "配置 {{cid}} — {{apn}}",
-          "option_empty_apn": "（空）",
-          "option_active_suffix": "（活动）"
+        "unnamed": "未命名",
+        "no_apn": "未设置 APN",
+        "status": {
+          "connected": "已连接",
+          "error": "错误",
+          "disconnected": "已断开"
         },
-        "ip_protocol": {
-          "label": "IP 协议",
-          "placeholder": "选择 IP 协议",
-          "options": {
-            "ipv4v6": "IPv4 + IPv6（默认）",
-            "ipv4": "仅 IPv4",
-            "ipv6": "仅 IPv6"
-          }
+        "apn_type": {
+          "ims_label": "IMS",
+          "sos_label": "SOS",
+          "ims_tooltip": "IMS 配置文件 — 处理 LTE 语音（VoLTE）和 IMS 短信",
+          "sos_tooltip": "紧急服务配置文件（SOS）— 911 / E911 通话所需",
+          "other_tooltip": "运营商预配的 {{label}} 配置文件"
+        },
+        "aria": {
+          "enable_switch": "启用配置文件 {{index}}",
+          "disable_switch": "禁用配置文件 {{index}}",
+          "edit_button": "编辑配置文件 {{index}}"
+        },
+        "toast": {
+          "enabled": "配置文件 {{index}} 已启用",
+          "disabled": "配置文件 {{index}} 已禁用",
+          "enable_error": "启用配置文件 {{index}} 失败",
+          "disable_error": "禁用配置文件 {{index}} 失败"
         }
       },
-      "managed_by_profile": "APN 设置由 <strong>{{profile_name}}</strong> 管理。",
-      "managed_by_profile_fallback": "活动的自定义 SIM 配置",
-      "reset_aria": "重置为已保存值",
-      "toast": {
-        "success": "APN 设置已成功应用",
-        "error": "应用 APN 设置失败"
+      "edit": {
+        "title": "编辑配置文件 {{index}}",
+        "description_default": "为配置文件 {{index}} 配置 APN、身份验证和连接设置。",
+        "description_carrier": "运营商预配的配置文件：{{type}}",
+        "carrier_type": {
+          "ims": "IMS（LTE 语音）",
+          "sos": "紧急服务（SOS）"
+        },
+        "carrier_alert": {
+          "title": "运营商预配的配置文件",
+          "description": "此配置文件由您的运营商管理，无法编辑。修改 IMS 和紧急配置文件可能会中断语音和紧急服务。"
+        },
+        "fields": {
+          "name": {
+            "label": "名称",
+            "placeholder": "我的数据配置文件"
+          },
+          "apn": {
+            "label": "APN *",
+            "placeholder": "fast.t-mobile.com",
+            "error_required": "APN 为必填项"
+          },
+          "pdp_type": {
+            "label": "PDP 类型",
+            "placeholder": "选择 PDP 类型",
+            "aria": "PDP 类型",
+            "options": {
+              "ipv4": "IPv4",
+              "ipv6": "IPv6",
+              "ipv4v6": "IPv4v6"
+            }
+          },
+          "auth_type": {
+            "label": "身份验证类型",
+            "placeholder": "选择身份验证类型",
+            "aria": "身份验证类型",
+            "options": {
+              "none": "无",
+              "pap": "PAP",
+              "chap": "CHAP"
+            }
+          },
+          "username": {
+            "label": "用户名",
+            "placeholder": "用户名"
+          },
+          "password": {
+            "label": "密码",
+            "placeholder": "密码",
+            "show_aria": "显示密码",
+            "hide_aria": "隐藏密码"
+          },
+          "mtu": {
+            "label": "MTU",
+            "placeholder": "1500（默认）",
+            "error_range": "MTU 必须在 1 到 1500 之间"
+          },
+          "modem_profile": {
+            "label": "调制解调器配置文件",
+            "placeholder": "选择 CID",
+            "aria": "调制解调器配置文件（CID）",
+            "option_template": "CID {{cid}}"
+          },
+          "vlan": {
+            "label": "映射到 LAN / VLAN",
+            "placeholder": "默认（bridge0）",
+            "aria": "VLAN 映射",
+            "option_default": "默认（bridge0）",
+            "option_vlan": "VLAN {{n}}"
+          },
+          "default_route": {
+            "label": "默认路由",
+            "tooltip": "通过此配置文件的连接发送本设备的互联网流量。同一时间只能有一个配置文件作为默认路由。",
+            "info_aria": "什么是默认路由？",
+            "aria": "设为默认路由"
+          },
+          "ip_passthrough": {
+            "label": "IP 直通",
+            "tooltip": "将调制解调器的公网 WAN IP 直接传递给一台已连接设备，绕过 NAT。适用于下游路由器、游戏主机或服务器。",
+            "info_aria": "什么是 IP 直通？",
+            "aria": "启用 IP 直通"
+          }
+        },
+        "save_button": "保存配置文件",
+        "cancel": "取消",
+        "back": "返回",
+        "toast": {
+          "saved": "配置文件 {{index}} 已成功保存",
+          "save_error": "保存配置文件 {{index}} 失败"
+        }
       },
       "mbn": {
         "card": {

@@ -26,6 +26,9 @@
     "on": "Attivo",
     "off": "Disattivo"
   },
+  "profile_override": {
+    "banner": "{{controls}} è gestito dal profilo SIM personalizzato <strong>{{profile_name}}</strong>."
+  },
   "time": {
     "just_now": "Proprio adesso",
     "now": "Ora",

@@ -22,25 +22,23 @@ import {
 // (view-transition circle-clip), and the pre-login surface gets the more
 // conventional dropdown so first-time visitors can pick "system" explicitly.
 //
-// The optional `size` prop defaults to "icon-touch" so the Overview (the
-// outdoor-glance surface the touch-target was sized for) keeps its current
-// behaviour. /login overrides to "icon-sm" because it's an indoor focused-task
-// gate, not an at-a-glance dashboard.
+// The optional `size` prop defaults to "icon" so the Overview matches its
+// sibling LuCI button in the CardAction cluster. /login overrides to "icon-sm"
+// to align with the LoginLanguagePicker trigger sitting next to it.
 // =============================================================================
 
 interface ModeToggleProps {
-  size?: "icon-sm" | "icon-touch";
+  size?: "icon-sm" | "icon";
 }
 
-export function ModeToggle({ size = "icon-touch" }: ModeToggleProps = {}) {
+export function ModeToggle({ size = "icon" }: ModeToggleProps = {}) {
   const { setTheme } = useTheme();
   const { t } = useTranslation("common");
 
-  // Glyph size adapts to the button size for a consistent ~0.5 icon-to-button
-  // ratio: 1.2rem (~19px) inside the 44px icon-touch button (Overview, outdoor
-  // glance); size-4 (16px) inside the 32px icon-sm button (/login, indoor
-  // focused-task gate). Matches the Languages glyph in LoginLanguagePicker so
-  // the CardAction cluster on /login reads as one optical rhythm.
+  // 1.2rem (~19px) inside the 36px icon button matches the sibling LuCI glyph
+  // in overview-card; size-4 (16px) inside the 32px icon-sm button matches the
+  // Languages glyph in LoginLanguagePicker so the /login CardAction cluster
+  // reads as one optical rhythm.
   const glyphClass = size === "icon-sm" ? "size-4" : "h-[1.2rem] w-[1.2rem]";
 
   return (

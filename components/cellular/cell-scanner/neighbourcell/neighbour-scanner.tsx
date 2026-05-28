@@ -26,7 +26,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { downloadCSV } from "@/lib/download-csv";
-import { ScannerSkeleton } from "@/components/cellular/cell-scanner/scanner-skeleton";
+import { ScanningView } from "@/components/cellular/cell-scanner/scanning-view";
 import ScannerEmptyView from "@/components/cellular/cell-scanner/empty-view";
 import NeighbourScanResultView, {
   type NeighbourCellResult,
@@ -54,7 +54,7 @@ const NEIGHBOUR_CSV_HEADER =
 
 const NeighbourCellScanner = () => {
   const { t } = useTranslation("cellular");
-  const { status, results, error, startScan } = useNeighbourScanner();
+  const { status, results, error, elapsedSeconds, startScan } = useNeighbourScanner();
   const [lockTarget, setLockTarget] = useState<NeighbourCellResult | null>(
     null,
   );
@@ -121,7 +121,7 @@ const NeighbourCellScanner = () => {
                 onLockCell={handleLockCell}
               />
             ) : isScanning ? (
-              <ScannerSkeleton headerCols={5} rowCols={4} />
+              <ScanningView elapsedSeconds={elapsedSeconds} />
             ) : status === "error" ? (
               <div className="flex flex-col items-center justify-center py-16 text-center gap-4">
                 <div className="flex size-12 items-center justify-center rounded-full bg-destructive/10">

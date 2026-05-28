@@ -17,7 +17,13 @@ export function ScanningView({ elapsedSeconds }: ScanningViewProps) {
   const { t } = useTranslation("cellular");
 
   return (
-    <div className="flex flex-col items-center justify-center py-16 text-center gap-4">
+    <div
+      role="status"
+      aria-busy="true"
+      aria-live="polite"
+      aria-label={t("cell_scanner.scanner.scanning_loading_aria")}
+      className="flex flex-col items-center justify-center py-16 text-center gap-4"
+    >
       {/* Animated icon — pulse is opacity-only (GPU composited, low power) */}
       <div className="relative flex items-center justify-center">
         <div className="absolute size-16 motion-safe:animate-pulse rounded-full bg-primary/10" />

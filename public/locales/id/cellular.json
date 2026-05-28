@@ -699,6 +699,7 @@
       "scanning_hint": "Biasanya memakan waktu 2-3 menit. Operasi modem lainnya dijeda selama pemindaian.",
       "scanning_nav_warning": "Jangan tutup tab atau muat ulang halaman.",
       "scanning_elapsed_aria": "Waktu pemindaian berlalu: {{time}}",
+      "scanning_loading_aria": "Pemindaian sedang berlangsung",
       "error_fallback": "Pemindaian gagal",
       "error_description": "Modem mungkin sibuk atau tidak dapat dijangkau. Periksa koneksi Anda dan coba lagi.",
       "retry_scan": "Coba Lagi Pemindaian"
@@ -1005,46 +1006,137 @@
     "apn": {
       "page": {
         "title": "Manajemen APN",
-        "description": "Konfigurasi APN dan profil firmware operator.",
-        "error_load": "Gagal memuat pengaturan APN. Nilai yang ditampilkan mungkin sudah usang."
+        "description": "Kelola profil koneksi APN seluler dan konfigurasi operator.",
+        "error_load_title": "Gagal memuat profil WAN",
+        "error_load_description": "Nilai yang ditampilkan mungkin sudah usang."
       },
-      "card": {
-        "title": "Pengaturan APN",
-        "description": "Konfigurasi dan kelola Access Point Name (APN) untuk koneksi seluler Anda."
-      },
-      "fields": {
-        "active_apn": {
-          "label": "APN Aktif *",
-          "placeholder": "Masukkan APN Aktif"
+      "controls_label": "Konfigurasi APN",
+      "managed_by_profile_fallback": "Profil SIM Kustom aktif",
+      "list": {
+        "card": {
+          "title": "Profil APN",
+          "description": "Kelola profil koneksi WAN modem Anda. Aktifkan/nonaktifkan profil atau edit konfigurasinya."
         },
-        "carrier_preset": {
-          "label": "Preset Operator",
-          "placeholder": "Pilih Preset Operator",
-          "option_none": "Tidak Ada"
+        "empty": {
+          "title": "Tidak ada profil WAN ditemukan",
+          "subtitle": "Modem tidak mengembalikan slot profil apa pun."
         },
-        "connection_profile": {
-          "label": "Profil Koneksi",
-          "placeholder": "Pilih Profil Koneksi",
-          "option_template": "Profil {{cid}} — {{apn}}",
-          "option_empty_apn": "(kosong)",
-          "option_active_suffix": " (Aktif)"
+        "unnamed": "Tanpa Nama",
+        "no_apn": "APN belum diatur",
+        "status": {
+          "connected": "Terhubung",
+          "error": "Kesalahan",
+          "disconnected": "Terputus"
         },
-        "ip_protocol": {
-          "label": "Protokol IP",
-          "placeholder": "Pilih Protokol IP",
-          "options": {
-            "ipv4v6": "IPv4 + IPv6 (Default)",
-            "ipv4": "Hanya IPv4",
-            "ipv6": "Hanya IPv6"
-          }
+        "apn_type": {
+          "ims_label": "IMS",
+          "sos_label": "SOS",
+          "ims_tooltip": "Profil IMS — menangani Voice over LTE (VoLTE) dan SMS over IMS",
+          "sos_tooltip": "Profil layanan darurat (SOS) — diperlukan untuk panggilan 911 / E911",
+          "other_tooltip": "Profil {{label}} yang disediakan operator"
+        },
+        "aria": {
+          "enable_switch": "Aktifkan profil {{index}}",
+          "disable_switch": "Nonaktifkan profil {{index}}",
+          "edit_button": "Edit profil {{index}}"
+        },
+        "toast": {
+          "enabled": "Profil {{index}} diaktifkan",
+          "disabled": "Profil {{index}} dinonaktifkan",
+          "enable_error": "Gagal mengaktifkan profil {{index}}",
+          "disable_error": "Gagal menonaktifkan profil {{index}}"
         }
       },
-      "managed_by_profile": "Pengaturan APN dikelola oleh <strong>{{profile_name}}</strong>.",
-      "managed_by_profile_fallback": "Profil SIM Kustom aktif",
-      "reset_aria": "Atur ulang ke nilai tersimpan",
-      "toast": {
-        "success": "Pengaturan APN berhasil diterapkan",
-        "error": "Gagal menerapkan pengaturan APN"
+      "edit": {
+        "title": "Edit Profil {{index}}",
+        "description_default": "Konfigurasi APN, autentikasi, dan pengaturan koneksi untuk profil {{index}}.",
+        "description_carrier": "Profil yang disediakan operator: {{type}}",
+        "carrier_type": {
+          "ims": "IMS (Voice over LTE)",
+          "sos": "Layanan Darurat (SOS)"
+        },
+        "carrier_alert": {
+          "title": "Profil yang Disediakan Operator",
+          "description": "Profil ini dikelola oleh operator Anda dan tidak dapat diedit. Perubahan pada profil IMS dan darurat dapat mengganggu layanan suara dan darurat."
+        },
+        "fields": {
+          "name": {
+            "label": "Nama",
+            "placeholder": "Profil Data Saya"
+          },
+          "apn": {
+            "label": "APN *",
+            "placeholder": "fast.t-mobile.com",
+            "error_required": "APN wajib diisi"
+          },
+          "pdp_type": {
+            "label": "Tipe PDP",
+            "placeholder": "Pilih tipe PDP",
+            "aria": "Tipe PDP",
+            "options": {
+              "ipv4": "IPv4",
+              "ipv6": "IPv6",
+              "ipv4v6": "IPv4v6"
+            }
+          },
+          "auth_type": {
+            "label": "Tipe Autentikasi",
+            "placeholder": "Pilih tipe autentikasi",
+            "aria": "Tipe Autentikasi",
+            "options": {
+              "none": "Tidak Ada",
+              "pap": "PAP",
+              "chap": "CHAP"
+            }
+          },
+          "username": {
+            "label": "Nama Pengguna",
+            "placeholder": "Nama Pengguna"
+          },
+          "password": {
+            "label": "Kata Sandi",
+            "placeholder": "Kata Sandi",
+            "show_aria": "Tampilkan kata sandi",
+            "hide_aria": "Sembunyikan kata sandi"
+          },
+          "mtu": {
+            "label": "MTU",
+            "placeholder": "1500 (default)",
+            "error_range": "MTU harus antara 1 dan 1500"
+          },
+          "modem_profile": {
+            "label": "Profil Modem",
+            "placeholder": "Pilih CID",
+            "aria": "Profil Modem (CID)",
+            "option_template": "CID {{cid}}"
+          },
+          "vlan": {
+            "label": "Petakan ke LAN / VLAN",
+            "placeholder": "Default (bridge0)",
+            "aria": "Pemetaan VLAN",
+            "option_default": "Default (bridge0)",
+            "option_vlan": "VLAN {{n}}"
+          },
+          "default_route": {
+            "label": "Rute Default",
+            "tooltip": "Mengirim lalu lintas internet perangkat ini melalui koneksi profil ini. Hanya satu profil yang dapat menjadi rute default pada satu waktu.",
+            "info_aria": "Apa itu Rute Default?",
+            "aria": "Atur sebagai rute default"
+          },
+          "ip_passthrough": {
+            "label": "IP Passthrough",
+            "tooltip": "Memberikan IP WAN publik modem langsung ke satu perangkat yang terhubung, melewati NAT. Berguna untuk router, konsol, atau server hilir.",
+            "info_aria": "Apa itu IP Passthrough?",
+            "aria": "Aktifkan IP passthrough"
+          }
+        },
+        "save_button": "Simpan Profil",
+        "cancel": "Batal",
+        "back": "Kembali",
+        "toast": {
+          "saved": "Profil {{index}} berhasil disimpan",
+          "save_error": "Gagal menyimpan profil {{index}}"
+        }
       },
       "mbn": {
         "card": {

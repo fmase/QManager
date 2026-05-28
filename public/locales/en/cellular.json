@@ -724,6 +724,7 @@
       "scanning_hint": "This usually takes 2-3 minutes. Other modem operations are paused during the scan.",
       "scanning_nav_warning": "Please don't close the tab or refresh the page.",
       "scanning_elapsed_aria": "Scan elapsed time: {{time}}",
+      "scanning_loading_aria": "Scanning in progress",
       "error_fallback": "Scan failed",
       "error_description": "The modem may be busy or unreachable. Check your connection and try again.",
       "retry_scan": "Retry Scan"
@@ -1030,46 +1031,137 @@
     "apn": {
       "page": {
         "title": "APN Management",
-        "description": "Configure APNs and carrier firmware profiles.",
-        "error_load": "Failed to load APN settings. Displayed values may be outdated."
+        "description": "Manage cellular APN connection profiles and carrier configuration.",
+        "error_load_title": "Failed to load WAN profiles",
+        "error_load_description": "Displayed values may be outdated."
       },
-      "card": {
-        "title": "APN Settings",
-        "description": "Configure and manage Access Point Names (APNs) for your cellular connections."
-      },
-      "fields": {
-        "active_apn": {
-          "label": "Active APN *",
-          "placeholder": "Enter Active APN"
+      "controls_label": "APN configuration",
+      "managed_by_profile_fallback": "active Custom SIM Profile",
+      "list": {
+        "card": {
+          "title": "APN Profiles",
+          "description": "Manage your modem's WAN connection profiles. Toggle profiles on/off or edit their configuration."
         },
-        "carrier_preset": {
-          "label": "Carrier Preset",
-          "placeholder": "Choose Carrier Preset",
-          "option_none": "None"
+        "empty": {
+          "title": "No WAN profiles found",
+          "subtitle": "The modem did not return any profile slots."
         },
-        "connection_profile": {
-          "label": "Connection Profile",
-          "placeholder": "Choose Connection Profile",
-          "option_template": "Profile {{cid}} — {{apn}}",
-          "option_empty_apn": "(empty)",
-          "option_active_suffix": " (Active)"
+        "unnamed": "Unnamed",
+        "no_apn": "No APN set",
+        "status": {
+          "connected": "Connected",
+          "error": "Error",
+          "disconnected": "Disconnected"
         },
-        "ip_protocol": {
-          "label": "IP Protocol",
-          "placeholder": "Choose IP Protocol",
-          "options": {
-            "ipv4v6": "IPv4 + IPv6 (Default)",
-            "ipv4": "IPv4 Only",
-            "ipv6": "IPv6 Only"
-          }
+        "apn_type": {
+          "ims_label": "IMS",
+          "sos_label": "SOS",
+          "ims_tooltip": "IMS profile — handles Voice over LTE (VoLTE) and SMS over IMS",
+          "sos_tooltip": "Emergency services profile (SOS) — required for 911 / E911 calls",
+          "other_tooltip": "Carrier-provisioned {{label}} profile"
+        },
+        "aria": {
+          "enable_switch": "Enable profile {{index}}",
+          "disable_switch": "Disable profile {{index}}",
+          "edit_button": "Edit profile {{index}}"
+        },
+        "toast": {
+          "enabled": "Profile {{index}} enabled",
+          "disabled": "Profile {{index}} disabled",
+          "enable_error": "Failed to enable profile {{index}}",
+          "disable_error": "Failed to disable profile {{index}}"
         }
       },
-      "managed_by_profile": "APN settings are managed by the <strong>{{profile_name}}</strong>.",
-      "managed_by_profile_fallback": "active Custom SIM Profile",
-      "reset_aria": "Reset to saved values",
-      "toast": {
-        "success": "APN settings applied successfully",
-        "error": "Failed to apply APN settings"
+      "edit": {
+        "title": "Edit Profile {{index}}",
+        "description_default": "Configure APN, authentication, and connection settings for profile {{index}}.",
+        "description_carrier": "Carrier-provisioned profile: {{type}}",
+        "carrier_type": {
+          "ims": "IMS (Voice over LTE)",
+          "sos": "Emergency Services (SOS)"
+        },
+        "carrier_alert": {
+          "title": "Carrier-Provisioned Profile",
+          "description": "This profile is managed by your carrier and cannot be edited. Changes to IMS and emergency profiles may disrupt voice and emergency services."
+        },
+        "fields": {
+          "name": {
+            "label": "Name",
+            "placeholder": "My Data Profile"
+          },
+          "apn": {
+            "label": "APN *",
+            "placeholder": "fast.t-mobile.com",
+            "error_required": "APN is required"
+          },
+          "pdp_type": {
+            "label": "PDP Type",
+            "placeholder": "Select PDP type",
+            "aria": "PDP Type",
+            "options": {
+              "ipv4": "IPv4",
+              "ipv6": "IPv6",
+              "ipv4v6": "IPv4v6"
+            }
+          },
+          "auth_type": {
+            "label": "Auth Type",
+            "placeholder": "Select auth type",
+            "aria": "Authentication Type",
+            "options": {
+              "none": "None",
+              "pap": "PAP",
+              "chap": "CHAP"
+            }
+          },
+          "username": {
+            "label": "Username",
+            "placeholder": "Username"
+          },
+          "password": {
+            "label": "Password",
+            "placeholder": "Password",
+            "show_aria": "Show password",
+            "hide_aria": "Hide password"
+          },
+          "mtu": {
+            "label": "MTU",
+            "placeholder": "1500 (default)",
+            "error_range": "MTU must be between 1 and 1500"
+          },
+          "modem_profile": {
+            "label": "Modem Profile",
+            "placeholder": "Select CID",
+            "aria": "Modem Profile (CID)",
+            "option_template": "CID {{cid}}"
+          },
+          "vlan": {
+            "label": "Map to LAN / VLAN",
+            "placeholder": "Default (bridge0)",
+            "aria": "VLAN mapping",
+            "option_default": "Default (bridge0)",
+            "option_vlan": "VLAN {{n}}"
+          },
+          "default_route": {
+            "label": "Default Route",
+            "tooltip": "Sends this device's internet traffic through this profile's connection. Only one profile can be the default route at a time.",
+            "info_aria": "What is Default Route?",
+            "aria": "Set as default route"
+          },
+          "ip_passthrough": {
+            "label": "IP Passthrough",
+            "tooltip": "Hands the modem's public WAN IP straight to one connected device, bypassing NAT. Useful for a downstream router, console, or server.",
+            "info_aria": "What is IP Passthrough?",
+            "aria": "Enable IP passthrough"
+          }
+        },
+        "save_button": "Save Profile",
+        "cancel": "Cancel",
+        "back": "Back",
+        "toast": {
+          "saved": "Profile {{index}} saved successfully",
+          "save_error": "Failed to save profile {{index}}"
+        }
       },
       "mbn": {
         "card": {

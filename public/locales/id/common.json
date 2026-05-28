@@ -26,6 +26,9 @@
     "on": "Nyala",
     "off": "Mati"
   },
+  "profile_override": {
+    "banner": "{{controls}} dikelola oleh Profil SIM Khusus <strong>{{profile_name}}</strong>."
+  },
   "time": {
     "just_now": "Baru saja",
     "now": "Sekarang",
