@@ -26,6 +26,7 @@ import { SimSwapBanner } from "@/components/monitoring/watchdog/sim-swap-banner"
 import { isLoggedIn } from "@/hooks/use-auth";
 import { useAutoLogout } from "@/hooks/use-auto-logout";
 import { useBootPendingReboot } from "@/hooks/use-boot-pending-reboot";
+import { ReconnectingBanner } from "@/components/reboot/reconnecting-banner";
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const breadcrumbs = useBreadcrumbs();
@@ -83,6 +84,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           </div>
         </header>
         <SimSwapBanner />
+        <ReconnectingBanner />
         <motion.div
           id="main-content"
           key={pathname}
