@@ -22,16 +22,23 @@ function clearSessionCookie() {
 /**
  * Polls auth/check.sh every POLL_INTERVAL_MS while the dashboard is mounted.
  *
- * - 401 response        → authFetch already redirects to /login/ (session gone)
- * - Network failure      → counts toward the offline threshold
+ * check.sh skips auth and always answers HTTP 200 with {authenticated:bool},
+ * so this poller must inspect BOTH the transport and the body:
+ *
+ * - Transport failure (network error OR non-2xx) → counts toward the offline
+ *     threshold:
  *     - at WARN_AT fails  → shows the "reconnecting" banner
  *     - at FAILURE_THRESHOLD fails → redirect:
  *         * if a reboot we initiated is in flight → /reboot/ countdown
  *         * otherwise (unexplained silence)       → /login/?reason=offline
- * - Successful response  → resets the counter and hides the banner
+ * - Reachable but {authenticated:false} → session is gone (e.g. a reboot wiped
+ *     /tmp sessions, or it simply expired) → redirect to /login/ immediately.
+ *     This is the normal recovery path once the device returns.
+ * - Reachable and authenticated         → resets the counter and hides banner.
  *
- * Unexpected reboots normally resolve earlier via the 401 path once the device
- * returns; the threshold is the backstop for "device never comes back".
+ * Note: a bare `await authFetch()` is NOT enough — fetch only rejects on a true
+ * network error, so a 5xx (or a dev-proxy 502 while the modem is down) would
+ * otherwise be miscounted as a success and defeat the whole poller.
  */
 export function useAutoLogout() {
   const stateRef = useRef<ConnectionState>(INITIAL_CONNECTION_STATE);
@@ -40,19 +47,43 @@ export function useAutoLogout() {
     let cancelled = false;
 
     const tick = async () => {
-      let pollSucceeded = false;
+      let reachable = false;
+      // Assume authenticated unless the body explicitly says otherwise, so a
+      // parse hiccup on an otherwise-OK response never force-logs-out the user.
+      let authenticated = true;
+      let setupRequired = false;
       try {
-        // authFetch handles 401 → redirect internally
-        await authFetch(CHECK_ENDPOINT);
-        pollSucceeded = true;
+        // authFetch handles 401 → redirect internally (check.sh won't 401, but
+        // other call sites share the wrapper). response.ok must be checked: a
+        // resolved 5xx is still a failed poll.
+        const res = await authFetch(CHECK_ENDPOINT);
+        reachable = res.ok;
+        if (res.ok) {
+          try {
+            const json = await res.json();
+            authenticated = json?.authenticated !== false;
+            setupRequired = json?.setup_required === true;
+          } catch {
+            /* OK status, unreadable body — treat as reachable, auth unknown */
+          }
+        }
       } catch {
-        pollSucceeded = false;
+        reachable = false;
       }
       if (cancelled) return;
 
+      // Device is up but our session is gone — recover straight to login rather
+      // than waiting for some other endpoint's 401. Skip during setup mode
+      // (no session is expected) to avoid a redirect loop.
+      if (reachable && !authenticated && !setupRequired) {
+        clearSessionCookie();
+        window.location.href = "/login/?reason=offline";
+        return;
+      }
+
       const { state, showBanner, action } = evaluateConnection(
         stateRef.current,
-        pollSucceeded
+        reachable
       );
       stateRef.current = state;
       reportConnectionState(showBanner);

@@ -101,6 +101,10 @@
     "bands": {
       "toggle_multi_band": "Active bands",
       "toggle_single_band": "Single carrier",
+      "section": "Bands",
+      "count_one": "{{count}} active",
+      "count_other": "{{count}} active",
+      "bandwidth": "{{bandwidth}} MHz",
       "rsrp_unit": "{{rsrp}} dBm"
     },
     "metrics": {

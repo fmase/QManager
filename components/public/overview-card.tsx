@@ -41,6 +41,7 @@ import {
   type SignalThresholds,
 } from "@/types/modem-status";
 import type { ConnectionState } from "@/types/modem-status";
+import type { PublicOverviewBand } from "@/types/public-overview";
 import { useEffect, useRef, useState } from "react";
 
 // Temperature warning thresholds — kept in sync with device-metrics.tsx
@@ -143,6 +144,76 @@ function SignalBar({
           }
         />
       </div>
+    </div>
+  );
+}
+
+// ---------- Per-band rows --------------------------------------------------
+//
+// One dense line per aggregated carrier: band label · bandwidth pill · RSRP
+// fill bar · RSRP value. Replaces the single aggregate RSRP bar so the
+// pre-login card now tells RSRP per-carrier (carrier aggregation runs 1→5
+// bands). Reuses SignalBar's growth motion and the shared qualityVisual /
+// TONE_CLASSES tonal map so no new visual vocabulary enters the system.
+
+type TranslateFn = (key: string, opts?: Record<string, unknown>) => string;
+
+function BandRow({
+  band,
+  reachable,
+  t,
+}: {
+  band: PublicOverviewBand;
+  reachable: boolean;
+  t: TranslateFn;
+}) {
+  const reduceMotion = useReducedMotion();
+  const quality: SignalQuality = reachable
+    ? getSignalQuality(band.rsrp, RSRP_THRESHOLDS)
+    : "none";
+  const percent = reachable ? signalToProgress(band.rsrp, RSRP_THRESHOLDS) : 0;
+  const { tone } = qualityVisual(quality, reachable);
+  const { text: textClass, bar: barClass } = TONE_CLASSES[tone];
+
+  return (
+    <div className="flex items-center gap-3 text-sm">
+      {/* Band label — e.g. N41 / B66. Tabular so a multi-band column aligns. */}
+      <span className="text-foreground w-12 shrink-0 truncate font-semibold tabular-nums">
+        {band.band}
+      </span>
+      {/* Bandwidth pill — muted outline, the channel width for this carrier. */}
+      <span className="bg-muted/60 text-muted-foreground border-border inline-flex h-5 w-16 shrink-0 items-center justify-center rounded-full border text-[0.6875rem] font-medium tabular-nums">
+        {band.bandwidth_mhz > 0
+          ? t("overview.bands.bandwidth", { bandwidth: band.bandwidth_mhz })
+          : t("overview.field.empty")}
+      </span>
+      {/* RSRP fill bar — same growth + tonal tint as the aggregate SignalBar. */}
+      <div className="bg-muted h-1.5 min-w-0 flex-1 overflow-hidden rounded-full">
+        <motion.div
+          className={cn(
+            "h-full origin-left rounded-full transition-colors duration-200",
+            barClass,
+          )}
+          initial={reduceMotion ? false : { scaleX: 0 }}
+          animate={{ scaleX: percent / 100 }}
+          transition={
+            reduceMotion
+              ? { duration: 0 }
+              : { duration: 0.4, ease: [0.16, 1, 0.3, 1] }
+          }
+        />
+      </div>
+      {/* RSRP value — tinted by this carrier's own quality, not the aggregate. */}
+      <span
+        className={cn(
+          "w-[4.25rem] shrink-0 text-right font-semibold tabular-nums transition-colors duration-200",
+          textClass,
+        )}
+      >
+        {band.rsrp != null
+          ? t("overview.bands.rsrp_unit", { rsrp: band.rsrp })
+          : t("overview.field.empty")}
+      </span>
     </div>
   );
 }
@@ -451,15 +522,17 @@ function renderBody({
 
   const carrier = data.network.carrier || t("overview.field.empty");
   const networkType = data.network.type || t("overview.field.empty");
-  // Compact band summary — "B1, N41" style. The detailed per-band readout
-  // (PCI + per-component RSRP) is power-user material that belongs on the
-  // authenticated dashboard; the pre-login card stays at-a-glance.
-  const bandSummary =
-    data.network.bands && data.network.bands.length > 0
-      ? data.network.bands
-          .map((b) => b.band)
-          .filter(Boolean)
-          .join(", ") || t("overview.field.empty")
+  // Per-carrier band readout. The header-trio cell stays a compact count
+  // ("3 active"); the detail (per-band bandwidth + RSRP) lives in the signal
+  // section below. The joined "B1, N41" list survives as the cell's tooltip.
+  const bands = data.network.bands ?? [];
+  const bandList = bands
+    .map((b) => b.band)
+    .filter(Boolean)
+    .join(", ");
+  const bandsHeaderValue =
+    bands.length > 0
+      ? t("overview.bands.count", { count: bands.length })
       : t("overview.field.empty");
 
   // Overall = worst of RSRP/RSRQ/SINR. RSRP-alone would mask a strong-signal /
@@ -512,26 +585,50 @@ function renderBody({
         />
         <HeaderCell
           label={t("overview.header.bands")}
-          value={bandSummary}
-          title={bandSummary}
+          value={bandsHeaderValue}
+          title={bandList || undefined}
         />
       </div>
 
-      {/* Signal bars — unchanged: each bar tinted by its own metric's quality
-          so a weak SINR under good RSRP shows up immediately. */}
+      {/* Signal section — per-band RSRP rows carry the per-carrier read; RSRQ
+          and SINR stay aggregate as the overall link-quality verdict. Each
+          fill is tinted by its own quality so a weak SINR under good RSRP
+          shows up immediately. */}
       <div
         className={cn(
           "flex flex-col gap-3 transition-opacity duration-200",
           isStale && "opacity-70",
         )}
       >
-        <SignalBar
-          metric={t("overview.metrics.rsrp")}
-          value={data.signal.rsrp}
-          unit="dBm"
-          thresholds={RSRP_THRESHOLDS}
-          reachable={reachable}
-        />
+        {bands.length > 0 ? (
+          <div className="flex flex-col gap-2">
+            {/* Eyebrow row labels the band column and its RSRP value column. */}
+            <div className="flex items-center justify-between">
+              <span className={EYEBROW_CLASS}>{t("overview.bands.section")}</span>
+              <span className={EYEBROW_CLASS}>{t("overview.metrics.rsrp")}</span>
+            </div>
+            <div className="flex flex-col gap-2">
+              {bands.map((b, i) => (
+                <BandRow
+                  key={`${b.band}-${b.pci ?? "x"}-${i}`}
+                  band={b}
+                  reachable={reachable}
+                  t={t}
+                />
+              ))}
+            </div>
+          </div>
+        ) : (
+          // No carrier components reported (e.g. attach in progress): fall back
+          // to the aggregate RSRP bar so the metric is never simply dropped.
+          <SignalBar
+            metric={t("overview.metrics.rsrp")}
+            value={data.signal.rsrp}
+            unit="dBm"
+            thresholds={RSRP_THRESHOLDS}
+            reachable={reachable}
+          />
+        )}
         <SignalBar
           metric={t("overview.metrics.rsrq")}
           value={data.signal.rsrq}
@@ -597,9 +694,28 @@ function SkeletonBody({ loadingLabel }: { loadingLabel?: string } = {}) {
         ))}
       </div>
 
-      {/* Signal bars skeleton */}
+      {/* Signal section skeleton — mirrors the live shape (per-band rows +
+          two aggregate bars) so the first paint → data arrival doesn't shift.
+          Three band rows is the typical NSA/CA case; fewer real bands simply
+          settle shorter. */}
       <div className="flex flex-col gap-3">
-        {[0, 1, 2].map((i) => (
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center justify-between">
+            <Skeleton className="h-2.5 w-12" />
+            <Skeleton className="h-2.5 w-10" />
+          </div>
+          <div className="flex flex-col gap-2">
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="flex items-center gap-3">
+                <Skeleton className="h-3.5 w-12" />
+                <Skeleton className="h-5 w-16 rounded-full" />
+                <Skeleton className="h-1.5 min-w-0 flex-1 rounded-full" />
+                <Skeleton className="h-3.5 w-[4.25rem]" />
+              </div>
+            ))}
+          </div>
+        </div>
+        {[0, 1].map((i) => (
           <div key={i} className="flex flex-col gap-1.5">
             <div className="flex justify-between">
               <Skeleton className="h-4 w-10" />

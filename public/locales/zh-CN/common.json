@@ -101,6 +101,10 @@
     "bands": {
       "toggle_multi_band": "活动频段",
       "toggle_single_band": "单载波",
+      "section": "频段",
+      "count_one": "{{count}} 个活跃",
+      "count_other": "{{count}} 个活跃",
+      "bandwidth": "{{bandwidth}} MHz",
       "rsrp_unit": "{{rsrp}} dBm"
     },
     "metrics": {
