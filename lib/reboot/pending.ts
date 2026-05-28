@@ -6,13 +6,13 @@
 // without killing our own UI — so this key persists across navigation/reload
 // until the user reboots or dismisses it.
 
-const STORAGE_KEY = "qmanager_pending_reboot";
+import type { RebootSource } from "./index";
 
-export type PendingRebootSource = "config_restore" | "verizon_revert";
+const STORAGE_KEY = "qmanager_pending_reboot";
 
 export interface PendingReboot {
   since: number;
-  source: PendingRebootSource;
+  source: RebootSource;
 }
 
 export function readPendingReboot(): PendingReboot | null {
@@ -28,7 +28,7 @@ export function readPendingReboot(): PendingReboot | null {
   }
 }
 
-export function setPendingReboot(source: PendingRebootSource = "config_restore"): void {
+export function setPendingReboot(source: RebootSource = "config_restore"): void {
   if (typeof window === "undefined") return;
   const value: PendingReboot = { since: Date.now(), source };
   try {
