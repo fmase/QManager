@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { authFetch } from "@/lib/auth-fetch";
-import { setPendingReboot } from "@/lib/reboot/pending";
+import { requestRebootLater } from "@/lib/reboot";
 
 const ENDPOINT = "/cgi-bin/quecmanager/system/pending_reboot.sh";
 
@@ -33,7 +33,7 @@ export function useBootPendingReboot(): void {
         if (!resp.ok || cancelled) return;
         const data = (await resp.json()) as PendingRebootResponse;
         if (data.verizon) {
-          setPendingReboot("verizon_revert");
+          requestRebootLater("verizon_revert");
         }
       } catch {
         // Network or auth failure — silently ignore, banner is best-effort
