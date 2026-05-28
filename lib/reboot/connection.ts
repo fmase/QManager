@@ -11,7 +11,7 @@
 /** Consecutive failures before showing the "reconnecting" banner. */
 export const WARN_AT = 2;
 
-/** Consecutive failures before giving up and redirecting away. ~30s at 10s poll. */
+/** Consecutive failures before giving up and redirecting away. ~9s at the 3s poll in use-auto-logout. */
 export const FAILURE_THRESHOLD = 3;
 
 export interface ConnectionState {

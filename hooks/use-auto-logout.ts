@@ -12,8 +12,13 @@ import {
 
 const CHECK_ENDPOINT = "/cgi-bin/quecmanager/auth/check.sh";
 
-/** How often to ping check.sh while the dashboard is open (ms) */
-const POLL_INTERVAL_MS = 10_000;
+/**
+ * How often to ping check.sh while the dashboard is open (ms).
+ * Kept short so the offline backstop (FAILURE_THRESHOLD consecutive misses)
+ * fires within ~10s while still requiring several failures to filter out a
+ * single transient blip. check.sh is cheap (cookie check, no modem contact).
+ */
+const POLL_INTERVAL_MS = 3_000;
 
 function clearSessionCookie() {
   document.cookie = "qm_logged_in=; Path=/; Max-Age=0";

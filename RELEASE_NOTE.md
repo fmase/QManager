@@ -7,6 +7,7 @@
 
 ## ✅ Improvements
 
+- **Dashboard now recovers on its own after a reboot.** Previously, when the modem restarted — whether you triggered it or it rebooted on its own — the dashboard could get stuck on a "Data shown may be outdated" warning, forcing you to log out by hand. QManager now detects the device going unreachable, shows a reconnecting notice, and returns you to the login screen within about ten seconds so you can sign back in to live data.
 - **Cell Scanner & Neighbour Cells: loading state is now responsive on phones.** The previous skeleton overflowed the card on screens narrower than ~375px. Both scanners now share one scanning view with an elapsed-time counter, and result tables scroll horizontally on narrow viewports instead of breaking the page layout.
 - **Cell scan result tables: pagination footer stacks on narrow screens and meets mobile touch-target sizes.** Previous/Next buttons grow to a thumb-friendly 44px when stacked, and the row count moves above them so nothing gets clipped.
 - **Neighbour Cells: column-visibility menu now shows translated column names** instead of raw IDs like `networkType` or `signalStrength`.
