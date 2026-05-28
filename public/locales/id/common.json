@@ -26,6 +26,9 @@
     "on": "Nyala",
     "off": "Mati"
   },
+  "connection": {
+    "reconnecting": "Kehilangan kontak dengan perangkat. Menyambungkan ulang…"
+  },
   "profile_override": {
     "banner": "{{controls}} dikelola oleh Profil SIM Khusus <strong>{{profile_name}}</strong>."
   },

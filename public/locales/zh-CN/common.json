@@ -26,6 +26,9 @@
     "on": "开",
     "off": "关"
   },
+  "connection": {
+    "reconnecting": "与设备失去联系，正在重新连接…"
+  },
   "profile_override": {
     "banner": "{{controls}} 由自定义 SIM 配置文件 <strong>{{profile_name}}</strong> 管理。"
   },

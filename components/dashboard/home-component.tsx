@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
 import { useModemStatus } from "@/hooks/use-modem-status";
 import { useBandwidthMonitor } from "@/hooks/use-bandwidth-monitor";
+import { useConnectionStatus } from "@/lib/reboot/connection";
 import NetworkStatusComponent from "./network-status";
 import DeviceStatus from "./device-status";
 import LTEStatusComponent from "./lte-status";
@@ -22,6 +23,10 @@ const HomeComponent = () => {
   const { data, isLoading, isStale, error } = useModemStatus();
   const { t } = useTranslation("dashboard");
   const bandwidth = useBandwidthMonitor();
+  // Once a sustained outage escalates to "reconnecting", the global banner
+  // (app-layout) becomes the single source of truth for the outage. Suppress
+  // this page-level "unable to reach" alert so the two notices don't stack.
+  const { reconnecting } = useConnectionStatus();
 
   const networkType = data?.network?.type ?? "";
   const carrierComponents = data?.network?.carrier_components ?? [];
@@ -29,7 +34,7 @@ const HomeComponent = () => {
 
   return (
     <div className="grid grid-cols-1 gap-6 px-4 lg:px-6 @3xl/main:grid-cols-2 @5xl/main:grid-cols-5" aria-live="polite" aria-atomic="false">
-      {error && !isLoading && (
+      {error && !isLoading && !reconnecting && (
         <div role="alert" className="col-span-full rounded-lg bg-destructive/10 px-4 py-3 text-sm text-destructive">
           {t("alert.modem_unreachable")}
         </div>

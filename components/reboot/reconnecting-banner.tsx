@@ -2,6 +2,7 @@
 
 import { AnimatePresence, motion } from "motion/react";
 import { Loader2 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { useConnectionStatus } from "@/lib/reboot/connection";
 
 /**
@@ -13,6 +14,7 @@ import { useConnectionStatus } from "@/lib/reboot/connection";
  */
 export function ReconnectingBanner() {
   const { reconnecting } = useConnectionStatus();
+  const { t } = useTranslation("common");
 
   return (
     <AnimatePresence>
@@ -27,7 +29,7 @@ export function ReconnectingBanner() {
           className="mx-2 mb-2 flex items-center gap-2 rounded-md border border-warning/30 bg-warning/15 px-3 py-2 text-sm text-warning lg:mx-6"
         >
           <Loader2 className="size-3 animate-spin" />
-          <span>Lost contact with the device — reconnecting…</span>
+          <span>{t("connection.reconnecting")}</span>
         </motion.div>
       )}
     </AnimatePresence>
