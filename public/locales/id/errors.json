@@ -132,6 +132,7 @@
   "payload_too_large": "Body permintaan terlalu besar",
   "rate_limited": "Terlalu banyak percobaan gagal — silakan coba lagi nanti",
   "remove_failed": "Gagal menghapus item",
+  "scenario_locked_by_schedule": "Skenario koneksi dikendalikan oleh jadwal profil aktif — matikan jadwal untuk mengubahnya secara manual",
   "select_failed": "Gagal memilih mode jaringan",
   "send_failed": "Gagal mengirim pesan",
   "service_running": "Layanan sedang berjalan — hentikan terlebih dahulu",

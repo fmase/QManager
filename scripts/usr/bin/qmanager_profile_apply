@@ -539,8 +539,23 @@ write_state
 # path, and clear on total failure.
 if [ "$apply_status" = "complete" ] || [ "$apply_status" = "partial" ]; then
     set_active_profile "$PROFILE_ID"
+    # Scenario binding side-effect (D5: NOT a tracked apply step). Install the
+    # profile's scenario schedule cron (when enabled) and snap the modem to the
+    # scenario covering "now"; when the schedule is disabled this applies the
+    # profile's on-activate default scenario instead. scenario_apply is
+    # non-reboot. If the IMEI step triggered AT+CFUN=1,1 / a system reboot, this
+    # may not run — boot-time auto_apply_profile re-runs the worker and installs
+    # the cron then.
+    . /usr/lib/qmanager/scenario_mgr.sh 2>/dev/null
+    if command -v scenario_install_cron >/dev/null 2>&1; then
+        scenario_install_cron "$PROFILE_ID"
+    fi
 elif [ "$apply_status" = "failed" ]; then
     clear_active_profile
+    . /usr/lib/qmanager/scenario_mgr.sh 2>/dev/null
+    if command -v scenario_teardown_cron >/dev/null 2>&1; then
+        scenario_teardown_cron
+    fi
 fi
 
 # --- Emit network event ------------------------------------------------------

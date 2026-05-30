@@ -86,6 +86,50 @@
         "create_error": "Impossibile creare il profilo.",
         "update_success": "Profilo aggiornato con successo.",
         "update_error": "Impossibile aggiornare il profilo."
+      },
+      "scenario": {
+        "section_title": "Scenario",
+        "section_description": "Associa questo profilo a uno scenario di connessione, applicato automaticamente all'attivazione del profilo. Facoltativamente, pianifica scenari diversi in base all'orario.",
+        "default_label": "Scenario predefinito",
+        "default_hint": "Applicato all'attivazione del profilo e utilizzato come fallback per i periodi non coperti dalla pianificazione.",
+        "schedule_toggle_label": "Pianifica per orario",
+        "schedule_toggle_hint": "Cambia scenario automaticamente secondo un programma giornaliero.",
+        "add_block": "Aggiungi blocco orario",
+        "remove_block_aria": "Rimuovi blocco orario",
+        "block_label": "Blocco {{index}}",
+        "start_label": "Inizio",
+        "end_label": "Fine",
+        "days_label": "Giorni",
+        "block_scenario_label": "Scenario",
+        "fallback_line": "Tutti gli altri orari → {{name}}",
+        "empty_schedule_hint": "Nessun blocco orario — il comportamento è identico all'uso diretto di {{name}}.",
+        "overlap_warning": "Questo blocco si sovrappone a un altro. In caso di sovrapposizione, vince il blocco più in alto.",
+        "schedule_invalid": "Correggi i blocchi evidenziati prima di salvare.",
+        "deleted_scenario": "(scenario eliminato)",
+        "block_errors": {
+          "invalid_start": "Inserisci un orario di inizio valido (HH:MM).",
+          "invalid_end": "Inserisci un orario di fine valido (HH:MM).",
+          "zero_length": "L'orario di inizio e di fine devono essere diversi.",
+          "no_days": "Seleziona almeno un giorno."
+        },
+        "days_short": {
+          "0": "Dom",
+          "1": "Lun",
+          "2": "Mar",
+          "3": "Mer",
+          "4": "Gio",
+          "5": "Ven",
+          "6": "Sab"
+        },
+        "days_full": {
+          "0": "Domenica",
+          "1": "Lunedì",
+          "2": "Martedì",
+          "3": "Mercoledì",
+          "4": "Giovedì",
+          "5": "Venerdì",
+          "6": "Sabato"
+        }
       }
     },
     "activate_dialog": {
@@ -250,6 +294,12 @@
     "deletion_toast": {
       "success": "Scenario eliminato.",
       "error": "Impossibile eliminare lo scenario."
+    },
+    "schedule_lock": {
+      "badge": "Pianificato",
+      "hint": "Disattiva la pianificazione del profilo per scegliere uno scenario manualmente.",
+      "next_change": "Prossimo cambio alle {{time}}",
+      "blocked_toast": "Lo scenario di connessione è gestito dalla pianificazione del profilo attivo. Disattivala per cambiarlo manualmente."
     }
   },
   "sms": {

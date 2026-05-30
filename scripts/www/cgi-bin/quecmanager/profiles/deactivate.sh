@@ -42,13 +42,13 @@ qlog_info "Profile deactivate request"
 _deact_id=$(get_active_profile)
 _deact_name=""
 if [ -n "$_deact_id" ] && [ -f "$PROFILE_DIR/${_deact_id}.json" ]; then
-    _deact_name=$(jq -r '.name // empty' "$PROFILE_DIR/${_deact_id}.json" 2>/dev/null)
+    _deact_name=$(jq -r '(.name) | if . == null then empty else tostring end' "$PROFILE_DIR/${_deact_id}.json" 2>/dev/null)
 fi
 
 # --- Verizon MPDN revert (before clearing marker) ----------------------------
 _deact_mno=""
 if [ -n "$_deact_id" ] && [ -f "$PROFILE_DIR/${_deact_id}.json" ]; then
-    _deact_mno=$(jq -r '.mno // empty' "$PROFILE_DIR/${_deact_id}.json" 2>/dev/null)
+    _deact_mno=$(jq -r '(.mno) | if . == null then empty else tostring end' "$PROFILE_DIR/${_deact_id}.json" 2>/dev/null)
 fi
 _deact_requires_reboot="false"
 if [ "$_deact_mno" = "Verizon" ]; then
@@ -63,6 +63,13 @@ fi
 
 # --- Clear active profile ----------------------------------------------------
 clear_active_profile
+
+# --- Tear down profile-scenario schedule cron --------------------------------
+# Deactivating a profile must remove any scenario cron lines it installed.
+. /usr/lib/qmanager/scenario_mgr.sh 2>/dev/null
+if command -v scenario_teardown_cron >/dev/null 2>&1; then
+    scenario_teardown_cron
+fi
 
 # --- Emit network event ------------------------------------------------------
 if [ -n "$_deact_name" ]; then

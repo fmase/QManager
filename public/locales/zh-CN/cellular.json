@@ -86,6 +86,50 @@
         "create_error": "创建配置文件失败。",
         "update_success": "配置文件更新成功。",
         "update_error": "更新配置文件失败。"
+      },
+      "scenario": {
+        "section_title": "场景",
+        "section_description": "将此配置绑定到连接场景，激活时自动应用。可选择按时段配置不同场景的定时切换。",
+        "default_label": "默认场景",
+        "default_hint": "激活此配置时应用，并用作未被以下计划覆盖的时段的回退场景。",
+        "schedule_toggle_label": "按时段计划",
+        "schedule_toggle_hint": "按每日时间表自动切换场景。",
+        "add_block": "添加时间块",
+        "remove_block_aria": "删除时间块",
+        "block_label": "时间块 {{index}}",
+        "start_label": "开始",
+        "end_label": "结束",
+        "days_label": "日期",
+        "block_scenario_label": "场景",
+        "fallback_line": "其他所有时段 → {{name}}",
+        "empty_schedule_hint": "暂无时间块 — 效果与直接使用 {{name}} 相同。",
+        "overlap_warning": "此块与另一个块重叠。重叠时，列表靠前的块优先生效。",
+        "schedule_invalid": "请先修正高亮显示的时间块再保存。",
+        "deleted_scenario": "（已删除的场景）",
+        "block_errors": {
+          "invalid_start": "请输入有效的开始时间（HH:MM）。",
+          "invalid_end": "请输入有效的结束时间（HH:MM）。",
+          "zero_length": "开始时间和结束时间不能相同。",
+          "no_days": "请至少选择一天。"
+        },
+        "days_short": {
+          "0": "日",
+          "1": "一",
+          "2": "二",
+          "3": "三",
+          "4": "四",
+          "5": "五",
+          "6": "六"
+        },
+        "days_full": {
+          "0": "星期日",
+          "1": "星期一",
+          "2": "星期二",
+          "3": "星期三",
+          "4": "星期四",
+          "5": "星期五",
+          "6": "星期六"
+        }
       }
     },
     "activate_dialog": {
@@ -250,6 +294,12 @@
     "deletion_toast": {
       "success": "场景已删除。",
       "error": "删除场景失败。"
+    },
+    "schedule_lock": {
+      "badge": "已计划",
+      "hint": "关闭此配置的计划以手动选择场景。",
+      "next_change": "下次切换于 {{time}}",
+      "blocked_toast": "连接场景由活动配置的计划控制。请关闭计划以手动更改。"
     }
   },
   "sms": {

@@ -9,6 +9,7 @@ import type {
   ProfileSummary,
   ProfileListResponse,
   ProfileApiResponse,
+  ProfileScenarioBinding,
 } from "@/types/sim-profile";
 
 // =============================================================================
@@ -68,6 +69,11 @@ export interface ProfileFormData {
   imei: string;
   ttl: number;
   hl: number;
+  /**
+   * Connection-scenario binding (nested object the backend save.sh accepts).
+   * Always sent — defaults to {@link DEFAULT_SCENARIO_BINDING} in the form.
+   */
+  scenario: ProfileScenarioBinding;
 }
 
 export function useSimProfiles(): UseSimProfilesReturn {

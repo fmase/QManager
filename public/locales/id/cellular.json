@@ -86,6 +86,50 @@
         "create_error": "Gagal membuat profil",
         "update_success": "Profil berhasil diperbarui",
         "update_error": "Gagal memperbarui profil."
+      },
+      "scenario": {
+        "section_title": "Skenario",
+        "section_description": "Ikat profil ini ke skenario koneksi yang diterapkan otomatis saat profil diaktifkan. Opsional, atur jadwal skenario berbeda berdasarkan waktu.",
+        "default_label": "Skenario default",
+        "default_hint": "Diterapkan saat profil ini diaktifkan, dan digunakan sebagai fallback untuk waktu yang tidak tercakup oleh jadwal di bawah.",
+        "schedule_toggle_label": "Jadwalkan berdasarkan waktu",
+        "schedule_toggle_hint": "Ganti skenario secara otomatis sesuai jadwal harian.",
+        "add_block": "Tambah blok waktu",
+        "remove_block_aria": "Hapus blok waktu",
+        "block_label": "Blok {{index}}",
+        "start_label": "Mulai",
+        "end_label": "Selesai",
+        "days_label": "Hari",
+        "block_scenario_label": "Skenario",
+        "fallback_line": "Semua waktu lainnya → {{name}}",
+        "empty_schedule_hint": "Belum ada blok waktu — perilakunya sama seperti hanya menggunakan {{name}}.",
+        "overlap_warning": "Blok ini tumpang tindih dengan blok lain. Saat tumpang tindih, blok paling atas yang berlaku.",
+        "schedule_invalid": "Perbaiki blok jadwal yang disorot sebelum menyimpan.",
+        "deleted_scenario": "(skenario dihapus)",
+        "block_errors": {
+          "invalid_start": "Masukkan waktu mulai yang valid (HH:MM).",
+          "invalid_end": "Masukkan waktu selesai yang valid (HH:MM).",
+          "zero_length": "Waktu mulai dan selesai harus berbeda.",
+          "no_days": "Pilih setidaknya satu hari."
+        },
+        "days_short": {
+          "0": "Min",
+          "1": "Sen",
+          "2": "Sel",
+          "3": "Rab",
+          "4": "Kam",
+          "5": "Jum",
+          "6": "Sab"
+        },
+        "days_full": {
+          "0": "Minggu",
+          "1": "Senin",
+          "2": "Selasa",
+          "3": "Rabu",
+          "4": "Kamis",
+          "5": "Jumat",
+          "6": "Sabtu"
+        }
       }
     },
     "activate_dialog": {
@@ -250,6 +294,12 @@
     "deletion_toast": {
       "success": "Skenario berhasil dihapus.",
       "error": "Skenario gagal dihapus."
+    },
+    "schedule_lock": {
+      "badge": "Terjadwal",
+      "hint": "Nonaktifkan jadwal profil ini untuk memilih skenario secara manual.",
+      "next_change": "Perubahan berikutnya pukul {{time}}",
+      "blocked_toast": "Skenario koneksi dikendalikan oleh jadwal profil aktif. Matikan jadwal untuk mengubahnya secara manual."
     }
   },
   "sms": {

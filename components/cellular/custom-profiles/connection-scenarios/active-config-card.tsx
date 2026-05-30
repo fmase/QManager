@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Settings } from "lucide-react";
+import { Settings, LockIcon } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,10 @@ interface ActiveConfigCardProps {
   isActivating?: boolean;
   onEdit?: () => void;
   onActivate?: () => void;
+  /** True when the active profile's schedule controls scenario selection. */
+  scheduleLocked?: boolean;
+  /** "HH:MM" of the next scheduled transition (shown while locked). */
+  nextChangeAt?: string | null;
 }
 
 export const ActiveConfigCard = ({
@@ -26,6 +30,8 @@ export const ActiveConfigCard = ({
   isActivating,
   onEdit,
   onActivate,
+  scheduleLocked = false,
+  nextChangeAt = null,
 }: ActiveConfigCardProps) => {
   const { t } = useTranslation("cellular");
 
@@ -51,7 +57,15 @@ export const ActiveConfigCard = ({
               <h4 className="font-semibold">
                 {t("scenarios.active_config_card.configuration", { name: scenario.name })}
               </h4>
-              {isActivating ? (
+              {scheduleLocked ? (
+                <Badge
+                  variant="outline"
+                  className="bg-info/15 text-info hover:bg-info/20 border-info/30"
+                >
+                  <LockIcon className="size-3" />
+                  {t("scenarios.schedule_lock.badge")}
+                </Badge>
+              ) : isActivating ? (
                 <Badge
                   variant="outline"
                   className="bg-info/15 text-info hover:bg-info/20 border-info/30"
@@ -89,7 +103,7 @@ export const ActiveConfigCard = ({
                 <Settings className="size-4" />
               </Button>
             )}
-            {!isActive && !isActivating && (
+            {!isActive && !isActivating && !scheduleLocked && (
               <Button
                 size="sm"
                 onClick={onActivate}
@@ -100,6 +114,20 @@ export const ActiveConfigCard = ({
             )}
           </div>
         </div>
+
+        {/* Schedule-lock hint + next change line */}
+        {scheduleLocked && (
+          <div className="mb-4 grid gap-1 rounded-lg border border-info/30 bg-info/10 p-3">
+            <p className="text-sm text-info">
+              {t("scenarios.schedule_lock.hint")}
+            </p>
+            {nextChangeAt && (
+              <p className="text-xs text-info/80 tabular-nums">
+                {t("scenarios.schedule_lock.next_change", { time: nextChangeAt })}
+              </p>
+            )}
+          </div>
+        )}
 
         {/* Config Details */}
         <div className="grid gap-2">

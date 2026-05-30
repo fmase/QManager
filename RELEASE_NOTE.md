@@ -2,11 +2,14 @@
 
 ## ✨ New Features
 
+- **Custom SIM Profiles now carry a Connection Scenario — and an optional daily schedule that switches scenarios automatically.** Each profile can be bound to a scenario (Balanced, Gaming, Streaming, or a custom one) that activates the moment you switch to that profile. Enable the schedule to go further: configure time blocks for each day of the week and QManager will swap scenarios automatically at the boundaries — e.g. Gaming from 8 AM to 9 PM, Balanced overnight. The device handles transitions entirely on its own, even if the app is closed. While a schedule is running, manual scenario changes are blocked with a clear "Scheduled" indicator showing the next switch time.
 - **Redesigned APN Management with multiple connection profiles.** Manage all six of your modem's APN profiles from a single page — name each one, edit its APN, IP type, and authentication, and switch profiles on or off independently. Carrier-provisioned IMS (VoLTE) and emergency (SOS) profiles are clearly tagged and locked, so you can't accidentally break voice or 911 service. Available in all supported languages.
 - **Modem temperature now shown on the login page.** The pre-login "Live Modem Status" card displays the current modem temperature. A warning badge appears automatically when the modem is running hot (≥ 60 °C) or overheating (≥ 75 °C).
 
 ## ✅ Improvements
 
+- **Dashboard Live Traffic now shows a clear "Off · Turn on" prompt instead of a stuck zero.** Live network speeds on the dashboard are powered by the Bandwidth Monitor (System Settings → Bandwidth Monitor). When it's off, the row tells you so with a direct link to the settings page. Turn it on to see real-time rx/tx speeds.
+- **Modem temperature updates every 10 seconds instead of every 30.** The temperature read was moved to a faster poll tier and no longer competes with AT commands, so the displayed value is more current and more stable on RM551E hardware.
 - **Dashboard now recovers on its own after a reboot.** Previously, when the modem restarted — whether you triggered it or it rebooted on its own — the dashboard could get stuck on a "Data shown may be outdated" warning, forcing you to log out by hand. QManager now detects the device going unreachable, shows a reconnecting notice, and returns you to the login screen within about ten seconds so you can sign back in to live data.
 - **Cell Scanner & Neighbour Cells: loading state is now responsive on phones.** The previous skeleton overflowed the card on screens narrower than ~375px. Both scanners now share one scanning view with an elapsed-time counter, and result tables scroll horizontally on narrow viewports instead of breaking the page layout.
 - **Cell scan result tables: pagination footer stacks on narrow screens and meets mobile touch-target sizes.** Previous/Next buttons grow to a thumb-friendly 44px when stacked, and the row count moves above them so nothing gets clipped.

@@ -1,0 +1,64 @@
+# BusyBox Shell & jq Quirks
+
+This document catalogs shell and jq behaviors that differ from a standard Linux environment and have caused bugs or near-misses in QManager's CGI/daemon backend. Read this before writing backend shell scripts.
+
+## Shell Quirks
+
+### `$(( ))` Fails on Octal-Leading-Zero Time Strings
+
+BusyBox `/bin/sh` arithmetic expansion treats strings like `"08"` and `"09"` as octal literals. `$(( 08 ))` is a syntax error or silently returns 0 depending on BusyBox version.
+
+**Rule:** Never parse `HH:MM` time fields with `$(( hh * 60 + mm ))` in shell. Do all minute arithmetic inside `jq` using `tonumber` (e.g. `"08" | tonumber` is clean). This is why `scenario_block_for_now` and `_scenario_generate_cron_lines` do all time math in jq.
+
+### `pgrep -x` Is Unreliable on BusyBox
+
+BusyBox `pgrep` does not always support `-x` (exact match). Use `kill -0 <pid>` against a known PID file to check liveness instead of searching by process name.
+
+### `ls -h` Does Not Exist on BusyBox
+
+`ls` on OpenWRT BusyBox has no `-h` (human-readable sizes) flag. Use `du -sh` for sizes, or emit raw byte counts and format in the frontend.
+
+### CGI Newline Rule: CRLF Headers Required, LF Body
+
+CGI headers written to stdout must use `\r\n` line endings. The response body uses `\n`. If a `Content-Type: application/json` header is emitted without `\r\n`, the entire CGI output (body included) is silently discarded by the HTTP server — you get zero output, not an error.
+
+## jq Quirks
+
+### Apostrophes Inside Single-Quoted jq Filter Strings Close the Shell Quote
+
+In shell, a single-quoted string ends at the first `'` character — there is no escaping inside `'...'`. Using a contraction (`block's`, `don't`) or any apostrophe inside a `jq '...'` filter argument closes the shell quote and corrupts the argument.
+
+**Rule:** Never use contractions or apostrophes inside jq filter strings passed as `'...'` arguments. This is a POSIX rule, not specific to BusyBox, but easy to miss in long multi-line jq pipelines.
+
+Example — breaks:
+
+```sh
+jq -r '.blocks[] | "the block'\''s scenario"' file.json   # awkward but works
+jq -r '.blocks[] | "the block's scenario"' file.json      # closes quote at the second '
+```
+
+Safe alternatives: use `"` for the string literal inside jq (jq allows both), or restructure to avoid the apostrophe.
+
+### Device jq (1.6) Treats jq Keywords as Reserved in `as $var` Bindings
+
+The jq 1.6 build on RM520N-class OpenWRT targets treats jq language keywords as reserved names in `as $<name>` patterns. Using `as $def`, `as $end`, `as $try`, `as $catch`, `as $reduce`, `as $foreach`, `as $label`, or `as $break` in a filter produces a parse error (`unexpected def`, etc.).
+
+**Rule:** Avoid binding those names. Use `$dflt` instead of `$def`, `$result` instead of `$end`, `$current` instead of any keyword, and so on. `scenario_mgr.sh` uses `$dflt` for exactly this reason.
+
+Affected reserved names (jq 1.6): `def`, `end`, `try`, `catch`, `reduce`, `foreach`, `label`, `break`, `as`, `if`, `then`, `else`, `elif`, `error`, `import`, `include`, `module`.
+
+### `jq // empty` Silently Drops `false`
+
+The alternate operator `//` in jq treats `false` and `null` as "empty" and substitutes the right-hand side. `false // "default"` evaluates to `"default"`. Use `if . == null then "default" else . end` when the value can legitimately be boolean false.
+
+This is why CGI scripts that extract boolean fields use `if . == null then empty else tostring end` rather than the shorter `// empty` pattern.
+
+### `jq -r` on a `null` Prints the Literal String `"null"`
+
+`jq -r '.missing_key'` on a key that does not exist prints the four-character string `null`, not an empty string. Subsequent shell `[ -z "$var" ]` checks pass incorrectly. Use `// empty` (for non-boolean fields) or `if . == null then empty else . end` to produce a truly empty output.
+
+## Known Debt — Cron Writers Without Crond Reload
+
+The existing scheduler subsystems — `tower/schedule.sh` (`qmanager_tower_schedule`), scheduled-reboot, and low-power (`system/settings.sh`) — write the crontab via `crontab -` without issuing `( /etc/init.d/cron reload & )`. This means they share the "dormant crond" gap: on a device that has never had a crontab, the schedule writes correctly but crond never fires because procd has not spawned it yet.
+
+`scenario_install_cron` (`scenario_mgr.sh`) now handles this for the scenario scheduler. The other schedulers have not been updated and remain affected. A future pass should unify cron install across all scheduler subsystems with the reload idiom.

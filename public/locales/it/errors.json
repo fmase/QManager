@@ -133,6 +133,7 @@
   "rate_limited": "Troppi tentativi falliti: riprova più tardi",
   "remove_failed": "Impossibile rimuovere l'elemento",
   "save_failed": "Impossibile salvare l'impostazione",
+  "scenario_locked_by_schedule": "Lo scenario di connessione è gestito dalla pianificazione del profilo attivo — disattiva la pianificazione per cambiarlo manualmente",
   "select_failed": "Impossibile selezionare la modalità di rete",
   "send_failed": "Impossibile inviare il messaggio",
   "service_running": "Il servizio è attualmente in esecuzione: interrompilo prima",

@@ -46,12 +46,15 @@ import type { SimProfile, CurrentModemSettings } from "@/types/sim-profile";
 import type { ProfileFormData } from "@/hooks/use-sim-profiles";
 import {
   type PdpType,
+  DEFAULT_SCENARIO_BINDING,
 } from "@/types/sim-profile";
 import {
   MNO_PRESETS,
   MNO_CUSTOM_ID,
   getMnoPreset,
 } from "@/constants/mno-presets";
+import { ScenarioBindingSection } from "@/components/cellular/custom-profiles/scenario-binding/scenario-binding-section";
+import { hasBlockingScheduleErrors } from "@/lib/scenario-schedule";
 
 // =============================================================================
 // CustomProfileFormComponent — Create / Edit SIM Profile Form
@@ -77,6 +80,7 @@ const DEFAULT_FORM_STATE: ProfileFormData = {
   imei: "",
   ttl: 64,
   hl: 64,
+  scenario: DEFAULT_SCENARIO_BINDING,
 };
 
 function profileToFormData(profile: SimProfile): ProfileFormData {
@@ -91,6 +95,8 @@ function profileToFormData(profile: SimProfile): ProfileFormData {
     imei: s.imei,
     ttl: s.ttl,
     hl: s.hl,
+    // Backend normalizes .scenario onto every profile; fall back defensively.
+    scenario: profile.scenario ?? DEFAULT_SCENARIO_BINDING,
   };
 }
 
@@ -253,6 +259,14 @@ const CustomProfileFormComponent = ({
 
     if (form.hl < 0 || form.hl > 255) {
       newErrors.hl = t("custom_profiles.form.fields.hl_error");
+    }
+
+    // Schedule blocks surface their own inline errors; flag a form-level error
+    // so submit is blocked and the user is nudged toward the Scenario section.
+    if (hasBlockingScheduleErrors(form.scenario.schedule)) {
+      newErrors.scenario = t(
+        "custom_profiles.form.scenario.schedule_invalid",
+      );
     }
 
     setErrors(newErrors);
@@ -521,6 +535,18 @@ const CustomProfileFormComponent = ({
                     )}
                   </Field>
                 </div>
+
+                {/* --- Scenario binding (collapsible) --- */}
+                <ScenarioBindingSection
+                  value={form.scenario}
+                  onChange={(scenario) => updateField("scenario", scenario)}
+                  defaultOpen={
+                    isEditing && form.scenario.schedule.enabled
+                  }
+                />
+                {errors.scenario && (
+                  <FieldError>{errors.scenario}</FieldError>
+                )}
 
                 {/* --- Actions --- */}
                 <div className="flex gap-3 pt-2">

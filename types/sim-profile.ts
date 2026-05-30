@@ -30,7 +30,53 @@ export interface SimProfile {
   updated_at: number;
   /** All configurable modem/system settings */
   settings: ProfileSettings;
+  /**
+   * Connection-scenario binding. Always present — the backend normalizes a
+   * read-time default ({@link DEFAULT_SCENARIO_BINDING}) onto legacy profiles.
+   */
+  scenario: ProfileScenarioBinding;
 }
+
+// --- Scenario Binding & Schedule ---------------------------------------------
+
+/** 0=Sun … 6=Sat (matches JS Date.getDay() and the device cron). */
+export type DayOfWeek = 0 | 1 | 2 | 3 | 4 | 5 | 6;
+
+/** One scheduled time window that maps to a connection scenario. */
+export interface ScenarioScheduleBlock {
+  /** "HH:MM" 24h. Inclusive. */
+  start: string;
+  /** "HH:MM" 24h. Exclusive. end <= start means the window wraps past midnight. */
+  end: string;
+  /** Days this block is active. Empty = block inert. */
+  days: DayOfWeek[];
+  /** Scenario id to apply during this window. */
+  scenario: string;
+}
+
+/** Optional time-of-day schedule overlaid on the profile's default scenario. */
+export interface ScenarioSchedule {
+  enabled: boolean;
+  blocks: ScenarioScheduleBlock[];
+}
+
+/**
+ * Binds a profile to a connection scenario + optional schedule.
+ * `default` is BOTH the on-activate scenario AND the schedule fallback
+ * ("all other times"). The backend normalizes this onto every profile at read
+ * time, so it is always present on profiles returned by list.sh / get.sh.
+ */
+export interface ProfileScenarioBinding {
+  /** On-activate scenario AND schedule fallback. */
+  default: string;
+  schedule: ScenarioSchedule;
+}
+
+/** Read-time default the backend injects for legacy profiles. */
+export const DEFAULT_SCENARIO_BINDING: ProfileScenarioBinding = {
+  default: "balanced",
+  schedule: { enabled: false, blocks: [] },
+};
 
 /** The configurable settings bundle within a profile */
 export interface ProfileSettings {
@@ -74,6 +120,12 @@ export interface ProfileSummary {
   sim_iccid: string;
   created_at: number;
   updated_at: number;
+  /**
+   * Scenario binding — included on every summary by profiles/list.sh (the
+   * backend `profile_list` injects a normalized block). Drives the
+   * locked-while-scheduled UI off the active profile.
+   */
+  scenario: ProfileScenarioBinding;
 }
 
 // --- Profile Apply Lifecycle -------------------------------------------------

@@ -133,6 +133,7 @@
   "rate_limited": "Too many failed attempts — please try again later",
   "remove_failed": "Failed to remove item",
   "save_failed": "Failed to save setting",
+  "scenario_locked_by_schedule": "Connection scenario is controlled by the active profile's schedule — turn off the schedule to change it manually",
   "select_failed": "Failed to select network mode",
   "send_failed": "Failed to send message",
   "service_running": "Service is currently running — stop it first",
