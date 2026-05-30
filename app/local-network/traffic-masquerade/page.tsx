@@ -1,7 +1,5 @@
-import TrafficMasqueradeComponent from "@/components/local-network/traffic-masquerade/traffic-masquerade";
+import { redirect } from "next/navigation";
 
-const TrafficMasqueradePage = () => {
-  return <TrafficMasqueradeComponent />;
-};
-
-export default TrafficMasqueradePage;
+export default function TrafficMasqueradePage() {
+  redirect("/local-network/traffic-engine?mode=masquerade");
+}

@@ -21,6 +21,7 @@ import {
   TerminalIcon,
   DownloadIcon,
   WaypointsIcon,
+  MonitorPlay,
 } from "lucide-react";
 
 import QManagerLogo from "@/public/qmanager-logo.svg";
@@ -168,12 +169,12 @@ const data = {
       items: [
         { t_key: "custom_dns", url: "/local-network/custom-dns" },
         { t_key: "ttl_mtu_settings", url: "/local-network/ttl-settings" },
-        { t_key: "video_optimizer", url: "/local-network/video-optimizer" },
-        {
-          t_key: "traffic_masquerade",
-          url: "/local-network/traffic-masquerade",
-        },
       ],
+    },
+    {
+      t_key: "traffic_engine",
+      url: "/local-network/traffic-engine",
+      icon: MonitorPlay,
     },
   ],
   monitoring: [

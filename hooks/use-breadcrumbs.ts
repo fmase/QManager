@@ -39,6 +39,7 @@ const routeNameMap: Record<string, string> = {
   watchdog: 'Watchdog',
   'video-optimizer': 'Video Optimizer',
   'traffic-masquerade': 'Traffic Masquerade',
+  'traffic-engine': 'Traffic Engine',
   tailscale: 'Tailscale',
   'system-settings': 'System Settings',
   'about-device': 'About Device',

@@ -1,7 +1,5 @@
-import VideoOptimizerComponent from "@/components/local-network/video-optimizer/video-optimizer";
+import { redirect } from "next/navigation";
 
-const VideoOptimizerPage = () => {
-  return <VideoOptimizerComponent />;
-};
-
-export default VideoOptimizerPage;
+export default function VideoOptimizerPage() {
+  redirect("/local-network/traffic-engine");
+}

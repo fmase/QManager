@@ -195,8 +195,40 @@
   animation: progress-indeterminate 1.5s ease-in-out infinite;
 }
 
+/* Sparkline tail draw — new segment draws in via dash offset, ease-out-quart */
+@keyframes spark-draw {
+  from {
+    stroke-dasharray: 1;
+    stroke-dashoffset: 0.22;
+  }
+  to {
+    stroke-dasharray: 1;
+    stroke-dashoffset: 0;
+  }
+}
+
+.animate-spark-draw {
+  animation: spark-draw 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Engine state-dot halo — slow opacity breathe, never scales or bounces */
+@keyframes halo-breathe {
+  0% {
+    opacity: 0.55;
+  }
+  100% {
+    opacity: 0.12;
+  }
+}
+
+.animate-halo-breathe {
+  animation: halo-breathe 2s ease-in-out infinite alternate;
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .animate-pulse-ring {
+  .animate-pulse-ring,
+  .animate-spark-draw,
+  .animate-halo-breathe {
     animation: none;
   }
 }

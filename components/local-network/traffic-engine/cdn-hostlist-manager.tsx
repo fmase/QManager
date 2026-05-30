@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import {
   Card,
+  CardAction,
   CardContent,
   CardDescription,
   CardHeader,
@@ -17,7 +18,6 @@ import {
   InputGroupInput,
 } from "@/components/ui/input-group";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { SaveButton, useSaveFlash } from "@/components/ui/save-button";
@@ -40,12 +40,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { FieldError } from "@/components/ui/field";
-import { Separator } from "@/components/ui/separator";
 import {
   AlertTriangle,
   ArrowDownAZIcon,
   ArrowUpAZIcon,
   Download,
+  ListIcon,
   Loader2,
   MoreVerticalIcon,
   Plus,
@@ -56,41 +56,31 @@ import {
   X,
 } from "lucide-react";
 import { useCdnHostlist } from "@/hooks/use-cdn-hostlist";
-
-const DOMAIN_REGEX = /^[a-zA-Z0-9]([a-zA-Z0-9._-]*[a-zA-Z0-9])?$/;
-
-function validateDomain(
-  value: string,
-  existing: string[],
-  t: (key: string) => string,
-): string | null {
-  const trimmed = value.trim();
-  if (!trimmed) return t("video_optimizer.validation_domain_required");
-  if (!DOMAIN_REGEX.test(trimmed)) return t("video_optimizer.validation_domain_invalid_format");
-  if (!trimmed.includes(".")) return t("video_optimizer.validation_domain_needs_dot");
-  if (trimmed.length > 253) return t("video_optimizer.validation_domain_too_long");
-  if (existing.some((d) => d.toLowerCase() === trimmed.toLowerCase()))
-    return t("video_optimizer.validation_domain_duplicate");
-  return null;
-}
+import { validateDomainKey } from "@/lib/validate-domain";
 
 function HostlistSkeleton() {
   return (
-    <Card className="@container/card">
+    <Card>
       <CardHeader>
         <Skeleton className="h-5 w-44" />
         <Skeleton className="h-4 w-72" />
       </CardHeader>
       <CardContent className="grid gap-4">
         <Skeleton className="h-9 w-full" />
-        <Skeleton className="h-64 w-full" />
+        <Skeleton className="h-40 w-full" />
         <Skeleton className="h-9 w-full" />
       </CardContent>
     </Card>
   );
 }
 
-export default function CdnHostlistCard() {
+/**
+ * Pill-dense rework of the CDN hostlist. Domains render as dense outline pills
+ * (UniFi Pill-Dense rule), custom domains carrying an info-tinted sparkle marker
+ * and an inline remove. All add/remove/import/export/sort/restore behavior is
+ * ported faithfully from the prior cdn-hostlist-card.
+ */
+export function CdnHostlistManager() {
   const { t } = useTranslation("local-network");
   const {
     domains,
@@ -115,7 +105,6 @@ export default function CdnHostlistCard() {
     setEditDomains(domains);
   }, [domains]);
 
-  // Build a set of lowercase default domains for O(1) lookup
   const defaultSet = useMemo(
     () => new Set(defaultDomains.map((d) => d.toLowerCase())),
     [defaultDomains],
@@ -134,10 +123,9 @@ export default function CdnHostlistCard() {
     );
   }, [editDomains, domains]);
 
-  // Sorted view of domains for display
   const displayDomains = useMemo(() => {
-    if (sortAsc === null) return editDomains.map((d, i) => ({ domain: d, originalIndex: i }));
     const indexed = editDomains.map((d, i) => ({ domain: d, originalIndex: i }));
+    if (sortAsc === null) return indexed;
     return indexed.sort((a, b) => {
       const cmp = a.domain.toLowerCase().localeCompare(b.domain.toLowerCase());
       return sortAsc ? cmp : -cmp;
@@ -151,9 +139,9 @@ export default function CdnHostlistCard() {
 
   const handleAddDomain = useCallback(() => {
     const trimmed = newDomain.trim();
-    const err = validateDomain(trimmed, editDomains, t);
-    if (err) {
-      setValidationError(err);
+    const errKey = validateDomainKey(trimmed, editDomains);
+    if (errKey) {
+      setValidationError(t(errKey));
       return;
     }
     setEditDomains((prev) => [...prev, trimmed]);
@@ -199,7 +187,6 @@ export default function CdnHostlistCard() {
     }
   }, [restoreDefaults, error, t]);
 
-  // --- Export: download current edit list as .txt ---
   const handleExport = useCallback(() => {
     const content = editDomains.join("\n") + "\n";
     const blob = new Blob([content], { type: "text/plain" });
@@ -209,10 +196,11 @@ export default function CdnHostlistCard() {
     a.download = "video_domains.txt";
     a.click();
     URL.revokeObjectURL(url);
-    toast.success(t("video_optimizer.toast_export_success", { count: editDomains.length }));
+    toast.success(
+      t("video_optimizer.toast_export_success", { count: editDomains.length }),
+    );
   }, [editDomains, t]);
 
-  // --- Import: read .txt file and merge ---
   const handleImport = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
@@ -228,10 +216,7 @@ export default function CdnHostlistCard() {
           .map((line) => line.trim())
           .filter((line) => line && !line.startsWith("#"));
 
-        // Merge: add only domains not already in the list
-        const existingLower = new Set(
-          editDomains.map((d) => d.toLowerCase()),
-        );
+        const existingLower = new Set(editDomains.map((d) => d.toLowerCase()));
         const newOnes = imported.filter(
           (d) => !existingLower.has(d.toLowerCase()),
         );
@@ -240,12 +225,12 @@ export default function CdnHostlistCard() {
           toast.info(t("video_optimizer.toast_import_no_new"));
         } else {
           setEditDomains((prev) => [...prev, ...newOnes]);
-          toast.success(t("video_optimizer.toast_import_success", { count: newOnes.length }));
+          toast.success(
+            t("video_optimizer.toast_import_success", { count: newOnes.length }),
+          );
         }
       };
       reader.readAsText(file);
-
-      // Reset input so the same file can be re-imported
       e.target.value = "";
     },
     [editDomains, t],
@@ -263,7 +248,7 @@ export default function CdnHostlistCard() {
 
   if (error && domains.length === 0) {
     return (
-      <Card className="@container/card">
+      <Card>
         <CardHeader>
           <CardTitle>{t("video_optimizer.hostlist_card_title")}</CardTitle>
           <CardDescription>
@@ -287,85 +272,79 @@ export default function CdnHostlistCard() {
   }
 
   return (
-    <Card className="@container/card">
+    <Card>
       <CardHeader>
         <CardTitle>{t("video_optimizer.hostlist_card_title")}</CardTitle>
         <CardDescription>
           {t("video_optimizer.hostlist_card_description")}
         </CardDescription>
+        <CardAction>
+          <div className="flex items-center gap-2">
+            <span className="text-sm tabular-nums text-muted-foreground">
+              {t("traffic_engine.hostlist_summary", {
+                count: editDomains.length,
+                custom: customCount,
+              })}
+            </span>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="size-8"
+              onClick={toggleSort}
+              aria-label={
+                sortAsc === null
+                  ? t("video_optimizer.aria_sort_az")
+                  : sortAsc
+                    ? t("video_optimizer.aria_sort_za")
+                    : t("video_optimizer.aria_sort_clear")
+              }
+            >
+              {sortAsc === false ? (
+                <ArrowUpAZIcon className="size-4" />
+              ) : (
+                <ArrowDownAZIcon className="size-4" />
+              )}
+            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="size-8"
+                  aria-label={t("video_optimizer.aria_menu_options")}
+                >
+                  <MoreVerticalIcon className="size-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={handleExport}>
+                  <Download className="size-4" />
+                  {t("video_optimizer.menu_export")}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => importRef.current?.click()}>
+                  <Upload className="size-4" />
+                  {t("video_optimizer.menu_import")}
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleReset} disabled={!isDirty}>
+                  <RotateCcw className="size-4" />
+                  {t("video_optimizer.menu_discard")}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <input
+              ref={importRef}
+              type="file"
+              accept=".txt,.csv,text/plain"
+              className="hidden"
+              onChange={handleImport}
+            />
+          </div>
+        </CardAction>
       </CardHeader>
       <CardContent className="grid gap-4" aria-live="polite">
-        {/* Toolbar: count badges + sort + menu */}
-        <div className="flex items-center gap-2">
-          <Badge>{t("video_optimizer.badge_domain_count", { count: editDomains.length })}</Badge>
-          {customCount > 0 && (
-            <Badge
-              variant="outline"
-              className="bg-info/15 text-info border-info/30"
-            >
-              <SparklesIcon className="size-3" />
-              {t("video_optimizer.badge_custom_count", { custom_count: customCount })}
-            </Badge>
-          )}
-          <div className="flex-1" />
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="size-8"
-            onClick={toggleSort}
-            aria-label={
-              sortAsc === null
-                ? t("video_optimizer.aria_sort_az")
-                : sortAsc
-                  ? t("video_optimizer.aria_sort_za")
-                  : t("video_optimizer.aria_sort_clear")
-            }
-          >
-            {sortAsc === false ? (
-              <ArrowUpAZIcon className="size-4" />
-            ) : (
-              <ArrowDownAZIcon className="size-4" />
-            )}
-          </Button>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="size-8"
-                aria-label={t("video_optimizer.aria_menu_options")}
-              >
-                <MoreVerticalIcon className="size-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={handleExport}>
-                <Download className="size-4" />
-                {t("video_optimizer.menu_export")}
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => importRef.current?.click()}>
-                <Upload className="size-4" />
-                {t("video_optimizer.menu_import")}
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={handleReset} disabled={!isDirty}>
-                <RotateCcw className="size-4" />
-                {t("video_optimizer.menu_discard")}
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-          {/* Hidden file input for import */}
-          <input
-            ref={importRef}
-            type="file"
-            accept=".txt,.csv,text/plain"
-            className="hidden"
-            onChange={handleImport}
-          />
-        </div>
-
         {/* Add domain input */}
         <div className="space-y-1.5">
           <InputGroup>
@@ -380,9 +359,7 @@ export default function CdnHostlistCard() {
               onKeyDown={handleKeyDown}
               aria-label={t("video_optimizer.aria_new_domain")}
               aria-invalid={!!validationError}
-              aria-describedby={
-                validationError ? "add-domain-error" : undefined
-              }
+              aria-describedby={validationError ? "add-domain-error" : undefined}
             />
             <InputGroupAddon align="inline-end">
               <InputGroupButton
@@ -400,49 +377,64 @@ export default function CdnHostlistCard() {
           )}
         </div>
 
-        {/* Domain list */}
-        <div className="max-h-100 overflow-y-auto rounded-md border">
-          {displayDomains.length === 0 ? (
-            <div className="flex items-center justify-center py-8 text-sm text-muted-foreground">
+        {/* Pill-dense domain list */}
+        {displayDomains.length === 0 ? (
+          <div className="flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed py-10 text-center">
+            <ListIcon className="size-8 text-muted-foreground/60" />
+            <p className="text-sm text-muted-foreground">
               {t("video_optimizer.empty_state_no_domains")}
-            </div>
-          ) : (
-            displayDomains.map(({ domain, originalIndex }) => {
+            </p>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleRestoreDefaults}
+              disabled={isRestoring}
+            >
+              {isRestoring ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <RotateCcw className="size-4" />
+              )}
+              {t("video_optimizer.button_restore_defaults")}
+            </Button>
+          </div>
+        ) : (
+          <div className="flex max-h-96 flex-wrap content-start gap-2 overflow-y-auto rounded-lg border bg-muted/20 p-3">
+            {displayDomains.map(({ domain, originalIndex }) => {
               const isCustom = !defaultSet.has(domain.toLowerCase());
               return (
-                <div
+                <span
                   key={`${domain}-${originalIndex}`}
-                  className="flex items-center justify-between px-3 py-2 text-sm even:bg-muted/30"
+                  className="group/pill inline-flex max-w-full items-center gap-1.5 rounded-md border bg-card py-1 pl-2.5 pr-1 text-sm shadow-sm transition-colors duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] hover:border-foreground/15"
                 >
-                  <span className="flex items-center gap-2 truncate">
-                    <span className="truncate">{domain}</span>
-                    {isCustom && (
-                      <SparklesIcon
-                        className="size-3 shrink-0 text-info"
-                        aria-label={t("video_optimizer.aria_custom_domain_badge")}
-                      />
-                    )}
-                  </span>
+                  {isCustom && (
+                    <SparklesIcon
+                      className="size-3 shrink-0 text-info"
+                      aria-label={t("video_optimizer.aria_custom_domain_badge")}
+                    />
+                  )}
+                  <span className="truncate">{domain}</span>
                   <Button
                     type="button"
                     variant="ghost"
                     size="icon"
-                    className="size-6 shrink-0 text-muted-foreground hover:text-destructive"
+                    className="size-5 shrink-0 text-muted-foreground hover:text-destructive"
                     onClick={() => handleRemoveDomain(originalIndex)}
-                    aria-label={t("video_optimizer.aria_remove_domain", { domain })}
+                    aria-label={t("video_optimizer.aria_remove_domain", {
+                      domain,
+                    })}
                   >
-                    <X className="size-3.5" />
+                    <X className="size-3" />
                   </Button>
-                </div>
+                </span>
               );
-            })
-          )}
-        </div>
-
-        <Separator />
+            })}
+          </div>
+        )}
 
         {/* Actions */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 border-t pt-4">
           <SaveButton
             type="button"
             isSaving={isSaving}
@@ -450,9 +442,7 @@ export default function CdnHostlistCard() {
             disabled={!isDirty}
             onClick={handleSave}
           />
-
           <div className="flex-1" />
-
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button
@@ -472,13 +462,17 @@ export default function CdnHostlistCard() {
             </AlertDialogTrigger>
             <AlertDialogContent>
               <AlertDialogHeader>
-                <AlertDialogTitle>{t("video_optimizer.dialog_restore_title")}</AlertDialogTitle>
+                <AlertDialogTitle>
+                  {t("video_optimizer.dialog_restore_title")}
+                </AlertDialogTitle>
                 <AlertDialogDescription>
                   {t("video_optimizer.dialog_restore_desc")}
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel>{t("actions.cancel", { ns: "common" })}</AlertDialogCancel>
+                <AlertDialogCancel>
+                  {t("actions.cancel", { ns: "common" })}
+                </AlertDialogCancel>
                 <AlertDialogAction
                   className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                   onClick={handleRestoreDefaults}

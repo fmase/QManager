@@ -31,6 +31,7 @@
     "ttl_mtu_settings": "Pengaturan TTL & MTU",
     "video_optimizer": "Video Optimizer",
     "traffic_masquerade": "Traffic Masquerade",
+    "traffic_engine": "Traffic Engine",
     "network_events": "Peristiwa Jaringan",
     "latency_monitor": "Monitor Latensi",
     "email_alerts": "Peringatan Email",
