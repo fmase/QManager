@@ -282,7 +282,8 @@ parse_temperature() {
     local result
 
     # --- TUNING KNOB: thermal-zone type-name allowlist (case glob) -----------
-    # Modem-relevant SoC sensors. Edit this single glob to tune the zone set
+    # Modem-relevant SoC sensors plus the AP CPU cores (cpuss-*), averaged into
+    # the single overall temperature. Edit this glob to tune the zone set
     # for temperature parity. sysfs temp is in millidegrees C; non-positive
     # values (e.g. -273000, -40960, empty) are unavailable sentinels and are
     # excluded by the >0 filter below.
@@ -292,7 +293,7 @@ parse_temperature() {
         [ -r "$zone/temp" ] || continue
         ztype=$(cat "$zone/type" 2>/dev/null)
         case "$ztype" in
-            mdmss-*|mdmq6-*|sdr[0-9]*|xo-therm*|sys-therm-*)
+            mdmss-*|mdmq6-*|sdr[0-9]*|xo-therm*|sys-therm-*|cpuss-*)
                 cat "$zone/temp" 2>/dev/null
                 ;;
         esac
