@@ -206,7 +206,7 @@ function LiveTrafficRow() {
             </p>
           </div>
           <div className="flex items-center gap-1">
-            <TbCircleArrowUpFilled className="text-primary size-5" />
+            <TbCircleArrowUpFilled className="text-purple-500 size-5" />
             <p className="font-semibold text-sm tabular-nums">
               {formatBitsPerSec(currentUpload)}
             </p>

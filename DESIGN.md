@@ -192,6 +192,7 @@ QManager has no "secondary brand color" in the marketing sense. The five colors 
 - **Caution Amber** (`oklch(0.75 0.18 75)` light / `oklch(0.80 0.16 75)` dark): warning state. Pending reboot banners, partial-success, SIM mismatch, degraded signal. Paired with `TriangleAlertIcon`.
 - **Telemetry Blue** (`oklch(0.62 0.19 255)` light / `oklch(0.68 0.17 255)` dark): informational state. Connection events, neutral notices, banners that report rather than alarm.
 - **Fault Red** (`oklch(0.577 0.245 27.325)` light / `oklch(0.704 0.191 22.216)` dark): destructive or failed state. Reboot dialogs, factory restore, profile-failed, watchdog-tripped. Paired with `XCircleIcon` or `AlertCircleIcon`.
+- **Stream Violet** (`oklch(0.627 0.265 303.9)`, Tailwind `purple-500`): the egress half of the **throughput-direction pair** (see Named Rules). Used *only* on the upload-direction arrow of live-traffic readouts, never as a generic accent and never as a status color. Its job is to be ~45° of hue away from Telemetry Blue so download and upload read apart at a glance.
 
 ### Neutral
 - **Pearl White** (`oklch(1 0 0)`): light-theme background and card surface. The only place pure white appears.
@@ -210,6 +211,8 @@ QManager has no "secondary brand color" in the marketing sense. The five colors 
 **The Signal-Indigo Reserve.** Signal Indigo is rationed. Reserve it for the single most-important action affordance on a screen. If a Save button, a primary CTA, and a brand badge all appear on the same page, two of them must use a quieter variant. Rarity is what makes it read as the "primary".
 
 **The Functional-Color Promise.** A user who learns that Uplink Green means "healthy" on the dashboard must find the same green meaning the same thing in Watchdog, in Profile Apply, and in SMS Alerts. Functional colors are a contract; never decorate with them.
+
+**The Throughput-Direction Pair.** Live traffic encodes *direction* with a fixed two-color pair: **download/ingress is Telemetry Blue** (`text-info`), **upload/egress is Stream Violet** (`text-purple-500`). They are deliberately ~45° apart in hue so the two arrows never collapse into "two shades of blue" — using `text-primary` (Signal Indigo, only 9° off Telemetry Blue) for upload is the specific mistake this rule exists to prevent. The pair is reserved for throughput readouts (the dashboard Live Traffic row, the bandwidth monitor); it is not a general status convention and Stream Violet appears nowhere else.
 
 **The OKLCH-Only Rule.** No hex literals. No `#000`, no `#fff`. Every neutral is tinted toward the indigo brand hue (chroma 0.005-0.01 minimum). New colors enter the system in OKLCH form; conversion is the author's job, not the consumer's.
 
