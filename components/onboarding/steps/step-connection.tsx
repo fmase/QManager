@@ -124,7 +124,7 @@ export function StepConnection({
       onLoadingChange(false);
       onSuccess();
     }
-  }, [selectedType, apnName, pdpType, profileName, mno, onLoadingChange, onSuccess]);
+  }, [selectedType, apnName, pdpType, profileName, mno, onLoadingChange, onSuccess, t]);
 
   useEffect(() => {
     onSubmitRef(submit);

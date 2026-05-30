@@ -28,7 +28,6 @@ import type {
   TowerLockConfig,
   TowerScheduleConfig,
 } from "@/types/tower-locking";
-import { DAY_LABELS } from "@/types/tower-locking";
 
 interface ScheduleTowerLockingProps {
   config: TowerLockConfig | null;

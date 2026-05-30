@@ -260,6 +260,7 @@ function WatchdogSettingsForm({
       saveSettings,
       error,
       markSaved,
+      t,
     ],
   );
 

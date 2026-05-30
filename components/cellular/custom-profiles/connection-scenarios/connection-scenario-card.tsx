@@ -33,7 +33,6 @@ import { ActiveConfigCard } from "./active-config-card";
 import { ScenarioItem, Scenario } from "./scenario-item";
 import { useConnectionScenarios } from "@/hooks/use-connection-scenarios";
 import {
-  NETWORK_MODE_OPTIONS,
   inputToBands,
   bandsToInput,
 } from "@/types/connection-scenario";

@@ -22,11 +22,9 @@ import {
   TbCircleArrowDownFilled,
   TbCircleArrowUpFilled,
   TbPlayerPlayFilled,
-  TbTimeline,
 } from "react-icons/tb";
 import { SpeedtestDialog } from "./speedtest-dialog";
 import {
-  bytesToMbps,
   formatSpeed,
   type SpeedtestFinalResult,
   type SpeedtestStatusResponse,
@@ -161,7 +159,6 @@ const LiveLatencyComponent = ({ connectivity }: LiveLatencyComponentProps) => {
     }
     const dl = formatSpeed(cachedResult.download.bandwidth);
     const ul = formatSpeed(cachedResult.upload.bandwidth);
-    const ping = cachedResult.ping.latency.toFixed(0);
     return (
       <div className="flex items-center gap-x-3">
         <p className="font-medium text-sm text-muted-foreground xl:mr-2 mr-0">
@@ -177,7 +174,7 @@ const LiveLatencyComponent = ({ connectivity }: LiveLatencyComponentProps) => {
         </div>
       </div>
     );
-  }, [cachedResult]);
+  }, [cachedResult, t]);
 
   return (
     <>

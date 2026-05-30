@@ -59,20 +59,6 @@ function formatLastSeen(lastSeen: string, connected: boolean, t: TFunction): str
   return t("time.days_ago", { ns: "common", count: diffDay });
 }
 
-function capitalizeOS(os: string, t: TFunction): string {
-  if (!os) return t("shared.os_unknown", { ns: "monitoring" });
-  const map: Record<string, string> = {
-    linux: t("shared.os_linux", { ns: "monitoring" }),
-    windows: t("shared.os_windows", { ns: "monitoring" }),
-    macos: t("shared.os_macos", { ns: "monitoring" }),
-    darwin: t("shared.os_macos", { ns: "monitoring" }),
-    ios: t("shared.os_ios", { ns: "monitoring" }),
-    android: t("shared.os_android", { ns: "monitoring" }),
-    freebsd: t("shared.os_freebsd", { ns: "monitoring" }),
-  };
-  return map[os.toLowerCase()] || os.charAt(0).toUpperCase() + os.slice(1);
-}
-
 export function NetBirdPeersCard({
   status,
   isLoading,

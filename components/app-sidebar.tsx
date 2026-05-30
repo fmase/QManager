@@ -20,8 +20,6 @@ import {
   SettingsIcon,
   TerminalIcon,
   DownloadIcon,
-  Languages as LanguagesIcon,
-  PackageOpenIcon,
   WaypointsIcon,
 } from "lucide-react";
 

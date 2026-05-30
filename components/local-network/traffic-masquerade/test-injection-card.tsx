@@ -11,7 +11,6 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Skeleton } from "@/components/ui/skeleton";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -119,8 +118,6 @@ export default function TestInjectionCard({
   }, [runTest]);
 
   const isRunning = testResult.status === "running";
-  const isComplete =
-    testResult.status === "complete" || testResult.status === "error";
 
   if (!serviceRunning) {
     return null;

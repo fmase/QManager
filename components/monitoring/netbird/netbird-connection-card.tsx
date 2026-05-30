@@ -43,7 +43,6 @@ import {
   CheckCircle2Icon,
   MinusCircleIcon,
   Trash2Icon,
-  KeyIcon,
 } from "lucide-react";
 import type { UseNetBirdReturn } from "@/hooks/use-netbird";
 
