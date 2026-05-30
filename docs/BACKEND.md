@@ -751,6 +751,41 @@ All auth endpoints set `_SKIP_AUTH=1`.
 6. Write state to `/tmp/qmanager_<name>.json`
 7. Handle `SIGTERM` and `SIGINT` via `trap cleanup EXIT INT TERM`
 
+---
+
+## Installer (`scripts/install.sh`)
+
+The installer copies QManager onto the device filesystem and starts services. It is used both for fresh installs (via `qmanager-installer.sh`) and for OTA updates (Software Update path, `--no-reboot --skip-packages`).
+
+### File-copy helpers
+
+| Function | Used for |
+|----------|----------|
+| `install_file(src, dst, mode)` | Single file (daemons, libs, config defaults) |
+| `install_dir_flat(src, dst, mode)` | All files in a flat directory (e.g. `usr/bin/`) |
+| `install_tree(src, dst)` | Recursive directory tree (CGI endpoints) |
+
+`install_dir_flat` calls `install_file` per file and `die`s on the first failure. `install_tree` copies with `cp -r`, then runs its own integrity sweep (see below) before the CRLF strip.
+
+### Truncation-integrity check
+
+Both `install_file` and `install_tree` verify that each copied file is byte-for-byte the same size as its source. This catches truncated transfers caused by ENOSPC, an interrupted OTA download, or an aborted SSH copy.
+
+**`install_file`:** After `cp` and before the CRLF strip, compares `wc -c < "$src"` with `wc -c < "$tmp"`. On mismatch:
+1. Logs `install_file: SIZE MISMATCH (truncated copy) <src> (<N> B) -> <tmp> (<M> B)` to `/tmp/qmanager_install.log`.
+2. Removes the temp file and returns 1.
+3. `install_dir_flat` receives the failure and calls `die`, aborting the entire install.
+
+**`install_tree`:** After `cp -r "$src"/. "$dst"/` and before the CRLF strip, walks `find "$src" -type f` and compares `wc -c` for each file pair. Mismatches are recorded to a temp marker file (`/tmp/qm_install_treechk.$$`). After the loop (not inside it — the `while` body runs in a subshell, so `die` there would only kill the subshell), if any mismatches were recorded the installer logs them and calls `die "install_tree: $src -> $dst copy truncated (see $LOG_FILE)"`.
+
+**Why this matters:** A truncated-but-present shell script (including a 0-byte file) passes `sh -n` syntax check and execs cleanly — it just exits immediately without doing anything. This once shipped an empty `qmanager_profile_apply` to a device, which caused SIM Profile activation to fail with `start_failed` every time with no visible error in the script layer. The integrity check turns that silent breakage into a loud install failure.
+
+**Log location:** `/tmp/qmanager_install.log`. Both signatures — `SIZE MISMATCH` and `copy truncated` — appear here and can be grepped after a failed install to identify which files were affected.
+
+> ℹ️ NOTE: The integrity check runs on byte counts, not checksums, to stay within BusyBox's toolset without requiring `md5sum` or `stat`. `wc -c` is a BusyBox core applet. `tr -d ' '` normalizes the leading whitespace that some `wc` builds emit.
+
+---
+
 ### JSON Response Conventions
 
 ```sh

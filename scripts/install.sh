@@ -286,9 +286,26 @@ install_file() {
     mkdir -p "$(dirname "$dst")" 2>/dev/null || true
 
     local tmp="$dst.qm_install.$$"
+    local src_bytes
+    local tmp_bytes
 
     if ! cp "$src" "$tmp" 2>>"$LOG_FILE"; then
         _log_raw "install_file: cp failed: $src -> $tmp"
+        rm -f "$tmp"
+        return 1
+    fi
+
+    # Integrity check: the copied bytes must equal the source exactly. A
+    # truncated cp (interrupted transfer / ENOSPC) can leave a 0-byte or
+    # partial file that still passes `sh -n` and execs as a silent no-op —
+    # this shipped an empty qmanager_profile_apply once and broke profile
+    # activation with start_failed. Must run BEFORE the CRLF strip, where tmp
+    # is still byte-identical to src. wc -c is BusyBox-core (no stat/md5 dep);
+    # tr -d ' ' normalizes the leading whitespace some wc builds emit.
+    src_bytes=$(wc -c < "$src" 2>/dev/null | tr -d ' ')
+    tmp_bytes=$(wc -c < "$tmp" 2>/dev/null | tr -d ' ')
+    if [ "$src_bytes" != "$tmp_bytes" ]; then
+        _log_raw "install_file: SIZE MISMATCH (truncated copy) $src (${src_bytes} B) -> $tmp (${tmp_bytes} B)"
         rm -f "$tmp"
         return 1
     fi
@@ -352,12 +369,38 @@ install_dir_flat() {
 # .sh files and 644 to everything else.
 install_tree() {
     local src="$1" dst="$2"
+    local mismatch
 
     [ -d "$src" ] || { _log_raw "install_tree: missing source $src"; return 1; }
 
     rm -rf "$dst"
     mkdir -p "$dst"
     cp -r "$src"/. "$dst"/ || die "Failed to copy $src to $dst"
+
+    # Integrity sweep: every source file must have a destination counterpart
+    # of equal byte size. Same failure mode as install_file — a truncated
+    # cp -r can silently deploy a 0-byte CGI script. Must run BEFORE the CRLF
+    # strip, which legitimately changes dst sizes. The `find | while` body runs
+    # in a SUBSHELL (pipe), so a `die` there would only exit the subshell and
+    # let the install continue past a broken file — instead we record each
+    # mismatch to a marker file and `die` in the current shell after the loop.
+    mismatch="/tmp/qm_install_treechk.$$"
+    rm -f "$mismatch"
+    find "$src" -type f | while IFS= read -r sf; do
+        rel=${sf#"$src"/}
+        df="$dst/$rel"
+        sb=$(wc -c < "$sf" 2>/dev/null | tr -d ' ')
+        db=$(wc -c < "$df" 2>/dev/null | tr -d ' ')
+        if [ "$sb" != "$db" ]; then
+            printf '%s (src=%s dst=%s)\n' "$rel" "$sb" "$db" >> "$mismatch"
+        fi
+    done
+    if [ -f "$mismatch" ]; then
+        _log_raw "install_tree: truncated copies detected:"
+        cat "$mismatch" >> "$LOG_FILE" 2>/dev/null || true
+        rm -f "$mismatch"
+        die "install_tree: $src -> $dst copy truncated (see $LOG_FILE)"
+    fi
 
     # CRLF strip across the whole tree
     find "$dst" -type f -name "*.sh" | while IFS= read -r f; do
