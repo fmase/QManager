@@ -74,7 +74,9 @@
         "ttl_error": "TTL 必须为 0–255。",
         "hl_label": "跳数限制",
         "hl_error": "HL 必须为 0–255。",
-        "cid_locked_verizon": "Verizon 需要 PDP 上下文 3"
+        "cid_locked_verizon": "Verizon 需要 PDP 上下文 3",
+        "sim_iccid_hint": "留空可将此配置应用于任意 SIM 卡。",
+        "imei_danger": "更改 IMEI 会重写调制解调器标识，并在激活时重启调制解调器。留空以保留当前 IMEI。"
       },
       "buttons": {
         "create_submit": "创建配置文件",
@@ -101,7 +103,9 @@
         "end_label": "结束",
         "days_label": "日期",
         "block_scenario_label": "场景",
-        "fallback_line": "其他所有时段 → {{name}}",
+        "active_now_label": "当前生效",
+        "next_change_label": "下次切换",
+        "otherwise_label": "其他时间",
         "empty_schedule_hint": "暂无规则 — 效果与直接使用 {{name}} 相同。",
         "overlap_warning": "此块与另一个块重叠。重叠时，列表靠前的块优先生效。",
         "schedule_invalid": "请先修正高亮显示的计划规则再保存。",
@@ -142,9 +146,12 @@
         "preset_every_day": "每天",
         "preset_weekdays": "工作日",
         "preset_weekends": "周末",
-        "active_now_line": "当前 → {{scenario}}",
-        "active_now_line_with_next": "当前 → {{scenario}} · 下次切换 {{time}}",
-        "overnight_hint": "次日结束"
+        "overnight_hint": "次日结束",
+        "create_new": "创建新场景"
+      },
+      "loading_current": "正在读取 SIM…",
+      "advanced": {
+        "title": "高级"
       }
     },
     "activate_dialog": {
@@ -187,6 +194,33 @@
       "description": "在此管理您的自定义 SIM 配置文件。",
       "description_full": "您尚未创建任何自定义 SIM 配置文件。请使用表单创建您的第一个配置文件。",
       "refresh": "刷新"
+    },
+    "pills": {
+      "ip_v4": "IPv4",
+      "ip_v6": "IPv6",
+      "ip_dual": "IPv4v6",
+      "apn": "APN {{name}}",
+      "apn_default": "默认 APN",
+      "cid": "CID {{cid}}",
+      "ttl": "TTL {{value}}",
+      "hl": "HL {{value}}",
+      "imei_override": "IMEI 覆盖",
+      "mpdn_locked": "MPDN 已锁定"
+    },
+    "active_card": {
+      "none_title": "无活动配置",
+      "none_description": "调制解调器正在使用当前设置。激活已保存的配置以应用一组设置。",
+      "subtitle": "已应用到调制解调器",
+      "subtitle_with_mno": "已应用 · {{mno}}",
+      "scenario_default": "场景：{{name}}",
+      "scenario_scheduled": "场景：{{name}}（已排程）",
+      "mismatch_note": "此配置是为另一张 SIM 卡创建的，与当前插入的 SIM 卡不同。请为当前 SIM 卡重新激活，或激活匹配的配置。",
+      "verizon_locked_note": "数据路由已锁定到 PDP 上下文 3。此配置激活期间，IP 直通不可用。"
+    },
+    "list": {
+      "new_button": "新建",
+      "bound_sim": "绑定到 SIM {{iccid}}",
+      "detail_unavailable": "无法加载此配置的设置。"
     }
   },
   "scenarios": {

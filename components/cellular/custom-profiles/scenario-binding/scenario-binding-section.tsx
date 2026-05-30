@@ -207,15 +207,6 @@ export const ScenarioBindingSection = forwardRef<
     return () => window.clearInterval(id);
   }, [showReadout, computeReadout]);
 
-  const readoutLine = readout.next
-    ? t("custom_profiles.form.scenario.active_now_line_with_next", {
-        scenario: readout.scenario,
-        time: readout.next,
-      })
-    : t("custom_profiles.form.scenario.active_now_line", {
-        scenario: readout.scenario,
-      });
-
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
       <Separator className="my-2" />
@@ -338,19 +329,43 @@ export const ScenarioBindingSection = forwardRef<
               {t("custom_profiles.form.scenario.add_block")}
             </Button>
 
-            {/* Live readout: only when enabled with at least one valid rule */}
-            {showReadout && (
-              <p className="text-sm text-muted-foreground tabular-nums">
-                {readoutLine}
-              </p>
-            )}
-
-            {/* Fallback clarity line: always visible while scheduling */}
-            <p className="text-sm text-muted-foreground">
-              {t("custom_profiles.form.scenario.fallback_line", {
-                name: defaultName,
-              })}
-            </p>
+            {/* Schedule summary: the live "active now" row (only with a valid
+                rule) over the always-visible default fallback. Scenario names
+                carry foreground weight so the answer reads at a glance. */}
+            <div className="overflow-hidden rounded-lg border text-sm">
+              {showReadout && (
+                <div className="border-b px-3 py-2.5">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-muted-foreground flex items-center gap-2">
+                      <span
+                        className="bg-success size-2 rounded-full"
+                        aria-hidden="true"
+                      />
+                      {t("custom_profiles.form.scenario.active_now_label")}
+                    </span>
+                    <span className="text-foreground font-medium">
+                      {readout.scenario}
+                    </span>
+                  </div>
+                  {readout.next && (
+                    <div className="text-muted-foreground mt-1 flex items-center justify-between gap-3 pl-4 text-xs">
+                      <span>
+                        {t("custom_profiles.form.scenario.next_change_label")}
+                      </span>
+                      <span className="tabular-nums">{readout.next}</span>
+                    </div>
+                  )}
+                </div>
+              )}
+              <div className="flex items-center justify-between gap-3 px-3 py-2.5">
+                <span className="text-muted-foreground">
+                  {t("custom_profiles.form.scenario.otherwise_label")}
+                </span>
+                <span className="text-foreground font-medium">
+                  {defaultName}
+                </span>
+              </div>
+            </div>
           </div>
         )}
       </CollapsibleContent>

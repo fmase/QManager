@@ -12,12 +12,12 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
-  TbCircleCheck,
-  TbCircleX,
-  TbLoader2,
-  TbClock,
-  TbCircleMinus,
-} from "react-icons/tb";
+  CheckCircle2Icon,
+  XCircleIcon,
+  Loader2,
+  ClockIcon,
+  MinusCircleIcon,
+} from "lucide-react";
 
 import type {
   ProfileApplyState,
@@ -46,17 +46,17 @@ const DEFAULT_STEPS: ApplyStep[] = [
 ];
 
 const stepIcons: Record<ApplyStepStatus, React.ReactNode> = {
-  pending: <TbClock className="size-4 text-muted-foreground" />,
-  running: <TbLoader2 className="size-4 text-info animate-spin" />,
-  done: <TbCircleCheck className="size-4 text-success" />,
-  failed: <TbCircleX className="size-4 text-destructive" />,
-  skipped: <TbCircleMinus className="size-4 text-muted-foreground" />,
+  pending: <ClockIcon className="size-4 text-muted-foreground" />,
+  running: <Loader2 className="size-4 text-info animate-spin" />,
+  done: <CheckCircle2Icon className="size-4 text-success" />,
+  failed: <XCircleIcon className="size-4 text-destructive" />,
+  skipped: <MinusCircleIcon className="size-4 text-muted-foreground" />,
 };
 
 /** When the overall apply is complete, "skipped" means "already correct" — show a check */
 const getStepIcon = (stepStatus: ApplyStepStatus, overallStatus?: string) => {
   if (stepStatus === "skipped" && overallStatus === "complete") {
-    return <TbCircleCheck className="size-4 text-success" />;
+    return <CheckCircle2Icon className="size-4 text-success" />;
   }
   return stepIcons[stepStatus];
 };
@@ -84,25 +84,41 @@ export function ApplyProgressDialog({
     switch (status) {
       case "applying":
         return (
-          <Badge className="bg-info/10 text-info border-info/20">
+          <Badge
+            variant="outline"
+            className="border-info/30 bg-info/15 text-info"
+          >
+            <Loader2 className="animate-spin" />
             {t("state.applying", { ns: "common" })}
           </Badge>
         );
       case "complete":
         return (
-          <Badge className="bg-success/10 text-success border-success/20">
+          <Badge
+            variant="outline"
+            className="border-success/30 bg-success/15 text-success"
+          >
+            <CheckCircle2Icon />
             {t("custom_profiles.apply_dialog.status_badge.complete")}
           </Badge>
         );
       case "partial":
         return (
-          <Badge className="bg-warning/10 text-warning border-warning/20">
+          <Badge
+            variant="outline"
+            className="border-warning/30 bg-warning/15 text-warning"
+          >
+            <MinusCircleIcon />
             {t("custom_profiles.apply_dialog.status_badge.partial")}
           </Badge>
         );
       case "failed":
         return (
-          <Badge className="bg-destructive/10 text-destructive border-destructive/20">
+          <Badge
+            variant="outline"
+            className="border-destructive/30 bg-destructive/15 text-destructive"
+          >
+            <XCircleIcon />
             {t("custom_profiles.apply_dialog.status_badge.failed")}
           </Badge>
         );

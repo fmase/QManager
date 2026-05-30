@@ -183,6 +183,18 @@ const ConnectionScenariosCard = () => {
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
 
+  // Deep link: arriving at /connection-scenarios?create=1 opens the New
+  // Scenario dialog immediately (fired by the "Create a new scenario" action in
+  // the profile form's scenario picker). Read in a post-mount effect to stay
+  // clear of the static-export CSR bailout, then strip the param so a refresh
+  // or back-nav doesn't reopen it.
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("create") === "1") {
+      setShowAddDialog(true);
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  }, []);
+
   // Add form state
   const [addName, setAddName] = useState("");
   const [addDescription, setAddDescription] = useState("");

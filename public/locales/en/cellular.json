@@ -74,7 +74,9 @@
         "ttl_error": "TTL must be 0–255.",
         "hl_label": "Hop Limit",
         "hl_error": "HL must be 0–255.",
-        "cid_locked_verizon": "Verizon requires PDP context 3"
+        "cid_locked_verizon": "Verizon requires PDP context 3",
+        "sim_iccid_hint": "Leave blank to apply this profile to any SIM.",
+        "imei_danger": "Changing the IMEI rewrites the modem identity and reboots the modem on activation. Leave blank to keep the current IMEI."
       },
       "buttons": {
         "create_submit": "Create Profile",
@@ -101,7 +103,9 @@
         "end_label": "End",
         "days_label": "Days",
         "block_scenario_label": "Scenario",
-        "fallback_line": "All other times → {{name}}",
+        "active_now_label": "Active now",
+        "next_change_label": "next change",
+        "otherwise_label": "Otherwise",
         "empty_schedule_hint": "No rules yet — this behaves the same as just using {{name}}.",
         "overlap_warning": "This block overlaps another. When blocks overlap, the topmost one wins.",
         "schedule_invalid": "Fix the highlighted schedule rules before saving.",
@@ -142,9 +146,12 @@
         "preset_every_day": "Every day",
         "preset_weekdays": "Weekdays",
         "preset_weekends": "Weekends",
-        "active_now_line": "Right now → {{scenario}}",
-        "active_now_line_with_next": "Right now → {{scenario}} · next change {{time}}",
-        "overnight_hint": "Ends next day"
+        "overnight_hint": "Ends next day",
+        "create_new": "Create a new scenario"
+      },
+      "loading_current": "Reading SIM…",
+      "advanced": {
+        "title": "Advanced"
       }
     },
     "activate_dialog": {
@@ -187,6 +194,33 @@
       "description": "Manage your custom SIM profiles here.",
       "description_full": "You have not created any custom SIM profiles yet. Use the form to create your first profile.",
       "refresh": "Refresh"
+    },
+    "pills": {
+      "ip_v4": "IPv4",
+      "ip_v6": "IPv6",
+      "ip_dual": "IPv4v6",
+      "apn": "APN {{name}}",
+      "apn_default": "Default APN",
+      "cid": "CID {{cid}}",
+      "ttl": "TTL {{value}}",
+      "hl": "HL {{value}}",
+      "imei_override": "IMEI override",
+      "mpdn_locked": "MPDN locked"
+    },
+    "active_card": {
+      "none_title": "No active profile",
+      "none_description": "The modem is using its current settings. Activate a saved profile to apply a bundle.",
+      "subtitle": "Applied to the modem now",
+      "subtitle_with_mno": "Applied now · {{mno}}",
+      "scenario_default": "Scenario: {{name}}",
+      "scenario_scheduled": "Scenario: {{name}} (scheduled)",
+      "mismatch_note": "This profile was built for a different SIM than the one inserted now. Reactivate it for this SIM, or activate the profile that matches.",
+      "verizon_locked_note": "Data routing is locked to PDP context 3. IP Passthrough stays unavailable while this profile is active."
+    },
+    "list": {
+      "new_button": "New",
+      "bound_sim": "Bound to SIM {{iccid}}",
+      "detail_unavailable": "Could not load this profile’s settings."
     }
   },
   "scenarios": {

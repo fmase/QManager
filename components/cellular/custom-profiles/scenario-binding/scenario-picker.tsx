@@ -1,10 +1,13 @@
 "use client";
 
+import Link from "next/link";
+import { PlusIcon } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import {
   Select,
   SelectContent,
   SelectItem,
+  SelectSeparator,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
@@ -65,6 +68,18 @@ export function ScenarioPicker({
             {t("custom_profiles.form.scenario.deleted_scenario")}
           </SelectItem>
         )}
+
+        {/* Pinned action: leaves the picker and opens the full scenarios
+            editor. Rendered as a Link (not a SelectItem) so it fires a
+            navigation instead of becoming the selected value. */}
+        <SelectSeparator />
+        <Link
+          href="/cellular/custom-profiles/connection-scenarios?create=1"
+          className="text-muted-foreground hover:bg-accent hover:text-accent-foreground focus-visible:bg-accent focus-visible:text-accent-foreground relative flex w-full cursor-pointer items-center gap-2 rounded-sm py-1.5 pl-2 pr-8 text-sm outline-none transition-colors"
+        >
+          <PlusIcon className="size-4 shrink-0" />
+          {t("custom_profiles.form.scenario.create_new")}
+        </Link>
       </SelectContent>
     </Select>
   );

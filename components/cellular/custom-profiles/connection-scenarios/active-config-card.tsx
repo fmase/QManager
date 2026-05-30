@@ -104,11 +104,7 @@ export const ActiveConfigCard = ({
               </Button>
             )}
             {!isActive && !isActivating && !scheduleLocked && (
-              <Button
-                size="sm"
-                onClick={onActivate}
-                className="gap-1.5"
-              >
+              <Button size="sm" onClick={onActivate}>
                 {t("scenarios.active_config_card.activate")}
               </Button>
             )}

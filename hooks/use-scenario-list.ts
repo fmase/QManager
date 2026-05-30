@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { authFetch } from "@/lib/auth-fetch";
 import type {
@@ -48,12 +48,6 @@ export function useScenarioList(): UseScenarioListReturn {
     };
   }, []);
 
-  const defaults: ScenarioOption[] = [
-    { id: "balanced", name: t("scenarios.default_balanced_name"), isDefault: true },
-    { id: "gaming", name: t("scenarios.default_gaming_name"), isDefault: true },
-    { id: "streaming", name: t("scenarios.default_streaming_name"), isDefault: true },
-  ];
-
   const fetchList = useCallback(async () => {
     try {
       const resp = await authFetch(`${CGI_BASE}/list.sh`);
@@ -72,10 +66,20 @@ export function useScenarioList(): UseScenarioListReturn {
     fetchList();
   }, [fetchList]);
 
-  const scenarios: ScenarioOption[] = [
-    ...defaults,
-    ...custom.map((s) => ({ id: s.id, name: s.name, isDefault: false })),
-  ];
+  // Memoized so the array identity is stable across renders. Without this the
+  // list rebuilt every render, giving nameForId — and every value derived from
+  // it (e.g. the scenario section's live-readout effect deps) — a new identity
+  // each render, which drove an infinite setState loop the moment a schedule
+  // rule made the readout active.
+  const scenarios = useMemo<ScenarioOption[]>(
+    () => [
+      { id: "balanced", name: t("scenarios.default_balanced_name"), isDefault: true },
+      { id: "gaming", name: t("scenarios.default_gaming_name"), isDefault: true },
+      { id: "streaming", name: t("scenarios.default_streaming_name"), isDefault: true },
+      ...custom.map((s) => ({ id: s.id, name: s.name, isDefault: false })),
+    ],
+    [custom, t],
+  );
 
   const nameForId = useCallback(
     (id: string): string => {
@@ -83,7 +87,6 @@ export function useScenarioList(): UseScenarioListReturn {
       if (match) return match.name;
       return t("custom_profiles.form.scenario.deleted_scenario");
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [scenarios, t],
   );
 
