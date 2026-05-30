@@ -41,14 +41,15 @@ Success looks like:
 
 **Primary reference (heavy, load-bearing):**
 
-- **Ubiquiti UniFi** (Network Controller, UniFi OS, Protect). The dominant aesthetic and structural reference. Four specific facets are adopted, not just borrowed in spirit:
-  1. **Dense pill-and-tag data tables and metric tiles.** UniFi packs high data density via tightly-styled outline pills, status tags, and inline mini-stats. QManager's existing outline-badge pattern (`bg-{role}/15 + text-{role} + border-{role}/30`) is the same idea; UniFi raises it from "a rule" to "a signature aesthetic."
-  2. **Dashboard as a varied-size widget mosaic.** UniFi dashboards mix big hero widgets (topology, throughput, hero metric) with smaller stat tiles in deliberate asymmetric composition. Never a uniform card grid. This is the anti-template against generic SaaS dashboard slop.
-  3. **Topology maps and network visualizations as first-class UI.** UniFi treats the network map as a primary surface, not an afterthought. QManager applies this to cell-tower constellations, antenna geometry, MIMO stream layouts, neighbor-cell relationships.
-  4. **Live-updating tiles that tick smoothly.** Numbers update via tabular-numbers and short color transitions, sparkline tails grow live, chart series breathe. Alive without distracting. Pairs perfectly with the silky Apple-class motion direction.
+- **Apple's professional UI/UX** (macOS System Settings, the Pro-app inspectors in Logic / Final Cut / Xcode, iOS Settings, Apple's developer and admin consoles). The dominant aesthetic and structural reference. Four facets are adopted deliberately, not just borrowed in spirit:
+  1. **The grouped-card, consistent-shape page.** Every settings surface in macOS is the same shape: a clear page header, then self-contained grouped cards on a calm, even grid. You always know where you are because every page is built the same way. This is QManager's structural default: each feature page is a page header plus a uniform card layout, never a bespoke per-screen composition.
+  2. **Restraint as the resting state.** Surfaces are quiet until reached for. Hierarchy comes from spacing, weight, and grouping, not from a loud focal element competing for attention. Nothing shouts; the important thing is simply the clearest.
+  3. **Instrument-class motion.** Every transition, toggle, and value change settles with the silky, exponential ease-out you feel in Control Center and macOS window management. Never bouncy, never springy, never Material-pop. (See Brand Personality > Feel.)
+  4. **Professional density without engineer-ugliness.** Apple's pro apps prove dense, expert tooling can stay legible and refined. QManager is a dense modem GUI; the density is earned with hierarchy and grouping, the way a pro-app inspector is, not dumped on the page.
 
 **Supporting references (one facet each):**
 
+- **Ubiquiti UniFi** (Network Controller, UniFi OS, Protect): **data density only.** UniFi contributes exactly one thing, and it is load-bearing: its dense pill-and-tag data tables and inline status tags. QManager's outline-badge pattern (`bg-{role}/15 + text-{role} + border-{role}/30`) and its data tables are the UniFi heritage; UniFi raises that density from "a rule" to "a signature aesthetic." What QManager explicitly does **not** take from UniFi is its varied-size hero-mosaic dashboard composition. That approach was tried (the Traffic Engine redesign) and rejected as inconsistent with the grouped-card layout above. UniFi is a density reference, not a layout reference.
 - **Linear** — voice and microcopy. Restraint, precision, expert-tool register in every confirmation, error, and label.
 - **Vercel dashboard** — light-and-dark parity, OKLCH-era color restraint, modern polish without corporate stiffness.
 - **Grafana** — when data viz earns dense readouts. Specifically informs the signal panel, latency monitor, bandwidth chart, antenna alignment meter.
@@ -56,8 +57,8 @@ Success looks like:
 
 **Atmospheric hints:**
 
-- **Nokia FastMile 5G Gateway 7 web interface** — borrowed for the **big circular signal-quality meter** as the hero readout, the friendly-but-technical balance, and the soft Bell-Labs-flavored card treatment on signal pages. Applied selectively, not system-wide; the hint lands on signal/antenna surfaces and recedes elsewhere.
-- **Askey CPE Management Utility (iF Design Award winner)** — the proof a CPE interface can be design-award-worthy. Contributes editorial whitespace, bolder typographic hierarchy on dashboard hero sections, and the premium-consumer feel that softens density without diluting it. The aspirational standard: when in doubt, raise the craft.
+- **Nokia FastMile 5G Gateway 7 web interface** — borrowed for the **big circular signal-quality meter** as a signal-quality readout, the friendly-but-technical balance, and the soft Bell-Labs-flavored card treatment on signal pages. Applied selectively, not system-wide; the hint lands on signal/antenna surfaces (where the meter is genuinely the best affordance) and recedes elsewhere. It is an optional component, not a layout the rest of the app is built around.
+- **Askey CPE Management Utility (iF Design Award winner)** — the proof a CPE interface can be design-award-worthy. Contributes editorial whitespace, a confident typographic hierarchy inside grouped cards, and the premium-consumer feel that softens density without diluting it. The aspirational standard: when in doubt, raise the craft.
 
 ## Anti-references
 
@@ -66,14 +67,15 @@ What QManager explicitly should not look or feel like:
 - **Classic LuCI and OpenWRT defaults.** Bare tables, browser-default form widgets, dense data with no hierarchy, no progressive disclosure. The "engineer UI" QManager exists to replace.
 - **Terminal and putty-style modem utilities (QNavigator, QCOM, raw AT consoles, Quectel's own QNavigator-class tools).** Monospace-everything, command-shaped, assumes you already know which AT command to send. QManager respects expertise without requiring it.
 - **Consumer router and "smart home" apps (Netgear Nighthawk, TP-Link Tether, AT&T Smart Home Manager, Linksys Smart Wi-Fi).** Oversimplified, marketing-flavored, hides what power users need behind cartoon icons and gradient hero metrics. Wizards that block direct access.
-- **Generic AI/SaaS dashboard slop.** Hero-metric template (big number, small label, gradient accent), identical icon-and-heading card grids, gradient text headlines, glassmorphism heroes. If the page could be reskinned for a CRM or a project tracker without changing anything, it has failed.
+- **Generic AI/SaaS dashboard slop.** Hero-metric template (big number, small label, gradient accent), gradient text headlines, glassmorphism heroes. If the page could be reskinned for a CRM or a project tracker without changing anything, it has failed.
+- **Hero-reliant, bespoke-per-screen composition.** A page built around one giant focal widget (a full-width hero readout, a 5xl/6xl number, an asymmetric "mosaic" unique to that one screen) instead of the grouped-card layout every other feature page uses. It looks impressive in isolation and breaks the consistency that lets a user feel oriented everywhere. Consistency of shape across feature pages beats a memorable hero on any single one. A hero is a rare, deliberate exception for a genuine glance surface, never the default.
 
 ## Design Principles
 
 1. **Data clarity first.** Metrics are scannable at a glance. Real units, sensible precision, no decoration that hurts legibility. The signal dashboard is the test case: someone glancing for half a second should know whether things are healthy.
 2. **Progressive disclosure.** Essentials surface immediately, advanced controls stay one click away. A field tech does not need to see NFQUEUE rule syntax to understand that Video Optimizer is on.
 3. **Confidence through feedback.** Every action shows loading, success, or error. Async pipelines (profile apply, config restore, language install) show per-step state. The user is never left wondering "did that work?".
-4. **Consistent.** shadcn/ui components and design tokens used uniformly, no one-off styles. A status badge looks the same on the cellular page as it does on the watchdog page.
+4. **Consistent in shape, not just in parts.** shadcn/ui components and design tokens are used uniformly, no one-off styles: a status badge looks the same on the cellular page as on the watchdog page. The same discipline governs **page structure**. Every feature page is the same shape, a page header (title plus muted description) followed by a uniform grid of self-contained cards, the way every macOS System Settings pane is the same shape. A user who learns one page has learned them all. A bespoke, hero-driven layout invented for a single screen is a consistency failure even when it looks good on its own.
 5. **Responsive and resilient.** Graceful loading, empty, and error states everywhere. Never a blank panel. Field-tech sessions on flaky signal cannot be allowed to leave the UI in an indeterminate state.
 6. **Make the dangerous obvious, the safe effortless.** QManager runs on the modem it manages. Routine reads and saves feel quiet. Anything that can disrupt the connection (reboot, profile activation, MPDN release, band lock, IMEI write, factory restore) wears its risk visibly: destructive variant, warning copy, explicit dialog, deferred reboot with a persistent banner. The routine 90% should feel instant. The risky 10% should feel deliberate.
 

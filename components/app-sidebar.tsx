@@ -163,6 +163,11 @@ const data = {
   localNetwork: [
     { t_key: "ethernet_status", url: "/local-network", icon: EthernetPortIcon },
     {
+      t_key: "traffic_engine",
+      url: "/local-network/traffic-engine",
+      icon: MonitorPlay,
+    },
+    {
       t_key: "local_network_settings",
       url: "/local-network/ip-passthrough",
       icon: Settings2,
@@ -170,11 +175,6 @@ const data = {
         { t_key: "custom_dns", url: "/local-network/custom-dns" },
         { t_key: "ttl_mtu_settings", url: "/local-network/ttl-settings" },
       ],
-    },
-    {
-      t_key: "traffic_engine",
-      url: "/local-network/traffic-engine",
-      icon: MonitorPlay,
     },
   ],
   monitoring: [
