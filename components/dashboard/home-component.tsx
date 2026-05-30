@@ -6,7 +6,6 @@ import { containerVariants, itemVariants } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
 import { useModemStatus } from "@/hooks/use-modem-status";
-import { useBandwidthMonitor } from "@/hooks/use-bandwidth-monitor";
 import { useConnectionStatus } from "@/lib/reboot/connection";
 import NetworkStatusComponent from "./network-status";
 import DeviceStatus from "./device-status";
@@ -22,7 +21,6 @@ import LiveLatencyComponent from "./live-latency";
 const HomeComponent = () => {
   const { data, isLoading, isStale, error } = useModemStatus();
   const { t } = useTranslation("dashboard");
-  const bandwidth = useBandwidthMonitor();
   // Once a sustained outage escalates to "reconnecting", the global banner
   // (app-layout) becomes the single source of truth for the outage. Suppress
   // this page-level "unable to reach" alert so the two notices don't stack.
@@ -117,15 +115,9 @@ const HomeComponent = () => {
           <motion.div variants={itemVariants} className="h-full *:data-[slot=card]:h-full">
             <DeviceMetricsComponent
               deviceData={data?.device ?? null}
-              trafficData={data?.traffic ?? null}
               lteData={data?.lte ?? null}
               nrData={data?.nr ?? null}
               isLoading={isLoading}
-              liveBandwidth={
-                bandwidth.isConnected
-                  ? { download: bandwidth.currentDownload, upload: bandwidth.currentUpload }
-                  : null
-              }
             />
           </motion.div>
           <motion.div variants={itemVariants} className="h-full *:data-[slot=card]:h-full">

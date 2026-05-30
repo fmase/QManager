@@ -28,8 +28,6 @@ export interface ModemStatus {
   nr: NrStatus;
   /** Device hardware and identity info */
   device: DeviceStatus;
-  /** Live traffic metrics */
-  traffic: TrafficStatus;
   /** Internet connectivity and latency (from ping daemon) */
   connectivity: ConnectivityStatus;
   /** Per-antenna signal values (from AT+QRSRP/QRSRQ/QSINR, Tier 1.5) */
@@ -248,17 +246,6 @@ export interface DeviceStatus {
   supported_sa_nr5g_bands: string;
   /** QManager version string */
   qmanager_version: string;
-}
-
-export interface TrafficStatus {
-  /** Current download speed in bytes/second */
-  rx_bytes_per_sec: number;
-  /** Current upload speed in bytes/second */
-  tx_bytes_per_sec: number;
-  /** Total downloaded bytes since boot */
-  total_rx_bytes: number;
-  /** Total uploaded bytes since boot */
-  total_tx_bytes: number;
 }
 
 // --- Utility Types -----------------------------------------------------------

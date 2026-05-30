@@ -267,22 +267,42 @@ parse_serving_cell() {
 }
 
 # -----------------------------------------------------------------------------
-# Parse AT+QTEMP — Average temperature (excluding non-positive/unavailable sensors)
-# Populates: t2_temperature
+# SoC thermal — Average temperature from /sys/class/thermal (no AT channel)
+# Populates: t1_temperature
+#
+# Reads sysfs instead of AT+QTEMP: AT+QTEMP can crash this firmware's AT
+# channel (/dev/smd11). Thermal sysfs is independent of AT and stable.
+#
+# Selection is by thermal-zone TYPE NAME, not zone index: indices renumber
+# across firmware builds but type names are stable.
 # -----------------------------------------------------------------------------
 parse_temperature() {
-    local raw="$1"
-
+    local zone
+    local ztype
     local result
-    result=$(printf '%s\n' "$raw" | grep '+QTEMP:' | \
-        sed -n 's/.*,"\(-\{0,1\}[0-9]*\)".*/\1/p' | \
-        awk '$1 > 0' | \
-        awk '{ sum += $1; count++ } END { if (count > 0) printf "%.0f", sum/count; }')
+
+    # --- TUNING KNOB: thermal-zone type-name allowlist (case glob) -----------
+    # Modem-relevant SoC sensors. Edit this single glob to tune the zone set
+    # for temperature parity. sysfs temp is in millidegrees C; non-positive
+    # values (e.g. -273000, -40960, empty) are unavailable sentinels and are
+    # excluded by the >0 filter below.
+    # -------------------------------------------------------------------------
+    result=$(for zone in /sys/class/thermal/thermal_zone*; do
+        [ -r "$zone/type" ] || continue
+        [ -r "$zone/temp" ] || continue
+        ztype=$(cat "$zone/type" 2>/dev/null)
+        case "$ztype" in
+            mdmss-*|mdmq6-*|sdr[0-9]*|xo-therm*|sys-therm-*)
+                cat "$zone/temp" 2>/dev/null
+                ;;
+        esac
+    done | awk '$1 > 0' | \
+        awk '{ sum += $1; count++ } END { if (count > 0) printf "%.0f", sum/1000/count; }')
 
     if [ -n "$result" ]; then
-        t2_temperature="$result"
+        t1_temperature="$result"
     else
-        t2_temperature=""
+        t1_temperature=""
     fi
 }
 

@@ -101,6 +101,8 @@ Destroys all sessions (forces re-login).
 
 Main polling endpoint. Returns the cached modem status JSON (built by `qmanager_poller`).
 
+> ℹ️ NOTE: The response does **not** contain a `traffic` object. Live network traffic (rx/tx speeds) is served only by the opt-in WebSocket bandwidth monitor on port 8838, not by the poller cache. When the monitor is off, the dashboard shows a prompt to enable it. See [`docs/features/bandwidth-monitor.md`](../features/bandwidth-monitor.md).
+
 **Response:** Full `ModemStatus` object (see `types/modem-status.ts`)
 
 ```json
@@ -175,12 +177,6 @@ Main polling endpoint. Returns the cached modem status JSON (built by `qmanager_
     "supported_lte_bands": "B1:B2:B3:B5:B7:...",
     "supported_nsa_nr5g_bands": "N41:N71:N77:...",
     "supported_sa_nr5g_bands": "N41:N71:N77:..."
-  },
-  "traffic": {
-    "rx_bytes_per_sec": 1562500,
-    "tx_bytes_per_sec": 125000,
-    "total_rx_bytes": 1073741824,
-    "total_tx_bytes": 134217728
   },
   "connectivity": {
     "internet_available": true,
@@ -832,6 +828,47 @@ Validation notes:
 ```
 
 Note: `recipient` mirrors the stored form in `sms_alerts.json` — raw digits, no leading `+`.
+
+### GET/POST `/monitoring/bandwidth.sh`
+
+Read and save bandwidth monitor settings. See [`docs/features/bandwidth-monitor.md`](../features/bandwidth-monitor.md) for the full contract.
+
+**GET Response:**
+```json
+{
+  "success": true,
+  "settings": {
+    "enabled": false,
+    "refresh_rate_ms": 1000,
+    "ws_port": 8838,
+    "interfaces": "br-lan,eth0,rmnet_data0,rmnet_data1,rmnet_ipa0"
+  },
+  "status": {
+    "websocat_running": false,
+    "monitor_running": false
+  },
+  "dependencies": {
+    "websocat_installed": true
+  }
+}
+```
+
+**POST (`save_settings`):**
+```json
+{
+  "action": "save_settings",
+  "enabled": true,
+  "refresh_rate_ms": 1000,
+  "ws_port": 8838,
+  "interfaces": "br-lan,eth0,rmnet_data0,rmnet_data1,rmnet_ipa0"
+}
+```
+
+All fields are optional except `action`. Enabling the monitor starts `init.d/qmanager_bandwidth` and its two procd instances (`websocat` + `bridge_traffic_monitor_rm551`). Disabling stops and disables the service.
+
+**Response:** `{ "success": true }`
+
+---
 
 ### GET/POST `/monitoring/watchdog.sh`
 

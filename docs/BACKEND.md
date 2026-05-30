@@ -59,6 +59,16 @@ result=$(qcmd 'AT+QENG="servingcell"')
 
 Never access the modem serial port directly.
 
+### Temperature: sysfs only — never AT+QTEMP
+
+> ⚠️ WARNING: Do not reintroduce `AT+QTEMP` on RM551E-GL (SDX75) firmware. Issuing it on `/dev/smd11` can crash the AT channel, making the modem unreachable until the channel recovers or the device reboots.
+
+Temperature is read exclusively from the SoC thermal sysfs (`/sys/class/thermal/thermal_zone*/`) and runs at **Tier 1.5 (10 s)**. The parser (`parse_temperature()` in `scripts/usr/lib/qmanager/parse_at.sh`) selects zones by **type-name allowlist** (`mdmss-*|mdmq6-*|sdr[0-9]*|xo-therm*|sys-therm-*`), not by zone index — indices renumber across firmware builds, type names are stable. Unavailable-sensor sentinels (`-273000`, `-40960`) are filtered by an `awk '$1 > 0'` pass before averaging. The result is millidegrees-to-degrees via `printf "%.0f", sum/1000/count`.
+
+The poller global for this value is `t1_temperature` (renamed from `t2_temperature` when the read moved from Tier 2 to Tier 1.5). The `.temperature` key in `/tmp/qmanager_status.json` and `device.temperature` in the API response are unchanged.
+
+> ℹ️ NOTE: `scripts/debug_poller_at.sh` lines 56–57 still reference `AT+QTEMP` as a Tier 3 probe. That file is a development diagnostic, not production code, and its cleanup is tracked separately — do not treat it as evidence that AT+QTEMP is safe to call.
+
 ### No `setsid`
 
 BusyBox doesn't have `setsid`. Use the double-fork pattern for background daemons:
@@ -280,10 +290,12 @@ The core daemon — runs forever, polls the modem at tiered intervals.
 
 | Tier | Interval | Data |
 |------|----------|------|
-| 1 | 2s | Serving cell, traffic, uptime |
-| 1.5 | 10s | Per-antenna signal, history append |
-| 2 | 30s | Temperature, carrier, CA, MIMO |
+| 1 | 2s | Serving cell, uptime |
+| 1.5 | 10s | SoC temperature (thermal sysfs), per-antenna signal, history append |
+| 2 | 30s | Carrier, CA, MIMO |
 | Boot | Once | Firmware, IMEI, IMSI, capabilities |
+
+> ℹ️ NOTE: Live network traffic (rx/tx bytes per second) is **not** collected by the poller and is **not** present in `/tmp/qmanager_status.json`. It is served exclusively by the opt-in WebSocket bandwidth monitor (`bridge_traffic_monitor_rm551` + `websocat:8838`, managed by `init.d/qmanager_bandwidth`). The feature is off by default (UCI `quecmanager.bridge_monitor.enabled=0`). When disabled, the dashboard Live Traffic row shows a prompt to enable it rather than showing zeros. See [`docs/features/bandwidth-monitor.md`](features/bandwidth-monitor.md).
 
 ### qmanager_ping (Ping Daemon)
 
@@ -465,6 +477,7 @@ result=$(qcmd 'AT+QENG="servingcell"')
 | `qmanager_tower_failover` | non-procd | 99 | `qmanager_tower_failover` | Tower failover watchdog |
 | `qmanager_low_power_check` | non-procd | 99 | `qmanager_low_power_check` | Boot-time low power window check (one-shot, double-fork) |
 | `qmanager_dpi` | procd | 99 | `nfqws` (x2) | DPI evasion: Video Optimizer (queue 200) + Traffic Masquerade (queue 201), each UCI-gated |
+| `qmanager_bandwidth` | procd | 99 | `websocat` + `bridge_traffic_monitor_rm551` | Live bandwidth monitor (UCI-gated, default off). Starts only when `quecmanager.bridge_monitor.enabled=1` |
 
 Non-procd services use the double-fork pattern for daemonization:
 ```sh
@@ -700,6 +713,10 @@ All auth endpoints set `_SKIP_AUTH=1`.
 | `quecmanager.video_optimizer.interface` | interface name | WAN interface (default `rmnet_data0`) |
 | `quecmanager.traffic_masquerade.enabled` | `0`, `1` | Traffic Masquerade on/off |
 | `quecmanager.traffic_masquerade.sni_domain` | domain name | Spoofed SNI domain (default `speedtest.net`) |
+| `quecmanager.bridge_monitor.enabled` | `0`, `1` | Bandwidth monitor on/off (default `0`) |
+| `quecmanager.bridge_monitor.ws_port` | port number | WebSocket port for `websocat` (default `8838`) |
+| `quecmanager.bridge_monitor.refresh_rate_ms` | milliseconds | Poll interval for the monitor binary (default `1000`) |
+| `quecmanager.bridge_monitor.interfaces` | comma-separated list | Interfaces to monitor (default `br-lan,eth0,rmnet_data0,rmnet_data1,rmnet_ipa0`) |
 | `system.@system[0].timezone` | POSIX TZ string | System timezone |
 | `system.@system[0].zonename` | IANA zone name | System timezone display name |
 
