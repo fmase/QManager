@@ -34,8 +34,12 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   useAutoLogout();
   useBootPendingReboot();
 
-  // Sync cookie check — no API call, no loading state
+  // Sync cookie check — no API call, no loading state. The redirect runs during
+  // render (not in an effect) on purpose: an effect-based redirect would briefly
+  // flash the protected layout to a logged-out user before navigating. The
+  // component unmounts on navigation, so this render-phase side effect is benign.
   if (typeof document !== "undefined" && !isLoggedIn()) {
+    // eslint-disable-next-line react-hooks/immutability -- intentional sync redirect to avoid flashing protected content; navigates away immediately
     window.location.href = "/login/";
     return null;
   }
