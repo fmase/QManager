@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 
@@ -77,15 +77,22 @@ const LteFreqLockingComponent = ({
   const [showUnsupportedWarning, setShowUnsupportedWarning] = useState(false);
   const [pendingEarfcns, setPendingEarfcns] = useState<number[]>([]);
 
-  // Sync form from modem state when data loads
-  useEffect(() => {
-    if (modemState?.lte_entries && modemState.lte_entries.length > 0) {
-      setEarfcn1(String(modemState.lte_entries[0].earfcn));
-      if (modemState.lte_entries[1]) {
-        setEarfcn2(String(modemState.lte_entries[1].earfcn));
+  // Seed form fields from modem state using the render-phase derived-state
+  // pattern (React docs: "You Might Not Need an Effect") instead of useEffect, so
+  // the sync lands in the same commit. prevLteEntries keeps it to one sync per
+  // source-reference change — identical semantics to the previous
+  // [modemState?.lte_entries] effect.
+  const lteEntries = modemState?.lte_entries;
+  const [prevLteEntries, setPrevLteEntries] = useState(lteEntries);
+  if (lteEntries !== prevLteEntries) {
+    setPrevLteEntries(lteEntries);
+    if (lteEntries && lteEntries.length > 0) {
+      setEarfcn1(String(lteEntries[0].earfcn));
+      if (lteEntries[1]) {
+        setEarfcn2(String(lteEntries[1].earfcn));
       }
     }
-  }, [modemState?.lte_entries]);
+  }
 
   // Derive enabled state from modem state
   const isEnabled = modemState?.lte_locked ?? false;

@@ -51,6 +51,7 @@ export function RebootCountdown() {
       return;
     }
     sessionStorage.removeItem(SESSION_KEY);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot mount guard with real side effects (consumes sessionStorage, may redirect); must remain an effect
     setVerified(true);
   }, []);
 

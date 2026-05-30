@@ -93,8 +93,12 @@ const LiveLatencyComponent = ({ connectivity }: LiveLatencyComponentProps) => {
     }
   }, []);
 
-  // Fetch cached result on mount
+  // Fetch cached result on mount. The state update happens asynchronously inside
+  // fetchCachedResult (after the awaited response), not synchronously here, so the
+  // cascading-render concern the rule guards against does not apply — this is a
+  // standard data-fetch effect.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- async fetch; setState runs after await, not synchronously
     fetchCachedResult();
   }, [fetchCachedResult]);
 

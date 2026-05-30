@@ -424,6 +424,7 @@ export default function OverviewCard() {
         `${t("overview.status.temperature")}: ${formatTemperature(data.temperature)}`,
       );
     }
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- a11y live-region text is intentionally derived from change-over-time (verdict vs prevVerdictRef), which a render-phase value cannot express
     if (parts.length > 0) setAnnouncement(parts.join(". "));
     prevVerdictRef.current = verdict;
   }, [data, t]);

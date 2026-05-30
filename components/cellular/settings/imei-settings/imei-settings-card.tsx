@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, type FormEvent, type ChangeEvent } from "react";
+import { useState, type FormEvent, type ChangeEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import {
@@ -62,12 +62,15 @@ const IMEISettingsCard = ({
   const [showRebootDialog, setShowRebootDialog] = useState(false);
   const [isRebooting, setIsRebooting] = useState(false);
 
-  // Sync form state from fetched data
-  useEffect(() => {
-    if (currentImei !== null) {
-      setImei(currentImei);
-    }
-  }, [currentImei]);
+  // Seed local form state from fetched data using the render-phase derived-state
+  // pattern (React docs: "You Might Not Need an Effect") instead of useEffect, so
+  // the sync lands in the same commit. prevImei keeps it to one sync per source
+  // change — identical semantics to the previous [currentImei] effect.
+  const [prevImei, setPrevImei] = useState(currentImei);
+  if (currentImei !== null && currentImei !== prevImei) {
+    setPrevImei(currentImei);
+    setImei(currentImei);
+  }
 
   const isValidImei = /^\d{15}$/.test(imei);
   const hasChanged = imei !== (currentImei ?? "");

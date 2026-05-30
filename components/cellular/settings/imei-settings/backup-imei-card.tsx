@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, type FormEvent, type ChangeEvent } from "react";
+import { useState, type FormEvent, type ChangeEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { SaveButton, useSaveFlash } from "@/components/ui/save-button";
@@ -66,15 +66,23 @@ const BackupIMEICard = ({
   const [localImei, setLocalImei] = useState("");
   const [showInfoDialog, setShowInfoDialog] = useState(false);
 
-  // Sync form state from fetched data
-  useEffect(() => {
+  // Seed local form state from fetched data using the render-phase derived-state
+  // pattern (React docs: "You Might Not Need an Effect") instead of useEffect, so
+  // the sync lands in the same commit. The prev refs make this re-run only when a
+  // source changes — identical semantics to the previous
+  // [backupEnabled, backupImei] effect.
+  const [prevEnabled, setPrevEnabled] = useState(backupEnabled);
+  const [prevImei, setPrevImei] = useState(backupImei);
+  if (backupEnabled !== prevEnabled || backupImei !== prevImei) {
+    setPrevEnabled(backupEnabled);
+    setPrevImei(backupImei);
     if (backupEnabled !== null) {
       setLocalEnabled(backupEnabled);
     }
     if (backupImei !== null) {
       setLocalImei(backupImei);
     }
-  }, [backupEnabled, backupImei]);
+  }
 
   const isValidImei = /^\d{15}$/.test(localImei);
 

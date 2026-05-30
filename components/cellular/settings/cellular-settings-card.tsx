@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import { Field, FieldGroup, FieldLabel, FieldSet } from "@/components/ui/field";
@@ -45,16 +45,20 @@ const CellularSettingsCard = ({
   const [nr5gMode, setNr5gMode] = useState<string>("");
   const [roamPref, setRoamPref] = useState<string>("");
 
-  // Sync form state from fetched settings
-  useEffect(() => {
-    if (settings) {
-      setSimSlot(String(settings.sim_slot));
-      setCfun(String(settings.cfun));
-      setModePref(settings.mode_pref);
-      setNr5gMode(String(settings.nr5g_mode));
-      setRoamPref(String(settings.roam_pref));
-    }
-  }, [settings]);
+  // Seed local form state from fetched settings using the render-phase
+  // derived-state pattern (React docs: "You Might Not Need an Effect") instead of
+  // useEffect, so the sync lands in the same commit. prevSettings keeps it to one
+  // sync per source-reference change — identical semantics to the prior [settings]
+  // effect.
+  const [prevSettings, setPrevSettings] = useState(settings);
+  if (settings && settings !== prevSettings) {
+    setPrevSettings(settings);
+    setSimSlot(String(settings.sim_slot));
+    setCfun(String(settings.cfun));
+    setModePref(settings.mode_pref);
+    setNr5gMode(String(settings.nr5g_mode));
+    setRoamPref(String(settings.roam_pref));
+  }
 
   const handleSave = async (e: FormEvent) => {
     e.preventDefault();

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { Loader2Icon } from "lucide-react";
 import { toast } from "sonner";
@@ -38,12 +38,15 @@ const EthernetWolCard = () => {
   // Local form state — mirrors data.enabled_fix
   const [disableWol, setDisableWol] = useState(false);
 
-  // Sync from backend
-  useEffect(() => {
-    if (data) {
-      setDisableWol(data.enabled_fix);
-    }
-  }, [data]);
+  // Seed local form state from backend data using the render-phase derived-state
+  // pattern (React docs: "You Might Not Need an Effect") instead of useEffect, so
+  // the sync lands in the same commit. prevData keeps it to one sync per
+  // source-reference change — identical semantics to the previous [data] effect.
+  const [prevData, setPrevData] = useState(data);
+  if (data && data !== prevData) {
+    setPrevData(data);
+    setDisableWol(data.enabled_fix);
+  }
 
   // Dirty check
   const isDirty = data ? disableWol !== data.enabled_fix : false;
