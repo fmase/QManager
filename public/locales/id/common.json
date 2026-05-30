@@ -1,6 +1,8 @@
 {
   "actions": {
     "save": "Simpan",
+    "saving": "Menyimpan…",
+    "saved": "Tersimpan!",
     "cancel": "Batal",
     "confirm": "Konfirmasi",
     "apply": "Terapkan",

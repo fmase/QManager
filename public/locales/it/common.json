@@ -1,6 +1,8 @@
 {
   "actions": {
     "save": "Salva",
+    "saving": "Salvataggio…",
+    "saved": "Salvato!",
     "cancel": "Annulla",
     "confirm": "Conferma",
     "apply": "Applica",

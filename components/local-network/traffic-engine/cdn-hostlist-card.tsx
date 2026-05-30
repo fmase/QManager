@@ -44,30 +44,39 @@ import {
   AlertTriangle,
   ArrowDownAZIcon,
   ArrowUpAZIcon,
+  ArrowUpDownIcon,
   Download,
   ListIcon,
   Loader2,
   MoreVerticalIcon,
+  PencilLineIcon,
   Plus,
   RefreshCcwIcon,
   RotateCcw,
-  SparklesIcon,
   Upload,
   X,
 } from "lucide-react";
 import { useCdnHostlist } from "@/hooks/use-cdn-hostlist";
 import { validateDomainKey } from "@/lib/validate-domain";
+import { cn } from "@/lib/utils";
 
-function HostlistSkeleton() {
+/**
+ * Loading placeholder for the hostlist card. Mirrors the real card's flex /
+ * full-height shape (header, add-input, stretch list, footer) so it occupies
+ * the same box as the live content and the column-2 → content swap doesn't
+ * shift the bottom edge. Exported so the page-level skeleton can reserve
+ * column 2 and avoid the 1-col → 2-col layout jump.
+ */
+export function HostlistSkeleton() {
   return (
-    <Card>
+    <Card className="flex h-full flex-col">
       <CardHeader>
         <Skeleton className="h-5 w-44" />
         <Skeleton className="h-4 w-72" />
       </CardHeader>
-      <CardContent className="grid gap-4">
+      <CardContent className="flex min-h-0 flex-1 flex-col gap-4">
         <Skeleton className="h-9 w-full" />
-        <Skeleton className="h-40 w-full" />
+        <Skeleton className="min-h-0 w-full flex-1" />
         <Skeleton className="h-9 w-full" />
       </CardContent>
     </Card>
@@ -75,12 +84,11 @@ function HostlistSkeleton() {
 }
 
 /**
- * Pill-dense rework of the CDN hostlist. Domains render as dense outline pills
- * (UniFi Pill-Dense rule), custom domains carrying an info-tinted sparkle marker
- * and an inline remove. All add/remove/import/export/sort/restore behavior is
- * ported faithfully from the prior cdn-hostlist-card.
+ * Pill-dense CDN hostlist (UniFi data-density heritage). Domains render as dense
+ * outline pills, custom domains carrying an info-tinted sparkle marker and an
+ * inline remove. Add / remove / import / export / sort / restore all preserved.
  */
-export function CdnHostlistManager() {
+export function CdnHostlistCard() {
   const { t } = useTranslation("local-network");
   const {
     domains,
@@ -248,7 +256,7 @@ export function CdnHostlistManager() {
 
   if (error && domains.length === 0) {
     return (
-      <Card>
+      <Card className="h-full">
         <CardHeader>
           <CardTitle>{t("video_optimizer.hostlist_card_title")}</CardTitle>
           <CardDescription>
@@ -272,7 +280,7 @@ export function CdnHostlistManager() {
   }
 
   return (
-    <Card>
+    <Card className="flex h-full flex-col">
       <CardHeader>
         <CardTitle>{t("video_optimizer.hostlist_card_title")}</CardTitle>
         <CardDescription>
@@ -300,10 +308,12 @@ export function CdnHostlistManager() {
                     : t("video_optimizer.aria_sort_clear")
               }
             >
-              {sortAsc === false ? (
-                <ArrowUpAZIcon className="size-4" />
-              ) : (
+              {sortAsc === null ? (
+                <ArrowUpDownIcon className="size-4" />
+              ) : sortAsc ? (
                 <ArrowDownAZIcon className="size-4" />
+              ) : (
+                <ArrowUpAZIcon className="size-4" />
               )}
             </Button>
             <DropdownMenu>
@@ -344,7 +354,10 @@ export function CdnHostlistManager() {
           </div>
         </CardAction>
       </CardHeader>
-      <CardContent className="grid gap-4" aria-live="polite">
+      <CardContent
+        className="flex min-h-0 flex-1 flex-col gap-4"
+        aria-live="polite"
+      >
         {/* Add domain input */}
         <div className="space-y-1.5">
           <InputGroup>
@@ -379,7 +392,7 @@ export function CdnHostlistManager() {
 
         {/* Pill-dense domain list */}
         {displayDomains.length === 0 ? (
-          <div className="flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed py-10 text-center">
+          <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 rounded-lg border border-dashed py-10 text-center">
             <ListIcon className="size-8 text-muted-foreground/60" />
             <p className="text-sm text-muted-foreground">
               {t("video_optimizer.empty_state_no_domains")}
@@ -400,16 +413,23 @@ export function CdnHostlistManager() {
             </Button>
           </div>
         ) : (
-          <div className="flex max-h-96 flex-wrap content-start gap-2 overflow-y-auto rounded-lg border bg-muted/20 p-3">
+          <div className="flex min-h-0 flex-1 flex-wrap content-start gap-2 overflow-y-auto rounded-lg border bg-muted/20 p-3">
             {displayDomains.map(({ domain, originalIndex }) => {
               const isCustom = !defaultSet.has(domain.toLowerCase());
               return (
                 <span
                   key={`${domain}-${originalIndex}`}
-                  className="group/pill inline-flex max-w-full items-center gap-1.5 rounded-md border bg-card py-1 pl-2.5 pr-1 text-sm shadow-sm transition-colors duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] hover:border-foreground/15"
+                  className={cn(
+                    "group/pill inline-flex max-w-full items-center gap-1.5 rounded-md border py-1 pl-2.5 pr-1 text-sm shadow-sm transition-colors duration-200 ease-[cubic-bezier(0.16,1,0.3,1)]",
+                    // Custom domains carry a whole-pill info tint so they read
+                    // as "mine" at arm's length, not just via the 12px marker.
+                    isCustom
+                      ? "border-info/30 bg-info/5 hover:border-info/50"
+                      : "border-border bg-card hover:border-foreground/15",
+                  )}
                 >
                   {isCustom && (
-                    <SparklesIcon
+                    <PencilLineIcon
                       className="size-3 shrink-0 text-info"
                       aria-label={t("video_optimizer.aria_custom_domain_badge")}
                     />
@@ -441,6 +461,9 @@ export function CdnHostlistManager() {
             saved={saved}
             disabled={!isDirty}
             onClick={handleSave}
+            label={t("actions.save", { ns: "common" })}
+            savingLabel={t("actions.saving", { ns: "common" })}
+            savedLabel={t("actions.saved", { ns: "common" })}
           />
           <div className="flex-1" />
           <AlertDialog>

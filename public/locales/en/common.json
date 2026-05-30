@@ -1,6 +1,8 @@
 {
   "actions": {
     "save": "Save",
+    "saving": "Saving…",
+    "saved": "Saved!",
     "cancel": "Cancel",
     "confirm": "Confirm",
     "apply": "Apply",

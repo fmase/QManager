@@ -8,17 +8,10 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import {
-  AlertTriangle,
-  CheckCircle2,
-  Download,
-  Loader2,
-  PackageIcon,
-  RefreshCcwIcon,
-} from "lucide-react";
+import { Download, Loader2, PackageIcon, RefreshCcwIcon } from "lucide-react";
 import type { InstallResult } from "@/types/video-optimizer";
+import { ResultAlert } from "./result-alert";
 
 interface EngineOnboardingProps {
   installResult: InstallResult;
@@ -28,8 +21,8 @@ interface EngineOnboardingProps {
 
 /**
  * Shared not-installed state. One install of the nfqws engine unlocks BOTH
- * modes, so this replaces the two separate "package missing" panels the old
- * features each carried.
+ * modes, so this single card replaces the two separate "package missing" panels
+ * the old features each carried.
  */
 export function EngineOnboarding({
   installResult,
@@ -75,32 +68,26 @@ export function EngineOnboarding({
           </div>
 
           {installResult.status === "complete" && (
-            <Alert className="border-success/30 bg-success/5 text-left">
-              <CheckCircle2 className="text-success" />
-              <AlertDescription className="text-success">
-                {installResult.message}
-                {installResult.detail && (
-                  <span className="text-muted-foreground">
-                    {" "}
-                    ({installResult.detail})
-                  </span>
-                )}
-              </AlertDescription>
-            </Alert>
+            <ResultAlert tone="success" className="text-left">
+              {installResult.message}
+              {installResult.detail && (
+                <span className="text-muted-foreground">
+                  {" "}
+                  ({installResult.detail})
+                </span>
+              )}
+            </ResultAlert>
           )}
 
           {installResult.status === "error" && (
-            <Alert variant="destructive" className="text-left">
-              <AlertTriangle className="size-4" />
-              <AlertDescription>
-                {installResult.message}
-                {installResult.detail && (
-                  <span className="mt-1 block text-xs opacity-80">
-                    {installResult.detail}
-                  </span>
-                )}
-              </AlertDescription>
-            </Alert>
+            <ResultAlert tone="destructive" className="text-left">
+              {installResult.message}
+              {installResult.detail && (
+                <span className="mt-1 block text-xs opacity-80">
+                  {installResult.detail}
+                </span>
+              )}
+            </ResultAlert>
           )}
 
           <div className="flex items-center gap-2">
