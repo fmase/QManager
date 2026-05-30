@@ -52,6 +52,12 @@ export interface ScenarioScheduleBlock {
   days: DayOfWeek[];
   /** Scenario id to apply during this window. */
   scenario: string;
+  /**
+   * Client-only React key; never persisted. Seeded in the form so list
+   * reorder/delete keep stable identity, and stripped before save so the
+   * device JSON stays byte-clean.
+   */
+  _key?: string;
 }
 
 /** Optional time-of-day schedule overlaid on the profile's default scenario. */

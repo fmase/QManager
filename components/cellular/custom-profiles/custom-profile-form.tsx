@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 
 import {
@@ -53,8 +53,15 @@ import {
   MNO_CUSTOM_ID,
   getMnoPreset,
 } from "@/constants/mno-presets";
-import { ScenarioBindingSection } from "@/components/cellular/custom-profiles/scenario-binding/scenario-binding-section";
-import { hasBlockingScheduleErrors } from "@/lib/scenario-schedule";
+import {
+  ScenarioBindingSection,
+  type ScenarioBindingSectionHandle,
+} from "@/components/cellular/custom-profiles/scenario-binding/scenario-binding-section";
+import {
+  ensureScenarioKeys,
+  hasBlockingScheduleErrors,
+  stripScenarioKeys,
+} from "@/lib/scenario-schedule";
 
 // =============================================================================
 // CustomProfileFormComponent — Create / Edit SIM Profile Form
@@ -80,7 +87,7 @@ const DEFAULT_FORM_STATE: ProfileFormData = {
   imei: "",
   ttl: 64,
   hl: 64,
-  scenario: DEFAULT_SCENARIO_BINDING,
+  scenario: ensureScenarioKeys(DEFAULT_SCENARIO_BINDING),
 };
 
 function profileToFormData(profile: SimProfile): ProfileFormData {
@@ -96,7 +103,8 @@ function profileToFormData(profile: SimProfile): ProfileFormData {
     ttl: s.ttl,
     hl: s.hl,
     // Backend normalizes .scenario onto every profile; fall back defensively.
-    scenario: profile.scenario ?? DEFAULT_SCENARIO_BINDING,
+    // Seed client-only React keys for stable list identity (stripped on save).
+    scenario: ensureScenarioKeys(profile.scenario ?? DEFAULT_SCENARIO_BINDING),
   };
 }
 
@@ -115,6 +123,9 @@ const CustomProfileFormComponent = ({
 
   // Pending Verizon MNO id — set when user picks Verizon, cleared on confirm/cancel
   const [pendingVerizonMnoId, setPendingVerizonMnoId] = useState<string | null>(null);
+
+  // Handle to the Scenario section so submit can reveal the first invalid rule.
+  const scenarioSectionRef = useRef<ScenarioBindingSectionHandle>(null);
 
   const isEditing = !!editingProfile;
   const isVerizon = form.mno === "Verizon";
@@ -276,10 +287,24 @@ const CustomProfileFormComponent = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!validate()) return;
+    if (!validate()) {
+      // If the schedule is what blocked submit, open the Scenario section and
+      // bring the first invalid rule into view.
+      if (hasBlockingScheduleErrors(form.scenario.schedule)) {
+        scenarioSectionRef.current?.revealFirstError();
+      }
+      return;
+    }
+
+    // Strip the client-only `_key` off every schedule rule so the device JSON
+    // stays byte-clean; keep `_key` in form state for React list identity.
+    const payload: ProfileFormData = {
+      ...form,
+      scenario: stripScenarioKeys(form.scenario),
+    };
 
     setIsSaving(true);
-    const result = await onSave(form);
+    const result = await onSave(payload);
     setIsSaving(false);
 
     if (result) {
@@ -538,6 +563,7 @@ const CustomProfileFormComponent = ({
 
                 {/* --- Scenario binding (collapsible) --- */}
                 <ScenarioBindingSection
+                  ref={scenarioSectionRef}
                   value={form.scenario}
                   onChange={(scenario) => updateField("scenario", scenario)}
                   defaultOpen={

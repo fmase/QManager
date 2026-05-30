@@ -16,6 +16,7 @@
 // =============================================================================
 
 import type {
+  ProfileScenarioBinding,
   ScenarioSchedule,
   ScenarioScheduleBlock,
   DayOfWeek,
@@ -224,4 +225,88 @@ function toIntervals(block: ScenarioScheduleBlock): [number, number][] {
     [s, MINUTES_PER_DAY],
     [0, e],
   ];
+}
+
+// --- Client key seeding ------------------------------------------------------
+
+let keyCounter = 0;
+
+/**
+ * Generate a stable client-only key for a schedule block's `_key` field.
+ * Prefers crypto.randomUUID() where available, falling back to a monotonic
+ * counter so it works in any runtime. Never persisted (see stripScenarioKeys).
+ */
+export function clientKey(): string {
+  if (
+    typeof crypto !== "undefined" &&
+    typeof crypto.randomUUID === "function"
+  ) {
+    return crypto.randomUUID();
+  }
+  keyCounter += 1;
+  return `blk_${Date.now().toString(36)}_${keyCounter}`;
+}
+
+/**
+ * Ensure every block in a binding carries a `_key`, minting one where missing.
+ * Used when hydrating form state from persisted profiles (which never carry
+ * `_key`). Returns a fresh binding; does not mutate the input.
+ */
+export function ensureScenarioKeys(
+  binding: ProfileScenarioBinding,
+): ProfileScenarioBinding {
+  return {
+    ...binding,
+    schedule: {
+      ...binding.schedule,
+      blocks: binding.schedule.blocks.map((b) =>
+        b._key ? b : { ...b, _key: clientKey() },
+      ),
+    },
+  };
+}
+
+// --- Display helpers ---------------------------------------------------------
+
+/** Coarse grouping of a block's day set, for a compact summary label. */
+export type DayGrouping = "all" | "weekdays" | "weekends" | "none" | "custom";
+
+/**
+ * Classify a day set into a coarse grouping the UI can map to a localized
+ * label. Pure and i18n-free so it stays unit-testable.
+ *   all       = all 7 days
+ *   weekdays  = exactly Mon..Fri (1,2,3,4,5)
+ *   weekends  = exactly Sun + Sat (0,6)
+ *   none      = empty
+ *   custom    = anything else (caller falls back to a comma-joined list)
+ */
+export function groupDays(days: DayOfWeek[]): DayGrouping {
+  if (!days || days.length === 0) return "none";
+  const set = new Set(days);
+  if (set.size === 7) return "all";
+  if (set.size === 5 && [1, 2, 3, 4, 5].every((d) => set.has(d as DayOfWeek))) {
+    return "weekdays";
+  }
+  if (set.size === 2 && set.has(0) && set.has(6)) return "weekends";
+  return "custom";
+}
+
+/**
+ * Strip the client-only `_key` off every schedule block, returning a binding
+ * safe to persist (the device JSON must never carry `_key`). Pure; produces a
+ * fresh object and does not mutate the input.
+ */
+export function stripScenarioKeys(
+  binding: ProfileScenarioBinding,
+): ProfileScenarioBinding {
+  return {
+    ...binding,
+    schedule: {
+      ...binding.schedule,
+      blocks: binding.schedule.blocks.map(({ _key, ...rest }) => {
+        void _key;
+        return rest;
+      }),
+    },
+  };
 }

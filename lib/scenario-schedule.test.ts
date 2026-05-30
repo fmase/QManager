@@ -7,8 +7,14 @@ import {
   nextChangeAt,
   validateSchedule,
   hasBlockingScheduleErrors,
+  groupDays,
+  stripScenarioKeys,
 } from "./scenario-schedule";
-import type { ScenarioSchedule, DayOfWeek } from "@/types/sim-profile";
+import type {
+  ScenarioSchedule,
+  DayOfWeek,
+  ProfileScenarioBinding,
+} from "@/types/sim-profile";
 
 const ALL_DAYS: DayOfWeek[] = [0, 1, 2, 3, 4, 5, 6];
 
@@ -184,5 +190,54 @@ describe("validateSchedule / hasBlockingScheduleErrors", () => {
       blocks: [{ start: "bad", end: "x", days: [], scenario: "gaming" }],
     };
     expect(hasBlockingScheduleErrors(schedule)).toBe(false);
+  });
+});
+
+describe("groupDays", () => {
+  it("classifies the canonical groupings", () => {
+    expect(groupDays(ALL_DAYS)).toBe("all");
+    expect(groupDays([1, 2, 3, 4, 5])).toBe("weekdays");
+    expect(groupDays([0, 6])).toBe("weekends");
+    expect(groupDays([])).toBe("none");
+  });
+  it("is order-insensitive", () => {
+    expect(groupDays([5, 4, 3, 2, 1] as DayOfWeek[])).toBe("weekdays");
+    expect(groupDays([6, 0])).toBe("weekends");
+  });
+  it("falls back to custom for anything else", () => {
+    expect(groupDays([1, 2, 3])).toBe("custom");
+    expect(groupDays([0, 1, 2, 3, 4, 5])).toBe("custom"); // 6 of 7 days
+    expect(groupDays([0])).toBe("custom"); // single weekend day
+    expect(groupDays([1, 2, 3, 4, 5, 6])).toBe("custom"); // weekdays + Sat
+  });
+});
+
+describe("stripScenarioKeys", () => {
+  it("removes _key from every block without mutating the input", () => {
+    const binding: ProfileScenarioBinding = {
+      default: "balanced",
+      schedule: {
+        enabled: true,
+        blocks: [
+          { start: "08:00", end: "12:00", days: ALL_DAYS, scenario: "gaming", _key: "a" },
+          { start: "12:00", end: "18:00", days: ALL_DAYS, scenario: "streaming", _key: "b" },
+        ],
+      },
+    };
+    const out = stripScenarioKeys(binding);
+    expect(out.schedule.blocks.every((b) => !("_key" in b))).toBe(true);
+    // Input untouched.
+    expect(binding.schedule.blocks[0]._key).toBe("a");
+    // Other fields preserved.
+    expect(out.schedule.blocks[0].scenario).toBe("gaming");
+    expect(out.default).toBe("balanced");
+    expect(out.schedule.enabled).toBe(true);
+  });
+  it("is a no-op shape for blocks that never had a key", () => {
+    const binding: ProfileScenarioBinding = {
+      default: "balanced",
+      schedule: { enabled: false, blocks: [] },
+    };
+    expect(stripScenarioKeys(binding)).toEqual(binding);
   });
 });

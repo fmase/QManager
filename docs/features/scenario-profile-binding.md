@@ -163,6 +163,101 @@ The hook runs a 60-second tick (`TICK_INTERVAL_MS = 60_000`) to advance `schedul
 
 `lib/scenario-schedule.ts` contains `resolveScheduledScenario`, `nextChangeAt`, and `validateSchedule` — pure functions with no side effects. The schedule validation rejects malformed times, zero-length blocks, and blocks with no days selected. Overlapping blocks produce a warning (the first-in-array wins) but do not block save.
 
+## Schedule Editor UI
+
+The schedule editor inside the Create/Edit Profile form was redesigned to reduce cognitive load. The CGI endpoints, UCI, persisted profile JSON contract, device cron, and canonical resolution rule are unchanged.
+
+### Summary-Row Accordion
+
+The schedule block list renders as a single-open accordion. Each collapsed row shows a one-line summary in the format `{days} · {start}–{end} → {scenario}` (e.g. `Weekdays · 22:00-06:00 → Balanced`). Expanding a row reveals the editor: time inputs, day chips, scenario picker. Only one row is open at a time. The parent (`scenario-binding-section.tsx`) holds `openKey` (the `_key` of the currently expanded row) and passes controlled `open`/`onOpenChange` props into each `ScheduleRuleRow`.
+
+Component: `components/cellular/custom-profiles/scenario-binding/schedule-rule-row.tsx`.
+
+**Newly-added rows auto-expand.** When the user clicks "Add rule", the parent calls `setOpenKey(block._key)` before appending, so the fresh row opens immediately.
+
+**Error force-expand.** When a rule carries a blocking validation error, the parent's `useEffect` on `firstErrorIndex` sets `openKey` to that rule's `_key`, keeping the error always visible. If validation is triggered by a blocked form submit, the imperative handle `revealFirstError()` additionally opens the Collapsible section and scrolls the invalid row into view.
+
+**Warning glyph.** A `TriangleAlertIcon` (`size-3`) appears on the collapsed summary trigger of any row that has a blocking error or an overlap warning, so the problem is discoverable without expanding.
+
+### Client-Only `_key` Field
+
+`ScenarioScheduleBlock` carries an optional `_key?: string` field that acts as a stable React list key. This replaces the previous index-based `key={i}`, which mis-targeted focus, labels, and `aria-live` regions on mid-list deletes.
+
+**INVARIANT: `_key` is never persisted.** It exists only in client-side form state. Two pure helpers in `lib/scenario-schedule.ts` enforce this:
+
+- `ensureScenarioKeys(binding)` — called when hydrating form state from a saved profile. Adds a `_key` to any block that lacks one (all blocks from persisted JSON). Uses `clientKey()`, which prefers `crypto.randomUUID()` and falls back to a monotonic counter of the form `blk_<base36-timestamp>_<n>`.
+- `stripScenarioKeys(binding)` — called before every save (POST to `profiles/save.sh`). Removes `_key` from every block before serialization. Returns a fresh object; does not mutate the input.
+
+Why: the device JSON must remain byte-clean. The modem shell scripts that read profile JSON have no awareness of `_key` and would ignore it, but carrying extra keys in persisted data creates a silent diff between what was saved and what the modem operates on.
+
+### Reorder Controls
+
+Each rule row shows move-up and move-down buttons when more than one rule exists (`canReorder = blocks.length > 1`). The first rule's move-up button and the last rule's move-down button are disabled. Reordering matters because **first-in-array wins** when multiple rules overlap — moving a rule up raises its precedence. The parent's `swap(a, b)` exchanges elements at indices `a` and `b` and calls `onChange` with the updated array.
+
+### Day Presets
+
+Three quick-select buttons sit above the day chips: `Every day` ([0,1,2,3,4,5,6]), `Weekdays` ([1,2,3,4,5]), `Weekends` ([0,6]). Clicking one overwrites the rule's `days` array in one action. They are defined as module-level constants `PRESET_EVERY_DAY`, `PRESET_WEEKDAYS`, `PRESET_WEEKENDS` in `schedule-block-editor.tsx`.
+
+### Live Readout
+
+A single text line reports the currently-active scenario and the time of the next schedule boundary. It is shown only when `schedule.enabled = true` and at least one rule passes validation (no blocking error). The parent computes `{ scenario, next }` via `resolveScheduledScenario()` and `nextChangeAt()` on mount and then on a 60-second `setInterval`. The displayed text uses the `active_now_line_with_next` i18n key when a next-change time exists, or `active_now_line` when the scenario never changes within the next 7 days.
+
+Why 60 seconds: `nextChangeAt()` scans up to 7 × 1440 minutes to find the next transition. Running it more frequently would waste cycles; the one-minute granularity matches the device cron's minimum resolution.
+
+### `ScenarioBindingSectionHandle` Contract
+
+The section is exposed via `forwardRef` and `useImperativeHandle`. The parent form holds a ref (`scenarioSectionRef`) and calls `revealFirstError()` when a submit is blocked by schedule errors.
+
+```typescript
+export interface ScenarioBindingSectionHandle {
+  revealFirstError: () => void;
+}
+```
+
+`revealFirstError()` does three things in order:
+
+1. Sets `open = true` (expands the Collapsible section if collapsed).
+2. Sets `openKey` to the `_key` of the first invalid rule.
+3. Defers a `scrollIntoView` call via `requestAnimationFrame` so the section has expanded before the scroll fires. The behavior is `"smooth"` unless `window.matchMedia("(prefers-reduced-motion: reduce)").matches`, in which case `"auto"` is used.
+
+If there are no blocking errors (`firstErrorIndex === -1`), `revealFirstError()` returns immediately without changing any state.
+
+### Overnight Hint
+
+When both start and end are valid times and `end <= start` (the window wraps past midnight), an informational line appears under the End field in the editor to make the overnight behavior explicit. This is a display-only hint; the resolution logic already handles overnight windows correctly via the `e <= s` branch in `blockMatchesAt()`.
+
+### Accessibility
+
+- `DayOfWeekChips` (`day-of-week-chips.tsx`) accepts `id` and `aria-labelledby` props forwarded to the `ToggleGroup` root, associating the chip group to its field label.
+- The overlap warning paragraph carries `role="status"` so assistive technology announces it without requiring focus.
+- Each `ToggleGroupItem` carries `aria-label` with the full localized day name (the chip itself shows only the abbreviation).
+- The reorder buttons carry explicit `aria-label` keys (`move_up_aria`, `move_down_aria`).
+- The expand/collapse trigger carries `aria-expanded` (Radix Collapsible) and an explicit `aria-label` (`expand_rule_aria`).
+
+### New i18n Keys
+
+All keys live under `custom_profiles.form.scenario` in the `cellular` namespace. Keys added by this redesign:
+
+| Key | Purpose |
+|---|---|
+| `summary_line` | Collapsed row summary (`{days} · {time} → {scenario}`) |
+| `time_range` | Time portion of the summary (`{start}–{end}`) |
+| `every_day` | Day label when all 7 days are selected |
+| `weekdays` | Day label for Mon–Fri |
+| `weekends` | Day label for Sat + Sun |
+| `no_days_short` | Day label when no days are selected |
+| `move_up_aria` | Accessible label for move-up button |
+| `move_down_aria` | Accessible label for move-down button |
+| `expand_rule_aria` | Accessible label for expand trigger |
+| `preset_every_day` | "Every day" preset button label |
+| `preset_weekdays` | "Weekdays" preset button label |
+| `preset_weekends` | "Weekends" preset button label |
+| `active_now_line` | Live readout (no next-change time) |
+| `active_now_line_with_next` | Live readout with next-change time |
+| `overnight_hint` | Hint shown under End when window wraps midnight |
+
+The existing keys (e.g. `schedule_toggle_label`, `block_errors.*`, `overlap_warning`) were not renamed. The word "Block" was replaced with "Rule" in all displayed string values across all four locales (en, zh-CN, id, it); JSON key names are unchanged.
+
 ## Timezone Change Caveat
 
 When the user changes the device timezone, the existing `system/settings.sh` handler restarts crond, which re-arms all cron lines at the new local time. The **currently-applied scenario is not re-snapped** — the modem keeps whatever scenario was last applied. The next cron transition at the new local time will snap it correctly. This is by design; a re-snap would require another `scenario_apply` call that may transiently disrupt the connection.

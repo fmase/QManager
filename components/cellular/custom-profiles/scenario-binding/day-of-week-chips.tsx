@@ -17,9 +17,19 @@ interface DayOfWeekChipsProps {
   value: DayOfWeek[];
   onChange: (days: DayOfWeek[]) => void;
   disabled?: boolean;
+  /** Forwarded to the group root so a FieldLabel can target it. */
+  id?: string;
+  /** Associates an external label with the group (a11y). */
+  "aria-labelledby"?: string;
 }
 
-export function DayOfWeekChips({ value, onChange, disabled }: DayOfWeekChipsProps) {
+export function DayOfWeekChips({
+  value,
+  onChange,
+  disabled,
+  id,
+  "aria-labelledby": ariaLabelledby,
+}: DayOfWeekChipsProps) {
   const { t } = useTranslation("cellular");
 
   const shortLabel = (d: DayOfWeek) =>
@@ -34,6 +44,8 @@ export function DayOfWeekChips({ value, onChange, disabled }: DayOfWeekChipsProp
       variant="outline"
       size="sm"
       disabled={disabled}
+      id={id}
+      aria-labelledby={ariaLabelledby}
       value={value.map(String)}
       onValueChange={(vals: string[]) =>
         onChange(
