@@ -1,11 +1,11 @@
 "use client";
 
-import React, { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { SaveButton, useSaveFlash } from "@/components/ui/save-button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -17,8 +17,8 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-import type { SimProfile, CurrentModemSettings } from "@/types/sim-profile";
-import { type PdpType, DEFAULT_SCENARIO_BINDING } from "@/types/sim-profile";
+import type { CurrentModemSettings } from "@/types/sim-profile";
+import { type PdpType } from "@/types/sim-profile";
 import type { ProfileFormData } from "@/hooks/use-sim-profiles";
 import {
   MNO_PRESETS,
@@ -39,83 +39,91 @@ import { SummaryCard } from "./summary-card";
 import type { UpdateField } from "./form-types";
 
 // =============================================================================
-// ProfileEditor — single-page create/edit surface
+// ProfileEditor — multi-step form body hosted inside ProfileEditorDialog
 // =============================================================================
-// One calm reading column of grouped section-cards, the macOS System Settings
-// way: Identity & Carrier → APN & Connection → Advanced (collapsed) →
-// Connection Scenario. The Preview is a quiet companion, not a second column of
-// inputs: it stacks at the end of the reading order on narrow/medium screens,
-// and only at the widest container (@5xl/main) does it lift into a sticky right
-// rail so it stays in view while the user works down the form. This is the core
-// de-clutter move over the old two-busy-columns layout — the form always reads
-// top-to-bottom, and the preview never competes with the inputs for space.
+// Five steps, one per section card (Identity → APN → Advanced → Scenario →
+// Review). Shadcn Tabs acts as the step indicator; steps are freely clickable
+// AND Back/Next buttons in the dialog footer provide guided flow. The dialog
+// footer is rendered here (inside the scrollable region) so it scrolls with the
+// content on very small viewports but is always visible at the bottom of the
+// fixed-height dialog body.
 //
-// A full-width sticky action bar keeps Save reachable no matter how long the
-// schedule grows. Validation is inline + on save. A save with blocking errors
-// focuses the first offending field (and reveals the first bad schedule entry)
-// rather than failing silently. The backend contract is unchanged: `_key`s are
-// stripped on save.
+// Dialog owns: open/close, async profile load, dirty-guard, save delegation.
+// This component owns: form state, steps, validation, error routing.
 // =============================================================================
 
-const DEFAULT_FORM_STATE: ProfileFormData = {
-  name: "",
-  mno: "Custom",
-  sim_iccid: "",
-  cid: 1,
-  apn_name: "",
-  pdp_type: "IPV4V6",
-  imei: "",
-  ttl: 64,
-  hl: 64,
-  scenario: ensureScenarioKeys(DEFAULT_SCENARIO_BINDING),
-};
+// ---------------------------------------------------------------------------
+// Step configuration
+// ---------------------------------------------------------------------------
 
-function profileToFormData(profile: SimProfile): ProfileFormData {
-  const s = profile.settings;
-  return {
-    name: profile.name,
-    mno: profile.mno,
-    sim_iccid: profile.sim_iccid,
-    cid: profile.mno === "Verizon" ? 3 : s.apn.cid,
-    apn_name: s.apn.name,
-    pdp_type: s.apn.pdp_type,
-    imei: s.imei,
-    ttl: s.ttl,
-    hl: s.hl,
-    scenario: ensureScenarioKeys(profile.scenario ?? DEFAULT_SCENARIO_BINDING),
-  };
-}
+type StepKey = "identity" | "apn" | "advanced" | "scenario" | "review";
 
-/** Error key → focusable element id, in the order the form reads. */
-const ERROR_FIELD_ORDER: { key: string; id: string }[] = [
-  { key: "name", id: "profileName" },
-  { key: "cid", id: "apnCid" },
-  { key: "imei", id: "imei" },
-  { key: "ttl", id: "ttl" },
-  { key: "hl", id: "hl" },
+/** Error key → step + focusable element id, in reading order. */
+const ERROR_ROUTING: {
+  key: string;
+  step: StepKey;
+  fieldId: string;
+}[] = [
+  { key: "name", step: "identity", fieldId: "profileName" },
+  { key: "cid", step: "apn", fieldId: "apnCid" },
+  { key: "imei", step: "advanced", fieldId: "imei" },
+  { key: "ttl", step: "advanced", fieldId: "ttl" },
+  { key: "hl", step: "advanced", fieldId: "hl" },
+  // scenario has no field id — handled via scenarioRef.revealFirstError()
 ];
 
-interface ProfileEditorProps {
+const STEPS: { key: StepKey; labelKey: string }[] = [
+  { key: "identity", labelKey: "custom_profiles.form.steps.identity_short" },
+  { key: "apn", labelKey: "custom_profiles.form.steps.apn_short" },
+  { key: "advanced", labelKey: "custom_profiles.form.steps.advanced_short" },
+  { key: "scenario", labelKey: "custom_profiles.form.steps.scenario_short" },
+  { key: "review", labelKey: "custom_profiles.form.steps.review_short" },
+];
+
+const FIRST_STEP = STEPS[0].key;
+const LAST_STEP = STEPS[STEPS.length - 1].key;
+
+function prevStep(current: StepKey): StepKey | null {
+  const idx = STEPS.findIndex((s) => s.key === current);
+  return idx > 0 ? STEPS[idx - 1].key : null;
+}
+
+function nextStep(current: StepKey): StepKey | null {
+  const idx = STEPS.findIndex((s) => s.key === current);
+  return idx < STEPS.length - 1 ? STEPS[idx + 1].key : null;
+}
+
+// ---------------------------------------------------------------------------
+// Props
+// ---------------------------------------------------------------------------
+
+export interface ProfileEditorProps {
   mode: "create" | "edit";
-  /** Pre-loaded profile for edit mode (the route loads it before mounting). */
-  initialProfile?: SimProfile | null;
-  /** Persist the profile. Returns the id on success, null on failure. */
+  /** Seeded form state for this open session (edit: from loaded profile; create: defaults). */
+  initialFormState: ProfileFormData;
+  /** Persist the profile — dialog wraps create vs update. Returns id or null. */
   onSave: (data: ProfileFormData) => Promise<string | null>;
-  /** Called after a successful save (navigate back to the registry). */
-  onDone: () => void;
-  /** Called when the user cancels. */
+  /** Called when the user clicks Cancel — dialog handles the dirty guard. */
   onCancel: () => void;
+  /** Called whenever the form's dirty state changes. */
+  onDirtyChange: (dirty: boolean) => void;
+  /** Current modem settings for create-mode prefill (null in edit mode). */
   currentSettings?: CurrentModemSettings | null;
+  /** Trigger a fresh fetch of current modem settings (create mode only). */
   onLoadCurrentSettings?: () => void;
   isLoadingCurrent?: boolean;
 }
 
+// ---------------------------------------------------------------------------
+// Component
+// ---------------------------------------------------------------------------
+
 export function ProfileEditor({
   mode,
-  initialProfile,
+  initialFormState,
   onSave,
-  onDone,
   onCancel,
+  onDirtyChange,
   currentSettings,
   onLoadCurrentSettings,
   isLoadingCurrent = false,
@@ -124,20 +132,40 @@ export function ProfileEditor({
 
   const isEditing = mode === "edit";
 
-  // Seed once from the pre-loaded profile (route mounts the editor fresh).
+  // ---- Form state -----------------------------------------------------------
+  // Seed once from initialFormState (the dialog key-remounts us when identity
+  // changes, so the initializer fires fresh each open session).
   const [form, setForm] = useState<ProfileFormData>(() =>
-    initialProfile ? profileToFormData(initialProfile) : DEFAULT_FORM_STATE,
+    ensureScenarioKeysInForm(initialFormState),
   );
-  const [isSaving, setIsSaving] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isSaving, setIsSaving] = useState(false);
   const { saved, markSaved } = useSaveFlash();
 
+  // ---- Dirty tracking -------------------------------------------------------
+  // Snapshot JSON at seed time; compare on every form change.
+  const snapshotRef = useRef<string>(
+    JSON.stringify(ensureScenarioKeysInForm(initialFormState)),
+  );
+
+  useEffect(() => {
+    const dirty =
+      JSON.stringify(form) !== snapshotRef.current;
+    onDirtyChange(dirty);
+  }, [form, onDirtyChange]);
+
+  // ---- Verizon warning state ------------------------------------------------
   const [pendingVerizonMnoId, setPendingVerizonMnoId] = useState<string | null>(
     null,
   );
 
+  // ---- Refs -----------------------------------------------------------------
   const scenarioRef = useRef<ScenarioCardHandle>(null);
 
+  // ---- Step state -----------------------------------------------------------
+  const [activeStep, setActiveStep] = useState<StepKey>(FIRST_STEP);
+
+  // ---- Derived --------------------------------------------------------------
   const isVerizon = form.mno === "Verizon";
 
   const pdpTypeLabels = useMemo<Record<PdpType, string>>(
@@ -154,8 +182,7 @@ export function ProfileEditor({
     return match ? match.id : MNO_CUSTOM_ID;
   }, [form.mno]);
 
-  // Pre-fill from current modem settings (create mode only). Compare during
-  // render instead of useEffect to avoid cascading setState (React-Compiler).
+  // ---- Current-settings prefill (create mode, adjust-during-render) ---------
   const [prevSettings, setPrevSettings] = useState<CurrentModemSettings | null>(
     null,
   );
@@ -183,6 +210,7 @@ export function ProfileEditor({
     }));
   }
 
+  // ---- Field updater --------------------------------------------------------
   const updateField: UpdateField = (key, value) => {
     setForm((prev) => ({ ...prev, [key]: value }));
     if (errors[key]) {
@@ -194,6 +222,7 @@ export function ProfileEditor({
     }
   };
 
+  // ---- MNO handlers ---------------------------------------------------------
   const handleMnoChange = (mnoId: string) => {
     if (mnoId === "vzw" && form.mno !== "Verizon") {
       setPendingVerizonMnoId(mnoId);
@@ -235,6 +264,7 @@ export function ProfileEditor({
 
   const handleVerizonCancel = () => setPendingVerizonMnoId(null);
 
+  // ---- Validation -----------------------------------------------------------
   const validate = (): Record<string, string> => {
     const e: Record<string, string> = {};
     if (!form.name.trim()) {
@@ -258,36 +288,45 @@ export function ProfileEditor({
     return e;
   };
 
-  /** Move the user to the first blocking error: focus the field, or reveal the
-   *  bad schedule rule when the only error is the schedule. */
-  const focusFirstError = (found: Record<string, string>) => {
-    const field = ERROR_FIELD_ORDER.find((f) => found[f.key]);
-    if (field) {
-      const el = document.getElementById(field.id) as HTMLElement | null;
-      if (el) {
-        const prefersReduced = window.matchMedia(
-          "(prefers-reduced-motion: reduce)",
-        ).matches;
-        el.scrollIntoView({
-          behavior: prefersReduced ? "auto" : "smooth",
-          block: "center",
-        });
-        // Focus after the scroll settles so it doesn't fight the smooth scroll.
-        window.setTimeout(() => el.focus({ preventScroll: true }), 80);
-      }
+  /**
+   * On save with errors: switch to the step owning the first error, then
+   * after one tick (so the panel has mounted) focus/scroll to the field.
+   * If the only error is scenario, call revealFirstError() on the ref.
+   */
+  const routeToFirstError = (found: Record<string, string>) => {
+    const route = ERROR_ROUTING.find((r) => found[r.key]);
+    if (route) {
+      setActiveStep(route.step);
+      window.setTimeout(() => {
+        const el = document.getElementById(route.fieldId) as HTMLElement | null;
+        if (el) {
+          const prefersReduced = window.matchMedia(
+            "(prefers-reduced-motion: reduce)",
+          ).matches;
+          el.scrollIntoView({
+            behavior: prefersReduced ? "auto" : "smooth",
+            block: "center",
+          });
+          window.setTimeout(() => el.focus({ preventScroll: true }), 80);
+        }
+      }, 0);
       return;
     }
     if (found.scenario) {
-      scenarioRef.current?.revealFirstError();
+      setActiveStep("scenario");
+      window.setTimeout(() => {
+        scenarioRef.current?.revealFirstError();
+      }, 0);
     }
   };
 
+  // ---- Save -----------------------------------------------------------------
   const doSave = async () => {
     const found = validate();
     setErrors(found);
 
     if (Object.keys(found).length > 0) {
-      focusFirstError(found);
+      routeToFirstError(found);
       return;
     }
 
@@ -302,84 +341,147 @@ export function ProfileEditor({
 
     if (result) {
       markSaved();
-      toast.success(
-        isEditing
-          ? t("custom_profiles.form.toast.update_success")
-          : t("custom_profiles.form.toast.create_success"),
-      );
-      // Let the "Saved!" flash land before navigating away.
-      window.setTimeout(onDone, 650);
-    } else {
-      toast.error(
-        isEditing
-          ? t("custom_profiles.form.toast.update_error")
-          : t("custom_profiles.form.toast.create_error"),
-      );
+      // onSave (in the dialog) already calls onSaved() which closes the dialog.
+      // Give the "Saved!" flash a moment before that happens.
+      // (No additional toast here — the dialog's handleSave fires toast.)
     }
+    // Failure toast is also handled by the dialog's handleSave.
   };
 
-  const handleSubmit = (ev: React.FormEvent) => {
-    ev.preventDefault();
-    doSave();
+  // ---- Navigation -----------------------------------------------------------
+  const handleBack = () => {
+    const p = prevStep(activeStep);
+    if (p) setActiveStep(p);
   };
 
+  const handleNext = () => {
+    const n = nextStep(activeStep);
+    if (n) setActiveStep(n);
+  };
+
+  const isFirstStep = activeStep === FIRST_STEP;
+  const isLastStep = activeStep === LAST_STEP;
+
+  // ---- Render ---------------------------------------------------------------
   return (
-    <form onSubmit={handleSubmit}>
-      {/* Single reading column by default; at the widest container the preview
-          lifts into a fixed-width sticky right rail. The form column stays the
-          same shape in both layouts, so the reading order never reflows. */}
-      <div className="grid gap-5 @5xl/main:grid-cols-[minmax(0,1fr)_20rem] @5xl/main:items-start">
-        {/* The form: one column of grouped section-cards, top to bottom. */}
-        <div className="space-y-5">
-          <IdentityCard
-            form={form}
-            errors={errors}
-            updateField={updateField}
-            selectedMno={selectedMno}
-            onMnoChange={handleMnoChange}
-            isEditing={isEditing}
-            onLoadCurrentSettings={onLoadCurrentSettings}
-            isLoadingCurrent={isLoadingCurrent}
-          />
-          <ApnCard
-            form={form}
-            errors={errors}
-            updateField={updateField}
-            pdpTypeLabels={pdpTypeLabels}
-            isVerizon={isVerizon}
-          />
-          <AdvancedCard form={form} errors={errors} updateField={updateField} />
-          <ScenarioCard
-            ref={scenarioRef}
-            value={form.scenario}
-            onChange={(scenario) => updateField("scenario", scenario)}
-          />
+    <>
+      <Tabs
+        value={activeStep}
+        onValueChange={(v) => setActiveStep(v as StepKey)}
+        className="flex flex-col"
+      >
+        {/* Step indicator — sticky so it doesn't scroll away in a long schedule */}
+        <div className="bg-background/95 supports-[backdrop-filter]:bg-background/80 sticky top-0 z-10 border-b px-6 py-3 backdrop-blur">
+          <TabsList
+            className="w-full"
+            aria-label={t("custom_profiles.form.steps.nav_aria")}
+          >
+            {STEPS.map((step) => {
+              const hasError = stepHasError(step.key, errors);
+              return (
+                <TabsTrigger
+                  key={step.key}
+                  value={step.key}
+                  className="flex-1 gap-1"
+                  aria-current={activeStep === step.key ? "step" : undefined}
+                >
+                  {t(step.labelKey)}
+                  {hasError && (
+                    <span
+                      className="bg-destructive size-1.5 rounded-full"
+                      aria-label={t("custom_profiles.form.steps.state_error")}
+                    />
+                  )}
+                </TabsTrigger>
+              );
+            })}
+          </TabsList>
         </div>
 
-        {/* Quiet companion preview: stacked here on narrow/medium screens,
-            sticky rail at @5xl/main. */}
-        <div className="@5xl/main:sticky @5xl/main:top-6">
-          <SummaryCard form={form} />
+        {/* Step panels */}
+        <div className="px-6 py-5">
+          <TabsContent value="identity" className="mt-0 focus-visible:outline-none">
+            <IdentityCard
+              form={form}
+              errors={errors}
+              updateField={updateField}
+              selectedMno={selectedMno}
+              onMnoChange={handleMnoChange}
+              isEditing={isEditing}
+              onLoadCurrentSettings={onLoadCurrentSettings}
+              isLoadingCurrent={isLoadingCurrent}
+            />
+          </TabsContent>
+
+          <TabsContent value="apn" className="mt-0 focus-visible:outline-none">
+            <ApnCard
+              form={form}
+              errors={errors}
+              updateField={updateField}
+              pdpTypeLabels={pdpTypeLabels}
+              isVerizon={isVerizon}
+            />
+          </TabsContent>
+
+          <TabsContent value="advanced" className="mt-0 focus-visible:outline-none">
+            {/* AdvancedCard has its own collapsible; in the stepped layout we
+                still render it as-is. Its auto-expand-on-error logic still
+                works because errors.imei/ttl/hl are passed down. */}
+            <AdvancedCard
+              form={form}
+              errors={errors}
+              updateField={updateField}
+            />
+          </TabsContent>
+
+          <TabsContent value="scenario" className="mt-0 focus-visible:outline-none">
+            <ScenarioCard
+              ref={scenarioRef}
+              value={form.scenario}
+              onChange={(scenario) => updateField("scenario", scenario)}
+            />
+          </TabsContent>
+
+          <TabsContent value="review" className="mt-0 focus-visible:outline-none">
+            <SummaryCard form={form} />
+          </TabsContent>
         </div>
-      </div>
 
-      {/* Sticky action bar: always reachable, even deep in a long schedule. */}
-      <footer className="bg-background/95 supports-[backdrop-filter]:bg-background/80 sticky bottom-0 z-10 mt-5 flex items-center justify-between gap-2 border-t py-3 backdrop-blur">
-        <Button type="button" variant="outline" onClick={onCancel}>
-          {t("actions.cancel", { ns: "common" })}
-        </Button>
-        <SaveButton
-          type="submit"
-          isSaving={isSaving}
-          saved={saved}
-          label={
-            isEditing
-              ? t("custom_profiles.form.buttons.update_submit")
-              : t("custom_profiles.form.buttons.create_submit")
-          }
-        />
-      </footer>
+        {/* Footer — always visible at the bottom of the scrollable body */}
+        <footer className="bg-background/95 supports-[backdrop-filter]:bg-background/80 sticky bottom-0 z-10 mt-auto flex shrink-0 items-center justify-between gap-2 border-t px-6 py-3 backdrop-blur">
+          {/* Left side: Back or Cancel */}
+          {isFirstStep ? (
+            <Button type="button" variant="outline" onClick={onCancel}>
+              {t("actions.cancel", { ns: "common" })}
+            </Button>
+          ) : (
+            <Button type="button" variant="outline" onClick={handleBack}>
+              {t("custom_profiles.form.buttons.back")}
+            </Button>
+          )}
 
+          {/* Right side: Next or Save */}
+          {isLastStep ? (
+            <SaveButton
+              type="button"
+              isSaving={isSaving}
+              saved={saved}
+              label={
+                isEditing
+                  ? t("custom_profiles.form.buttons.update_submit")
+                  : t("custom_profiles.form.buttons.create_submit")
+              }
+              onClick={doSave}
+            />
+          ) : (
+            <Button type="button" onClick={handleNext}>
+              {t("custom_profiles.form.buttons.next")}
+            </Button>
+          )}
+        </footer>
+      </Tabs>
+
+      {/* Verizon warning AlertDialog */}
       <AlertDialog
         open={pendingVerizonMnoId !== null}
         onOpenChange={(open) => {
@@ -413,6 +515,36 @@ export function ProfileEditor({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </form>
+    </>
   );
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function ensureScenarioKeysInForm(form: ProfileFormData): ProfileFormData {
+  return {
+    ...form,
+    scenario: ensureScenarioKeys(form.scenario),
+  };
+}
+
+/** Which errors belong to which step — used to show the error dot on triggers. */
+function stepHasError(
+  step: StepKey,
+  errors: Record<string, string>,
+): boolean {
+  switch (step) {
+    case "identity":
+      return Boolean(errors.name);
+    case "apn":
+      return Boolean(errors.cid);
+    case "advanced":
+      return Boolean(errors.imei || errors.ttl || errors.hl);
+    case "scenario":
+      return Boolean(errors.scenario);
+    case "review":
+      return false;
+  }
 }

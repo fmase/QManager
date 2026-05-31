@@ -134,11 +134,15 @@
         "nav_aria": "Passaggi del profilo",
         "identity_label": "Identità e operatore",
         "identity_short": "Identità",
+        "apn_short": "APN",
+        "apn_label": "APN e connessione",
         "advanced_label": "Avanzate",
         "advanced_short": "Avanzate",
         "advanced_desc": "Raramente necessario. Lascia invariato a meno che tu non debba modificarlo.",
         "scenario_label": "Scenario di connessione",
         "scenario_short": "Scenario",
+        "review_short": "Riepilogo",
+        "review_label": "Riepilogo",
         "scenario_desc": "Scegli lo scenario applicato all'attivazione di questo profilo e, facoltativamente, pianifica i cambi durante la giornata.",
         "optional": "Facoltativo",
         "step_of": "Passaggio {{current}} di {{total}}",
@@ -166,6 +170,12 @@
         "summary_imei": "Override IMEI",
         "summary_ttl": "TTL {{value}}",
         "summary_hl": "HL {{value}}"
+      },
+      "discard_dialog": {
+        "title": "Annullare le modifiche?",
+        "description": "Hai modifiche non salvate. Uscendo ora andranno perse.",
+        "confirm": "Annulla modifiche",
+        "keep": "Continua a modificare"
       }
     },
     "activate_dialog": {

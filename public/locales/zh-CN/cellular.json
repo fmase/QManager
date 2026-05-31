@@ -140,11 +140,15 @@
         "nav_aria": "配置步骤",
         "identity_label": "身份与运营商",
         "identity_short": "身份",
+        "apn_short": "APN",
+        "apn_label": "APN 与连接",
         "advanced_label": "高级",
         "advanced_short": "高级",
         "advanced_desc": "通常无需更改。除非确有需要，请保持默认。",
         "scenario_label": "连接场景",
         "scenario_short": "场景",
+        "review_short": "查看",
+        "review_label": "查看",
         "scenario_desc": "选择激活此配置时应用的场景，并可按一天中的时间安排切换。",
         "optional": "可选",
         "step_of": "第 {{current}} 步，共 {{total}} 步",
@@ -166,6 +170,12 @@
         "desc": "此配置在列表中的显示方式，以及激活时会更改的内容。",
         "untitled": "未命名配置",
         "reboot_note": "激活将重启调制解调器以应用 IMEI 更改。"
+      },
+      "discard_dialog": {
+        "title": "放弃更改？",
+        "description": "您有未保存的更改。现在离开将放弃这些更改。",
+        "confirm": "放弃",
+        "keep": "继续编辑"
       }
     },
     "activate_dialog": {

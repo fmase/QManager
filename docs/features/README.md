@@ -19,7 +19,7 @@ Per-feature deep-dives extracted from `CLAUDE.md` to keep the always-loaded prom
 | Doc | When to read |
 |---|---|
 | [DPI Settings](dpi-settings.md) | Traffic Engine (unified Video Optimizer + Masquerade at `/local-network/traffic-engine`), nfqws, NFQUEUE 200, persistent nft rules, mode takeover |
-| [Custom SIM Profiles](custom-sim-profiles.md) | APN/TTL/IMEI/MPDN apply pipeline, lock layering, Verizon MPDN, ICCID auto-apply, `?compose=` single-page routing, tabbed editor, dirty-discard guard |
+| [Custom SIM Profiles](custom-sim-profiles.md) | APN/TTL/IMEI/MPDN apply pipeline, lock layering, Verizon MPDN, ICCID auto-apply, single-page + in-dialog editor, multi-step tabs, dirty-discard guard |
 | [Config Backup & Restore](config-backup-restore.md) | `.qmbackup` format, AES-GCM, async restore worker, deferred-reboot pattern |
 | [Language Packs](language-packs.md) | Hybrid bundled/downloaded i18n, install/remove pipeline, publishing workflow, manifest |
 | [Error Code Vocabulary](error-codes.md) | Backend `{ error, detail }` contract, `resolveErrorMessage()`, `at-commands` namespace |

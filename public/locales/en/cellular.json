@@ -140,11 +140,15 @@
         "nav_aria": "Profile steps",
         "identity_label": "Identity & Carrier",
         "identity_short": "Identity",
+        "apn_short": "APN",
+        "apn_label": "APN & Connection",
         "advanced_label": "Advanced",
         "advanced_short": "Advanced",
         "advanced_desc": "Rarely needed. Leave these untouched unless you specifically need to change them.",
         "scenario_label": "Connection Scenario",
         "scenario_short": "Scenario",
+        "review_short": "Review",
+        "review_label": "Review",
         "scenario_desc": "Choose the scenario applied when this profile activates, and optionally schedule changes through the day.",
         "optional": "Optional",
         "step_of": "Step {{current}} of {{total}}",
@@ -166,6 +170,12 @@
         "desc": "How this profile reads in your registry, and what it changes when activated.",
         "untitled": "Untitled profile",
         "reboot_note": "Activating reboots the modem to apply the IMEI change."
+      },
+      "discard_dialog": {
+        "title": "Discard changes?",
+        "description": "You have unsaved changes. Leaving now will discard them.",
+        "confirm": "Discard",
+        "keep": "Keep editing"
       }
     },
     "activate_dialog": {

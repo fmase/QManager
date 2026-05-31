@@ -9,8 +9,9 @@ import { ActiveProfileCard } from "@/components/cellular/custom-profiles/active-
 import { ProfilesGrid } from "@/components/cellular/custom-profiles/profiles-grid";
 import { EmptyProfilesState } from "@/components/cellular/custom-profiles/empty-profile";
 import { ApplyProgressDialog } from "@/components/cellular/custom-profiles/apply-progress-dialog";
+import { ProfileEditorDialog } from "@/components/cellular/custom-profiles/profile-form/profile-editor-dialog";
 
-import { useSimProfiles } from "@/hooks/use-sim-profiles";
+import { useSimProfiles, type ProfileFormData } from "@/hooks/use-sim-profiles";
 import { useProfileApply } from "@/hooks/use-profile-apply";
 import { useModemStatus } from "@/hooks/use-modem-status";
 
@@ -77,8 +78,8 @@ function RegistrySkeleton() {
           </div>
           <Skeleton className="h-8 w-20 rounded-md" />
         </div>
-        <div className="grid grid-cols-[repeat(auto-fill,minmax(18rem,1fr))] items-stretch gap-4">
-          {[0, 1, 2].map((i) => (
+        <div className="grid grid-cols-1 items-stretch gap-4 @3xl/main:grid-cols-2">
+          {[0, 1].map((i) => (
             <div key={i} className="rounded-xl border bg-card flex flex-col">
               <div className="p-6 space-y-1.5">
                 <Skeleton className="h-5 w-36" />
@@ -131,6 +132,8 @@ const CustomProfileComponent = () => {
     activeProfileId,
     isLoading,
     error,
+    createProfile,
+    updateProfile,
     deleteProfile,
     deactivateProfile,
     getProfile,
@@ -157,6 +160,38 @@ const CustomProfileComponent = () => {
   // Deactivate confirmation state
   const [showDeactivateConfirm, setShowDeactivateConfirm] = useState(false);
   const [isDeactivating, setIsDeactivating] = useState(false);
+
+  // In-page create/edit editor dialog (replaces the old /new and /edit routes)
+  const [editor, setEditor] = useState<{
+    open: boolean;
+    mode: "create" | "edit";
+    profileId: string | null;
+  }>({ open: false, mode: "create", profileId: null });
+
+  const handleNew = useCallback(() => {
+    setEditor({ open: true, mode: "create", profileId: null });
+  }, []);
+
+  const handleEdit = useCallback((id: string) => {
+    setEditor({ open: true, mode: "edit", profileId: id });
+  }, []);
+
+  // Bind create vs update by the dialog's mode. Returns the id on success.
+  const handleEditorSave = useCallback(
+    async (data: ProfileFormData): Promise<string | null> => {
+      if (editor.mode === "edit" && editor.profileId) {
+        const ok = await updateProfile(editor.profileId, data);
+        return ok ? editor.profileId : null;
+      }
+      return createProfile(data);
+    },
+    [editor.mode, editor.profileId, updateProfile, createProfile],
+  );
+
+  // The CRUD hook already refetches on success; just close the dialog.
+  const handleEditorSaved = useCallback(() => {
+    setEditor((e) => ({ ...e, open: false }));
+  }, []);
 
   const showSkeleton = useDelayedFlag(isLoading);
   const activeSummary = profiles.find((p) => p.id === activeProfileId) ?? null;
@@ -241,7 +276,7 @@ const CustomProfileComponent = () => {
           </AlertDescription>
         </Alert>
       ) : profiles.length === 0 ? (
-        <EmptyProfilesState onRefresh={refresh} />
+        <EmptyProfilesState onRefresh={refresh} onNew={handleNew} />
       ) : (
         <AnimatePresence mode="wait" initial={false}>
           <motion.div
@@ -258,6 +293,7 @@ const CustomProfileComponent = () => {
               currentIccid={currentIccid}
               getProfile={getProfile}
               onDeactivate={handleDeactivateRequest}
+              onEdit={handleEdit}
               isDeactivating={isDeactivating}
             />
 
@@ -274,6 +310,8 @@ const CustomProfileComponent = () => {
               activeProfileId={activeProfileId}
               onActivate={handleActivateRequest}
               onDelete={handleDelete}
+              onEdit={handleEdit}
+              onNew={handleNew}
             />
           </motion.div>
         </AnimatePresence>
@@ -344,6 +382,17 @@ const CustomProfileComponent = () => {
         onClose={handleApplyProgressClose}
         applyState={applyState}
         error={applyError}
+      />
+
+      {/* In-page create/edit editor — replaces the old /new and /edit routes */}
+      <ProfileEditorDialog
+        open={editor.open}
+        onOpenChange={(open) => setEditor((e) => ({ ...e, open }))}
+        mode={editor.mode}
+        profileId={editor.profileId}
+        getProfile={getProfile}
+        onSave={handleEditorSave}
+        onSaved={handleEditorSaved}
       />
     </div>
   );

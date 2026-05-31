@@ -8,8 +8,8 @@ import {
   MoreVerticalIcon,
   CalendarClockIcon,
   RouteIcon,
+  MinusCircleIcon,
 } from "lucide-react";
-import Link from "next/link";
 
 import {
   Card,
@@ -29,31 +29,29 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
-import { MinusCircleIcon } from "lucide-react";
 
 import type { ProfileSummary } from "@/types/sim-profile";
 import { formatProfileDate } from "@/types/sim-profile";
 import { FactRow } from "@/components/cellular/custom-profiles/fact-row";
 
 // =============================================================================
-// ProfileCard — one inactive profile in the equal-height grid
+// ProfileCard — one inactive profile in the equal-height 2-col grid
 // =============================================================================
 // Anatomy for equal-height discipline: CardHeader (name + carrier + status badge
-// + overflow menu in CardAction), CardContent (APN, ICCID-or-dash, scenario,
-// updated date — every row always present as placeholder so cards never shrink),
+// + overflow menu in CardAction), CardContent (scenario binding, ICCID, updated
+// date — every row always present as placeholder so cards never shrink),
 // CardFooter (border-t: Activate primary).
 //
 // Summary-level by design: zero extra round-trips, reads from ProfileSummary
 // only. The active profile never appears here; it lives in ActiveProfileCard.
+// Edit and delete are callbacks — no Link navigation.
 // =============================================================================
-
-const editPath = (id: string) =>
-  `/cellular/custom-profiles/edit/?id=${encodeURIComponent(id)}`;
 
 interface ProfileCardProps {
   profile: ProfileSummary;
   scenarioName: string | null;
   onActivate: (id: string) => void;
+  onEdit: (id: string) => void;
   onDelete: (profile: ProfileSummary) => void;
 }
 
@@ -61,6 +59,7 @@ export function ProfileCard({
   profile,
   scenarioName,
   onActivate,
+  onEdit,
   onDelete,
 }: ProfileCardProps) {
   const { t } = useTranslation("cellular");
@@ -108,11 +107,9 @@ export function ProfileCard({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-40">
-              <DropdownMenuItem asChild>
-                <Link href={editPath(profile.id)}>
-                  <PencilIcon className="size-4" />
-                  {t("custom_profiles.table.actions_menu.edit")}
-                </Link>
+              <DropdownMenuItem onClick={() => onEdit(profile.id)}>
+                <PencilIcon className="size-4" />
+                {t("custom_profiles.table.actions_menu.edit")}
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem

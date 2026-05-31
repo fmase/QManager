@@ -134,11 +134,15 @@
         "nav_aria": "Langkah profil",
         "identity_label": "Identitas & Operator",
         "identity_short": "Identitas",
+        "apn_short": "APN",
+        "apn_label": "APN & Koneksi",
         "advanced_label": "Lanjutan",
         "advanced_short": "Lanjutan",
         "advanced_desc": "Jarang diperlukan. Biarkan apa adanya kecuali Anda memang perlu mengubahnya.",
         "scenario_label": "Skenario Koneksi",
         "scenario_short": "Skenario",
+        "review_short": "Tinjau",
+        "review_label": "Tinjau",
         "scenario_desc": "Pilih skenario yang diterapkan saat profil ini aktif, dan opsional jadwalkan perubahan sepanjang hari.",
         "optional": "Opsional",
         "step_of": "Langkah {{current}} dari {{total}}",
@@ -166,6 +170,12 @@
         "summary_imei": "Penggantian IMEI",
         "summary_ttl": "TTL {{value}}",
         "summary_hl": "HL {{value}}"
+      },
+      "discard_dialog": {
+        "title": "Buang perubahan?",
+        "description": "Anda memiliki perubahan yang belum disimpan. Keluar sekarang akan membuangnya.",
+        "confirm": "Buang",
+        "keep": "Tetap edit"
       }
     },
     "activate_dialog": {
