@@ -33,7 +33,7 @@ The installer now guards against this: `install_file()` compares `wc -c` of sour
 ## Verizon MPDN Handling (mno = "Verizon")
 
 - **Why**: RM551E + Verizon SIM only delivers Data + SMS via PDP context 3, not the default 1. Backend forces APN onto CID 3 and writes a QMAP MPDN rule (`AT+QMAP="mpdn_rule",0,3,0,0,1`) routing the WAN data session through PDP3.
-- **Form-level UX**: Selecting "Verizon" in `custom-profile-form.tsx` triggers an explicit `AlertDialog` warning the user not to manually release the rule (firmware quirk: bare release + reboot can brick the modem until firmware reflash). On confirm, CID is locked to 3 (input disabled with helper text) until the user switches MNO.
+- **Form-level UX**: Selecting "Verizon" in the profile editor triggers an explicit `AlertDialog` warning the user not to manually release the rule (firmware quirk: bare release + reboot can brick the modem until firmware reflash). On confirm, CID is locked to 3 (the CID input in `apn-card.tsx` is disabled with helper text) until the user switches MNO.
 - **MNO comparator**: backend AND frontend compare the literal label `"Verizon"` (NOT the preset id `"vzw"`) — that's what `MNO_PRESETS` stores into `profile.mno`. If you rename the preset label, you must update every `[ "$_x_mno" = "Verizon" ]` shell check in scripts (worker, apply.sh, deactivate.sh, ip_passthrough.sh, profile_mgr.sh).
 - **USB-mode pre-flight**: Verizon profiles require ECM (1) or RNDIS (3). `apply.sh` blocks pre-spawn with the `usb_mode_incompatible_for_verizon` error code if `AT+QCFG="usbnet"` returns 0 (RMNet) or 2 (MBIM). The worker has a defense-in-depth check too — fails all 4 steps with the same code if reached. Frontend resolves the code via `errors.json`. Note: `cgi_error` returns HTTP 200 with a JSON envelope (`{success:false, error:"...", detail:"..."}`), not a 4xx status — the frontend dispatches on the `error` field.
 - **Switching AWAY from Verizon**: any non-Verizon profile that activates while PDP3 is the active context runs the documented release-then-immediately-reset pair (`AT+QMAP="mpdn_rule",0` → `AT+QMAP="mpdn_rule",0,1,0,0,1`, NO sleep between, NO reboot before re-pin). NEVER issue a bare release. The two `qcmd` calls are intentionally back-to-back in `mpdn_revert_to_default` (`profile_mgr.sh`); future maintainers must not insert anything between them.
@@ -42,3 +42,51 @@ The installer now guards against this: `install_file()` compares `wc -c` of sour
 - **IP Passthrough lock**: when active profile is Verizon, `ip_passthrough.sh` POST blocks with `ip_passthrough_locked_by_verizon_profile` (via `cgi_error` — HTTP 200 envelope, not a 4xx). Frontend `ip-passthrough-card.tsx` uses `useActiveProfile()` (lightweight read-only hook in `hooks/use-active-profile.ts`, polls `/profiles/list.sh` every 30s) and renders an info `Alert` + disables the entire form via outer `<fieldset disabled>`. GET endpoint stays open so the disabled form still shows current values.
 - **New events** (both `dataConnection` tab): `verizon_mpdn_applied` (info), `verizon_mpdn_reverted` (info from CGI deactivate / warning from boot path).
 - **New error codes** (in `errors.json` × 4 locales): `usb_mode_incompatible_for_verizon`, `mpdn_rule_failed`, `mpdn_rule_revert_failed`, `ip_passthrough_locked_by_verizon_profile`, `partial_apply`, `all_steps_failed`.
+
+## Registry Surface
+
+The registry page (`custom-profile.tsx`) follows a three-section layout:
+
+1. **Page header** — `h1` title + muted description paragraph.
+2. **Active profile card** (`active-profile-card.tsx`) — engine-status-card rhythm. CardHeader: animated pulse dot eyebrow, profile name as `CardTitle`, carrier as `CardDescription`, outline status badge in `CardAction`. CardContent: config pills skeleton → `ProfileConfigPills`, scenario binding line (CalendarClock icon when scheduled, Route icon when fixed), SIM mismatch warning inline, Verizon data-routing note inline. CardFooter (border-t): Deactivate (outline) + Edit (ghost, links to `/cellular/custom-profiles/edit/?id=`).
+3. **Saved profiles grid** (`profiles-grid.tsx`) — section header with count + New Profile button, then an `auto-fill` grid (`minmax(18rem, 1fr)`, `items-stretch`) so all cards in a row share the same height regardless of optional fields. When the only profile is the active one, a dashed-border "only active" hint stands in instead of the grid.
+
+**Teaching empty state** (`empty-profile.tsx`): shown when no profiles exist at all. One card with a centered size-14 icon chip, a plain-language paragraph, and a primary New Profile CTA with a secondary Refresh. Mirrors the engine-onboarding pattern.
+
+**Loading skeleton** suppresses flash on fast loads via `useDelayedFlag` (160ms delay before showing): one tall active-profile spine skeleton + a three-card grid skeleton, sized to match the populated layout so there is no reflow on load.
+
+### `fact-row.tsx` — Shared Fact Line
+
+`components/cellular/custom-profiles/fact-row.tsx` renders a label + value pair used by both the saved profile cards and the editor's Summary preview. Label uses the QManager uppercase/muted label typography (`text-[11px] font-medium uppercase tracking-wide`). Value renders `"—"` when empty so a list of rows keeps a stable shape regardless of optional fields. The `mono` prop opts the value into `tabular-nums` (for ICCID, IMEI, numeric readouts).
+
+## Create/Edit Editor
+
+The editor (`profile-form/profile-editor.tsx`) is a single-page, single reading column of grouped section-cards:
+
+```
+Identity & Carrier
+APN & Connection
+Advanced (IMEI / TTL / HL) — collapsed by default
+Connection Scenario
+```
+
+At `@5xl/main` container width, the live Summary preview lifts from the bottom of the reading order into a **sticky right rail** (`sticky top-6`, fixed at `20rem`). Below that breakpoint it stacks after the last section card. This is the core de-clutter over the previous two-column layout: the form always reads top-to-bottom; the preview never competes with input fields for horizontal space.
+
+A full-width sticky action bar (`sticky bottom-0`) keeps Save and Cancel reachable no matter how long the schedule grows.
+
+### Advanced Card — Progressive Disclosure
+
+`profile-form/advanced-card.tsx` is collapsed by default. The entire `CardHeader` row is the toggle (a rotating `ChevronDownIcon` in `CardAction`) — the macOS System Settings way. When collapsed:
+
+- If all values are at defaults (IMEI blank, TTL 64, HL 64): `CardDescription` shows the standing description — nothing special here.
+- If any value deviates: `CardDescription` shows a dot-separated deviation summary (e.g. `IMEI · TTL: 120`), so a non-default state is discoverable without expanding.
+
+A blocking validation error on any Advanced field auto-expands the card via an adjust-during-render pattern (React-Compiler safe, no `useEffect`).
+
+### Validation and Error Focus
+
+`doSave()` calls `validate()`, then `focusFirstError()`. The focus order matches the visual reading order: Name → CID → IMEI → TTL → HL → Schedule. If the only blocking error is in the schedule, `scenarioRef.current?.revealFirstError()` is called instead of `document.getElementById` focus. This ensures a bad schedule entry is scrolled into view and expanded before the user sees the error.
+
+### Backend Contract Unchanged
+
+`stripScenarioKeys(form.scenario)` is called before every save. The POST body sent to `profiles/save.sh` never contains `_key`. See [scenario-profile-binding.md](scenario-profile-binding.md) for the full `_key` client-only invariant.

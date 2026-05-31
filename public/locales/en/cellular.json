@@ -2,7 +2,8 @@
   "custom_profiles": {
     "page": {
       "title": "Custom SIM Profile",
-      "description": "Bundle APN, IMEI, and TTL/HL settings into one-click profiles."
+      "description": "Bundle APN, IMEI, and TTL/HL settings into one-click profiles.",
+      "error_load_failed": "Could not load profiles. Check the connection and try again."
     },
     "view": {
       "title": "Saved Profiles",
@@ -81,7 +82,9 @@
       "buttons": {
         "create_submit": "Create Profile",
         "update_submit": "Update Profile",
-        "reset": "Reset"
+        "reset": "Reset",
+        "back": "Back",
+        "next": "Next"
       },
       "toast": {
         "create_success": "Profile created successfully.",
@@ -96,19 +99,19 @@
         "default_hint": "Applied when this profile activates, and used as the fallback for any time not covered by the schedule below.",
         "schedule_toggle_label": "Schedule by time of day",
         "schedule_toggle_hint": "Switch scenarios automatically on a daily timetable.",
-        "add_block": "Add rule",
-        "remove_block_aria": "Remove rule",
-        "block_label": "Rule {{index}}",
+        "add_block": "Add window",
+        "remove_block_aria": "Remove window",
+        "block_label": "Window {{index}}",
         "start_label": "Start",
         "end_label": "End",
-        "days_label": "Days",
         "block_scenario_label": "Scenario",
-        "active_now_label": "Active now",
-        "next_change_label": "next change",
+        "active_now_line": "Right now → {{scenario}}",
+        "active_now_line_with_next": "Right now → {{scenario}} · next change {{time}}",
         "otherwise_label": "Otherwise",
-        "empty_schedule_hint": "No rules yet — this behaves the same as just using {{name}}.",
-        "overlap_warning": "This block overlaps another. When blocks overlap, the topmost one wins.",
-        "schedule_invalid": "Fix the highlighted schedule rules before saving.",
+        "entries_cap_hint": "Up to {{max}} time windows. Remove one to add another.",
+        "empty_schedule_hint": "No windows yet — this behaves the same as just using {{name}}.",
+        "overlap_warning": "This window overlaps another. When windows overlap, the topmost one wins.",
+        "schedule_invalid": "Fix the highlighted schedule entries before saving.",
         "deleted_scenario": "(deleted scenario)",
         "block_errors": {
           "invalid_start": "Enter a valid start time (HH:MM).",
@@ -116,42 +119,53 @@
           "zero_length": "Start and end times must differ.",
           "no_days": "Select at least one day."
         },
-        "days_short": {
-          "0": "Sun",
-          "1": "Mon",
-          "2": "Tue",
-          "3": "Wed",
-          "4": "Thu",
-          "5": "Fri",
-          "6": "Sat"
-        },
-        "days_full": {
-          "0": "Sunday",
-          "1": "Monday",
-          "2": "Tuesday",
-          "3": "Wednesday",
-          "4": "Thursday",
-          "5": "Friday",
-          "6": "Saturday"
-        },
-        "summary_line": "{{days}} · {{time}} → {{scenario}}",
+        "summary_line": "{{time}} → {{scenario}}",
         "time_range": "{{start}}–{{end}}",
-        "every_day": "Every day",
-        "weekdays": "Weekdays",
-        "weekends": "Weekends",
-        "no_days_short": "No days",
-        "move_up_aria": "Move rule up",
-        "move_down_aria": "Move rule down",
-        "expand_rule_aria": "Edit rule",
-        "preset_every_day": "Every day",
-        "preset_weekdays": "Weekdays",
-        "preset_weekends": "Weekends",
+        "move_up_aria": "Move window up",
+        "move_down_aria": "Move window down",
+        "expand_rule_aria": "Edit window",
         "overnight_hint": "Ends next day",
         "create_new": "Create a new scenario"
       },
       "loading_current": "Reading SIM…",
       "advanced": {
-        "title": "Advanced"
+        "title": "Advanced",
+        "summary_imei": "IMEI override",
+        "summary_ttl": "TTL {{value}}",
+        "summary_hl": "HL {{value}}"
+      },
+      "back_to_list": "Back to profiles",
+      "edit_loading": "Loading profile…",
+      "steps": {
+        "nav_aria": "Profile steps",
+        "identity_label": "Identity & Carrier",
+        "identity_short": "Identity",
+        "advanced_label": "Advanced",
+        "advanced_short": "Advanced",
+        "advanced_desc": "Rarely needed. Leave these untouched unless you specifically need to change them.",
+        "scenario_label": "Connection Scenario",
+        "scenario_short": "Scenario",
+        "scenario_desc": "Choose the scenario applied when this profile activates, and optionally schedule changes through the day.",
+        "optional": "Optional",
+        "step_of": "Step {{current}} of {{total}}",
+        "state_current": "current step",
+        "state_complete": "completed",
+        "state_error": "has errors",
+        "state_upcoming": "upcoming"
+      },
+      "sections": {
+        "identity_title": "Identity",
+        "identity_desc": "Name this profile and pick the carrier it is for.",
+        "apn_title": "APN & Connection",
+        "apn_desc": "How the modem connects to the carrier data network.",
+        "advanced_title": "Advanced",
+        "advanced_desc": "Rarely needed. Change these only if you know you must."
+      },
+      "summary": {
+        "title": "Preview",
+        "desc": "How this profile reads in your registry, and what it changes when activated.",
+        "untitled": "Untitled profile",
+        "reboot_note": "Activating reboots the modem to apply the IMEI change."
       }
     },
     "activate_dialog": {
@@ -179,7 +193,17 @@
         "imei": "IMEI",
         "mpdn_rule": "Data Routing"
       },
-      "reboot_notice": "Modem is restarting to apply IMEI change. Dashboard will reconnect automatically."
+      "reboot_notice": "Modem is restarting to apply IMEI change. Dashboard will reconnect automatically.",
+      "step_state_unchanged": "Unchanged",
+      "preparing": "Preparing…",
+      "step_progress": "Step {{current}} of {{total}}",
+      "complete_headline": "Profile active",
+      "complete_sub": "All applicable settings are now on the modem.",
+      "partial_headline": "Activated with skips",
+      "partial_sub": "Some steps were skipped. Review the details below.",
+      "failed_headline": "Activation failed",
+      "failed_sub": "The modem was not fully reconfigured.",
+      "details_label": "Steps"
     },
     "verizon_warning": {
       "title": "Verizon requires a special data routing rule",
@@ -193,7 +217,13 @@
       "title": "No Custom Profiles",
       "description": "Manage your custom SIM profiles here.",
       "description_full": "You have not created any custom SIM profiles yet. Use the form to create your first profile.",
-      "refresh": "Refresh"
+      "refresh": "Refresh",
+      "card_title": "Custom SIM Profiles",
+      "card_description": "Saved bundles of APN, IMEI, and TTL settings applied to the modem in one step.",
+      "teaching_headline": "No profiles yet",
+      "teaching_body": "A Custom SIM Profile bundles APN name, IP protocol, TTL/HL overrides, and an optional IMEI into one saved preset. Activating it applies every setting at once, so switching carriers or SIM slots takes seconds instead of manual re-entry.",
+      "cta_new": "New Profile",
+      "cta_refresh": "Refresh"
     },
     "pills": {
       "ip_v4": "IPv4",
@@ -215,12 +245,22 @@
       "scenario_default": "Scenario: {{name}}",
       "scenario_scheduled": "Scenario: {{name}} (scheduled)",
       "mismatch_note": "This profile was built for a different SIM than the one inserted now. Reactivate it for this SIM, or activate the profile that matches.",
-      "verizon_locked_note": "Data routing is locked to PDP context 3. IP Passthrough stays unavailable while this profile is active."
+      "verizon_locked_note": "Data routing is locked to PDP context 3. IP Passthrough stays unavailable while this profile is active.",
+      "edit_button": "Edit"
     },
     "list": {
       "new_button": "New",
       "bound_sim": "Bound to SIM {{iccid}}",
-      "detail_unavailable": "Could not load this profile’s settings."
+      "detail_unavailable": "Could not load this profile’s settings.",
+      "only_active_hint": "Your only profile is the active one. Create another to switch between setups."
+    },
+    "edit": {
+      "not_found_title": "Profile not found",
+      "not_found_desc": "This profile may have been deleted. Return to your saved profiles."
+    },
+    "card": {
+      "label_iccid": "SIM",
+      "label_updated": "Updated"
     }
   },
   "scenarios": {

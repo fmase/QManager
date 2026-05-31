@@ -1,22 +1,22 @@
 "use client";
 
-import React, { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useTranslation } from "react-i18next";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { AlertTriangle, RefreshCcwIcon } from "lucide-react";
 
 import { ActiveProfileCard } from "@/components/cellular/custom-profiles/active-profile-card";
-import { SavedProfilesList } from "@/components/cellular/custom-profiles/saved-profiles-list";
-import { ProfileFormSheet } from "@/components/cellular/custom-profiles/profile-form-sheet";
+import { ProfilesGrid } from "@/components/cellular/custom-profiles/profiles-grid";
 import { EmptyProfilesState } from "@/components/cellular/custom-profiles/empty-profile";
 import { ApplyProgressDialog } from "@/components/cellular/custom-profiles/apply-progress-dialog";
 
-import { useSimProfiles, type ProfileFormData } from "@/hooks/use-sim-profiles";
+import { useSimProfiles } from "@/hooks/use-sim-profiles";
 import { useProfileApply } from "@/hooks/use-profile-apply";
-import { useCurrentSettings } from "@/hooks/use-current-settings";
 import { useModemStatus } from "@/hooks/use-modem-status";
-import type { SimProfile } from "@/types/sim-profile";
 
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -30,53 +30,107 @@ import {
 import { requestRebootLater } from "@/lib/reboot";
 
 // =============================================================================
-// CustomProfileComponent — Page Layout & State Coordinator
+// CustomProfileComponent — Registry page & lifecycle coordinator
 // =============================================================================
-// Registry-first composition: the Active Profile spine and the Saved Profiles
-// registry are the page; create/edit lives in a right-anchored Sheet. Owns the
-// profile CRUD, apply lifecycle, current-SIM query, and all confirmation flows.
+// State machine: loading → error | empty | loaded.
+// Loaded: active-profile card + saved-profiles grid.
+// Manages activate / deactivate confirmation dialogs + apply-progress lifecycle.
+// Mirrors traffic-engine.tsx shell: header → state machine → dialogs.
 // =============================================================================
 
-function ProfilesSkeleton() {
+// ---------------------------------------------------------------------------
+// Registry loading skeleton — mirrors the LOADED layout so there is no layout
+// snap. One tall card (active-profile spine) + a 3-column grid of profile
+// cards below.
+// ---------------------------------------------------------------------------
+function RegistrySkeleton() {
   return (
-    <div className="grid gap-4">
-      <Card>
-        <CardHeader>
-          <Skeleton className="h-5 w-40" />
-          <Skeleton className="h-4 w-56" />
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="flex gap-1.5">
-            <Skeleton className="h-6 w-28 rounded-md" />
-            <Skeleton className="h-6 w-16 rounded-md" />
-            <Skeleton className="h-6 w-20 rounded-md" />
+    <div className="space-y-8">
+      {/* Active profile card skeleton */}
+      <div className="rounded-xl border bg-card p-6 space-y-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="space-y-2 flex-1">
+            <Skeleton className="h-3 w-28" />
+            <Skeleton className="h-6 w-48" />
+            <Skeleton className="h-4 w-24" />
           </div>
-        </CardContent>
-      </Card>
-      <Card>
-        <CardHeader>
-          <Skeleton className="h-5 w-32" />
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <Skeleton className="h-12 w-full" />
-          <Skeleton className="h-12 w-full" />
-          <Skeleton className="h-12 w-full" />
-        </CardContent>
-      </Card>
+          <Skeleton className="h-6 w-20 rounded-full" />
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          <Skeleton className="h-6 w-28 rounded-md" />
+          <Skeleton className="h-6 w-16 rounded-md" />
+          <Skeleton className="h-6 w-20 rounded-md" />
+        </div>
+        <Skeleton className="h-4 w-52" />
+        <div className="border-t pt-4 flex gap-2">
+          <Skeleton className="h-9 w-32 rounded-md" />
+          <Skeleton className="h-8 w-20 rounded-md" />
+        </div>
+      </div>
+
+      {/* Saved profiles section */}
+      <div className="space-y-4">
+        <div className="flex items-end justify-between">
+          <div className="space-y-1">
+            <Skeleton className="h-5 w-32" />
+            <Skeleton className="h-4 w-24" />
+          </div>
+          <Skeleton className="h-8 w-20 rounded-md" />
+        </div>
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(18rem,1fr))] items-stretch gap-4">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="rounded-xl border bg-card flex flex-col">
+              <div className="p-6 space-y-1.5">
+                <Skeleton className="h-5 w-36" />
+                <Skeleton className="h-4 w-20" />
+              </div>
+              <div className="px-6 pb-4 flex-1 space-y-2.5">
+                <Skeleton className="h-4 w-44" />
+                <Skeleton className="h-4 w-32" />
+                <Skeleton className="h-4 w-28" />
+              </div>
+              <div className="border-t p-4">
+                <Skeleton className="h-8 w-full rounded-md" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
 
+/**
+ * Suppresses the skeleton flash on fast loads (the app runs on the modem;
+ * sub-100ms loads are common). Only shows the skeleton once the flag has held
+ * for `delayMs`. setState in the timer callback only — satisfies the
+ * React-compiler setState-in-effect rule.
+ */
+function useDelayedFlag(active: boolean, delayMs = 160) {
+  const [shown, setShown] = useState(false);
+  useEffect(() => {
+    if (!active) return;
+    const id = setTimeout(() => setShown(true), delayMs);
+    return () => {
+      clearTimeout(id);
+      setShown(false);
+    };
+  }, [active, delayMs]);
+  return active && shown;
+}
+
+// ---------------------------------------------------------------------------
+// Main component
+// ---------------------------------------------------------------------------
 const CustomProfileComponent = () => {
   const { t } = useTranslation("cellular");
+  const reduceMotion = useReducedMotion();
 
   const {
     profiles,
     activeProfileId,
     isLoading,
     error,
-    createProfile,
-    updateProfile,
     deleteProfile,
     deactivateProfile,
     getProfile,
@@ -90,20 +144,10 @@ const CustomProfileComponent = () => {
     error: applyError,
   } = useProfileApply();
 
-  const {
-    settings: currentSettings,
-    isLoading: isLoadingCurrent,
-    refresh: refreshCurrentSettings,
-  } = useCurrentSettings(false);
-
   const { data: modemStatus } = useModemStatus();
   const currentIccid = modemStatus?.device?.iccid ?? null;
 
-  // Sheet (create / edit) state
-  const [sheetOpen, setSheetOpen] = useState(false);
-  const [editingProfile, setEditingProfile] = useState<SimProfile | null>(null);
-
-  // Apply confirmation state
+  // Activate confirmation state
   const [activateTarget, setActivateTarget] = useState<{
     id: string;
     name: string;
@@ -114,61 +158,21 @@ const CustomProfileComponent = () => {
   const [showDeactivateConfirm, setShowDeactivateConfirm] = useState(false);
   const [isDeactivating, setIsDeactivating] = useState(false);
 
-  const activeSummary =
-    profiles.find((p) => p.id === activeProfileId) ?? null;
+  const showSkeleton = useDelayedFlag(isLoading);
+  const activeSummary = profiles.find((p) => p.id === activeProfileId) ?? null;
 
-  // ---------------------------------------------------------------------------
-  // Create / Edit Sheet
-  // ---------------------------------------------------------------------------
-  const handleNew = useCallback(() => {
-    setEditingProfile(null);
-    setSheetOpen(true);
-  }, []);
-
-  const handleEdit = useCallback(
-    async (id: string) => {
-      const profile = await getProfile(id);
-      if (profile) {
-        setEditingProfile(profile);
-        setSheetOpen(true);
-      }
-    },
-    [getProfile],
-  );
-
-  const handleSheetOpenChange = useCallback((open: boolean) => {
-    setSheetOpen(open);
-    if (!open) setEditingProfile(null);
-  }, []);
-
-  const handleSave = useCallback(
-    async (data: ProfileFormData): Promise<string | null> => {
-      if (editingProfile) {
-        const success = await updateProfile(editingProfile.id, data);
-        return success ? editingProfile.id : null;
-      }
-      return await createProfile(data);
-    },
-    [editingProfile, createProfile, updateProfile],
-  );
+  const EXPO = [0.16, 1, 0.3, 1] as const;
 
   // ---------------------------------------------------------------------------
   // Delete
   // ---------------------------------------------------------------------------
   const handleDelete = useCallback(
-    async (id: string): Promise<boolean> => {
-      const success = await deleteProfile(id);
-      if (success && editingProfile?.id === id) {
-        setEditingProfile(null);
-        setSheetOpen(false);
-      }
-      return success;
-    },
-    [deleteProfile, editingProfile],
+    (id: string): Promise<boolean> => deleteProfile(id),
+    [deleteProfile],
   );
 
   // ---------------------------------------------------------------------------
-  // Activate: confirm → apply
+  // Activate: confirm → apply progress
   // ---------------------------------------------------------------------------
   const handleActivateRequest = useCallback(
     (id: string) => {
@@ -210,59 +214,72 @@ const CustomProfileComponent = () => {
 
   return (
     <div className="@container/main mx-auto p-2">
-      <div className="mb-6">
-        <h1 className="mb-2 text-3xl font-bold">
+      {/* Page header — matches traffic-engine shell exactly */}
+      <header className="mb-6">
+        <h1 className="mb-2 text-3xl font-bold tracking-tight">
           {t("custom_profiles.page.title")}
         </h1>
         <p className="text-muted-foreground">
           {t("custom_profiles.page.description")}
         </p>
-      </div>
+      </header>
 
+      {/* State machine: loading / error / empty / loaded */}
       {isLoading ? (
-        <ProfilesSkeleton />
+        showSkeleton ? (
+          <RegistrySkeleton />
+        ) : null
+      ) : error && profiles.length === 0 ? (
+        <Alert variant="destructive" aria-live="polite">
+          <AlertTriangle className="size-4" />
+          <AlertDescription className="flex items-center justify-between gap-4">
+            <span>{t("custom_profiles.page.error_load_failed")}</span>
+            <Button variant="outline" size="sm" onClick={() => refresh()}>
+              <RefreshCcwIcon className="size-3.5" />
+              {t("actions.retry", { ns: "common" })}
+            </Button>
+          </AlertDescription>
+        </Alert>
       ) : profiles.length === 0 ? (
-        <EmptyProfilesState onNew={handleNew} onRefresh={refresh} />
+        <EmptyProfilesState onRefresh={refresh} />
       ) : (
-        <div className="grid gap-4">
-          <ActiveProfileCard
-            activeSummary={activeSummary}
-            currentIccid={currentIccid}
-            getProfile={getProfile}
-            onDeactivate={handleDeactivateRequest}
-            isDeactivating={isDeactivating}
-          />
-          {error && (
-            <p className="text-destructive text-sm" role="alert">
-              {error}
-            </p>
-          )}
-          <SavedProfilesList
-            profiles={profiles}
-            activeProfileId={activeProfileId}
-            currentIccid={currentIccid}
-            getProfile={getProfile}
-            onActivate={handleActivateRequest}
-            onDeactivate={handleDeactivateRequest}
-            onEdit={handleEdit}
-            onDelete={handleDelete}
-            onNew={handleNew}
-          />
-        </div>
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.div
+            key="loaded"
+            initial={reduceMotion ? false : { opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.28, ease: EXPO }}
+            className="space-y-8"
+          >
+            {/* Active profile spine */}
+            <ActiveProfileCard
+              activeSummary={activeSummary}
+              currentIccid={currentIccid}
+              getProfile={getProfile}
+              onDeactivate={handleDeactivateRequest}
+              isDeactivating={isDeactivating}
+            />
+
+            {/* Soft error banner — stale data still shown, error reported inline */}
+            {error && (
+              <p className="text-destructive text-sm" role="alert">
+                {error}
+              </p>
+            )}
+
+            {/* Saved profiles registry */}
+            <ProfilesGrid
+              profiles={profiles}
+              activeProfileId={activeProfileId}
+              onActivate={handleActivateRequest}
+              onDelete={handleDelete}
+            />
+          </motion.div>
+        </AnimatePresence>
       )}
 
-      {/* Create / Edit Sheet */}
-      <ProfileFormSheet
-        open={sheetOpen}
-        onOpenChange={handleSheetOpenChange}
-        editingProfile={editingProfile}
-        onSave={handleSave}
-        currentSettings={currentSettings}
-        onLoadCurrentSettings={refreshCurrentSettings}
-        isLoadingCurrent={isLoadingCurrent}
-      />
-
-      {/* Activate Confirmation Dialog */}
+      {/* Activate confirmation */}
       <AlertDialog
         open={!!activateTarget}
         onOpenChange={(open) => !open && setActivateTarget(null)}
@@ -289,7 +306,7 @@ const CustomProfileComponent = () => {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Deactivate Confirmation Dialog */}
+      {/* Deactivate confirmation */}
       <AlertDialog
         open={showDeactivateConfirm}
         onOpenChange={(open) =>
@@ -321,7 +338,7 @@ const CustomProfileComponent = () => {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Apply Progress Dialog */}
+      {/* Apply progress pipeline — not redesigned, mounted exactly as before */}
       <ApplyProgressDialog
         open={showApplyProgress}
         onClose={handleApplyProgressClose}

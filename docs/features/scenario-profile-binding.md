@@ -28,9 +28,9 @@ The `.scenario` object stored inside a profile JSON:
       "enabled": false,
       "blocks": [
         {
-          "start": "08:00",
-          "end":   "21:00",
-          "days":  [1, 2, 3, 4, 5],
+          "start": "22:00",
+          "end":   "06:00",
+          "days":  [0, 1, 2, 3, 4, 5, 6],
           "scenario": "gaming"
         }
       ]
@@ -42,7 +42,7 @@ The `.scenario` object stored inside a profile JSON:
 - `default` — scenario id applied on profile activation and used as the "all other times" fallback when the schedule is enabled.
 - `schedule.enabled` — boolean; when `false` the block array is ignored.
 - `blocks[].start` / `blocks[].end` — `"HH:MM"` 24-hour, zero-padded. Start is **inclusive**, end is **exclusive**.
-- `blocks[].days` — array of integers 0–6 where 0 = Sunday, 6 = Saturday. Matches `JS Date.getDay()` and the cron day-of-week field.
+- `blocks[].days` — array of integers 0–6 where 0 = Sunday, 6 = Saturday. The UI now always writes `[0,1,2,3,4,5,6]` (every day); the field is retained for backend-resolver compatibility. See [Schedule Editor UI](#schedule-editor-ui).
 - `blocks[].scenario` — any valid scenario id (`balanced`, `gaming`, `streaming`, or `custom-<n>` pointing to an existing file under `SCENARIOS_DIR`).
 
 **Read-time migration default.** Legacy profiles with no `.scenario` key return `{"default":"balanced","schedule":{"enabled":false,"blocks":[]}}` at read time. The backend never rewrites the file on read; the default is injected by `profile_get`, `profile_list`, and `scenario_profile_block`. Saving a profile via `profile_save` always writes the normalized block, so once a legacy profile is edited and saved the field is persisted.
@@ -123,6 +123,8 @@ Removes only lines containing the `qmanager_profile_scenario` marker. Other sche
 
 The marker is appended by `scenario_install_cron` via `sed "s|\$|  # ${SCENARIO_CRON_MARKER}|"`. Teardown uses `grep -v "$SCENARIO_CRON_MARKER"`.
 
+`_scenario_crontab_without_marker` also strips the standalone `# QManager Profile Scenario Schedule` header line (anchored `grep -v`) before the reinstall, so repeated `scenario_install_cron` calls do not accumulate duplicate headers. Without this strip, a device that had the schedule applied multiple times (e.g. repeated profile activations) would accumulate one header line per install.
+
 ## Teardown at Every Clear Site
 
 Scenario cron must be removed whenever the profile it belongs to stops being active. The helper `_profile_teardown_scenario_cron` in `profile_mgr.sh` lazy-sources `scenario_mgr.sh` and calls `scenario_teardown_cron`. It is called from every active-profile clear site:
@@ -161,21 +163,31 @@ The UI resolves this via `errors.json`. Scenario tiles remain visible and browsa
 
 The hook runs a 60-second tick (`TICK_INTERVAL_MS = 60_000`) to advance `scheduledScenarioId` and `nextChangeAt` at block edges without a network round-trip. The 30-second network poll (`POLL_INTERVAL_MS = 30_000`) re-reads the profile list from `profiles/list.sh`.
 
-`lib/scenario-schedule.ts` contains `resolveScheduledScenario`, `nextChangeAt`, and `validateSchedule` — pure functions with no side effects. The schedule validation rejects malformed times, zero-length blocks, and blocks with no days selected. Overlapping blocks produce a warning (the first-in-array wins) but do not block save.
+`lib/scenario-schedule.ts` contains `resolveScheduledScenario`, `nextChangeAt`, and `validateSchedule` — pure functions with no side effects. The schedule validation rejects malformed times and zero-length blocks. Overlapping blocks produce a warning (the first-in-array wins) but do not block save.
 
 ## Schedule Editor UI
 
-The schedule editor inside the Create/Edit Profile form was redesigned to reduce cognitive load. The CGI endpoints, UCI, persisted profile JSON contract, device cron, and canonical resolution rule are unchanged.
+The schedule editor lives in the **Connection Scenario card** of the single-page profile editor (`profile-form/scenario-card.tsx`), the last section in the reading column. The default scenario picker reads first; the time-of-day schedule is an explicit opt-in below it. The persisted JSON contract, device cron, and canonical resolution rule are unchanged from the backend's perspective.
+
+### Simplified Daily-Only Model
+
+The editor no longer asks about days of the week. Every entry runs every day — the card always seeds and persists `days: [0,1,2,3,4,5,6]` via `newBlock()` in `scenario-card.tsx`. This keeps the device cron generator and the synced shell/TS resolver completely unchanged; `validateSchedule` still requires a non-empty `days` array and this invariant satisfies it. The `days` field is retained in `types/sim-profile.ts` as `days?: number[]` (optional) for backward-read compatibility with any profiles saved before this change.
+
+**Why removed:** per-day selection added complexity users did not need. All practical use cases (day/night split, work-hours swap) recur daily, and the simpler model is easier to reason about.
+
+### 3-Entry Hard Cap
+
+The schedule is limited to a maximum of 3 entries (`MAX_SCHEDULE_ENTRIES = 3` in `scenario-card.tsx`). When the cap is reached, the Add affordance is replaced by a `entries_cap_hint` note (e.g. "Up to 3 time windows. Remove one to add another."). Two or three daily windows cover the full practical range of use cases.
 
 ### Summary-Row Accordion
 
-The schedule block list renders as a single-open accordion. Each collapsed row shows a one-line summary in the format `{days} · {start}–{end} → {scenario}` (e.g. `Weekdays · 22:00-06:00 → Balanced`). Expanding a row reveals the editor: time inputs, day chips, scenario picker. Only one row is open at a time. The parent (`scenario-binding-section.tsx`) holds `openKey` (the `_key` of the currently expanded row) and passes controlled `open`/`onOpenChange` props into each `ScheduleRuleRow`.
+The schedule block list renders as a single-open accordion. Each collapsed row shows a one-line summary in the format `{start}–{end} → {scenario}` (e.g. `22:00–06:00 → Gaming`). No day label appears — every entry runs every day. Expanding a row reveals the editor: start time, end time, and scenario picker. Only one row is open at a time. The parent (`scenario-card.tsx`) holds `openKey` (the `_key` of the currently expanded row) and passes controlled `open`/`onOpenChange` props into each `ScheduleRuleRow`.
 
 Component: `components/cellular/custom-profiles/scenario-binding/schedule-rule-row.tsx`.
 
-**Newly-added rows auto-expand.** When the user clicks "Add rule", the parent calls `setOpenKey(block._key)` before appending, so the fresh row opens immediately.
+**Newly-added rows auto-expand.** When the user clicks "Add window", the parent calls `setOpenKey(block._key)` before appending, so the fresh row opens immediately.
 
-**Error force-expand.** When a rule carries a blocking validation error, the parent's `useEffect` on `firstErrorIndex` sets `openKey` to that rule's `_key`, keeping the error always visible. If validation is triggered by a blocked form submit, the imperative handle `revealFirstError()` additionally opens the Collapsible section and scrolls the invalid row into view.
+**Error force-expand.** When a rule carries a blocking validation error, the parent's `useEffect` on `firstErrorIndex` sets `openKey` to that rule's `_key`, keeping the error always visible. If validation is triggered by a blocked form submit, the imperative handle `revealFirstError()` additionally opens the offending rule and scrolls it into view.
 
 **Warning glyph.** A `TriangleAlertIcon` (`size-3`) appears on the collapsed summary trigger of any row that has a blocking error or an overlap warning, so the problem is discoverable without expanding.
 
@@ -194,31 +206,26 @@ Why: the device JSON must remain byte-clean. The modem shell scripts that read p
 
 Each rule row shows move-up and move-down buttons when more than one rule exists (`canReorder = blocks.length > 1`). The first rule's move-up button and the last rule's move-down button are disabled. Reordering matters because **first-in-array wins** when multiple rules overlap — moving a rule up raises its precedence. The parent's `swap(a, b)` exchanges elements at indices `a` and `b` and calls `onChange` with the updated array.
 
-### Day Presets
-
-Three quick-select buttons sit above the day chips: `Every day` ([0,1,2,3,4,5,6]), `Weekdays` ([1,2,3,4,5]), `Weekends` ([0,6]). Clicking one overwrites the rule's `days` array in one action. They are defined as module-level constants `PRESET_EVERY_DAY`, `PRESET_WEEKDAYS`, `PRESET_WEEKENDS` in `schedule-block-editor.tsx`.
-
 ### Live Readout
 
 A single text line reports the currently-active scenario and the time of the next schedule boundary. It is shown only when `schedule.enabled = true` and at least one rule passes validation (no blocking error). The parent computes `{ scenario, next }` via `resolveScheduledScenario()` and `nextChangeAt()` on mount and then on a 60-second `setInterval`. The displayed text uses the `active_now_line_with_next` i18n key when a next-change time exists, or `active_now_line` when the scenario never changes within the next 7 days.
 
 Why 60 seconds: `nextChangeAt()` scans up to 7 × 1440 minutes to find the next transition. Running it more frequently would waste cycles; the one-minute granularity matches the device cron's minimum resolution.
 
-### `ScenarioBindingSectionHandle` Contract
+### `ScenarioCardHandle` Contract
 
-The section is exposed via `forwardRef` and `useImperativeHandle`. The parent form holds a ref (`scenarioSectionRef`) and calls `revealFirstError()` when a submit is blocked by schedule errors.
+The card is exposed via `forwardRef` and `useImperativeHandle`. The editor holds a ref (`scenarioRef`) and calls `revealFirstError()` when a submit is blocked by schedule errors (after focusing any plain-field errors first).
 
 ```typescript
-export interface ScenarioBindingSectionHandle {
+export interface ScenarioCardHandle {
   revealFirstError: () => void;
 }
 ```
 
-`revealFirstError()` does three things in order:
+`revealFirstError()` does two things in order:
 
-1. Sets `open = true` (expands the Collapsible section if collapsed).
-2. Sets `openKey` to the `_key` of the first invalid rule.
-3. Defers a `scrollIntoView` call via `requestAnimationFrame` so the section has expanded before the scroll fires. The behavior is `"smooth"` unless `window.matchMedia("(prefers-reduced-motion: reduce)").matches`, in which case `"auto"` is used.
+1. Sets `openKey` to the `_key` of the first invalid rule (the card itself is always visible — there is no longer a collapsible wrapper to expand).
+2. Defers a `scrollIntoView` call via `requestAnimationFrame` so the rule has expanded before the scroll fires. The behavior is `"smooth"` unless `window.matchMedia("(prefers-reduced-motion: reduce)").matches`, in which case `"auto"` is used.
 
 If there are no blocking errors (`firstErrorIndex === -1`), `revealFirstError()` returns immediately without changing any state.
 
@@ -228,35 +235,28 @@ When both start and end are valid times and `end <= start` (the window wraps pas
 
 ### Accessibility
 
-- `DayOfWeekChips` (`day-of-week-chips.tsx`) accepts `id` and `aria-labelledby` props forwarded to the `ToggleGroup` root, associating the chip group to its field label.
 - The overlap warning paragraph carries `role="status"` so assistive technology announces it without requiring focus.
-- Each `ToggleGroupItem` carries `aria-label` with the full localized day name (the chip itself shows only the abbreviation).
 - The reorder buttons carry explicit `aria-label` keys (`move_up_aria`, `move_down_aria`).
 - The expand/collapse trigger carries `aria-expanded` (Radix Collapsible) and an explicit `aria-label` (`expand_rule_aria`).
 
-### New i18n Keys
+### i18n Keys (Schedule Section)
 
-All keys live under `custom_profiles.form.scenario` in the `cellular` namespace. Keys added by this redesign:
+All keys live under `custom_profiles.form.scenario` in the `cellular` namespace. Keys present after this redesign:
 
 | Key | Purpose |
 |---|---|
-| `summary_line` | Collapsed row summary (`{days} · {time} → {scenario}`) |
-| `time_range` | Time portion of the summary (`{start}–{end}`) |
-| `every_day` | Day label when all 7 days are selected |
-| `weekdays` | Day label for Mon–Fri |
-| `weekends` | Day label for Sat + Sun |
-| `no_days_short` | Day label when no days are selected |
+| `summary_line` | Collapsed row summary: `{{time}} → {{scenario}}` |
+| `time_range` | Time portion of the summary: `{{start}}–{{end}}` |
+| `entries_cap_hint` | Note shown when at cap: "Up to {{max}} time windows…" |
 | `move_up_aria` | Accessible label for move-up button |
 | `move_down_aria` | Accessible label for move-down button |
 | `expand_rule_aria` | Accessible label for expand trigger |
-| `preset_every_day` | "Every day" preset button label |
-| `preset_weekdays` | "Weekdays" preset button label |
-| `preset_weekends` | "Weekends" preset button label |
+| `remove_block_aria` | Accessible label for remove button |
 | `active_now_line` | Live readout (no next-change time) |
 | `active_now_line_with_next` | Live readout with next-change time |
 | `overnight_hint` | Hint shown under End when window wraps midnight |
 
-The existing keys (e.g. `schedule_toggle_label`, `block_errors.*`, `overlap_warning`) were not renamed. The word "Block" was replaced with "Rule" in all displayed string values across all four locales (en, zh-CN, id, it); JSON key names are unchanged.
+Keys removed with this redesign: `every_day`, `weekdays`, `weekends`, `no_days_short`, `preset_every_day`, `preset_weekdays`, `preset_weekends` (day-preset buttons and day-label vocabulary are gone). The word "Block" was replaced with "Window" in all displayed string values across all four locales (en, zh-CN, id, it); JSON key names (`add_block`, `remove_block_aria`, `block_label`, `block_errors.*`) are unchanged.
 
 ## Timezone Change Caveat
 

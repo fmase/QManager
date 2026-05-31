@@ -48,8 +48,19 @@ export interface ScenarioScheduleBlock {
   start: string;
   /** "HH:MM" 24h. Exclusive. end <= start means the window wraps past midnight. */
   end: string;
-  /** Days this block is active. Empty = block inert. */
-  days: DayOfWeek[];
+  /**
+   * Days this block is active (0=Sun … 6=Sat). Empty = block inert.
+   *
+   * Optional in the type because the editor no longer exposes per-day
+   * scheduling: it always writes all seven days ([0,1,2,3,4,5,6]) so a block is
+   * simply "this time window, every day". The field is retained on the wire for
+   * backend-resolver compatibility — `scenario_mgr.sh::scenario_block_for_now`
+   * and `lib/scenario-schedule.ts` both still filter on `days`, and
+   * `validateSchedule` still rejects an empty-days block. Legacy profiles that
+   * carry a narrower day set keep resolving correctly; only the editor's input
+   * surface changed.
+   */
+  days?: DayOfWeek[];
   /** Scenario id to apply during this window. */
   scenario: string;
   /**

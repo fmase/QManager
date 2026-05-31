@@ -2,7 +2,8 @@
   "custom_profiles": {
     "page": {
       "title": "自定义 SIM 配置文件",
-      "description": "将 APN、IMEI 和 TTL/HL 设置打包为一键式配置文件。"
+      "description": "将 APN、IMEI 和 TTL/HL 设置打包为一键式配置文件。",
+      "error_load_failed": "无法加载配置文件。请检查连接并重试。"
     },
     "view": {
       "title": "已保存的配置文件",
@@ -81,7 +82,9 @@
       "buttons": {
         "create_submit": "创建配置文件",
         "update_submit": "更新配置文件",
-        "reset": "重置"
+        "reset": "重置",
+        "back": "上一步",
+        "next": "下一步"
       },
       "toast": {
         "create_success": "配置文件创建成功。",
@@ -96,19 +99,16 @@
         "default_hint": "激活此配置时应用，并用作未被以下计划覆盖的时段的回退场景。",
         "schedule_toggle_label": "按时段计划",
         "schedule_toggle_hint": "按每日时间表自动切换场景。",
-        "add_block": "添加规则",
-        "remove_block_aria": "删除规则",
-        "block_label": "规则 {{index}}",
+        "add_block": "添加时段",
+        "remove_block_aria": "删除时段",
+        "block_label": "时段 {{index}}",
         "start_label": "开始",
         "end_label": "结束",
-        "days_label": "日期",
         "block_scenario_label": "场景",
-        "active_now_label": "当前生效",
-        "next_change_label": "下次切换",
         "otherwise_label": "其他时间",
-        "empty_schedule_hint": "暂无规则 — 效果与直接使用 {{name}} 相同。",
-        "overlap_warning": "此块与另一个块重叠。重叠时，列表靠前的块优先生效。",
-        "schedule_invalid": "请先修正高亮显示的计划规则再保存。",
+        "empty_schedule_hint": "暂无时段 — 效果与直接使用 {{name}} 相同。",
+        "overlap_warning": "此时段与另一个时段重叠。重叠时，列表靠前的时段优先生效。",
+        "schedule_invalid": "请先修正高亮显示的计划时段再保存。",
         "deleted_scenario": "（已删除的场景）",
         "block_errors": {
           "invalid_start": "请输入有效的开始时间（HH:MM）。",
@@ -116,42 +116,56 @@
           "zero_length": "开始时间和结束时间不能相同。",
           "no_days": "请至少选择一天。"
         },
-        "days_short": {
-          "0": "日",
-          "1": "一",
-          "2": "二",
-          "3": "三",
-          "4": "四",
-          "5": "五",
-          "6": "六"
-        },
-        "days_full": {
-          "0": "星期日",
-          "1": "星期一",
-          "2": "星期二",
-          "3": "星期三",
-          "4": "星期四",
-          "5": "星期五",
-          "6": "星期六"
-        },
-        "summary_line": "{{days}} · {{time}} → {{scenario}}",
+        "summary_line": "{{time}} → {{scenario}}",
         "time_range": "{{start}}–{{end}}",
-        "every_day": "每天",
-        "weekdays": "工作日",
-        "weekends": "周末",
-        "no_days_short": "无日期",
-        "move_up_aria": "上移规则",
-        "move_down_aria": "下移规则",
-        "expand_rule_aria": "编辑规则",
-        "preset_every_day": "每天",
-        "preset_weekdays": "工作日",
-        "preset_weekends": "周末",
+        "move_up_aria": "上移时段",
+        "move_down_aria": "下移时段",
+        "expand_rule_aria": "编辑时段",
         "overnight_hint": "次日结束",
-        "create_new": "创建新场景"
+        "create_new": "创建新场景",
+        "active_now_line": "当前 → {{scenario}}",
+        "active_now_line_with_next": "当前 → {{scenario}} · 下次切换 {{time}}",
+        "entries_cap_hint": "最多 {{max}} 个时段。请先删除一个再添加。"
       },
       "loading_current": "正在读取 SIM…",
       "advanced": {
-        "title": "高级"
+        "title": "高级",
+        "summary_imei": "IMEI 覆盖",
+        "summary_ttl": "TTL {{value}}",
+        "summary_hl": "HL {{value}}"
+      },
+      "back_to_list": "返回配置列表",
+      "edit_loading": "正在加载配置…",
+      "steps": {
+        "nav_aria": "配置步骤",
+        "identity_label": "身份与运营商",
+        "identity_short": "身份",
+        "advanced_label": "高级",
+        "advanced_short": "高级",
+        "advanced_desc": "通常无需更改。除非确有需要，请保持默认。",
+        "scenario_label": "连接场景",
+        "scenario_short": "场景",
+        "scenario_desc": "选择激活此配置时应用的场景，并可按一天中的时间安排切换。",
+        "optional": "可选",
+        "step_of": "第 {{current}} 步，共 {{total}} 步",
+        "state_current": "当前步骤",
+        "state_complete": "已完成",
+        "state_error": "存在错误",
+        "state_upcoming": "待进行"
+      },
+      "sections": {
+        "identity_title": "标识",
+        "identity_desc": "为此配置命名并选择对应的运营商。",
+        "apn_title": "APN 与连接",
+        "apn_desc": "调制解调器连接运营商数据网络的方式。",
+        "advanced_title": "高级",
+        "advanced_desc": "很少需要更改。仅在确有必要时修改。"
+      },
+      "summary": {
+        "title": "预览",
+        "desc": "此配置在列表中的显示方式，以及激活时会更改的内容。",
+        "untitled": "未命名配置",
+        "reboot_note": "激活将重启调制解调器以应用 IMEI 更改。"
       }
     },
     "activate_dialog": {
@@ -179,7 +193,17 @@
         "imei": "IMEI",
         "mpdn_rule": "数据路由"
       },
-      "reboot_notice": "调制解调器正在重启以应用 IMEI 更改，仪表板将自动重新连接。"
+      "reboot_notice": "调制解调器正在重启以应用 IMEI 更改，仪表板将自动重新连接。",
+      "step_state_unchanged": "无变化",
+      "preparing": "准备中…",
+      "step_progress": "第 {{current}} / {{total}} 步",
+      "complete_headline": "配置已激活",
+      "complete_sub": "所有适用的设置已应用到调制解调器。",
+      "partial_headline": "已激活（部分跳过）",
+      "partial_sub": "部分步骤已跳过。请查看下方详情。",
+      "failed_headline": "激活失败",
+      "failed_sub": "调制解调器未完全重新配置。",
+      "details_label": "步骤"
     },
     "verizon_warning": {
       "title": "Verizon 需要特殊的数据路由规则",
@@ -193,7 +217,13 @@
       "title": "暂无自定义配置文件",
       "description": "在此管理您的自定义 SIM 配置文件。",
       "description_full": "您尚未创建任何自定义 SIM 配置文件。请使用表单创建您的第一个配置文件。",
-      "refresh": "刷新"
+      "refresh": "刷新",
+      "card_title": "自定义 SIM 配置文件",
+      "card_description": "将 APN、IMEI 和 TTL 设置打包，一步应用到调制解调器。",
+      "teaching_headline": "尚无配置文件",
+      "teaching_body": "自定义 SIM 配置文件将 APN 名称、IP 协议、TTL/HL 覆盖和可选 IMEI 打包为一个已保存的预设。激活后一次性应用所有设置，切换运营商或 SIM 卡槽只需数秒。",
+      "cta_new": "新建配置文件",
+      "cta_refresh": "刷新"
     },
     "pills": {
       "ip_v4": "IPv4",
@@ -215,12 +245,22 @@
       "scenario_default": "场景：{{name}}",
       "scenario_scheduled": "场景：{{name}}（已排程）",
       "mismatch_note": "此配置是为另一张 SIM 卡创建的，与当前插入的 SIM 卡不同。请为当前 SIM 卡重新激活，或激活匹配的配置。",
-      "verizon_locked_note": "数据路由已锁定到 PDP 上下文 3。此配置激活期间，IP 直通不可用。"
+      "verizon_locked_note": "数据路由已锁定到 PDP 上下文 3。此配置激活期间，IP 直通不可用。",
+      "edit_button": "编辑"
+    },
+    "card": {
+      "label_iccid": "SIM",
+      "label_updated": "更新时间"
     },
     "list": {
       "new_button": "新建",
       "bound_sim": "绑定到 SIM {{iccid}}",
-      "detail_unavailable": "无法加载此配置的设置。"
+      "detail_unavailable": "无法加载此配置的设置。",
+      "only_active_hint": "您唯一的配置正是当前激活的配置。创建另一个即可在不同设置间切换。"
+    },
+    "edit": {
+      "not_found_title": "未找到配置",
+      "not_found_desc": "该配置可能已被删除。返回已保存的配置。"
     }
   },
   "scenarios": {

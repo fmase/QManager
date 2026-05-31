@@ -184,7 +184,11 @@ export function validateSchedule(
     for (let b = a + 1; b < valid.length; b++) {
       const A = valid[a];
       const B = valid[b];
-      const sharedDay = A.b.days.some((d) => B.b.days.includes(d));
+      // Blocks here already passed the no-days check, so `days` is non-empty;
+      // the `?? []` only satisfies the now-optional type, it changes no behavior.
+      const sharedDay = (A.b.days ?? []).some((d) =>
+        (B.b.days ?? []).includes(d),
+      );
       if (!sharedDay) continue;
       if (windowsOverlap(A.b, B.b)) {
         if (!overlapWarnings.includes(A.i)) overlapWarnings.push(A.i);

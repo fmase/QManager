@@ -2,7 +2,8 @@
   "custom_profiles": {
     "page": {
       "title": "Profilo SIM personalizzato",
-      "description": "Raggruppa le impostazioni APN, IMEI e TTL/HL in profili con un clic."
+      "description": "Raggruppa le impostazioni APN, IMEI e TTL/HL in profili con un clic.",
+      "error_load_failed": "Impossibile caricare i profili. Verifica la connessione e riprova."
     },
     "view": {
       "title": "Profili salvati",
@@ -74,12 +75,16 @@
         "ttl_error": "TTL deve essere compreso tra 0 e 255.",
         "hl_label": "Limite del salto",
         "hl_error": "HL deve essere compreso tra 0 e 255.",
-        "cid_locked_verizon": "Verizon richiede il contesto PDP 3"
+        "cid_locked_verizon": "Verizon richiede il contesto PDP 3",
+        "sim_iccid_hint": "Lascia vuoto per applicare questo profilo a qualsiasi SIM.",
+        "imei_danger": "Modificare l'IMEI riscrive l'identità del modem e lo riavvia all'attivazione. Lascia vuoto per mantenere l'IMEI attuale."
       },
       "buttons": {
         "create_submit": "Crea profilo",
         "update_submit": "Aggiorna profilo",
-        "reset": "Ripristina"
+        "reset": "Ripristina",
+        "back": "Indietro",
+        "next": "Avanti"
       },
       "toast": {
         "create_success": "Profilo creato con successo.",
@@ -94,17 +99,15 @@
         "default_hint": "Applicato all'attivazione del profilo e utilizzato come fallback per i periodi non coperti dalla pianificazione.",
         "schedule_toggle_label": "Pianifica per orario",
         "schedule_toggle_hint": "Cambia scenario automaticamente secondo un programma giornaliero.",
-        "add_block": "Aggiungi regola",
-        "remove_block_aria": "Rimuovi regola",
-        "block_label": "Regola {{index}}",
+        "add_block": "Aggiungi finestra",
+        "remove_block_aria": "Rimuovi finestra",
+        "block_label": "Finestra {{index}}",
         "start_label": "Inizio",
         "end_label": "Fine",
-        "days_label": "Giorni",
         "block_scenario_label": "Scenario",
-        "fallback_line": "Tutti gli altri orari → {{name}}",
-        "empty_schedule_hint": "Nessuna regola — il comportamento è identico all'uso diretto di {{name}}.",
-        "overlap_warning": "Questo blocco si sovrappone a un altro. In caso di sovrapposizione, vince il blocco più in alto.",
-        "schedule_invalid": "Correggi le regole evidenziate prima di salvare.",
+        "empty_schedule_hint": "Nessuna finestra — il comportamento è identico all'uso diretto di {{name}}.",
+        "overlap_warning": "Questa finestra si sovrappone a un'altra. In caso di sovrapposizione, vince quella più in alto.",
+        "schedule_invalid": "Correggi le voci di pianificazione evidenziate prima di salvare.",
         "deleted_scenario": "(scenario eliminato)",
         "block_errors": {
           "invalid_start": "Inserisci un orario di inizio valido (HH:MM).",
@@ -112,39 +115,57 @@
           "zero_length": "L'orario di inizio e di fine devono essere diversi.",
           "no_days": "Seleziona almeno un giorno."
         },
-        "days_short": {
-          "0": "Dom",
-          "1": "Lun",
-          "2": "Mar",
-          "3": "Mer",
-          "4": "Gio",
-          "5": "Ven",
-          "6": "Sab"
-        },
-        "days_full": {
-          "0": "Domenica",
-          "1": "Lunedì",
-          "2": "Martedì",
-          "3": "Mercoledì",
-          "4": "Giovedì",
-          "5": "Venerdì",
-          "6": "Sabato"
-        },
-        "summary_line": "{{days}} · {{time}} → {{scenario}}",
+        "summary_line": "{{time}} → {{scenario}}",
         "time_range": "{{start}}–{{end}}",
-        "every_day": "Every day",
-        "weekdays": "Weekdays",
-        "weekends": "Weekends",
-        "no_days_short": "No days",
-        "move_up_aria": "Move rule up",
-        "move_down_aria": "Move rule down",
-        "expand_rule_aria": "Edit rule",
-        "preset_every_day": "Every day",
-        "preset_weekdays": "Weekdays",
-        "preset_weekends": "Weekends",
-        "active_now_line": "Right now → {{scenario}}",
-        "active_now_line_with_next": "Right now → {{scenario}} · next change {{time}}",
-        "overnight_hint": "Ends next day"
+        "move_up_aria": "Sposta la finestra su",
+        "move_down_aria": "Sposta la finestra giù",
+        "expand_rule_aria": "Modifica finestra",
+        "active_now_line": "Adesso → {{scenario}}",
+        "active_now_line_with_next": "Adesso → {{scenario}} · prossimo cambio {{time}}",
+        "overnight_hint": "Ends next day",
+        "otherwise_label": "Altrimenti",
+        "entries_cap_hint": "Fino a {{max}} finestre orarie. Rimuovine una per aggiungerne un'altra.",
+        "create_new": "Crea un nuovo scenario"
+      },
+      "loading_current": "Lettura SIM…",
+      "back_to_list": "Torna ai profili",
+      "edit_loading": "Caricamento profilo…",
+      "steps": {
+        "nav_aria": "Passaggi del profilo",
+        "identity_label": "Identità e operatore",
+        "identity_short": "Identità",
+        "advanced_label": "Avanzate",
+        "advanced_short": "Avanzate",
+        "advanced_desc": "Raramente necessario. Lascia invariato a meno che tu non debba modificarlo.",
+        "scenario_label": "Scenario di connessione",
+        "scenario_short": "Scenario",
+        "scenario_desc": "Scegli lo scenario applicato all'attivazione di questo profilo e, facoltativamente, pianifica i cambi durante la giornata.",
+        "optional": "Facoltativo",
+        "step_of": "Passaggio {{current}} di {{total}}",
+        "state_current": "passaggio corrente",
+        "state_complete": "completato",
+        "state_error": "contiene errori",
+        "state_upcoming": "successivo"
+      },
+      "sections": {
+        "identity_title": "Identità",
+        "identity_desc": "Assegna un nome a questo profilo e scegli l'operatore di riferimento.",
+        "apn_title": "APN e connessione",
+        "apn_desc": "Come il modem si connette alla rete dati dell'operatore.",
+        "advanced_title": "Avanzate",
+        "advanced_desc": "Raramente necessarie. Modificale solo se sai di doverlo fare."
+      },
+      "summary": {
+        "title": "Anteprima",
+        "desc": "Come apparirà questo profilo nel registro e cosa cambia all'attivazione.",
+        "untitled": "Profilo senza nome",
+        "reboot_note": "L'attivazione riavvia il modem per applicare la modifica dell'IMEI."
+      },
+      "advanced": {
+        "title": "Avanzate",
+        "summary_imei": "Override IMEI",
+        "summary_ttl": "TTL {{value}}",
+        "summary_hl": "HL {{value}}"
       }
     },
     "activate_dialog": {
@@ -172,7 +193,17 @@
         "imei": "IMEI",
         "mpdn_rule": "Instradamento dati"
       },
-      "reboot_notice": "Il modem si sta riavviando per applicare la modifica IMEI. La dashboard si ricollegherà automaticamente."
+      "reboot_notice": "Il modem si sta riavviando per applicare la modifica IMEI. La dashboard si ricollegherà automaticamente.",
+      "step_state_unchanged": "Invariato",
+      "preparing": "Preparazione…",
+      "step_progress": "Passaggio {{current}} di {{total}}",
+      "complete_headline": "Profilo attivo",
+      "complete_sub": "Tutte le impostazioni applicabili sono ora sul modem.",
+      "partial_headline": "Attivato con omissioni",
+      "partial_sub": "Alcuni passaggi sono stati saltati. Controlla i dettagli sotto.",
+      "failed_headline": "Attivazione non riuscita",
+      "failed_sub": "Il modem non è stato riconfigurato completamente.",
+      "details_label": "Passaggi"
     },
     "verizon_warning": {
       "title": "Verizon richiede una regola di routing dei dati speciale",
@@ -182,11 +213,54 @@
       "cancel": "Annulla",
       "confirm": "Ho capito, continua"
     },
+    "pills": {
+      "ip_v4": "IPv4",
+      "ip_v6": "IPv6",
+      "ip_dual": "IPv4v6",
+      "apn": "APN {{name}}",
+      "apn_default": "APN predefinito",
+      "cid": "CID {{cid}}",
+      "ttl": "TTL {{value}}",
+      "hl": "HL {{value}}",
+      "imei_override": "Override IMEI",
+      "mpdn_locked": "MPDN bloccato"
+    },
     "empty_state": {
       "title": "Nessun profilo personalizzato",
       "description": "Gestisci i tuoi profili SIM personalizzati qui.",
       "description_full": "Non hai ancora creato alcun profilo SIM personalizzato. Utilizza il modulo per creare il tuo primo profilo.",
-      "refresh": "Aggiorna"
+      "refresh": "Aggiorna",
+      "card_title": "Profili SIM personalizzati",
+      "card_description": "Pacchetti di impostazioni APN, IMEI e TTL applicati al modem in un solo passaggio.",
+      "teaching_headline": "Nessun profilo ancora",
+      "teaching_body": "Un profilo SIM personalizzato raggruppa nome APN, protocollo IP, override TTL/HL e un IMEI opzionale in un preset salvato. Attivandolo si applicano tutte le impostazioni contemporaneamente, quindi cambiare operatore o slot SIM richiede pochi secondi.",
+      "cta_new": "Nuovo profilo",
+      "cta_refresh": "Aggiorna"
+    },
+    "active_card": {
+      "none_title": "Nessun profilo attivo",
+      "none_description": "Il modem usa le impostazioni correnti. Attiva un profilo salvato per applicare un pacchetto.",
+      "subtitle": "Applicato al modem ora",
+      "subtitle_with_mno": "Applicato ora · {{mno}}",
+      "mismatch_note": "Questo profilo è stato creato per una SIM diversa da quella attualmente inserita. Riattivalo per questa SIM o attiva il profilo corrispondente.",
+      "verizon_locked_note": "L'instradamento dati è bloccato sul contesto PDP 3. IP Passthrough non è disponibile mentre questo profilo è attivo.",
+      "edit_button": "Modifica",
+      "scenario_default": "Scenario: {{name}}",
+      "scenario_scheduled": "Scenario: {{name}} (pianificato)"
+    },
+    "card": {
+      "label_iccid": "SIM",
+      "label_updated": "Aggiornato"
+    },
+    "edit": {
+      "not_found_title": "Profilo non trovato",
+      "not_found_desc": "Questo profilo potrebbe essere stato eliminato. Torna ai profili salvati."
+    },
+    "list": {
+      "new_button": "Nuovo",
+      "bound_sim": "Associato alla SIM {{iccid}}",
+      "detail_unavailable": "Impossibile caricare le impostazioni di questo profilo.",
+      "only_active_hint": "Il tuo unico profilo è quello attivo. Creane un altro per passare da una configurazione all'altra."
     }
   },
   "scenarios": {
