@@ -439,7 +439,7 @@ export function CdnHostlistCard() {
                     type="button"
                     variant="ghost"
                     size="icon"
-                    className="size-5 shrink-0 text-muted-foreground hover:text-destructive"
+                    className="size-6 shrink-0 text-muted-foreground hover:text-destructive"
                     onClick={() => handleRemoveDomain(originalIndex)}
                     aria-label={t("video_optimizer.aria_remove_domain", {
                       domain,

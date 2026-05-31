@@ -2,12 +2,8 @@
 
 import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { InfoIcon, Loader2, Zap } from "lucide-react";
+import { HintIcon } from "@/components/ui/hint-icon";
+import { Loader2, Zap } from "lucide-react";
 
 interface EngineCheckRowProps {
   /** Section heading (e.g. "Verify Service", "Test Injection"). */
@@ -53,23 +49,12 @@ export function EngineCheckRow({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="min-w-0">
           <div className="flex items-center gap-1.5">
-            <p className="text-sm font-medium text-foreground">{title}</p>
             {hint && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    className="inline-flex"
-                    aria-label={hintAriaLabel}
-                  >
-                    <InfoIcon className="size-3.5 text-info" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p className="max-w-xs">{hint}</p>
-                </TooltipContent>
-              </Tooltip>
+              <HintIcon label={hintAriaLabel ?? ""} variant="info" size="sm">
+                {hint}
+              </HintIcon>
             )}
+            <p className="text-sm font-medium text-foreground">{title}</p>
           </div>
           <p className="text-xs text-muted-foreground">{description}</p>
         </div>

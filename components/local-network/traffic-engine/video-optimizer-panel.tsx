@@ -12,12 +12,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { SaveButton, useSaveFlash } from "@/components/ui/save-button";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { InfoIcon } from "lucide-react";
+import { HintIcon } from "@/components/ui/hint-icon";
 import type { useVideoOptimizer } from "@/hooks/use-video-optimizer";
 import { EngineEnableRow } from "./engine-enable-row";
 import { EngineCheckRow } from "./engine-check-row";
@@ -121,29 +116,23 @@ export function VideoOptimizerPanel({
         {/* Desync strength */}
         <div className="flex flex-col gap-2 border-t pt-5">
           <div className="flex items-center gap-1.5">
+            <HintIcon
+              label={t("video_optimizer.aria_desync_repeats_info")}
+              variant="info"
+              size="sm"
+            >
+              {t("video_optimizer.help_desync_repeats")}
+            </HintIcon>
             <label
               htmlFor="dpi-desync-repeats"
               className="text-sm font-medium text-foreground"
             >
               {t("video_optimizer.label_desync_repeats")}
             </label>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  className="inline-flex"
-                  aria-label={t("video_optimizer.aria_desync_repeats_info")}
-                >
-                  <InfoIcon className="size-3.5 text-info" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p className="max-w-xs">
-                  {t("video_optimizer.help_desync_repeats")}
-                </p>
-              </TooltipContent>
-            </Tooltip>
           </div>
+          <p className="-mt-1 text-xs text-muted-foreground">
+            {t("video_optimizer.helper_desync_repeats")}
+          </p>
           <div className="flex items-center gap-2">
             <Input
               id="dpi-desync-repeats"

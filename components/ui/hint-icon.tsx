@@ -68,7 +68,10 @@ export function HintIcon({
         <button
           type="button"
           aria-label={label}
-          className={cn("inline-flex items-center", cursor)}
+          className={cn(
+            "inline-flex items-center rounded-full outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]",
+            cursor,
+          )}
         >
           <Icon className={cn(SIZE_CLASS[size], iconClass)} />
         </button>

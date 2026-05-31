@@ -12,12 +12,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { FieldError } from "@/components/ui/field";
 import { SaveButton, useSaveFlash } from "@/components/ui/save-button";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { InfoIcon } from "lucide-react";
+import { HintIcon } from "@/components/ui/hint-icon";
 import type { useTrafficMasquerade } from "@/hooks/use-traffic-masquerade";
 import { validateDomainKey } from "@/lib/validate-domain";
 import { EngineEnableRow } from "./engine-enable-row";
@@ -114,26 +109,19 @@ export function MasqueradePanel({
         {/* Disguise domain */}
         <div className="flex flex-col gap-2 border-t pt-5">
           <div className="flex items-center gap-1.5">
+            <HintIcon
+              label={t("masquerade.aria_domain_info")}
+              variant="info"
+              size="sm"
+            >
+              {t("masquerade.help_domain")}
+            </HintIcon>
             <label
               htmlFor="sni-domain"
               className="text-sm font-medium text-foreground"
             >
               {t("masquerade.label_domain")}
             </label>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  className="inline-flex"
-                  aria-label={t("masquerade.aria_domain_info")}
-                >
-                  <InfoIcon className="size-3.5 text-info" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p className="max-w-xs">{t("masquerade.help_domain")}</p>
-              </TooltipContent>
-            </Tooltip>
           </div>
           <p className="-mt-1 text-xs text-muted-foreground">
             {t("masquerade.helper_domain")}
