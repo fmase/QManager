@@ -151,18 +151,7 @@
         "state_current": "current step",
         "state_complete": "completed",
         "state_error": "has errors",
-        "state_upcoming": "upcoming",
-        "apn_short": "APN",
-        "apn_label": "APN & Connection",
-        "review_short": "Review",
-        "review_label": "Review & Save",
-        "review_desc": "Check everything reads right, then save."
-      },
-      "discard_dialog": {
-        "title": "Discard changes?",
-        "description": "This profile has unsaved changes. Leaving now will discard them.",
-        "confirm": "Discard changes",
-        "keep": "Keep editing"
+        "state_upcoming": "upcoming"
       },
       "sections": {
         "identity_title": "Identity",

@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { useReducedMotion } from "motion/react";
 import { motion } from "motion/react";
 import { SmartphoneNfcIcon, PlusIcon } from "lucide-react";
+import Link from "next/link";
 
 import {
   Card,
@@ -24,12 +25,13 @@ import { Button } from "@/components/ui/button";
 // dual buttons.
 // =============================================================================
 
+const NEW_PATH = "/cellular/custom-profiles/new/";
+
 interface EmptyProfilesStateProps {
   onRefresh?: () => void;
-  onNew: () => void;
 }
 
-export function EmptyProfilesState({ onRefresh, onNew }: EmptyProfilesStateProps) {
+export function EmptyProfilesState({ onRefresh }: EmptyProfilesStateProps) {
   const { t } = useTranslation("cellular");
   const reduceMotion = useReducedMotion();
 
@@ -65,9 +67,11 @@ export function EmptyProfilesState({ onRefresh, onNew }: EmptyProfilesStateProps
             </div>
 
             <div className="flex items-center gap-2">
-              <Button onClick={onNew}>
-                <PlusIcon />
-                {t("custom_profiles.empty_state.cta_new")}
+              <Button asChild>
+                <Link href={NEW_PATH}>
+                  <PlusIcon />
+                  {t("custom_profiles.empty_state.cta_new")}
+                </Link>
               </Button>
               {onRefresh && (
                 <Button variant="outline" size="sm" onClick={onRefresh}>

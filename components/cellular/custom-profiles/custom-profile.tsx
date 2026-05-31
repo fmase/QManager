@@ -1,27 +1,22 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslation } from "react-i18next";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { AlertTriangle, ArrowLeftIcon, RefreshCcwIcon, SearchXIcon } from "lucide-react";
+import { AlertTriangle, RefreshCcwIcon } from "lucide-react";
 
 import { ActiveProfileCard } from "@/components/cellular/custom-profiles/active-profile-card";
 import { ProfilesGrid } from "@/components/cellular/custom-profiles/profiles-grid";
 import { EmptyProfilesState } from "@/components/cellular/custom-profiles/empty-profile";
 import { ApplyProgressDialog } from "@/components/cellular/custom-profiles/apply-progress-dialog";
-import { ProfileEditor } from "@/components/cellular/custom-profiles/profile-form/profile-editor";
 
 import { useSimProfiles } from "@/hooks/use-sim-profiles";
-import type { ProfileFormData } from "@/hooks/use-sim-profiles";
 import { useProfileApply } from "@/hooks/use-profile-apply";
 import { useModemStatus } from "@/hooks/use-modem-status";
-import { useCurrentSettings } from "@/hooks/use-current-settings";
 
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Card, CardContent } from "@/components/ui/card";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -32,28 +27,15 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import {
-  Empty,
-  EmptyContent,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
-} from "@/components/ui/empty";
 import { requestRebootLater } from "@/lib/reboot";
-import type { SimProfile } from "@/types/sim-profile";
 
 // =============================================================================
-// CustomProfileComponent — Registry + in-place editor, URL-param view machine
+// CustomProfileComponent — Registry page & lifecycle coordinator
 // =============================================================================
-// ?compose absent/empty → REGISTRY (active card + saved grid + dialogs)
-// ?compose=new         → CREATE editor (ProfileEditor mode="create")
-// ?compose=<id>        → EDIT editor (ProfileEditor mode="edit" for that id)
-//
-// Nav helpers mirror traffic-engine's setViewModeAndUrl: URLSearchParams +
-// router.replace with scroll:false. AnimatePresence crossfade (keyed "registry"
-// vs "editor", EXPO ~0.28s, reduced-motion → opacity-only) between views.
-// Editor brings its own page shell; registry wraps in @container/main mx-auto p-2.
+// State machine: loading → error | empty | loaded.
+// Loaded: active-profile card + saved-profiles grid.
+// Manages activate / deactivate confirmation dialogs + apply-progress lifecycle.
+// Mirrors traffic-engine.tsx shell: header → state machine → dialogs.
 // =============================================================================
 
 // ---------------------------------------------------------------------------
@@ -118,22 +100,6 @@ function RegistrySkeleton() {
   );
 }
 
-// Edit form loading skeleton — matches the editor layout shape
-function EditFormSkeleton() {
-  return (
-    <div className="space-y-5">
-      <Skeleton className="h-12 w-full rounded-lg" />
-      <Card>
-        <CardContent className="space-y-4 py-6">
-          <Skeleton className="h-9 w-full rounded-md" />
-          <Skeleton className="h-9 w-full rounded-md" />
-          <Skeleton className="h-9 w-2/3 rounded-md" />
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
-
 /**
  * Suppresses the skeleton flash on fast loads (the app runs on the modem;
  * sub-100ms loads are common). Only shows the skeleton once the flag has held
@@ -154,162 +120,12 @@ function useDelayedFlag(active: boolean, delayMs = 160) {
 }
 
 // ---------------------------------------------------------------------------
-// Edit view inner — loads profile by id, renders skeleton/not-found/editor
-// ---------------------------------------------------------------------------
-interface EditViewProps {
-  id: string;
-  getProfile: (id: string) => Promise<SimProfile | null>;
-  updateProfile: (id: string, data: ProfileFormData) => Promise<boolean>;
-  onDone: () => void;
-  onCancel: () => void;
-  refresh: () => void;
-}
-
-function EditView({ id, getProfile, updateProfile, onDone, onCancel, refresh }: EditViewProps) {
-  const { t } = useTranslation("cellular");
-  // undefined=loading, null=not-found, SimProfile=loaded
-  // Track the id we last resolved to detect stale state across id changes
-  const [resolved, setResolved] = useState<{ id: string; profile: SimProfile | null } | undefined>(undefined);
-
-  useEffect(() => {
-    if (!id) return;
-    let active = true;
-    getProfile(id).then((p) => {
-      // Only set state in the async callback — satisfies React-compiler setState-in-effect rule
-      if (active) setResolved({ id, profile: p ?? null });
-    });
-    return () => {
-      active = false;
-    };
-  }, [id, getProfile]);
-
-  // If we haven't resolved for the current id yet → loading
-  const profile: SimProfile | null | undefined =
-    !id ? null : resolved?.id === id ? resolved.profile : undefined;
-
-  if (profile === undefined) {
-    return <EditFormSkeleton />;
-  }
-
-  if (profile === null) {
-    return (
-      <div className="@container/main mx-auto p-2">
-        <Card>
-          <CardContent className="flex items-center justify-center py-10">
-            <Empty>
-              <EmptyHeader>
-                <EmptyMedia variant="icon">
-                  <SearchXIcon />
-                </EmptyMedia>
-                <EmptyTitle>{t("custom_profiles.edit.not_found_title")}</EmptyTitle>
-                <EmptyDescription>{t("custom_profiles.edit.not_found_desc")}</EmptyDescription>
-              </EmptyHeader>
-              <EmptyContent>
-                <Button onClick={onCancel}>
-                  <ArrowLeftIcon className="size-4" />
-                  {t("custom_profiles.form.back_to_list")}
-                </Button>
-              </EmptyContent>
-            </Empty>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  return (
-    <ProfileEditor
-      mode="edit"
-      initialProfile={profile}
-      onSave={(data) =>
-        updateProfile(profile.id, data).then((ok) => (ok ? profile.id : null))
-      }
-      onDone={() => {
-        onDone();
-        refresh();
-      }}
-      onCancel={onCancel}
-    />
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Create view inner — mounts ProfileEditor in create mode with current settings
-// ---------------------------------------------------------------------------
-interface CreateViewProps {
-  createProfile: (data: ProfileFormData) => Promise<string | null>;
-  onDone: () => void;
-  onCancel: () => void;
-  refresh: () => void;
-}
-
-function CreateView({ createProfile, onDone, onCancel, refresh }: CreateViewProps) {
-  const { settings, isLoading, refresh: refreshCurrent } = useCurrentSettings(false);
-
-  return (
-    <ProfileEditor
-      mode="create"
-      onSave={createProfile}
-      onDone={() => {
-        onDone();
-        refresh();
-      }}
-      onCancel={onCancel}
-      currentSettings={settings}
-      onLoadCurrentSettings={refreshCurrent}
-      isLoadingCurrent={isLoading}
-    />
-  );
-}
-
-// ---------------------------------------------------------------------------
 // Main component
 // ---------------------------------------------------------------------------
 const CustomProfileComponent = () => {
   const { t } = useTranslation("cellular");
   const reduceMotion = useReducedMotion();
-  const router = useRouter();
-  const searchParams = useSearchParams();
 
-  const compose = searchParams.get("compose");
-  // compose === "new" → create, compose is non-empty other value → edit that id,
-  // compose absent/null/empty → registry
-  const isEditor = compose !== null && compose !== "";
-  const isCreate = compose === "new";
-  const editId = isEditor && !isCreate ? compose : null;
-
-  const EXPO = [0.16, 1, 0.3, 1] as const;
-
-  // ---------------------------------------------------------------------------
-  // URL navigation helpers — mirror traffic-engine's setViewModeAndUrl pattern
-  // ---------------------------------------------------------------------------
-  const openNew = useCallback(() => {
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("compose", "new");
-    const qs = params.toString();
-    router.replace(qs ? `?${qs}` : "?", { scroll: false });
-  }, [router, searchParams]);
-
-  const openEdit = useCallback(
-    (id: string) => {
-      const params = new URLSearchParams(searchParams.toString());
-      params.set("compose", id);
-      const qs = params.toString();
-      router.replace(qs ? `?${qs}` : "?", { scroll: false });
-    },
-    [router, searchParams],
-  );
-
-  const closeEditor = useCallback(() => {
-    const params = new URLSearchParams(searchParams.toString());
-    params.delete("compose");
-    const qs = params.toString();
-    router.replace(qs ? `?${qs}` : "?", { scroll: false });
-  }, [router, searchParams]);
-
-  // ---------------------------------------------------------------------------
-  // Registry hooks — always called (no conditional hook calls)
-  // ---------------------------------------------------------------------------
   const {
     profiles,
     activeProfileId,
@@ -318,8 +134,6 @@ const CustomProfileComponent = () => {
     deleteProfile,
     deactivateProfile,
     getProfile,
-    createProfile,
-    updateProfile,
     refresh,
   } = useSimProfiles();
 
@@ -346,6 +160,8 @@ const CustomProfileComponent = () => {
 
   const showSkeleton = useDelayedFlag(isLoading);
   const activeSummary = profiles.find((p) => p.id === activeProfileId) ?? null;
+
+  const EXPO = [0.16, 1, 0.3, 1] as const;
 
   // ---------------------------------------------------------------------------
   // Delete
@@ -396,123 +212,72 @@ const CustomProfileComponent = () => {
     setShowDeactivateConfirm(false);
   }, [deactivateProfile]);
 
-  // ---------------------------------------------------------------------------
-  // Render: editor view vs registry view — AnimatePresence crossfade
-  // ---------------------------------------------------------------------------
-  // Editor view: ProfileEditor renders its own page shell (@container/main mx-auto p-2
-  // + header). We mount it directly without an extra wrapper.
-  // Registry view: we own the @container/main shell + header.
-  // ---------------------------------------------------------------------------
-
   return (
-    <>
-      <AnimatePresence mode="wait" initial={false}>
-        {isEditor ? (
+    <div className="@container/main mx-auto p-2">
+      {/* Page header — matches traffic-engine shell exactly */}
+      <header className="mb-6">
+        <h1 className="mb-2 text-3xl font-bold tracking-tight">
+          {t("custom_profiles.page.title")}
+        </h1>
+        <p className="text-muted-foreground">
+          {t("custom_profiles.page.description")}
+        </p>
+      </header>
+
+      {/* State machine: loading / error / empty / loaded */}
+      {isLoading ? (
+        showSkeleton ? (
+          <RegistrySkeleton />
+        ) : null
+      ) : error && profiles.length === 0 ? (
+        <Alert variant="destructive" aria-live="polite">
+          <AlertTriangle className="size-4" />
+          <AlertDescription className="flex items-center justify-between gap-4">
+            <span>{t("custom_profiles.page.error_load_failed")}</span>
+            <Button variant="outline" size="sm" onClick={() => refresh()}>
+              <RefreshCcwIcon className="size-3.5" />
+              {t("actions.retry", { ns: "common" })}
+            </Button>
+          </AlertDescription>
+        </Alert>
+      ) : profiles.length === 0 ? (
+        <EmptyProfilesState onRefresh={refresh} />
+      ) : (
+        <AnimatePresence mode="wait" initial={false}>
           <motion.div
-            key="editor"
-            initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 6 }}
+            key="loaded"
+            initial={reduceMotion ? false : { opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -6 }}
+            exit={{ opacity: 0 }}
             transition={{ duration: 0.28, ease: EXPO }}
+            className="space-y-8"
           >
-            {isCreate ? (
-              <CreateView
-                createProfile={createProfile}
-                onDone={closeEditor}
-                onCancel={closeEditor}
-                refresh={refresh}
-              />
-            ) : editId ? (
-              <EditView
-                id={editId}
-                getProfile={getProfile}
-                updateProfile={updateProfile}
-                onDone={closeEditor}
-                onCancel={closeEditor}
-                refresh={refresh}
-              />
-            ) : null}
+            {/* Active profile spine */}
+            <ActiveProfileCard
+              activeSummary={activeSummary}
+              currentIccid={currentIccid}
+              getProfile={getProfile}
+              onDeactivate={handleDeactivateRequest}
+              isDeactivating={isDeactivating}
+            />
+
+            {/* Soft error banner — stale data still shown, error reported inline */}
+            {error && (
+              <p className="text-destructive text-sm" role="alert">
+                {error}
+              </p>
+            )}
+
+            {/* Saved profiles registry */}
+            <ProfilesGrid
+              profiles={profiles}
+              activeProfileId={activeProfileId}
+              onActivate={handleActivateRequest}
+              onDelete={handleDelete}
+            />
           </motion.div>
-        ) : (
-          <motion.div
-            key="registry"
-            initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -6 }}
-            transition={{ duration: 0.28, ease: EXPO }}
-          >
-            <div className="@container/main mx-auto p-2">
-              {/* Page header — matches traffic-engine shell exactly */}
-              <header className="mb-6">
-                <h1 className="mb-2 text-3xl font-bold tracking-tight">
-                  {t("custom_profiles.page.title")}
-                </h1>
-                <p className="text-muted-foreground">
-                  {t("custom_profiles.page.description")}
-                </p>
-              </header>
-
-              {/* State machine: loading / error / empty / loaded */}
-              {isLoading ? (
-                showSkeleton ? (
-                  <RegistrySkeleton />
-                ) : null
-              ) : error && profiles.length === 0 ? (
-                <Alert variant="destructive" aria-live="polite">
-                  <AlertTriangle className="size-4" />
-                  <AlertDescription className="flex items-center justify-between gap-4">
-                    <span>{t("custom_profiles.page.error_load_failed")}</span>
-                    <Button variant="outline" size="sm" onClick={() => refresh()}>
-                      <RefreshCcwIcon className="size-3.5" />
-                      {t("actions.retry", { ns: "common" })}
-                    </Button>
-                  </AlertDescription>
-                </Alert>
-              ) : profiles.length === 0 ? (
-                <EmptyProfilesState onRefresh={refresh} onNew={openNew} />
-              ) : (
-                <AnimatePresence mode="wait" initial={false}>
-                  <motion.div
-                    key="loaded"
-                    initial={reduceMotion ? false : { opacity: 0, y: 6 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.28, ease: EXPO }}
-                    className="space-y-8"
-                  >
-                    {/* Active profile spine */}
-                    <ActiveProfileCard
-                      activeSummary={activeSummary}
-                      currentIccid={currentIccid}
-                      getProfile={getProfile}
-                      onDeactivate={handleDeactivateRequest}
-                      isDeactivating={isDeactivating}
-                      onEdit={openEdit}
-                    />
-
-                    {/* Soft error banner — stale data still shown, error reported inline */}
-                    {error && (
-                      <p className="text-destructive text-sm" role="alert">
-                        {error}
-                      </p>
-                    )}
-
-                    {/* Saved profiles registry */}
-                    <ProfilesGrid
-                      profiles={profiles}
-                      activeProfileId={activeProfileId}
-                      onActivate={handleActivateRequest}
-                      onDelete={handleDelete}
-                      onNew={openNew}
-                      onEdit={openEdit}
-                    />
-                  </motion.div>
-                </AnimatePresence>
-              )}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+        </AnimatePresence>
+      )}
 
       {/* Activate confirmation */}
       <AlertDialog
@@ -580,7 +345,7 @@ const CustomProfileComponent = () => {
         applyState={applyState}
         error={applyError}
       />
-    </>
+    </div>
   );
 };
 

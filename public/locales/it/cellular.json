@@ -145,18 +145,7 @@
         "state_current": "passaggio corrente",
         "state_complete": "completato",
         "state_error": "contiene errori",
-        "state_upcoming": "successivo",
-        "apn_short": "APN",
-        "apn_label": "APN e connessione",
-        "review_short": "Riepilogo",
-        "review_label": "Rivedi e salva",
-        "review_desc": "Controlla che sia tutto corretto, poi salva."
-      },
-      "discard_dialog": {
-        "title": "Annullare le modifiche?",
-        "description": "Questo profilo ha modifiche non salvate. Uscendo ora andranno perse.",
-        "confirm": "Annulla modifiche",
-        "keep": "Continua a modificare"
+        "state_upcoming": "successivo"
       },
       "sections": {
         "identity_title": "Identità",
