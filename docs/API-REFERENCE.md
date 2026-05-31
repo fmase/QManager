@@ -445,7 +445,7 @@ Start speed test, check results, and check if speedtest binary is available.
 
 ### GET/POST `/cellular/sms.sh`
 
-SMS inbox and send functionality. Backed by `sms_tool -d /dev/smd11`, serialized against `qcmd`/`atcli_smd11` via the shared `/var/lock/qmanager.lock`.
+SMS inbox and send functionality. Backed by `sms_tool -d /dev/smd11`, serialized against `qcmd`/`atcli_smd11` via the shared `/var/lock/qmanager.lock`. The `-d /dev/smd11` flag is belt-and-suspenders: the patched binary already defaults to `/dev/smd11` and guards termios calls via `isatty()`. See [`docs/features/sms.md`](features/sms.md) for binary patch details and the shared-lock contract.
 
 **GET Response:**
 ```json

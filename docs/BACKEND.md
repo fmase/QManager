@@ -212,6 +212,7 @@ Downtime SMS alert logic (sourced by poller):
 - Test-send helper for CGI (`send_test` action)
 - Log writing to `/tmp/qmanager_sms_log.json`
 - Failures are logged via `qlog_error` (full context: `modem_reachable`, `lte_state`, `nr_state`, `conn`, and the cleaned `sms_tool` stderr). No breadcrumb file.
+- Stderr noise filtering (`tcgetattr`/`tcsetattr` / "Inappropriate ioctl for device") is retained as defense-in-depth; the patched `sms_tool` binary now self-guards via `isatty()` so these filters are no-ops in practice. See [`docs/features/sms.md`](features/sms.md).
 
 ### ethtool_helper.sh
 
