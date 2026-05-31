@@ -261,8 +261,12 @@ scenario_block_for_now() {
 
 # _scenario_crontab_without_marker
 # Echoes the current crontab with our marked lines removed.
+# The header comment is also stripped so scenario_install_cron's single
+# re-prepend leaves exactly one copy — collapsing any pre-existing duplicates.
 _scenario_crontab_without_marker() {
-    crontab -l 2>/dev/null | grep -v "$SCENARIO_CRON_MARKER"
+    crontab -l 2>/dev/null \
+        | grep -v "$SCENARIO_CRON_MARKER" \
+        | grep -v "^# QManager Profile Scenario Schedule"
 }
 
 # scenario_teardown_cron
