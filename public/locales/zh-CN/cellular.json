@@ -151,7 +151,18 @@
         "state_current": "当前步骤",
         "state_complete": "已完成",
         "state_error": "存在错误",
-        "state_upcoming": "待进行"
+        "state_upcoming": "待进行",
+        "apn_short": "APN",
+        "apn_label": "APN 与连接",
+        "review_short": "查看",
+        "review_label": "查看并保存",
+        "review_desc": "确认无误后保存。"
+      },
+      "discard_dialog": {
+        "title": "放弃更改？",
+        "description": "此配置有未保存的更改。现在离开将会丢弃这些更改。",
+        "confirm": "放弃更改",
+        "keep": "继续编辑"
       },
       "sections": {
         "identity_title": "标识",

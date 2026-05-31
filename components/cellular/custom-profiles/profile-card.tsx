@@ -9,7 +9,6 @@ import {
   CalendarClockIcon,
   RouteIcon,
 } from "lucide-react";
-import Link from "next/link";
 
 import {
   Card,
@@ -47,14 +46,12 @@ import { FactRow } from "@/components/cellular/custom-profiles/fact-row";
 // only. The active profile never appears here; it lives in ActiveProfileCard.
 // =============================================================================
 
-const editPath = (id: string) =>
-  `/cellular/custom-profiles/edit/?id=${encodeURIComponent(id)}`;
-
 interface ProfileCardProps {
   profile: ProfileSummary;
   scenarioName: string | null;
   onActivate: (id: string) => void;
   onDelete: (profile: ProfileSummary) => void;
+  onEdit: (id: string) => void;
 }
 
 export function ProfileCard({
@@ -62,6 +59,7 @@ export function ProfileCard({
   scenarioName,
   onActivate,
   onDelete,
+  onEdit,
 }: ProfileCardProps) {
   const { t } = useTranslation("cellular");
 
@@ -108,11 +106,9 @@ export function ProfileCard({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-40">
-              <DropdownMenuItem asChild>
-                <Link href={editPath(profile.id)}>
-                  <PencilIcon className="size-4" />
-                  {t("custom_profiles.table.actions_menu.edit")}
-                </Link>
+              <DropdownMenuItem onClick={() => onEdit(profile.id)}>
+                <PencilIcon className="size-4" />
+                {t("custom_profiles.table.actions_menu.edit")}
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem

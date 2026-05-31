@@ -3,7 +3,6 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { PlusIcon } from "lucide-react";
-import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -31,13 +30,13 @@ import type { ProfileSummary } from "@/types/sim-profile";
 // Delete confirmation lives here (the AlertDialog), so ProfileCard stays pure.
 // =============================================================================
 
-const NEW_PATH = "/cellular/custom-profiles/new/";
-
 interface ProfilesGridProps {
   profiles: ProfileSummary[];
   activeProfileId: string | null;
   onActivate: (id: string) => void;
   onDelete: (id: string) => Promise<boolean>;
+  onNew: () => void;
+  onEdit: (id: string) => void;
 }
 
 export function ProfilesGrid({
@@ -45,6 +44,8 @@ export function ProfilesGrid({
   activeProfileId,
   onActivate,
   onDelete,
+  onNew,
+  onEdit,
 }: ProfilesGridProps) {
   const { t } = useTranslation("cellular");
   const { nameForId } = useScenarioList();
@@ -77,11 +78,9 @@ export function ProfilesGrid({
             {t("custom_profiles.view.count", { count: profiles.length })}
           </p>
         </div>
-        <Button size="sm" asChild>
-          <Link href={NEW_PATH}>
-            <PlusIcon className="size-4" />
-            {t("custom_profiles.list.new_button")}
-          </Link>
+        <Button size="sm" onClick={onNew}>
+          <PlusIcon className="size-4" />
+          {t("custom_profiles.list.new_button")}
         </Button>
       </header>
 
@@ -100,6 +99,7 @@ export function ProfilesGrid({
               scenarioName={p.scenario ? nameForId(p.scenario.default) : null}
               onActivate={onActivate}
               onDelete={setDeleteTarget}
+              onEdit={onEdit}
             />
           ))}
         </div>

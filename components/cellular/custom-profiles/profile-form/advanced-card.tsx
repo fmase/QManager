@@ -9,6 +9,7 @@ import {
   CardAction,
   CardContent,
   CardDescription,
+  CardHeader,
   CardTitle,
 } from "@/components/ui/card";
 import {
@@ -39,6 +40,13 @@ import type { UpdateField } from "./form-types";
 //
 // Auto-expands when a blocking validation error lands on one of its fields, so a
 // bad value is never hidden behind a collapsed section on save.
+//
+// When forceOpen is true (used by the tabbed editor) the Collapsible chrome is
+// removed entirely and the fields are always visible — no chevron, no summary.
+// The collapsible error-auto-open logic is only active when forceOpen is false.
+// Two sub-components (AdvancedCardCollapsible / AdvancedCardForceOpen) each
+// call hooks unconditionally, then AdvancedCard routes to the right one so the
+// rules-of-hooks constraint is satisfied.
 // =============================================================================
 
 const DEFAULT_TTL = 64;
@@ -48,9 +56,131 @@ interface AdvancedCardProps {
   form: ProfileFormData;
   errors: Record<string, string>;
   updateField: UpdateField;
+  /** When true, renders without the Collapsible wrapper — fields always visible. */
+  forceOpen?: boolean;
 }
 
-export function AdvancedCard({ form, errors, updateField }: AdvancedCardProps) {
+// ---------------------------------------------------------------------------
+// AdvancedFields — shared field markup used by both branches (collapsible and
+// forced-open). Keeping a single render path prevents the two modes from
+// drifting apart, and preserves all id/aria wiring the editor's focus-on-error
+// depends on.
+// ---------------------------------------------------------------------------
+function AdvancedFields({
+  form,
+  errors,
+  updateField,
+}: Pick<AdvancedCardProps, "form" | "errors" | "updateField">) {
+  const { t } = useTranslation("cellular");
+
+  return (
+    <>
+      <Field>
+        <FieldLabel htmlFor="imei">
+          {t("custom_profiles.form.fields.imei_label")}
+        </FieldLabel>
+        <Input
+          id="imei"
+          type="text"
+          inputMode="numeric"
+          placeholder={t("custom_profiles.form.fields.imei_placeholder")}
+          maxLength={15}
+          value={form.imei}
+          onChange={(e) => updateField("imei", e.target.value)}
+          className="tabular-nums"
+          aria-describedby={errors.imei ? "imei-error" : "imei-danger"}
+          aria-invalid={errors.imei ? true : undefined}
+        />
+        {errors.imei ? (
+          <FieldError id="imei-error">{errors.imei}</FieldError>
+        ) : (
+          <p
+            id="imei-danger"
+            className="text-warning flex items-start gap-1.5 text-xs"
+          >
+            <TriangleAlertIcon className="mt-0.5 size-3.5 shrink-0" />
+            {t("custom_profiles.form.fields.imei_danger")}
+          </p>
+        )}
+      </Field>
+
+      <div className="grid grid-cols-1 gap-4 @md/main:grid-cols-2">
+        <Field>
+          <FieldLabel htmlFor="ttl">
+            {t("custom_profiles.form.fields.ttl_label")}
+          </FieldLabel>
+          <Input
+            id="ttl"
+            type="number"
+            min={0}
+            max={255}
+            value={form.ttl}
+            onChange={(e) => updateField("ttl", parseInt(e.target.value) || 0)}
+            className="tabular-nums"
+            aria-describedby={errors.ttl ? "ttl-error" : undefined}
+            aria-invalid={errors.ttl ? true : undefined}
+          />
+          {errors.ttl && <FieldError id="ttl-error">{errors.ttl}</FieldError>}
+        </Field>
+        <Field>
+          <FieldLabel htmlFor="hl">
+            {t("custom_profiles.form.fields.hl_label")}
+          </FieldLabel>
+          <Input
+            id="hl"
+            type="number"
+            min={0}
+            max={255}
+            value={form.hl}
+            onChange={(e) => updateField("hl", parseInt(e.target.value) || 0)}
+            className="tabular-nums"
+            aria-describedby={errors.hl ? "hl-error" : undefined}
+            aria-invalid={errors.hl ? true : undefined}
+          />
+          {errors.hl && <FieldError id="hl-error">{errors.hl}</FieldError>}
+        </Field>
+      </div>
+    </>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// AdvancedCardForceOpen — fields always visible; no collapsible chrome.
+// All hooks are unconditional inside this component.
+// ---------------------------------------------------------------------------
+function AdvancedCardForceOpen({
+  form,
+  errors,
+  updateField,
+}: Pick<AdvancedCardProps, "form" | "errors" | "updateField">) {
+  const { t } = useTranslation("cellular");
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>
+          {t("custom_profiles.form.sections.advanced_title")}
+        </CardTitle>
+        <CardDescription>
+          {t("custom_profiles.form.sections.advanced_desc")}
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-5">
+        <AdvancedFields form={form} errors={errors} updateField={updateField} />
+      </CardContent>
+    </Card>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// AdvancedCardCollapsible — the original collapsed-by-default behaviour.
+// All hooks are unconditional inside this component.
+// ---------------------------------------------------------------------------
+function AdvancedCardCollapsible({
+  form,
+  errors,
+  updateField,
+}: Pick<AdvancedCardProps, "form" | "errors" | "updateField">) {
   const { t } = useTranslation("cellular");
 
   const hasError = Boolean(errors.imei || errors.ttl || errors.hl);
@@ -118,80 +248,42 @@ export function AdvancedCard({ form, errors, updateField }: AdvancedCardProps) {
 
         <CollapsibleContent>
           <CardContent className="space-y-5 pt-2">
-            <Field>
-              <FieldLabel htmlFor="imei">
-                {t("custom_profiles.form.fields.imei_label")}
-              </FieldLabel>
-              <Input
-                id="imei"
-                type="text"
-                inputMode="numeric"
-                placeholder={t("custom_profiles.form.fields.imei_placeholder")}
-                maxLength={15}
-                value={form.imei}
-                onChange={(e) => updateField("imei", e.target.value)}
-                className="tabular-nums"
-                aria-describedby={errors.imei ? "imei-error" : "imei-danger"}
-                aria-invalid={errors.imei ? true : undefined}
-              />
-              {errors.imei ? (
-                <FieldError id="imei-error">{errors.imei}</FieldError>
-              ) : (
-                <p
-                  id="imei-danger"
-                  className="text-warning flex items-start gap-1.5 text-xs"
-                >
-                  <TriangleAlertIcon className="mt-0.5 size-3.5 shrink-0" />
-                  {t("custom_profiles.form.fields.imei_danger")}
-                </p>
-              )}
-            </Field>
-
-            <div className="grid grid-cols-1 gap-4 @md/main:grid-cols-2">
-              <Field>
-                <FieldLabel htmlFor="ttl">
-                  {t("custom_profiles.form.fields.ttl_label")}
-                </FieldLabel>
-                <Input
-                  id="ttl"
-                  type="number"
-                  min={0}
-                  max={255}
-                  value={form.ttl}
-                  onChange={(e) =>
-                    updateField("ttl", parseInt(e.target.value) || 0)
-                  }
-                  className="tabular-nums"
-                  aria-describedby={errors.ttl ? "ttl-error" : undefined}
-                  aria-invalid={errors.ttl ? true : undefined}
-                />
-                {errors.ttl && (
-                  <FieldError id="ttl-error">{errors.ttl}</FieldError>
-                )}
-              </Field>
-              <Field>
-                <FieldLabel htmlFor="hl">
-                  {t("custom_profiles.form.fields.hl_label")}
-                </FieldLabel>
-                <Input
-                  id="hl"
-                  type="number"
-                  min={0}
-                  max={255}
-                  value={form.hl}
-                  onChange={(e) =>
-                    updateField("hl", parseInt(e.target.value) || 0)
-                  }
-                  className="tabular-nums"
-                  aria-describedby={errors.hl ? "hl-error" : undefined}
-                  aria-invalid={errors.hl ? true : undefined}
-                />
-                {errors.hl && <FieldError id="hl-error">{errors.hl}</FieldError>}
-              </Field>
-            </div>
+            <AdvancedFields
+              form={form}
+              errors={errors}
+              updateField={updateField}
+            />
           </CardContent>
         </CollapsibleContent>
       </Collapsible>
     </Card>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// AdvancedCard — public export. Routes to the correct sub-component so that
+// each branch's hooks are always called unconditionally (rules-of-hooks safe).
+// ---------------------------------------------------------------------------
+export function AdvancedCard({
+  form,
+  errors,
+  updateField,
+  forceOpen,
+}: AdvancedCardProps) {
+  if (forceOpen) {
+    return (
+      <AdvancedCardForceOpen
+        form={form}
+        errors={errors}
+        updateField={updateField}
+      />
+    );
+  }
+  return (
+    <AdvancedCardCollapsible
+      form={form}
+      errors={errors}
+      updateField={updateField}
+    />
   );
 }

@@ -145,7 +145,18 @@
         "state_current": "langkah saat ini",
         "state_complete": "selesai",
         "state_error": "ada kesalahan",
-        "state_upcoming": "berikutnya"
+        "state_upcoming": "berikutnya",
+        "apn_short": "APN",
+        "apn_label": "APN & Koneksi",
+        "review_short": "Tinjau",
+        "review_label": "Tinjau & Simpan",
+        "review_desc": "Pastikan semua sudah benar, lalu simpan."
+      },
+      "discard_dialog": {
+        "title": "Buang perubahan?",
+        "description": "Profil ini memiliki perubahan yang belum disimpan. Keluar sekarang akan membuangnya.",
+        "confirm": "Buang perubahan",
+        "keep": "Lanjut mengedit"
       },
       "sections": {
         "identity_title": "Identitas",

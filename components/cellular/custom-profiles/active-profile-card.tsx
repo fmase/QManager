@@ -9,7 +9,6 @@ import {
   PowerIcon,
   PencilIcon,
 } from "lucide-react";
-import Link from "next/link";
 
 import {
   Card,
@@ -45,15 +44,13 @@ import type { ProfileSummary, SimProfile } from "@/types/sim-profile";
 // keeps its current settings — not an alarm condition.
 // =============================================================================
 
-const editPath = (id: string) =>
-  `/cellular/custom-profiles/edit/?id=${encodeURIComponent(id)}`;
-
 interface ActiveProfileCardProps {
   activeSummary: ProfileSummary | null;
   currentIccid: string | null | undefined;
   getProfile: (id: string) => Promise<SimProfile | null>;
   onDeactivate: () => void;
   isDeactivating: boolean;
+  onEdit: (id: string) => void;
 }
 
 export function ActiveProfileCard({
@@ -62,6 +59,7 @@ export function ActiveProfileCard({
   getProfile,
   onDeactivate,
   isDeactivating,
+  onEdit,
 }: ActiveProfileCardProps) {
   const { t } = useTranslation("cellular");
   const { nameForId } = useScenarioList();
@@ -217,11 +215,9 @@ export function ActiveProfileCard({
           {t("custom_profiles.table.actions_menu.deactivate")}
         </Button>
 
-        <Button variant="ghost" size="sm" asChild>
-          <Link href={editPath(activeSummary.id)}>
-            <PencilIcon className="size-4" />
-            {t("custom_profiles.active_card.edit_button")}
-          </Link>
+        <Button variant="ghost" size="sm" onClick={() => onEdit(activeSummary.id)}>
+          <PencilIcon className="size-4" />
+          {t("custom_profiles.active_card.edit_button")}
         </Button>
       </CardFooter>
     </Card>

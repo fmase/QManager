@@ -1,10 +1,12 @@
-import CustomProfileComponent from '@/components/cellular/custom-profiles/custom-profile'
-import React from 'react'
+import { Suspense } from "react";
+import CustomProfileComponent from "@/components/cellular/custom-profiles/custom-profile";
 
 const CustomProfilePage = () => {
   return (
-    <CustomProfileComponent />
-  )
-}
+    <Suspense fallback={null}>
+      <CustomProfileComponent />
+    </Suspense>
+  );
+};
 
-export default CustomProfilePage
+export default CustomProfilePage;
