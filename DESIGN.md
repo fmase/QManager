@@ -328,6 +328,25 @@ Reusable wrapper: `ServiceStatusBadge` at `components/local-network/service-stat
 - **Destructive dialogs:** title in `Fault Red`, primary action button is `destructive` variant.
 - **The Verizon-MPDN / IMEI-write / Reboot dialog pattern:** explicit consequences spelled out in the description, destructive variant CTA, optional persistent banner after dismissal (`usePendingReboot`).
 
+### Sequenced Pipeline Dialog (Signature Component)
+
+The canonical shape for QManager's **async, multi-step apply pipelines** — the surface a user watches while the modem is being reconfigured step by step. It is one of the rare *sanctioned* modals (see the modal-as-first-thought ban): profile activation, config restore, and language install are irreversible, connection-affecting operations whose progress is genuinely the content. Reference implementation: `ApplyProgressDialog` (`components/cellular/custom-profiles/apply-progress-dialog.tsx`), the profile-apply pipeline (APN → TTL/HL → IMEI → Data Routing). Config Restore and Language Install should adopt this same shape rather than inventing their own progress UI.
+
+The composition leads with a **status hero** as the single focal point, then demotes the per-step breakdown to a supporting ledger — one obvious "where am I" answer instead of a wall of equally-weighted rows. (Earlier revisions used a left-rail timeline whose connector filled green; that was replaced because four competing nodes had no clear focus. If you maintain an old timeline variant, migrate it to the hero shape.)
+
+Anatomy:
+
+- **Header:** the operation title (`DialogTitle`) with the subject (profile name, backup name) in the `DialogDescription`. The header carries **no** status badge — the hero below is the state locus, so a header badge would be redundant.
+- **Status hero (the load-bearing element).** A single large state glyph (`size-14` rounded ring, tinted by tone) sits above a headline and one determinate fill bar:
+  - *Glyph* — `applying` (Telemetry Blue ring + spinner), `complete` (Uplink Green `CheckCircle2Icon`), `partial` (Caution Amber `MinusCircleIcon`), `failed` (Fault Red `XCircleIcon`).
+  - *Headline* — names the **step in flight** ("APN Configuration") while running, or the **terminal verdict** ("Profile active" / "Activated with skips" / "Activation failed") when done. A subtext gives the step count ("Step 2 of 4") or the verdict's one-line consequence.
+  - *Determinate fill* — one slim track whose fill is the **completed fraction** (done + skipped over total), tinted by tone. This single advancing bar replaces the old connector rail as the progress signal.
+- **Supporting step ledger.** Beneath the hero, a compact bordered list (labelled "Steps") of per-step rows: a small status node + step label + truncated detail. `pending` (muted `ClockIcon`), `running` (Telemetry Blue spinner, row tints `bg-info/5`), `done` (Uplink Green check), `failed` (Fault Red `XCircleIcon`), `skipped` (muted `MinusCircleIcon`, detail reads **"Unchanged"** because the value was already correct; resolves to a check once the overall apply completes). This is secondary detail, not the primary progress read.
+- **Deferred-reboot row:** when a step requires a reboot, a calm `info` notice appears below the ledger. The dialog **never** triggers an inline reboot; it defers per the Reboot dialog pattern above.
+- **Terminal resolution:** `partial` / `failed` resolve the backend error inline (via `resolveErrorMessage`) and reveal a single Close button. The dialog is not dismissible (no overlay/Escape close) until the pipeline reaches a terminal state, so a half-finished apply is never abandoned by an accidental click.
+
+Motion discipline: the fill bar animates **`scaleX` only** (`transform-origin: left`, 500ms, `cubic-bezier(0.16, 1, 0.3, 1)`); node and row color transitions cross-fade over 300ms; nothing animates a layout property. Reduced-motion users get instant fills and swaps with no transition, and the layout never depends on a transition completing. The feel is a macOS Software Update pane settling into place, never a progress bar racing.
+
 > **Signature components are optional, never mandated.** The four components below (numeric cards, circular meter, topology map, live tile) are available where they are genuinely the best affordance — the signal/antenna surfaces, the network visualizations. None of them is required on a feature page, and none of them justifies abandoning the uniform grouped-card layout. Reach for the consistent card grid first; introduce a signature component only when one reading or one relationship truly dominates the screen.
 
 ### Signal Dashboard Numeric Cards (Signature Component)
