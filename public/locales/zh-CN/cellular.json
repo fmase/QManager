@@ -510,7 +510,8 @@
         },
         "empty_row": "未找到消息。",
         "select_all_aria": "全选",
-        "select_row_aria": "选择行"
+        "select_row_aria": "选择行",
+        "sim_badge": "SIM"
       },
       "buttons": {
         "refresh_aria": "刷新收件箱",

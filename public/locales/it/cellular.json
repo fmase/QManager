@@ -510,7 +510,8 @@
         },
         "empty_row": "Nessun messaggio trovato.",
         "select_all_aria": "Seleziona tutto",
-        "select_row_aria": "Seleziona riga"
+        "select_row_aria": "Seleziona riga",
+        "sim_badge": "SIM"
       },
       "buttons": {
         "refresh_aria": "Aggiorna la posta in arrivo",

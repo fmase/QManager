@@ -510,7 +510,8 @@
         },
         "empty_row": "Tidak ada pesan ditemukan.",
         "select_all_aria": "Pilih semua",
-        "select_row_aria": "Pilih baris"
+        "select_row_aria": "Pilih baris",
+        "sim_badge": "SIM"
       },
       "buttons": {
         "refresh_aria": "Muat ulang kotak masuk",

@@ -15,6 +15,7 @@ The SMS feature exposes a read/send/delete inbox and automated downtime alert no
 | Alert config | `/etc/qmanager/sms_alerts.json` |
 | Alert log | `/tmp/qmanager_sms_log.json` |
 | Binary | `/usr/bin/sms_tool` (patched static armhf build) |
+| Storage boot daemon | `/usr/bin/qmanager_sms_storage` (init.d: `/etc/init.d/qmanager_sms_storage`, START=99) |
 | Reboot | Never |
 
 ## `sms_tool` Binary
@@ -49,17 +50,78 @@ All `sms_tool` calls run inside a `flock -x` on `/var/lock/qmanager.lock`, the s
 
 Both wrappers use a polling fallback loop (`_sms_flock_wait` / `_sa_flock_wait`) with a 10-second timeout because BusyBox `flock` does not support `-w <timeout>`. The lock file is created as an empty file if absent before the `flock` call — `flock` on a non-existent file returns 0 immediately (no lock held), so the creation step is load-bearing.
 
+## SMS Storage Routing (`AT+CPMS`)
+
+`AT+CPMS` controls three independent storage pointers: mem1 (read/delete source), mem2 (send destination), and mem3 (incoming-message routing). On the RM551E the modem defaults mem3 to `SM` (SIM card), so every incoming SMS is written to the SIM rather than modem memory (`ME`). QManager read `ME` exclusively, which meant incoming messages accumulated silently on the SIM card and never appeared in the inbox.
+
+**The fix** is two-pronged: a boot daemon that asserts `AT+CPMS="ME","ME","ME"` at startup, and GET-time self-healing that re-asserts the same routing before and after every fetch.
+
+### `AT+CPMS` mem1/mem2/mem3 model
+
+| Pointer | Controls | QManager target |
+|---|---|---|
+| mem1 | Storage read/delete operations | `ME` (255 slots) |
+| mem2 | Storage used for sent messages | `ME` |
+| mem3 | Storage for incoming SMS routing | `ME` |
+
+**Why `ME` and not `SM`:** The SIM card typically has 35 slots. `ME` provides 255 slots and is modem-resident, so it survives SIM swaps. If mem3 stays `SM` and the SIM fills up, the modem silently discards further incoming messages.
+
+### Boot daemon (`qmanager_sms_storage`)
+
+`/usr/bin/qmanager_sms_storage` runs once at boot (init.d START=99). It polls `sms_tool status` under the shared `flock` on `/var/lock/qmanager.lock` until the modem is ready, then sets `AT+CPMS="ME","ME","ME"` and exits. The daemon does not respawn and does not trigger a reboot or `AT+CFUN`.
+
+The matching init.d script (`/etc/init.d/qmanager_sms_storage`) uses `#!/bin/sh /etc/rc.common`, is a non-procd one-shot, and double-forks the daemon so init.d's `start` call returns immediately. It is auto-enabled by the directory-driven `install.sh` discovery — it is NOT in `UCI_GATED_SERVICES`, so `enable_services()` enables it unconditionally. No installer change is needed when this file is added.
+
+### GET-time self-healing
+
+Any `-s SM` call to `sms_tool` flips modem mem1 to `SM` as a side effect. The inbox GET sequence is therefore:
+
+1. Assert `AT+CPMS="ME","ME","ME"` (routes future incoming to ME; ensures `sms_tool status` reads ME).
+2. Fetch ME messages: `_sms_run -s ME recv -j` + `_sms_run -s ME status`.
+3. Fetch SM messages: `_sms_run -s SM recv -j` + `_sms_run -s SM status`.
+4. Re-assert `AT+CPMS="ME","ME","ME"` (counteracts the mem1 flip from step 3).
+5. Merge and return.
+
+**Why the re-assert at the end matters:** `sms_alerts`' bare `recv`/`status` calls carry no `-s` flag. If mem1 is left pointing at `SM` after a GET, the alert library reads the SIM instead of modem memory until the next GET or reboot.
+
+### Dual-storage merge
+
+Each message object from `_sms_run -s ME recv -j` is tagged `"storage": "ME"`; each from `-s SM` is tagged `"storage": "SM"`. Multi-part reassembly groups by `sender + reference + storage` — not just `sender + reference` — so a message whose parts straddle both memories is never incorrectly merged.
+
+`storage.used` and `storage.total` in the GET response are the **sum** of ME and SM usage (not ME-only). This gives an honest picture when some messages still reside on the SIM.
+
+> ⚠️ WARNING: `sms_tool status` output is word format, not slash-separated. The line reads `Storage type: ME, used: 0, total: 255`. Parse with `grep -o 'used: [0-9]*'` etc. A pattern like `[0-9]*/[0-9]*` will never match — this was a latent bug in the old parser that caused storage counts to always read `0/0`.
+
+### Storage-aware delete
+
+The `delete` POST now requires a `storage` field (`"ME"` or `"SM"`, default `"ME"` if absent, validated). The CGI calls `_sms_run -s "$STORAGE" delete "$idx"` for each index. After any SM delete, `AT+CPMS="ME","ME","ME"` is re-asserted for the same reason as after a GET.
+
+`delete_all` clears both memories in sequence (`_sms_run -s ME delete all`, then `_sms_run -s SM delete all`) and re-asserts ME routing afterward.
+
 ## Inbox CGI (`cellular/sms.sh`)
 
-**GET** — fetches `recv -j` and `status`, then merges multi-part messages (same sender + `reference` field) into single entries. `indexes` in the response lists every storage slot for a merged message so a single `delete` call clears them all.
+**GET** — asserts `AT+CPMS="ME","ME","ME"`, fetches from ME, fetches from SM, re-asserts ME routing, then merges results. Multi-part messages are grouped by `sender + reference + storage`. `indexes` in each message lists every storage slot for that message so a single `delete` call clears them all.
+
+Response message object shape:
+
+```json
+{
+  "sender": "+1234567890",
+  "message": "Hello",
+  "indexes": [3],
+  "storage": "ME"
+}
+```
+
+`storage` is `"ME"` or `"SM"`. The `storage.used`/`storage.total` envelope fields reflect the sum of both memories.
 
 **POST actions:**
 
 | Action | Required fields | Notes |
 |---|---|---|
 | `send` | `phone`, `message` | Strips a leading `+` from `phone` before calling `sms_tool`; no other normalization |
-| `delete` | `indexes` (array) | Deletes each slot individually; returns `partial_failure` if any slot fails |
-| `delete_all` | — | Calls `sms_tool delete all` |
+| `delete` | `indexes` (array), `storage` (`"ME"`\|`"SM"`, default `"ME"`) | Deletes each slot individually; re-asserts ME routing after SM deletes; returns `partial_failure` if any slot fails |
+| `delete_all` | — | Clears ME then SM; re-asserts ME routing |
 
 On `send` failure the envelope is `{ "success": false, "error": "send_failed", "detail": "<stderr>" }` (HTTP 200 with the error in the JSON body, not a 4xx status).
 

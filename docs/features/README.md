@@ -12,7 +12,7 @@ Per-feature deep-dives extracted from `CLAUDE.md` to keep the always-loaded prom
 | Bandwidth Monitor | `monitoring/bandwidth.sh` | `use-bandwidth-monitor.ts` + `use-bandwidth-settings.ts` | `bandwidth-monitor.ts` | No |
 | Connection Scenarios | `scenarios/{activate,list,add,edit,delete}.sh` | `use-scenario-list.ts` | inline | No |
 | Scenario-to-Profile Binding | `scenarios/activate.sh` (guard) + `profiles/{deactivate,list,get,save}.sh` | `use-active-profile.ts` + `hooks/use-sim-profiles.ts` | `sim-profile.ts` (ScenarioSchedule, ProfileScenarioBinding) | No |
-| SMS Inbox + Alerts | `cellular/sms.sh` + `monitoring/sms_alerts.sh` + `monitoring/sms_alert_log.sh` | — | inline | No |
+| SMS Inbox + Alerts | `cellular/sms.sh` + `monitoring/sms_alerts.sh` + `monitoring/sms_alert_log.sh` | — | `SmsMessage` (`storage:"ME"\|"SM"`) | No (boot service: `qmanager_sms_storage`) |
 | APN Management | `cellular/apn.sh` | `use-wan-profiles.ts` | `wan-profiles.ts` | No |
 
 ## Index

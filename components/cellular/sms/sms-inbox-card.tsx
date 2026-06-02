@@ -66,6 +66,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
 
 import type { SmsData } from "@/hooks/use-sms";
 import type { SmsMessage } from "@/types/sms";
@@ -82,7 +83,7 @@ interface SmsInboxCardProps {
   /** Error from the hook (fetch or mutation failure) */
   error: string | null;
   onSend: (phone: string, message: string) => Promise<boolean>;
-  onDelete: (indexes: number[]) => Promise<boolean>;
+  onDelete: (indexes: number[], storage: "ME" | "SM") => Promise<boolean>;
   onDeleteAll: () => Promise<boolean>;
   onRefresh: () => void;
 }
@@ -111,7 +112,7 @@ export default function SmsInboxCard({
   const handleDelete = async () => {
     if (!deleteTarget) return;
     setIsDeleting(true);
-    const success = await onDelete(deleteTarget.indexes);
+    const success = await onDelete(deleteTarget.indexes, deleteTarget.storage);
     setIsDeleting(false);
     setDeleteTarget(null);
     if (success) {
@@ -139,9 +140,22 @@ export default function SmsInboxCard({
     if (selectedRows.length === 0) return;
 
     setIsDeleting(true);
-    // Collect all indexes from all selected messages
-    const allIndexes = selectedRows.flatMap((row) => row.original.indexes);
-    const success = await onDelete(allIndexes);
+    // The backend delete action targets one storage (ME/SM) per call, but a
+    // selection can mix messages from both memories — group indexes by storage
+    // and fire one delete per group.
+    const byStorage = selectedRows.reduce<Record<"ME" | "SM", number[]>>(
+      (acc, row) => {
+        acc[row.original.storage].push(...row.original.indexes);
+        return acc;
+      },
+      { ME: [], SM: [] },
+    );
+    let success = true;
+    for (const storage of ["ME", "SM"] as const) {
+      if (byStorage[storage].length === 0) continue;
+      const ok = await onDelete(byStorage[storage], storage);
+      if (!ok) success = false;
+    }
     const count = selectedRows.length;
     setIsDeleting(false);
     setShowDeleteSelected(false);
@@ -190,7 +204,17 @@ export default function SmsInboxCard({
         header: t("sms.inbox.table.headers.from"),
         cell: ({ row }) => (
           <div className="min-w-0">
-            <div className="font-medium truncate">{row.original.sender}</div>
+            <div className="flex items-center gap-1.5">
+              <span className="font-medium truncate">{row.original.sender}</span>
+              {row.original.storage === "SM" && (
+                <Badge
+                  variant="outline"
+                  className="shrink-0 px-1.5 py-0 text-[10px] font-medium tracking-wide text-muted-foreground"
+                >
+                  {t("sms.inbox.table.sim_badge")}
+                </Badge>
+              )}
+            </div>
             <span className="block text-xs text-muted-foreground @sm/card:hidden">
               {row.original.timestamp}
             </span>

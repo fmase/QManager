@@ -510,7 +510,8 @@
         },
         "empty_row": "No messages found.",
         "select_all_aria": "Select all",
-        "select_row_aria": "Select row"
+        "select_row_aria": "Select row",
+        "sim_badge": "SIM"
       },
       "buttons": {
         "refresh_aria": "Refresh inbox",
