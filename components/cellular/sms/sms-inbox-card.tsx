@@ -18,7 +18,7 @@ import {
   TbRefresh,
   TbPlus,
 } from "react-icons/tb";
-import { AlertCircleIcon, Loader2, Trash2 } from "lucide-react";
+import { AlertCircleIcon, CheckCheck, Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -67,10 +67,17 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 import type { SmsData } from "@/hooks/use-sms";
 import type { SmsMessage } from "@/types/sms";
+import {
+  useSmsReadState,
+  parseSmsTimestamp,
+} from "@/hooks/use-sms-read-state";
 import SmsComposeDialog from "./sms-compose-dialog";
+
+type SmsTab = "all" | "unread" | "read";
 
 // =============================================================================
 // SmsInboxCard — Displays SMS messages in a table with view/delete actions
@@ -108,6 +115,44 @@ export default function SmsInboxCard({
   const [isDeleting, setIsDeleting] = React.useState(false);
   const [showCompose, setShowCompose] = React.useState(false);
   const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({});
+  const [tab, setTab] = React.useState<SmsTab>("all");
+
+  // Newest-first regardless of backend ordering: parse the modem's
+  // "MM/DD/YY HH:MM:SS" timestamp and sort descending. The backend also sorts
+  // now, but doing it here makes the default order robust and is the source of
+  // truth the table renders from.
+  const sortedMessages = React.useMemo(
+    () =>
+      [...(data?.messages ?? [])].sort(
+        (a, b) =>
+          parseSmsTimestamp(b.timestamp) - parseSmsTimestamp(a.timestamp),
+      ),
+    [data?.messages],
+  );
+
+  const { isRead, markRead, markAllRead, unreadCount } =
+    useSmsReadState(sortedMessages);
+
+  // Tab filter sits on top of the sorted list; the table renders the result.
+  const filteredMessages = React.useMemo(() => {
+    if (tab === "unread") return sortedMessages.filter((m) => !isRead(m));
+    if (tab === "read") return sortedMessages.filter((m) => isRead(m));
+    return sortedMessages;
+  }, [sortedMessages, tab, isRead]);
+
+  // Opening a message marks it read (the only read trigger besides "mark all").
+  const openMessage = React.useCallback(
+    (msg: SmsMessage) => {
+      setViewMessage(msg);
+      markRead(msg);
+    },
+    [markRead],
+  );
+
+  const handleMarkAllRead = () => {
+    markAllRead();
+    toast.success(t("sms.inbox.toast.mark_all_read_success"));
+  };
 
   const handleDelete = async () => {
     if (!deleteTarget) return;
@@ -202,10 +247,22 @@ export default function SmsInboxCard({
       {
         accessorKey: "sender",
         header: t("sms.inbox.table.headers.from"),
-        cell: ({ row }) => (
+        cell: ({ row }) => {
+          const unread = !isRead(row.original);
+          return (
           <div className="min-w-0">
             <div className="flex items-center gap-1.5">
-              <span className="font-medium truncate">{row.original.sender}</span>
+              {unread && (
+                <span
+                  className="size-2 shrink-0 rounded-full bg-primary"
+                  aria-label={t("sms.inbox.unread_aria")}
+                />
+              )}
+              <span
+                className={`truncate ${unread ? "font-semibold" : "font-normal"}`}
+              >
+                {row.original.sender}
+              </span>
               {row.original.storage === "SM" && (
                 <Badge
                   variant="outline"
@@ -219,7 +276,8 @@ export default function SmsInboxCard({
               {row.original.timestamp}
             </span>
           </div>
-        ),
+          );
+        },
       },
       {
         accessorKey: "content",
@@ -260,7 +318,7 @@ export default function SmsInboxCard({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-40">
-                <DropdownMenuItem onClick={() => setViewMessage(row.original)}>
+                <DropdownMenuItem onClick={() => openMessage(row.original)}>
                   <TbEye className="size-4" />
                   {t("sms.inbox.table.actions.view")}
                 </DropdownMenuItem>
@@ -278,11 +336,11 @@ export default function SmsInboxCard({
         ),
       },
     ],
-    [t],
+    [t, isRead, openMessage],
   );
 
   const table = useReactTable({
-    data: data?.messages ?? [],
+    data: filteredMessages,
     columns,
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
@@ -411,6 +469,39 @@ export default function SmsInboxCard({
           </CardAction>
         </CardHeader>
         <CardContent>
+          <div className="mb-3 flex items-center justify-between gap-2">
+            <Tabs value={tab} onValueChange={(v) => setTab(v as SmsTab)}>
+              <TabsList>
+                <TabsTrigger value="all">{t("sms.inbox.tabs.all")}</TabsTrigger>
+                <TabsTrigger value="unread">
+                  {t("sms.inbox.tabs.unread")}
+                  {unreadCount > 0 && (
+                    <Badge
+                      variant="secondary"
+                      className="ml-1.5 px-1.5 py-0 text-[10px] tabular-nums"
+                    >
+                      {unreadCount}
+                    </Badge>
+                  )}
+                </TabsTrigger>
+                <TabsTrigger value="read">{t("sms.inbox.tabs.read")}</TabsTrigger>
+              </TabsList>
+            </Tabs>
+            {unreadCount > 0 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleMarkAllRead}
+                className="text-muted-foreground"
+                aria-label={t("sms.inbox.buttons.mark_all_read_aria")}
+              >
+                <CheckCheck className="size-4" />
+                <span className="hidden @sm/card:inline">
+                  {t("sms.inbox.buttons.mark_all_read")}
+                </span>
+              </Button>
+            )}
+          </div>
           <div className="overflow-hidden rounded-lg border">
             <Table>
               <TableHeader className="bg-muted sticky top-0 z-10">
@@ -437,11 +528,11 @@ export default function SmsInboxCard({
                       className="cursor-pointer"
                       tabIndex={0}
                       aria-label={t("sms.inbox.view_dialog.title", { sender: row.original.sender })}
-                      onClick={() => setViewMessage(row.original)}
+                      onClick={() => openMessage(row.original)}
                       onKeyDown={(e) => {
                         if (e.key === "Enter" || e.key === " ") {
                           e.preventDefault();
-                          setViewMessage(row.original);
+                          openMessage(row.original);
                         }
                       }}
                       initial={{ opacity: 0, x: -8 }}
@@ -464,7 +555,11 @@ export default function SmsInboxCard({
                       colSpan={columns.length}
                       className="h-24 text-center"
                     >
-                      {t("sms.inbox.table.empty_row")}
+                      {tab === "unread"
+                        ? t("sms.inbox.table.empty_unread")
+                        : tab === "read"
+                          ? t("sms.inbox.table.empty_read")
+                          : t("sms.inbox.table.empty_row")}
                     </TableCell>
                   </TableRow>
                 )}
@@ -472,10 +567,12 @@ export default function SmsInboxCard({
             </Table>
           </div>
 
-          {messages.length > 0 && (
+          {filteredMessages.length > 0 && (
             <div className="flex items-center justify-between px-2 pt-2">
               <span className="text-muted-foreground text-sm">
-                {t("sms.inbox.pagination.total", { count: messages.length })}
+                {t("sms.inbox.pagination.total", {
+                  count: filteredMessages.length,
+                })}
               </span>
               {table.getPageCount() > 1 && (
                 <div className="flex items-center gap-2">

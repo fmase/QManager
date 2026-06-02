@@ -497,6 +497,12 @@
       "title": "Inbox",
       "description": "View and manage your SMS messages",
       "storage_suffix": " — {{used}}/{{total}} messages stored",
+      "tabs": {
+        "all": "All",
+        "unread": "Unread",
+        "read": "Read"
+      },
+      "unread_aria": "Unread message",
       "table": {
         "headers": {
           "from": "From",
@@ -509,6 +515,8 @@
           "delete": "Delete"
         },
         "empty_row": "No messages found.",
+        "empty_unread": "No unread messages.",
+        "empty_read": "No read messages.",
         "select_all_aria": "Select all",
         "select_row_aria": "Select row",
         "sim_badge": "SIM"
@@ -520,6 +528,8 @@
         "delete_all": "Delete All",
         "delete_all_aria": "Delete all messages",
         "new_message": "New Message",
+        "mark_all_read": "Mark all read",
+        "mark_all_read_aria": "Mark all messages as read",
         "prev": "Prev",
         "next": "Next"
       },
@@ -561,7 +571,8 @@
         "delete_all_error": "Failed to delete messages",
         "delete_selected_success_one": "{{count}} message deleted",
         "delete_selected_success_other": "{{count}} messages deleted",
-        "delete_selected_error": "Failed to delete selected messages"
+        "delete_selected_error": "Failed to delete selected messages",
+        "mark_all_read_success": "All messages marked as read"
       }
     },
     "compose": {

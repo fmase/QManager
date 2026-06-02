@@ -158,6 +158,11 @@ if [ "$REQUEST_METHOD" = "GET" ]; then
     #    - Singles (no "reference") pass through, also carrying storage.
     #    Ordered newest-first by timestamp (indexes are now per-storage, so a
     #    raw index sort would interleave the two pools incorrectly).
+    #    sms_tool emits "MM/DD/YY HH:MM:SS" (zero-padded, fixed width). A plain
+    #    string sort of that key mis-orders across month/year boundaries
+    #    (12/31/25 would sort AFTER 01/01/26). Reorder the fixed-width slices
+    #    into a sortable "YYMMDD HH:MM:SS" key before sorting, then reverse for
+    #    newest-first. Slice offsets: MM=[0:2] DD=[3:5] YY=[6:8] rest=[8:].
     messages=$(printf '%s' "$raw_msgs" | jq '
         [.[] | select(has("reference") | not) |
             {indexes: [.index], sender, content, timestamp, storage}
@@ -172,7 +177,9 @@ if [ "$REQUEST_METHOD" = "GET" ]; then
                 storage: .[0].storage
             }]
         ) as $merged |
-        ($singles + $merged) | sort_by(.timestamp) | reverse
+        ($singles + $merged)
+        | sort_by(.timestamp[6:8] + .timestamp[0:2] + .timestamp[3:5] + .timestamp[8:])
+        | reverse
     ' 2>/dev/null)
     [ -z "$messages" ] && messages="[]"
     printf '%s' "$messages" | jq empty 2>/dev/null || messages="[]"

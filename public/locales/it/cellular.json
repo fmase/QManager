@@ -511,7 +511,9 @@
         "empty_row": "Nessun messaggio trovato.",
         "select_all_aria": "Seleziona tutto",
         "select_row_aria": "Seleziona riga",
-        "sim_badge": "SIM"
+        "sim_badge": "SIM",
+        "empty_unread": "Nessun messaggio non letto.",
+        "empty_read": "Nessun messaggio letto."
       },
       "buttons": {
         "refresh_aria": "Aggiorna la posta in arrivo",
@@ -521,7 +523,9 @@
         "delete_all_aria": "Elimina tutti i messaggi",
         "new_message": "Nuovo messaggio",
         "prev": "Prec",
-        "next": "Avanti"
+        "next": "Avanti",
+        "mark_all_read": "Segna tutti come letti",
+        "mark_all_read_aria": "Segna tutti i messaggi come letti"
       },
       "pagination": {
         "total_one": "messaggio {{count}}",
@@ -561,8 +565,15 @@
         "delete_all_error": "Impossibile eliminare i messaggi",
         "delete_selected_success_one": "{{count}} messaggio eliminato",
         "delete_selected_success_other": "{{count}} messaggi eliminati",
-        "delete_selected_error": "Impossibile eliminare i messaggi selezionati"
-      }
+        "delete_selected_error": "Impossibile eliminare i messaggi selezionati",
+        "mark_all_read_success": "Tutti i messaggi sono stati segnati come letti"
+      },
+      "tabs": {
+        "all": "Tutti",
+        "unread": "Non letti",
+        "read": "Letti"
+      },
+      "unread_aria": "Messaggio non letto"
     },
     "compose": {
       "title": "Nuovo messaggio",

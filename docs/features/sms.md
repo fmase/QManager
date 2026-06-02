@@ -98,6 +98,68 @@ The `delete` POST now requires a `storage` field (`"ME"` or `"SM"`, default `"ME
 
 `delete_all` clears both memories in sequence (`_sms_run -s ME delete all`, then `_sms_run -s SM delete all`) and re-asserts ME routing afterward.
 
+## Read/Unread State (Client-Side)
+
+The modem cannot be the source of truth for per-message read/unread status for two reasons: (1) `sms_tool -j` strips the `REC READ`/`REC UNREAD` field from message objects, so it never reaches the CGI; (2) every inbox GET issues `AT+CMGL=4` which the modem treats as "mark all read", so any modem-side unread flag self-erases on every fetch. Read state is therefore tracked entirely in the browser.
+
+**Hook:** `hooks/use-sms-read-state.ts` — exports `useSmsReadState`, `smsFingerprint`, and `parseSmsTimestamp`.
+
+**Persistence:** `localStorage` under the key `qmanager.sms.read.v1` as a JSON array of fingerprint strings. Reads on mount, writes on every state change (errors are swallowed — quota exceeded or storage disabled; read-state is best-effort).
+
+### Message Fingerprinting
+
+There is no stable backend message ID. The fingerprint is a djb2 hash of the string `storage|sender|timestamp|content`. It is base-36 encoded (unsigned 32-bit). The hash covers `storage` so that two messages with identical sender/timestamp/content but different storage locations (ME vs. SM) produce different fingerprints and can be marked independently.
+
+### Self-Pruning
+
+On every write (`markRead` and `markAllRead`), the stored set is intersected with the fingerprints of the **currently-present** message list before the new entry is added. This ensures that when messages are deleted on the modem, their read-markers are evicted from `localStorage` on the next state change — the set cannot grow unbounded.
+
+**Why:** Without pruning, every deleted message leaves a dead fingerprint in `localStorage` indefinitely. The prune step is implicit in `markRead` and explicit in `markAllRead`.
+
+### Known Trade-offs
+
+- Read state is **per-browser**. It does not sync across devices. Clearing browser storage resets all read markers.
+- New incoming messages appear as unread by default (fingerprint absent from the stored set).
+- Opening the View dialog marks the message read immediately (`markRead` is called in the `openMessage` callback inside `sms-inbox-card.tsx`).
+
+### Inbox Tabs and UI
+
+`components/cellular/sms/sms-inbox-card.tsx` adds three shadcn `Tabs`: **All**, **Unread {count}**, and **Read**. Unread rows carry a primary-color dot indicator and `font-semibold` styling. A "Mark all read" action in the card's `CardAction` area calls `markAllRead` and fires a toast.
+
+---
+
+## Timestamp Sorting
+
+> ⚠️ WARNING: `sms_tool` emits timestamps in `"MM/DD/YY HH:MM:SS"` format (zero-padded, fixed-width, ASCII). Plain lexicographic sort (`sort_by(.timestamp)`) mis-orders messages across month/year boundaries — for example, `"12/31/25 23:59:59"` sorts alphabetically **after** `"01/01/26 00:00:00"` because `"12"` > `"01"`. Never sort directly on the raw timestamp field.
+
+The backend (`sms.sh` GET handler, `messages=$(... jq ...)` block) applies a slice-reordering key before reversing:
+
+```sh
+sort_by(.timestamp[6:8] + .timestamp[0:2] + .timestamp[3:5] + .timestamp[8:]) | reverse
+```
+
+This rearranges the fixed-width slices into `"YYMMDD HH:MM:SS"` — a sortable string that orders correctly across month and year boundaries.
+
+The frontend (`parseSmsTimestamp` in `hooks/use-sms-read-state.ts`) parses the same `MM/DD/YY HH:MM:SS` format into epoch millis and sorts descending client-side, so newest-first ordering is robust regardless of backend ordering.
+
+**Why both layers:** The backend sort is authoritative. The client-side sort is a safety net for any future scenario where backend ordering is disrupted (e.g., storage merge returning unsorted results).
+
+---
+
+## Deferred Features
+
+Two SMS Center capabilities were scoped and deliberately deferred.
+
+### Cross-Page Toast Notification (deferred)
+
+Goal: show a toast when a new SMS arrives while the user is on a different page. The only AT-channel-safe path is piggybacking on `qmanager_poller` — a full `sms.sh` GET holds the shared `/var/lock/qmanager.lock` for ~0.26 s, making it too heavyweight to run app-wide on every poll cycle. The intended design: `qmanager_poller` writes an unread/new-count field into `/tmp/qmanager_status.json`; an `AppLayout` hook consumes that field; the existing global `<Toaster/>` fires the notification. Latency would be bounded by the poller's SMS-check cadence (not instant). This is a known, intended follow-up — the plumbing is not yet in place.
+
+### SMS Forwarding (deferred)
+
+Goal: automatically forward incoming SMS to a configured phone number. This is a Tier 4 change: it requires a new-incoming detector in the poll loop, persisted last-seen state (message index or timestamp watermark), a UCI/JSON config surface (target number, enable toggle), and auto-send loop guards to prevent forwarding loops. It also depends on the read-state authority question being settled first (the forwarding daemon needs to decide which messages are "new" independently of client-side read state). Document as a known follow-up when the poll-loop plumbing for cross-page toasts is in place.
+
+---
+
 ## Inbox CGI (`cellular/sms.sh`)
 
 **GET** — asserts `AT+CPMS="ME","ME","ME"`, fetches from ME, fetches from SM, re-asserts ME routing, then merges results. Multi-part messages are grouped by `sender + reference + storage`. `indexes` in each message lists every storage slot for that message so a single `delete` call clears them all.

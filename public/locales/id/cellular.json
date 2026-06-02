@@ -511,7 +511,9 @@
         "empty_row": "Tidak ada pesan ditemukan.",
         "select_all_aria": "Pilih semua",
         "select_row_aria": "Pilih baris",
-        "sim_badge": "SIM"
+        "sim_badge": "SIM",
+        "empty_unread": "Tidak ada pesan belum dibaca.",
+        "empty_read": "Tidak ada pesan dibaca."
       },
       "buttons": {
         "refresh_aria": "Muat ulang kotak masuk",
@@ -521,7 +523,9 @@
         "delete_all_aria": "Hapus semua pesan",
         "new_message": "Pesan Baru",
         "prev": "Sebelum",
-        "next": "Selanjutnya"
+        "next": "Selanjutnya",
+        "mark_all_read": "Tandai semua dibaca",
+        "mark_all_read_aria": "Tandai semua pesan sebagai dibaca"
       },
       "pagination": {
         "total_one": "{{count}} pesan",
@@ -561,8 +565,15 @@
         "delete_all_error": "Gagal menghapus pesan",
         "delete_selected_success_one": "{{count}} pesan terhapus",
         "delete_selected_success_other": "{{count}} pesan terhapus",
-        "delete_selected_error": "Gagal menghapus pesan yang dipilih"
-      }
+        "delete_selected_error": "Gagal menghapus pesan yang dipilih",
+        "mark_all_read_success": "Semua pesan ditandai sebagai dibaca"
+      },
+      "tabs": {
+        "all": "Semua",
+        "unread": "Belum dibaca",
+        "read": "Dibaca"
+      },
+      "unread_aria": "Pesan belum dibaca"
     },
     "compose": {
       "title": "Pesan baru",
