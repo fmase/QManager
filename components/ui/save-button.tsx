@@ -5,6 +5,7 @@ import { motion, AnimatePresence, useReducedMotion } from "motion/react";
 import { Loader2, CheckIcon } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { type VariantProps } from "class-variance-authority";
+import { EASE_OUT_EXPO } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 
 type ButtonProps = React.ComponentProps<"button"> & VariantProps<typeof buttonVariants> & { asChild?: boolean };
@@ -53,8 +54,9 @@ export function SaveButton({
   const isActive = isSaving || saved;
   const reduceMotion = useReducedMotion();
   // Expo ease, no spring — the design system bans bounce/elastic, and the old
-  // "Saved!" spring (stiffness 400 / damping 22, ζ≈0.55) was underdamped.
-  const EXPO = [0.16, 1, 0.3, 1] as const;
+  // "Saved!" spring (stiffness 400 / damping 22, ζ≈0.55) was underdamped. The
+  // curve is the shared system token so this stays in lockstep with the rest.
+  const EXPO = EASE_OUT_EXPO;
 
   return (
     <Button

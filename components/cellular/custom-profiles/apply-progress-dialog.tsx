@@ -22,6 +22,7 @@ import {
   TriangleAlertIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { EASE_OUT_EXPO } from "@/lib/motion";
 
 import type {
   ProfileApplyState,
@@ -63,7 +64,7 @@ const DEFAULT_STEPS: ApplyStep[] = [
   { name: "mpdn_rule", status: "pending", detail: "" },
 ];
 
-const EXPO = [0.16, 1, 0.3, 1] as const;
+const EXPO = EASE_OUT_EXPO;
 
 type Tone = "info" | "success" | "warning" | "destructive";
 

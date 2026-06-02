@@ -2,7 +2,8 @@
 
 import React from "react";
 import { usePathname } from "next/navigation";
-import { motion } from "motion/react";
+import { motion, AnimatePresence } from "motion/react";
+import { pageVariants } from "@/lib/motion";
 
 import {
   SidebarInset,
@@ -89,16 +90,24 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         </header>
         <SimSwapBanner />
         <ReconnectingBanner />
-        <motion.div
-          id="main-content"
-          key={pathname}
-          className="px-2 lg:px-6 py-4"
-          initial={{ opacity: 0, y: 6 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.2, ease: "easeOut" }}
-        >
-          {children}
-        </motion.div>
+        {/* Route transition — the reference "refined rise + settle". The
+            outgoing page fades out (0.12s) before the incoming content rises
+            10px into place on the ease-out-expo curve (mode="wait"). Keyed on
+            pathname so each navigation re-triggers it. Reduced-motion users get
+            a clean cross-fade with no rise (handled by the root MotionConfig). */}
+        <AnimatePresence mode="wait">
+          <motion.div
+            id="main-content"
+            key={pathname}
+            className="px-2 lg:px-6 py-4"
+            variants={pageVariants}
+            initial="hidden"
+            animate="enter"
+            exit="exit"
+          >
+            {children}
+          </motion.div>
+        </AnimatePresence>
       </SidebarInset>
     </SidebarProvider>
   );

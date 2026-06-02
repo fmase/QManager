@@ -265,6 +265,33 @@ Surface tonality is the load-bearing depth signal:
 
 **The Reduced-Motion Floor.** Every shadow transition must be wrapped or short-circuited by `prefers-reduced-motion: reduce`. The hover lift instantly snaps to its end state; the layout never depends on the transition completing.
 
+## 4a. Motion System (`lib/motion.ts` — the reference layer)
+
+Motion in QManager has **one source of truth**: `lib/motion.ts`. Every animation in the app is meant to settle on the same curve, drawn from the same duration scale, so the product feels like a single instrument. Reach for these tokens before writing a bespoke transition; add new shared motion here rather than re-deriving a curve in a component.
+
+### The reference curve
+
+- **`EASE_OUT_EXPO`** = `[0.16, 1, 0.3, 1]` (CSS: `EASE_OUT_EXPO_CSS`). The default for any state change: a fast departure and a long, gentle settle that never overshoots — a Control Center toggle, a macOS window coming to rest. This is the curve the whole system was already converging on (the Hover Lift, the Active Press, the meter arc, the pipeline fill); it now has a name.
+- **`EASE_OUT_QUART`** = `[0.25, 1, 0.5, 1]` (CSS: `EASE_OUT_QUART_CSS`). A gentler tail for short, frequent moves (presses, exits) where the long expo settle would feel sluggish.
+- Bouncy, springy, elastic, and Material decelerate-and-bounce curves remain banned. If a transition wobbles at the end, the curve is wrong.
+
+### Duration scale (`DUR`)
+
+`fast` 0.16s (presses, live value swaps) · `base` 0.24s (hover, color shifts, toggles) · `slow` 0.34s (entrances, page rise) · `slower` 0.5s (determinate fills, the signal-meter arc). These four steps are the only durations the system should use.
+
+### Shared variants
+
+- **`containerVariants` + `itemVariants`** — the staggered fade-up entrance (8px rise on the reference curve). The most-used entrance in the product; dozens of card surfaces consume it by reference, so changing it here retunes the whole app at once.
+- **`pageVariants`** — the route transition (see the Named Rule below).
+
+### Named Rules
+
+**The Single-Curve Rule.** Motion settles on `EASE_OUT_EXPO` (or `EASE_OUT_QUART` for short moves), imported from `lib/motion.ts`. Components do not hardcode their own `cubic-bezier` arrays; if you find a private `EXPO` constant, replace it with the shared token. One curve, one feel.
+
+**The Page-Transition Rule (the signature).** Navigation runs the "refined rise + settle": the outgoing page fades out (0.12s) and the incoming content rises 10px into place on `EASE_OUT_EXPO` over `DUR.slow`, driven by `AnimatePresence mode="wait"` in `components/app-layout.tsx` keyed on `pathname`. Pure transform + opacity — no blur, no scale — the quiet macOS System Settings pane-swap. This is the most-felt animation in the product and the reference every other transition aspires to.
+
+**The Global Reduced-Motion Switch.** The app root (`app/layout.tsx`) wraps everything in `<MotionConfig reducedMotion="user">`. This makes **every** `motion/react` animation automatically honor `prefers-reduced-motion`: transform/layout movement collapses to instant while opacity is preserved, leaving a clean cross-fade. Keep shared variants pure transform + opacity so this one switch is all that's ever needed; never reach for a separate reduced-motion code path in a component unless it animates something `MotionConfig` can't reach (raw CSS keyframes, which use `motion-reduce:` utilities and the `@media (prefers-reduced-motion: reduce)` block in `globals.css`).
+
 ## 5. Components
 
 Every component follows the **tactile and confident** philosophy: surfaces respond to touch with a buttery, instrument-class motion. Hover, focus, and active states are first-class design surfaces, not afterthoughts.
