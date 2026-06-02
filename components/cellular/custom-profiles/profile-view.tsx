@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -589,52 +590,39 @@ const ConfigPills = ({
 };
 
 // -----------------------------------------------------------------------------
-// Loading affordance — one calm skeleton, shaped to the populated row so there
-// is no reflow when content lands. Each card carries ONE shimmer sweep across
-// the whole surface (a single moving light source) rather than every bar
-// blinking on its own; the bars themselves rest as static muted blocks. Under
-// reduced motion the sweep is hidden and the skeleton is a quiet static block.
+// Loading affordance — built from the shared Skeleton primitive (the app-wide
+// loading standard), shaped to the populated row so there is no reflow when
+// content lands. Reduced motion is handled by the Skeleton component itself.
 // -----------------------------------------------------------------------------
-const Bar = ({ className }: { className?: string }) => (
-  <div className={cn("bg-muted rounded-md", className)} />
-);
-
 const SkeletonRow = () => (
-  <div className="relative overflow-hidden rounded-lg border p-3">
-    <div className="flex flex-col gap-3">
-      {/* Identity + status + overflow */}
-      <div className="flex items-start justify-between gap-3">
-        <div className="grid gap-1.5">
-          <Bar className="h-3.5 w-32" />
-          <Bar className="h-3 w-16" />
-        </div>
-        <div className="flex items-center gap-1.5">
-          <Bar className="h-5 w-16" />
-          <Bar className="size-7" />
-        </div>
+  <div className="flex flex-col gap-3 rounded-lg border p-3">
+    {/* Identity + status + overflow */}
+    <div className="flex items-start justify-between gap-3">
+      <div className="grid gap-1.5">
+        <Skeleton className="h-3.5 w-32" />
+        <Skeleton className="h-3 w-16" />
       </div>
-      {/* Scenario binding line */}
       <div className="flex items-center gap-1.5">
-        <Bar className="size-3.5 shrink-0 rounded-full" />
-        <Bar className="h-3 w-40" />
-      </div>
-      {/* Config pills */}
-      <div className="flex flex-wrap items-center gap-1.5">
-        <Bar className="h-5 w-24" />
-        <Bar className="h-5 w-12" />
-        <Bar className="h-5 w-16" />
-      </div>
-      {/* Action */}
-      <div className="flex items-center justify-between pt-0.5">
-        <Bar className="h-3 w-28" />
-        <Bar className="h-8 w-24" />
+        <Skeleton className="h-5 w-16" />
+        <Skeleton className="size-7" />
       </div>
     </div>
-    {/* Single sweep across the whole card. */}
-    <div
-      aria-hidden
-      className="animate-skeleton-shimmer motion-reduce:hidden absolute inset-0 bg-gradient-to-r from-transparent via-foreground/10 to-transparent"
-    />
+    {/* Scenario binding line */}
+    <div className="flex items-center gap-1.5">
+      <Skeleton className="size-3.5 shrink-0 rounded-full" />
+      <Skeleton className="h-3 w-40" />
+    </div>
+    {/* Config pills */}
+    <div className="flex flex-wrap items-center gap-1.5">
+      <Skeleton className="h-5 w-24" />
+      <Skeleton className="h-5 w-12" />
+      <Skeleton className="h-5 w-16" />
+    </div>
+    {/* Action */}
+    <div className="flex items-center justify-between pt-0.5">
+      <Skeleton className="h-3 w-28" />
+      <Skeleton className="h-8 w-24" />
+    </div>
   </div>
 );
 

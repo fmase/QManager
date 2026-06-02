@@ -211,24 +211,6 @@
   animation: spark-draw 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* Skeleton shimmer — a masked gradient sweeps left-to-right across the surface.
-   The Apple/iOS loading idiom: a travelling highlight, not an opacity blink.
-   Runs on the system EXPO ease and is suppressed under reduced motion (the
-   sweep element also carries motion-reduce:hidden so it collapses to a calm
-   static block). */
-@keyframes skeleton-shimmer {
-  from {
-    transform: translateX(-100%);
-  }
-  to {
-    transform: translateX(100%);
-  }
-}
-
-.animate-skeleton-shimmer {
-  animation: skeleton-shimmer 1.6s cubic-bezier(0.16, 1, 0.3, 1) infinite;
-}
-
 /* Engine state-dot halo — slow opacity breathe, never scales or bounces */
 @keyframes halo-breathe {
   0% {
@@ -246,8 +228,7 @@
 @media (prefers-reduced-motion: reduce) {
   .animate-pulse-ring,
   .animate-spark-draw,
-  .animate-halo-breathe,
-  .animate-skeleton-shimmer {
+  .animate-halo-breathe {
     animation: none;
   }
 }
