@@ -21,6 +21,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   ToggleGroup,
   ToggleGroupItem,
@@ -621,6 +622,76 @@ export default function AlignmentMeterSection({
             </motion.div>
           )}
         </AnimatePresence>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Loading affordance — built from the shared Skeleton primitive (the app-wide
+// loading standard), shaped to the populated Alignment Meter card so there is
+// no reflow when content lands. Reduced motion is handled by Skeleton itself.
+// ---------------------------------------------------------------------------
+
+function RecordingSlotSkeleton() {
+  return (
+    <div className="rounded-xl border p-4 space-y-3">
+      {/* Label row: icon + name input */}
+      <div className="flex items-center gap-2">
+        <Skeleton className="size-4 shrink-0 rounded-full" />
+        <Skeleton className="h-7 flex-1" />
+      </div>
+      {/* Empty-slot affordance: status line + record button */}
+      <div className="flex items-center justify-center gap-2 py-3">
+        <Skeleton className="size-4 rounded-full" />
+        <Skeleton className="h-3 w-24" />
+      </div>
+      <Skeleton className="h-7 w-full" />
+    </div>
+  );
+}
+
+export function AlignmentMeterSkeleton() {
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex flex-col gap-3 @lg/main:flex-row @lg/main:items-center @lg/main:justify-between">
+          <div className="space-y-2">
+            <Skeleton className="h-5 w-40" />
+            <Skeleton className="h-3 w-64" />
+          </div>
+          <div className="flex items-center gap-2">
+            {/* Antenna-type toggle group */}
+            <Skeleton className="h-7 w-44 rounded-md" />
+            {/* Reset */}
+            <Skeleton className="h-7 w-20 rounded-md" />
+          </div>
+        </div>
+      </CardHeader>
+
+      <CardContent className="space-y-4">
+        {/* Radio-mode badge */}
+        <Skeleton className="h-5 w-16 rounded-full" />
+
+        {/* Live signal preview box */}
+        <div className="rounded-lg border bg-muted/30 p-3 space-y-2">
+          <Skeleton className="h-2.5 w-28" />
+          <div className="grid grid-cols-2 gap-x-6 gap-y-2">
+            {[0, 1].map((i) => (
+              <div key={i} className="space-y-1.5">
+                <Skeleton className="h-3.5 w-16" />
+                <Skeleton className="h-1.5 w-full rounded-full" />
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* 3 recording slots */}
+        <div className="grid grid-cols-1 gap-4 @xl/main:grid-cols-3">
+          {[0, 1, 2].map((i) => (
+            <RecordingSlotSkeleton key={i} />
+          ))}
+        </div>
       </CardContent>
     </Card>
   );

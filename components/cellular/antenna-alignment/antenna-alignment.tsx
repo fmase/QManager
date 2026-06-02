@@ -2,7 +2,6 @@
 
 import { motion, type Variants } from "motion/react";
 import { SignalIcon } from "lucide-react";
-import { Skeleton } from "@/components/ui/skeleton";
 import {
   Empty,
   EmptyDescription,
@@ -14,7 +13,7 @@ import { useTranslation } from "react-i18next";
 import { useModemStatus } from "@/hooks/use-modem-status";
 import { detectRadioMode } from "./utils";
 import { AntennaCard, AntennaCardSkeleton } from "./antenna-card";
-import AlignmentMeterSection from "./alignment-meter";
+import AlignmentMeterSection, { AlignmentMeterSkeleton } from "./alignment-meter";
 
 // ---------------------------------------------------------------------------
 // Legend
@@ -48,24 +47,9 @@ export default function AntennaAlignmentComponent() {
   const spa = data?.signal_per_antenna ?? null;
   const mode = spa ? detectRadioMode(spa) : null;
 
-  if (isLoading) {
-    return (
-      <div className="@container/main mx-auto p-2">
-        <div className="mb-6">
-          <Skeleton className="h-8 w-64" />
-          <Skeleton className="h-4 w-96 mt-2" />
-        </div>
-        <div className="grid grid-cols-1 gap-4 @3xl/main:grid-cols-2 @5xl/main:grid-cols-4">
-          {[0, 1, 2, 3].map((i) => (
-            <AntennaCardSkeleton key={i} />
-          ))}
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="@container/main mx-auto p-2">
+      {/* Static page header — never skeletoned; it doesn't depend on modem data */}
       <div className="mb-6">
         <h1 className="text-3xl font-bold mb-2">{t("antennas.alignment.page.title")}</h1>
         <p className="text-muted-foreground">
@@ -84,7 +68,16 @@ export default function AntennaAlignmentComponent() {
         </div>
       )}
 
-      {spa && mode ? (
+      {isLoading ? (
+        <div className="grid grid-cols-1 gap-4">
+          <AlignmentMeterSkeleton />
+          <div className="grid grid-cols-1 gap-4 @3xl/main:grid-cols-2 @5xl/main:grid-cols-4">
+            {[0, 1, 2, 3].map((i) => (
+              <AntennaCardSkeleton key={i} />
+            ))}
+          </div>
+        </div>
+      ) : spa && mode ? (
         <div className="grid grid-cols-1 gap-4">
           <AlignmentMeterSection spa={spa} mode={mode} />
 

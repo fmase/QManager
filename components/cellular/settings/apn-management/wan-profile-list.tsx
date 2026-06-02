@@ -118,7 +118,7 @@ function WanProfileListSkeleton() {
       </CardHeader>
       <CardContent>
         <div className="grid divide-y divide-border border-y border-border">
-          {Array.from({ length: 3 }).map((_, i) => (
+          {Array.from({ length: 5 }).map((_, i) => (
             <div
               key={i}
               className="grid grid-cols-[auto_1fr_auto] @md/card:grid-cols-[auto_1fr_auto_auto_auto] items-center gap-x-3 gap-y-2 py-3"
