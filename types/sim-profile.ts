@@ -9,7 +9,7 @@
 //   Apply state:     /tmp/qmanager_profile_state.json
 //   Active profile:  /etc/qmanager/active_profile
 //
-// See: CUSTOM_SIM_PROFILE_ARCHITECTURE_v2.md
+// See: docs/features/custom-sim-profiles.md
 // =============================================================================
 
 // --- Profile Data Model ------------------------------------------------------
