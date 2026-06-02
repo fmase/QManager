@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 
@@ -27,6 +28,7 @@ import {
   SelectContent,
   SelectGroup,
   SelectItem,
+  SelectSeparator,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
@@ -76,6 +78,16 @@ import {
 // useScenarioList — the backend validates that scenario refs are known.
 const MAX_WINDOWS = 2;
 
+// Wizard tab order — the "Next" button walks the user forward through these.
+const TAB_ORDER = ["identity", "network", "scenario", "review"] as const;
+
+// Sentinel value for the "+ Create scenario" Select item. Picking it navigates
+// to Connection Scenarios with ?create=1, which that page reads post-mount to
+// open its New Scenario dialog immediately (and then strips the param).
+const CREATE_SCENARIO_VALUE = "__create_scenario__";
+const SCENARIOS_CREATE_HREF =
+  "/cellular/custom-profiles/connection-scenarios?create=1";
+
 interface ScheduleWindow {
   id: number;
   scenario: string;
@@ -119,6 +131,7 @@ const ProfileInputComponent = ({
   onDoneEditing,
 }: ProfileInputProps) => {
   const { t } = useTranslation("cellular");
+  const router = useRouter();
   const { scenarios, nameForId } = useScenarioList();
 
   const [tab, setTab] = React.useState("identity");
@@ -152,6 +165,23 @@ const ProfileInputComponent = ({
   const isVerizon = getMnoPreset(mnoId)?.label === "Verizon";
   const atCap = windows.length >= MAX_WINDOWS;
   const isEditing = editingId !== null;
+  const isReview = tab === "review";
+
+  // Required fields = everything except Preferred IMEI / TTL / HL. The selects
+  // (MNO, IP protocol, CID, default scenario) always carry a value, so only the
+  // three free-text identity/network fields can actually be blank.
+  const requiredFilled =
+    name.trim() !== "" && simIccid.trim() !== "" && apn.trim() !== "";
+
+  // An ICCID may belong to only one profile — a second profile on the same SIM
+  // would make activation ambiguous. Block save when the trimmed ICCID collides
+  // with another stored profile (ignore the row being edited).
+  const trimmedIccid = simIccid.trim();
+  const duplicateIccid =
+    trimmedIccid !== "" &&
+    sim.profiles.some(
+      (p) => p.id !== editingId && (p.sim_iccid ?? "").trim() === trimmedIccid,
+    );
 
   const resetForm = React.useCallback(() => {
     setName("");
@@ -223,6 +253,23 @@ const ProfileInputComponent = ({
 
   const removeWindow = (id: number) =>
     setWindows((prev) => prev.filter((w) => w.id !== id));
+
+  // Default-scenario Select: the "+ Create scenario" item is a sentinel — pick
+  // it to jump to Connection Scenarios with its New dialog already open, instead
+  // of committing it as the selected value.
+  const handleDefaultScenarioChange = (value: string) => {
+    if (value === CREATE_SCENARIO_VALUE) {
+      router.push(SCENARIOS_CREATE_HREF);
+      return;
+    }
+    setDefaultScenario(value);
+  };
+
+  // Wizard navigation: advance to the next tab (no-op on the last/Review tab).
+  const goNext = () => {
+    const idx = TAB_ORDER.indexOf(tab as (typeof TAB_ORDER)[number]);
+    if (idx >= 0 && idx < TAB_ORDER.length - 1) setTab(TAB_ORDER[idx + 1]);
+  };
 
   // --- MNO preset selection (with Verizon guard) ----------------------------
   const applyMno = React.useCallback((id: string) => {
@@ -312,6 +359,21 @@ const ProfileInputComponent = ({
       setTab("identity");
       return;
     }
+    if (!simIccid.trim()) {
+      toast.error(t("custom_profiles.form.fields.sim_iccid_required"));
+      setTab("identity");
+      return;
+    }
+    if (duplicateIccid) {
+      toast.error(t("custom_profiles.form.fields.sim_iccid_duplicate"));
+      setTab("identity");
+      return;
+    }
+    if (!apn.trim()) {
+      toast.error(t("custom_profiles.form.fields.apn_name_required"));
+      setTab("network");
+      return;
+    }
     setSubmitting(true);
     const data = buildFormData();
     const ok = isEditing
@@ -332,7 +394,7 @@ const ProfileInputComponent = ({
     }
   };
 
-  const handleCancel = () => {
+  const handleClear = () => {
     resetForm();
     onDoneEditing();
   };
@@ -414,9 +476,14 @@ const ProfileInputComponent = ({
                         )}
                         value={simIccid}
                         onChange={(e) => setSimIccid(e.target.value)}
+                        aria-invalid={duplicateIccid || undefined}
                       />
-                      <FieldDescription>
-                        {t("custom_profiles.form.sim_iccid_hint_inline")}
+                      <FieldDescription
+                        className={duplicateIccid ? "text-destructive" : undefined}
+                      >
+                        {duplicateIccid
+                          ? t("custom_profiles.form.fields.sim_iccid_duplicate")
+                          : t("custom_profiles.form.sim_iccid_hint_inline")}
                       </FieldDescription>
                     </Field>
                     <FieldSeparator />
@@ -599,7 +666,7 @@ const ProfileInputComponent = ({
                       </FieldLabel>
                       <Select
                         value={defaultScenario}
-                        onValueChange={setDefaultScenario}
+                        onValueChange={handleDefaultScenarioChange}
                       >
                         <SelectTrigger id="default-scenario">
                           <SelectValue
@@ -616,6 +683,11 @@ const ProfileInputComponent = ({
                               </SelectItem>
                             ))}
                           </SelectGroup>
+                          <SelectSeparator />
+                          <SelectItem value={CREATE_SCENARIO_VALUE}>
+                            <PlusIcon className="size-4" />
+                            {t("custom_profiles.form.create_scenario_option")}
+                          </SelectItem>
                         </SelectContent>
                       </Select>
                       <FieldDescription>
@@ -893,14 +965,23 @@ const ProfileInputComponent = ({
             </Tabs>
             <FieldSeparator />
             <Field orientation="horizontal">
-              <Button type="submit" disabled={submitting}>
-                {submitting && <Loader2Icon className="animate-spin" />}
-                {isEditing
-                  ? t("custom_profiles.form.submit_edit")
-                  : t("custom_profiles.form.submit_add")}
-              </Button>
-              <Button variant="outline" type="button" onClick={handleCancel}>
-                {t("custom_profiles.form.cancel")}
+              {isReview ? (
+                <Button
+                  type="submit"
+                  disabled={submitting || !requiredFilled || duplicateIccid}
+                >
+                  {submitting && <Loader2Icon className="animate-spin" />}
+                  {isEditing
+                    ? t("custom_profiles.form.submit_edit")
+                    : t("custom_profiles.form.submit_add")}
+                </Button>
+              ) : (
+                <Button type="button" onClick={goNext}>
+                  {t("custom_profiles.form.next")}
+                </Button>
+              )}
+              <Button variant="outline" type="button" onClick={handleClear}>
+                {t("custom_profiles.form.clear")}
               </Button>
             </Field>
           </FieldGroup>

@@ -15,6 +15,7 @@ import {
   CheckCircle2Icon,
   XCircleIcon,
   Loader2,
+  EllipsisIcon,
   ClockIcon,
   MinusCircleIcon,
   RotateCwIcon,
@@ -118,7 +119,9 @@ function HeroGlyph({ tone, status }: { tone: Tone; status: string }) {
       {Icon ? (
         <Icon className="size-7" />
       ) : (
-        <Loader2 className="size-7 animate-spin" />
+        // In-flight: a calm pulsing ellipsis (not a spinner) so the focal glyph
+        // reads as "working" without the rotation that competes with the fill bar.
+        <EllipsisIcon className="size-7 animate-pulse motion-reduce:animate-none" />
       )}
     </span>
   );
@@ -244,10 +247,11 @@ export function ApplyProgressDialog({
           )}
         </DialogHeader>
 
-        {/* Status hero — the single focal point. */}
+        {/* Status hero — the single focal point. Text block reserves a fixed
+            two-line height so advancing between steps doesn't resize the dialog. */}
         <div className="flex flex-col items-center gap-3 py-2 text-center">
           <HeroGlyph tone={tone} status={status} />
-          <div className="space-y-1">
+          <div className="flex min-h-[2.75rem] flex-col justify-center space-y-1">
             <p className="text-base font-semibold tracking-tight">{headline}</p>
             {subtext && (
               <p className="text-muted-foreground text-sm">{subtext}</p>
@@ -337,14 +341,15 @@ export function ApplyProgressDialog({
           </div>
         )}
 
-        {/* Close — only on terminal states */}
-        {(isTerminal || (error && !applyState)) && (
-          <div className="flex justify-end">
+        {/* Footer — height reserved (min-h) so the button appearing at a terminal
+            state doesn't resize the dialog. Button renders only when actionable. */}
+        <div className="flex min-h-9 justify-end">
+          {(isTerminal || (error && !applyState)) && (
             <Button variant="outline" onClick={onClose}>
               {t("actions.close", { ns: "common" })}
             </Button>
-          </div>
-        )}
+          )}
+        </div>
       </DialogContent>
     </Dialog>
   );
