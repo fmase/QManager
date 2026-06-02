@@ -1260,16 +1260,9 @@
         "unnamed": "Senza nome",
         "no_apn": "Nessun APN impostato",
         "status": {
-          "connected": "Connesso",
-          "error": "Errore",
-          "disconnected": "Disconnesso"
-        },
-        "apn_type": {
-          "ims_label": "IMS",
-          "sos_label": "SOS",
-          "ims_tooltip": "Profilo IMS — gestisce Voice over LTE (VoLTE) e SMS over IMS",
-          "sos_tooltip": "Profilo servizi di emergenza (SOS) — necessario per le chiamate 911 / E911",
-          "other_tooltip": "Profilo {{label}} fornito dall'operatore"
+          "in_use": "In uso",
+          "idle": "Inattivo",
+          "empty": "Vuoto"
         },
         "aria": {
           "enable_switch": "Abilita profilo {{index}}",
@@ -1285,16 +1278,7 @@
       },
       "edit": {
         "title": "Modifica profilo {{index}}",
-        "description_default": "Configura APN, autenticazione e impostazioni di connessione per il profilo {{index}}.",
-        "description_carrier": "Profilo fornito dall'operatore: {{type}}",
-        "carrier_type": {
-          "ims": "IMS (Voice over LTE)",
-          "sos": "Servizi di emergenza (SOS)"
-        },
-        "carrier_alert": {
-          "title": "Profilo fornito dall'operatore",
-          "description": "Questo profilo è gestito dal tuo operatore e non può essere modificato. Le modifiche ai profili IMS e di emergenza possono interrompere i servizi voce e di emergenza."
-        },
+        "description_default": "Configura l'APN e le impostazioni di connessione per il profilo {{index}}.",
         "fields": {
           "name": {
             "label": "Nome",
@@ -1315,60 +1299,16 @@
               "ipv4v6": "IPv4v6"
             }
           },
-          "auth_type": {
-            "label": "Tipo di autenticazione",
-            "placeholder": "Seleziona tipo di autenticazione",
-            "aria": "Tipo di autenticazione",
-            "options": {
-              "none": "Nessuno",
-              "pap": "PAP",
-              "chap": "CHAP"
-            }
-          },
-          "username": {
-            "label": "Nome utente",
-            "placeholder": "Nome utente"
-          },
-          "password": {
-            "label": "Password",
-            "placeholder": "Password",
-            "show_aria": "Mostra password",
-            "hide_aria": "Nascondi password"
-          },
-          "mtu": {
-            "label": "MTU",
-            "placeholder": "1500 (predefinito)",
-            "error_range": "L'MTU deve essere compreso tra 1 e 1500"
-          },
           "modem_profile": {
-            "label": "Profilo modem",
+            "label": "CID",
             "placeholder": "Seleziona CID",
-            "aria": "Profilo modem (CID)",
-            "option_template": "CID {{cid}}"
-          },
-          "vlan": {
-            "label": "Mappa su LAN / VLAN",
-            "placeholder": "Predefinito (bridge0)",
-            "aria": "Mappatura VLAN",
-            "option_default": "Predefinito (bridge0)",
-            "option_vlan": "VLAN {{n}}"
-          },
-          "default_route": {
-            "label": "Route predefinita",
-            "tooltip": "Invia il traffico internet di questo dispositivo attraverso la connessione di questo profilo. Solo un profilo alla volta può essere la route predefinita.",
-            "info_aria": "Che cos'è la route predefinita?",
-            "aria": "Imposta come route predefinita"
-          },
-          "ip_passthrough": {
-            "label": "IP Passthrough",
-            "tooltip": "Passa l'IP WAN pubblico del modem direttamente a un dispositivo connesso, bypassando il NAT. Utile per un router a valle, una console o un server.",
-            "info_aria": "Che cos'è l'IP Passthrough?",
-            "aria": "Abilita IP passthrough"
+            "aria": "Contesto PDP (CID)",
+            "option_template": "CID {{cid}}",
+            "for_internet": "Per Internet"
           }
         },
         "save_button": "Salva profilo",
         "cancel": "Annulla",
-        "back": "Indietro",
         "toast": {
           "saved": "Profilo {{index}} salvato correttamente",
           "save_error": "Impossibile salvare il profilo {{index}}"

@@ -1260,16 +1260,9 @@
         "unnamed": "Tanpa Nama",
         "no_apn": "APN belum diatur",
         "status": {
-          "connected": "Terhubung",
-          "error": "Kesalahan",
-          "disconnected": "Terputus"
-        },
-        "apn_type": {
-          "ims_label": "IMS",
-          "sos_label": "SOS",
-          "ims_tooltip": "Profil IMS — menangani Voice over LTE (VoLTE) dan SMS over IMS",
-          "sos_tooltip": "Profil layanan darurat (SOS) — diperlukan untuk panggilan 911 / E911",
-          "other_tooltip": "Profil {{label}} yang disediakan operator"
+          "in_use": "Digunakan",
+          "idle": "Siaga",
+          "empty": "Kosong"
         },
         "aria": {
           "enable_switch": "Aktifkan profil {{index}}",
@@ -1285,16 +1278,7 @@
       },
       "edit": {
         "title": "Edit Profil {{index}}",
-        "description_default": "Konfigurasi APN, autentikasi, dan pengaturan koneksi untuk profil {{index}}.",
-        "description_carrier": "Profil yang disediakan operator: {{type}}",
-        "carrier_type": {
-          "ims": "IMS (Voice over LTE)",
-          "sos": "Layanan Darurat (SOS)"
-        },
-        "carrier_alert": {
-          "title": "Profil yang Disediakan Operator",
-          "description": "Profil ini dikelola oleh operator Anda dan tidak dapat diedit. Perubahan pada profil IMS dan darurat dapat mengganggu layanan suara dan darurat."
-        },
+        "description_default": "Konfigurasi APN dan pengaturan koneksi untuk profil {{index}}.",
         "fields": {
           "name": {
             "label": "Nama",
@@ -1315,60 +1299,16 @@
               "ipv4v6": "IPv4v6"
             }
           },
-          "auth_type": {
-            "label": "Tipe Autentikasi",
-            "placeholder": "Pilih tipe autentikasi",
-            "aria": "Tipe Autentikasi",
-            "options": {
-              "none": "Tidak Ada",
-              "pap": "PAP",
-              "chap": "CHAP"
-            }
-          },
-          "username": {
-            "label": "Nama Pengguna",
-            "placeholder": "Nama Pengguna"
-          },
-          "password": {
-            "label": "Kata Sandi",
-            "placeholder": "Kata Sandi",
-            "show_aria": "Tampilkan kata sandi",
-            "hide_aria": "Sembunyikan kata sandi"
-          },
-          "mtu": {
-            "label": "MTU",
-            "placeholder": "1500 (default)",
-            "error_range": "MTU harus antara 1 dan 1500"
-          },
           "modem_profile": {
-            "label": "Profil Modem",
+            "label": "CID",
             "placeholder": "Pilih CID",
-            "aria": "Profil Modem (CID)",
-            "option_template": "CID {{cid}}"
-          },
-          "vlan": {
-            "label": "Petakan ke LAN / VLAN",
-            "placeholder": "Default (bridge0)",
-            "aria": "Pemetaan VLAN",
-            "option_default": "Default (bridge0)",
-            "option_vlan": "VLAN {{n}}"
-          },
-          "default_route": {
-            "label": "Rute Default",
-            "tooltip": "Mengirim lalu lintas internet perangkat ini melalui koneksi profil ini. Hanya satu profil yang dapat menjadi rute default pada satu waktu.",
-            "info_aria": "Apa itu Rute Default?",
-            "aria": "Atur sebagai rute default"
-          },
-          "ip_passthrough": {
-            "label": "IP Passthrough",
-            "tooltip": "Memberikan IP WAN publik modem langsung ke satu perangkat yang terhubung, melewati NAT. Berguna untuk router, konsol, atau server hilir.",
-            "info_aria": "Apa itu IP Passthrough?",
-            "aria": "Aktifkan IP passthrough"
+            "aria": "Konteks PDP (CID)",
+            "option_template": "CID {{cid}}",
+            "for_internet": "Untuk Internet"
           }
         },
         "save_button": "Simpan Profil",
         "cancel": "Batal",
-        "back": "Kembali",
         "toast": {
           "saved": "Profil {{index}} berhasil disimpan",
           "save_error": "Gagal menyimpan profil {{index}}"

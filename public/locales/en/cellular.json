@@ -1285,16 +1285,9 @@
         "unnamed": "Unnamed",
         "no_apn": "No APN set",
         "status": {
-          "connected": "Connected",
-          "error": "Error",
-          "disconnected": "Disconnected"
-        },
-        "apn_type": {
-          "ims_label": "IMS",
-          "sos_label": "SOS",
-          "ims_tooltip": "IMS profile — handles Voice over LTE (VoLTE) and SMS over IMS",
-          "sos_tooltip": "Emergency services profile (SOS) — required for 911 / E911 calls",
-          "other_tooltip": "Carrier-provisioned {{label}} profile"
+          "in_use": "In Use",
+          "idle": "Idle",
+          "empty": "Empty"
         },
         "aria": {
           "enable_switch": "Enable profile {{index}}",
@@ -1310,16 +1303,7 @@
       },
       "edit": {
         "title": "Edit Profile {{index}}",
-        "description_default": "Configure APN, authentication, and connection settings for profile {{index}}.",
-        "description_carrier": "Carrier-provisioned profile: {{type}}",
-        "carrier_type": {
-          "ims": "IMS (Voice over LTE)",
-          "sos": "Emergency Services (SOS)"
-        },
-        "carrier_alert": {
-          "title": "Carrier-Provisioned Profile",
-          "description": "This profile is managed by your carrier and cannot be edited. Changes to IMS and emergency profiles may disrupt voice and emergency services."
-        },
+        "description_default": "Configure the APN and connection settings for profile {{index}}.",
         "fields": {
           "name": {
             "label": "Name",
@@ -1340,60 +1324,16 @@
               "ipv4v6": "IPv4v6"
             }
           },
-          "auth_type": {
-            "label": "Auth Type",
-            "placeholder": "Select auth type",
-            "aria": "Authentication Type",
-            "options": {
-              "none": "None",
-              "pap": "PAP",
-              "chap": "CHAP"
-            }
-          },
-          "username": {
-            "label": "Username",
-            "placeholder": "Username"
-          },
-          "password": {
-            "label": "Password",
-            "placeholder": "Password",
-            "show_aria": "Show password",
-            "hide_aria": "Hide password"
-          },
-          "mtu": {
-            "label": "MTU",
-            "placeholder": "1500 (default)",
-            "error_range": "MTU must be between 1 and 1500"
-          },
           "modem_profile": {
-            "label": "Modem Profile",
+            "label": "CID",
             "placeholder": "Select CID",
-            "aria": "Modem Profile (CID)",
-            "option_template": "CID {{cid}}"
-          },
-          "vlan": {
-            "label": "Map to LAN / VLAN",
-            "placeholder": "Default (bridge0)",
-            "aria": "VLAN mapping",
-            "option_default": "Default (bridge0)",
-            "option_vlan": "VLAN {{n}}"
-          },
-          "default_route": {
-            "label": "Default Route",
-            "tooltip": "Sends this device's internet traffic through this profile's connection. Only one profile can be the default route at a time.",
-            "info_aria": "What is Default Route?",
-            "aria": "Set as default route"
-          },
-          "ip_passthrough": {
-            "label": "IP Passthrough",
-            "tooltip": "Hands the modem's public WAN IP straight to one connected device, bypassing NAT. Useful for a downstream router, console, or server.",
-            "info_aria": "What is IP Passthrough?",
-            "aria": "Enable IP passthrough"
+            "aria": "PDP context (CID)",
+            "option_template": "CID {{cid}}",
+            "for_internet": "For Internet"
           }
         },
         "save_button": "Save Profile",
         "cancel": "Cancel",
-        "back": "Back",
         "toast": {
           "saved": "Profile {{index}} saved successfully",
           "save_error": "Failed to save profile {{index}}"

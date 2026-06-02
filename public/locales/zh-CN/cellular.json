@@ -1285,16 +1285,9 @@
         "unnamed": "未命名",
         "no_apn": "未设置 APN",
         "status": {
-          "connected": "已连接",
-          "error": "错误",
-          "disconnected": "已断开"
-        },
-        "apn_type": {
-          "ims_label": "IMS",
-          "sos_label": "SOS",
-          "ims_tooltip": "IMS 配置文件 — 处理 LTE 语音（VoLTE）和 IMS 短信",
-          "sos_tooltip": "紧急服务配置文件（SOS）— 911 / E911 通话所需",
-          "other_tooltip": "运营商预配的 {{label}} 配置文件"
+          "in_use": "使用中",
+          "idle": "空闲",
+          "empty": "空"
         },
         "aria": {
           "enable_switch": "启用配置文件 {{index}}",
@@ -1310,16 +1303,7 @@
       },
       "edit": {
         "title": "编辑配置文件 {{index}}",
-        "description_default": "为配置文件 {{index}} 配置 APN、身份验证和连接设置。",
-        "description_carrier": "运营商预配的配置文件：{{type}}",
-        "carrier_type": {
-          "ims": "IMS（LTE 语音）",
-          "sos": "紧急服务（SOS）"
-        },
-        "carrier_alert": {
-          "title": "运营商预配的配置文件",
-          "description": "此配置文件由您的运营商管理，无法编辑。修改 IMS 和紧急配置文件可能会中断语音和紧急服务。"
-        },
+        "description_default": "为配置文件 {{index}} 配置 APN 和连接设置。",
         "fields": {
           "name": {
             "label": "名称",
@@ -1340,60 +1324,16 @@
               "ipv4v6": "IPv4v6"
             }
           },
-          "auth_type": {
-            "label": "身份验证类型",
-            "placeholder": "选择身份验证类型",
-            "aria": "身份验证类型",
-            "options": {
-              "none": "无",
-              "pap": "PAP",
-              "chap": "CHAP"
-            }
-          },
-          "username": {
-            "label": "用户名",
-            "placeholder": "用户名"
-          },
-          "password": {
-            "label": "密码",
-            "placeholder": "密码",
-            "show_aria": "显示密码",
-            "hide_aria": "隐藏密码"
-          },
-          "mtu": {
-            "label": "MTU",
-            "placeholder": "1500（默认）",
-            "error_range": "MTU 必须在 1 到 1500 之间"
-          },
           "modem_profile": {
-            "label": "调制解调器配置文件",
+            "label": "CID",
             "placeholder": "选择 CID",
-            "aria": "调制解调器配置文件（CID）",
-            "option_template": "CID {{cid}}"
-          },
-          "vlan": {
-            "label": "映射到 LAN / VLAN",
-            "placeholder": "默认（bridge0）",
-            "aria": "VLAN 映射",
-            "option_default": "默认（bridge0）",
-            "option_vlan": "VLAN {{n}}"
-          },
-          "default_route": {
-            "label": "默认路由",
-            "tooltip": "通过此配置文件的连接发送本设备的互联网流量。同一时间只能有一个配置文件作为默认路由。",
-            "info_aria": "什么是默认路由？",
-            "aria": "设为默认路由"
-          },
-          "ip_passthrough": {
-            "label": "IP 直通",
-            "tooltip": "将调制解调器的公网 WAN IP 直接传递给一台已连接设备，绕过 NAT。适用于下游路由器、游戏主机或服务器。",
-            "info_aria": "什么是 IP 直通？",
-            "aria": "启用 IP 直通"
+            "aria": "PDP 上下文（CID）",
+            "option_template": "CID {{cid}}",
+            "for_internet": "用于互联网"
           }
         },
         "save_button": "保存配置文件",
         "cancel": "取消",
-        "back": "返回",
         "toast": {
           "saved": "配置文件 {{index}} 已成功保存",
           "save_error": "保存配置文件 {{index}} 失败"

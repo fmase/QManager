@@ -11,11 +11,12 @@ import type {
 } from "@/types/wan-profiles";
 
 // =============================================================================
-// useWanProfiles — WAN Profile Management Hook
+// useWanProfiles — APN (WAN) Profile Management Hook (AT-only)
 // =============================================================================
-// Fetches WAN profiles (up to 6 slots) on mount. The backend reports its
-// data source: "rdb" (Casa wmmd) or "at" (AT-only, e.g. RM520N-GL).
-// Provides saveProfile and toggleProfile for configuration changes via POST.
+// Fetches the modem's data APN profiles on mount. The backend persists profiles
+// to a config file and detects the live WAN-bearing CID each request, so the
+// hook also exposes `activeCid` / `internetCid`. Provides saveProfile and
+// toggleProfile for configuration changes via POST.
 //
 // Backend endpoint:
 //   GET/POST /cgi-bin/quecmanager/cellular/apn.sh
@@ -23,41 +24,40 @@ import type {
 
 const CGI_ENDPOINT = "/cgi-bin/quecmanager/cellular/apn.sh";
 
-// After a successful POST on the RDB path, optimistically merge the request
-// into local state so the UI updates instantly, then kick off a background
-// reconciliation fetch as a safety net against a racing wmmd readback.
-//
-// On the AT path the reconcile is skipped entirely: the CGI write is fully
-// synchronous and there is no daemon to race. A reconcile would also be
-// wasteful — an AT `list` runs ~5+ serialized AT commands (2-4 s), so a
-// short-delay fetch would just pull stale data mid-flight.
-const RECONCILE_DELAY_MS = 1000;
+// A save runs an AT+COPS detach/attach cycle so the new APN is negotiated at
+// re-attach. AT+COPS=0 returns OK before the attach fully completes, so the
+// fresh active_cid/enabled state isn't readable immediately — a short delayed
+// silent refresh reconciles the optimistic patch against reality.
+const RECONCILE_DELAY_MS = 1500;
 
 export interface UseWanProfilesReturn {
-  /** All WAN profiles from RDB (null before first fetch) */
+  /** All data APN profiles (null before first fetch) */
   profiles: WanProfile[] | null;
   /** Maximum number of profile slots (typically 6) */
   maxProfiles: number;
-  /** Backend data source ("rdb" or "at"); drives which controls the UI shows */
-  dataSource: "rdb" | "at";
+  /** The live WAN-bearing CID, or null before first fetch */
+  activeCid: number | null;
+  /** The CID the ISP uses for data (== activeCid), or null before first fetch */
+  internetCid: number | null;
   /** True while initial fetch is in progress */
   isLoading: boolean;
   /** True while a save/toggle operation is in progress */
   isSaving: boolean;
   /** Error message if fetch or save failed */
   error: string | null;
-  /** Save a profile's configuration. Returns true on success. */
+  /** Save a profile's configuration to the chosen CID. Returns true on success. */
   saveProfile: (index: number, request: WanProfileSaveRequest) => Promise<boolean>;
   /** Toggle a profile's enabled state. Returns true on success. */
   toggleProfile: (index: number, enabled: boolean) => Promise<boolean>;
-  /** Re-fetch all WAN profiles from RDB */
+  /** Re-fetch all APN profiles */
   refresh: () => void;
 }
 
 export function useWanProfiles(): UseWanProfilesReturn {
   const [profiles, setProfiles] = useState<WanProfile[] | null>(null);
   const [maxProfiles, setMaxProfiles] = useState(6);
-  const [dataSource, setDataSource] = useState<"rdb" | "at">("at");
+  const [activeCid, setActiveCid] = useState<number | null>(null);
+  const [internetCid, setInternetCid] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -72,7 +72,7 @@ export function useWanProfiles(): UseWanProfilesReturn {
   }, []);
 
   // ---------------------------------------------------------------------------
-  // Fetch WAN profiles
+  // Fetch APN profiles
   // ---------------------------------------------------------------------------
   const fetchProfiles = useCallback(async (silent = false) => {
     if (!silent) setIsLoading(true);
@@ -88,17 +88,20 @@ export function useWanProfiles(): UseWanProfilesReturn {
       if (!mountedRef.current) return;
 
       if (!data.success) {
-        setError(data.error || "Failed to fetch WAN profiles");
+        setError(data.error || "Failed to fetch APN profiles");
         return;
       }
 
       setProfiles(data.profiles);
       setMaxProfiles(data.max_profiles);
-      setDataSource(data.data_source === "rdb" ? "rdb" : "at");
+      setActiveCid(typeof data.active_cid === "number" ? data.active_cid : null);
+      setInternetCid(
+        typeof data.internet_cid === "number" ? data.internet_cid : null
+      );
     } catch (err) {
       if (!mountedRef.current) return;
       setError(
-        err instanceof Error ? err.message : "Failed to fetch WAN profiles"
+        err instanceof Error ? err.message : "Failed to fetch APN profiles"
       );
     } finally {
       if (mountedRef.current && !silent) {
@@ -114,7 +117,7 @@ export function useWanProfiles(): UseWanProfilesReturn {
 
   // ---------------------------------------------------------------------------
   // Merge a partial update into the matching profile slot. Returns immediately;
-  // a background fetch reconciles with reality shortly after.
+  // a delayed silent refresh reconciles with reality shortly after.
   // ---------------------------------------------------------------------------
   const applyOptimistic = useCallback(
     (index: number, patch: Partial<WanProfile>) => {
@@ -125,16 +128,11 @@ export function useWanProfiles(): UseWanProfilesReturn {
     []
   );
 
-  // Fire-and-forget background fetch to reconcile optimistic state against
-  // the canonical read. On the RDB path this is a safety net against a
-  // racing wmmd readback. On the AT path the CGI write is synchronous and
-  // there is no racing daemon, so the reconcile is skipped entirely.
   const scheduleReconcile = useCallback(() => {
-    if (dataSource === "at") return;
     setTimeout(() => {
       if (mountedRef.current) fetchProfiles(true);
     }, RECONCILE_DELAY_MS);
-  }, [fetchProfiles, dataSource]);
+  }, [fetchProfiles]);
 
   // ---------------------------------------------------------------------------
   // Save profile configuration
@@ -159,31 +157,21 @@ export function useWanProfiles(): UseWanProfilesReturn {
         if (!mountedRef.current) return false;
 
         if (!data.success) {
-          setError(data.error || "Failed to save WAN profile");
+          setError(data.error || "Failed to save APN profile");
           return false;
         }
 
-        // Optimistically reflect the save in local state for 0ms perceived
-        // feedback. On RDB a background reconcile follows; on AT the write
-        // is synchronous so the optimistic patch is already canonical.
         applyOptimistic(index, {
           name: request.name,
           apn: request.apn,
           pdp_type: request.pdp_type,
-          auth_type: request.auth_type,
-          username: request.username,
-          mtu: request.mtu,
-          ip_passthrough: request.ip_passthrough,
-          modem_profile: request.modem_profile,
-          default_route: request.default_route,
-          vlan_index: request.vlan_index,
         });
         scheduleReconcile();
         return true;
       } catch (err) {
         if (!mountedRef.current) return false;
         setError(
-          err instanceof Error ? err.message : "Failed to save WAN profile"
+          err instanceof Error ? err.message : "Failed to save APN profile"
         );
         return false;
       } finally {
@@ -218,7 +206,7 @@ export function useWanProfiles(): UseWanProfilesReturn {
         if (!mountedRef.current) return false;
 
         if (!data.success) {
-          setError(data.error || "Failed to toggle WAN profile");
+          setError(data.error || "Failed to toggle APN profile");
           return false;
         }
 
@@ -228,7 +216,7 @@ export function useWanProfiles(): UseWanProfilesReturn {
       } catch (err) {
         if (!mountedRef.current) return false;
         setError(
-          err instanceof Error ? err.message : "Failed to toggle WAN profile"
+          err instanceof Error ? err.message : "Failed to toggle APN profile"
         );
         return false;
       } finally {
@@ -243,7 +231,8 @@ export function useWanProfiles(): UseWanProfilesReturn {
   return {
     profiles,
     maxProfiles,
-    dataSource,
+    activeCid,
+    internetCid,
     isLoading,
     isSaving,
     error,

@@ -28,7 +28,7 @@ const APNSettingsComponent = () => {
 
   const {
     profiles,
-    dataSource,
+    internetCid,
     isLoading,
     isSaving,
     error,
@@ -146,7 +146,7 @@ const APNSettingsComponent = () => {
             key={editingProfile.index}
             profile={editingProfile}
             isSaving={isSaving}
-            dataSource={dataSource}
+            internetCid={internetCid}
             onSave={saveProfile}
             onCancel={() => setEditingIndex(null)}
           />

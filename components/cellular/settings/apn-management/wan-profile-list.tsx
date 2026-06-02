@@ -15,15 +15,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
-import {
-  CheckCircle2Icon,
-  MinusCircleIcon,
-  XCircleIcon,
-  PencilIcon,
-} from "lucide-react";
+import { GlobeIcon, MinusCircleIcon, PencilIcon } from "lucide-react";
 
 import type { WanProfile } from "@/types/wan-profiles";
-import { isCarrierProfile, isProfileConnected } from "@/types/wan-profiles";
 
 // =============================================================================
 // Props
@@ -57,42 +51,45 @@ const itemVariants: Variants = {
 };
 
 // =============================================================================
-// Status Badge
+// Status Badge — "In Use" marks the live WAN-bearing (Internet) APN.
 // =============================================================================
 
 function ProfileStatusBadge({ profile }: { profile: WanProfile }) {
   const { t } = useTranslation("cellular");
-  const connected = isProfileConnected(profile);
+  const configured = !!profile.apn;
 
-  if (connected) {
-    const label = t("core_settings.apn.list.status.connected");
+  // "In Use" only when this CID is the live WAN bearer AND it actually has an
+  // APN — an empty default-fallback CID must never read as in use.
+  if (profile.is_active && configured) {
+    const label = t("core_settings.apn.list.status.in_use");
     return (
       <Badge
         variant="outline"
         className="bg-success/15 text-success hover:bg-success/20 border-success/30"
         title={label}
       >
-        <CheckCircle2Icon className="size-3" />
+        <GlobeIcon className="size-3" />
         <span className="sr-only @xs/card:not-sr-only">{label}</span>
       </Badge>
     );
   }
 
-  if (profile.pdp_error && profile.enabled) {
-    const label = t("core_settings.apn.list.status.error");
+  // Unconfigured slot — empty, awaiting an APN.
+  if (!configured) {
+    const label = t("core_settings.apn.list.status.empty");
     return (
       <Badge
         variant="outline"
-        className="bg-destructive/15 text-destructive hover:bg-destructive/20 border-destructive/30"
+        className="bg-muted/40 text-muted-foreground/70 border-muted-foreground/20"
         title={label}
       >
-        <XCircleIcon className="size-3" />
+        <MinusCircleIcon className="size-3" />
         <span className="sr-only @xs/card:not-sr-only">{label}</span>
       </Badge>
     );
   }
 
-  const label = t("core_settings.apn.list.status.disconnected");
+  const label = t("core_settings.apn.list.status.idle");
   return (
     <Badge
       variant="outline"
@@ -101,38 +98,6 @@ function ProfileStatusBadge({ profile }: { profile: WanProfile }) {
     >
       <MinusCircleIcon className="size-3" />
       <span className="sr-only @xs/card:not-sr-only">{label}</span>
-    </Badge>
-  );
-}
-
-// =============================================================================
-// APN Type Badge (for carrier-provisioned profiles)
-// =============================================================================
-
-function ApnTypeBadge({ apnType }: { apnType: string }) {
-  const { t } = useTranslation("cellular");
-  if (apnType === "default" || !apnType) return null;
-
-  const label =
-    apnType === "ims"
-      ? t("core_settings.apn.list.apn_type.ims_label")
-      : apnType === "emergency"
-        ? t("core_settings.apn.list.apn_type.sos_label")
-        : apnType.toUpperCase();
-  const tooltip =
-    apnType === "ims"
-      ? t("core_settings.apn.list.apn_type.ims_tooltip")
-      : apnType === "emergency"
-        ? t("core_settings.apn.list.apn_type.sos_tooltip")
-        : t("core_settings.apn.list.apn_type.other_tooltip", { label });
-
-  return (
-    <Badge
-      variant="outline"
-      className="bg-info/15 text-info hover:bg-info/20 border-info/30"
-      title={tooltip}
-    >
-      {label}
     </Badge>
   );
 }
@@ -153,7 +118,7 @@ function WanProfileListSkeleton() {
       </CardHeader>
       <CardContent>
         <div className="grid divide-y divide-border border-y border-border">
-          {Array.from({ length: 6 }).map((_, i) => (
+          {Array.from({ length: 3 }).map((_, i) => (
             <div
               key={i}
               className="grid grid-cols-[auto_1fr_auto] @md/card:grid-cols-[auto_1fr_auto_auto_auto] items-center gap-x-3 gap-y-2 py-3"
@@ -237,7 +202,6 @@ export default function WanProfileListCard({
             animate="visible"
           >
             {profiles.map((profile) => {
-              const carrier = isCarrierProfile(profile);
               const isEditing = editingIndex === profile.index;
 
               return (
@@ -250,7 +214,7 @@ export default function WanProfileListCard({
                     isEditing ? "bg-accent/50" : ""
                   }`}
                 >
-                  {/* Profile number */}
+                  {/* CID */}
                   <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold text-muted-foreground tabular-nums">
                     {profile.index}
                   </span>
@@ -265,7 +229,6 @@ export default function WanProfileListCard({
                           </span>
                         )}
                       </p>
-                      <ApnTypeBadge apnType={profile.apn_type} />
                     </div>
                     <p className="text-xs text-muted-foreground truncate">
                       {profile.apn || t("core_settings.apn.list.no_apn")}
@@ -282,7 +245,7 @@ export default function WanProfileListCard({
                       onCheckedChange={(checked) =>
                         handleToggle(profile, checked)
                       }
-                      disabled={isSaving || carrier}
+                      disabled={isSaving || !profile.apn}
                       aria-label={
                         profile.enabled
                           ? t("core_settings.apn.list.aria.disable_switch", { index: profile.index })
