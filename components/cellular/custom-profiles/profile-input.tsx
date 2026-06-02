@@ -4,6 +4,7 @@ import React from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 
 import {
   Card,
@@ -78,8 +79,32 @@ import {
 // useScenarioList — the backend validates that scenario refs are known.
 const MAX_WINDOWS = 2;
 
+// System EXPO ease-out — the silky settle used across QManager motion.
+const EXPO = [0.16, 1, 0.3, 1] as const;
+
 // Wizard tab order — the "Next" button walks the user forward through these.
 const TAB_ORDER = ["identity", "network", "scenario", "review"] as const;
+
+// One wizard step. Slides in from the direction of travel (+ forward, - back)
+// and fades, on the system EXPO curve. Reduced motion shows it instantly.
+const WizardPanel = ({
+  dir,
+  children,
+}: {
+  dir: number;
+  children: React.ReactNode;
+}) => {
+  const reduceMotion = useReducedMotion();
+  return (
+    <motion.div
+      initial={reduceMotion ? false : { opacity: 0, x: dir * 12 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={reduceMotion ? { duration: 0 } : { duration: 0.22, ease: EXPO }}
+    >
+      {children}
+    </motion.div>
+  );
+};
 
 // Sentinel value for the "+ Create scenario" Select item. Picking it navigates
 // to Connection Scenarios with ?create=1, which that page reads post-mount to
@@ -135,7 +160,25 @@ const ProfileInputComponent = ({
   const { scenarios, nameForId } = useScenarioList();
 
   const [tab, setTab] = React.useState("identity");
+  const [tabDir, setTabDir] = React.useState(1);
   const [submitting, setSubmitting] = React.useState(false);
+  const reduceMotion = useReducedMotion();
+
+  // Route every tab change through here so the wizard panel knows which way it
+  // travelled (forward from Next / a later tab, back from an earlier tab or an
+  // Edit jump on Review). Direction drives the slide-in offset sign.
+  const changeTab = React.useCallback(
+    (next: string) => {
+      setTabDir(
+        TAB_ORDER.indexOf(next as (typeof TAB_ORDER)[number]) >=
+          TAB_ORDER.indexOf(tab as (typeof TAB_ORDER)[number])
+          ? 1
+          : -1,
+      );
+      setTab(next);
+    },
+    [tab],
+  );
 
   // --- Identity -------------------------------------------------------------
   const [name, setName] = React.useState("");
@@ -268,7 +311,7 @@ const ProfileInputComponent = ({
   // Wizard navigation: advance to the next tab (no-op on the last/Review tab).
   const goNext = () => {
     const idx = TAB_ORDER.indexOf(tab as (typeof TAB_ORDER)[number]);
-    if (idx >= 0 && idx < TAB_ORDER.length - 1) setTab(TAB_ORDER[idx + 1]);
+    if (idx >= 0 && idx < TAB_ORDER.length - 1) changeTab(TAB_ORDER[idx + 1]);
   };
 
   // --- MNO preset selection (with Verizon guard) ----------------------------
@@ -356,22 +399,22 @@ const ProfileInputComponent = ({
     e.preventDefault();
     if (!name.trim()) {
       toast.error(t("custom_profiles.form.fields.profile_name_required"));
-      setTab("identity");
+      changeTab("identity");
       return;
     }
     if (!simIccid.trim()) {
       toast.error(t("custom_profiles.form.fields.sim_iccid_required"));
-      setTab("identity");
+      changeTab("identity");
       return;
     }
     if (duplicateIccid) {
       toast.error(t("custom_profiles.form.fields.sim_iccid_duplicate"));
-      setTab("identity");
+      changeTab("identity");
       return;
     }
     if (!apn.trim()) {
       toast.error(t("custom_profiles.form.fields.apn_name_required"));
-      setTab("network");
+      changeTab("network");
       return;
     }
     setSubmitting(true);
@@ -416,7 +459,7 @@ const ProfileInputComponent = ({
       <CardContent>
         <form onSubmit={handleSubmit}>
           <FieldGroup>
-            <Tabs value={tab} onValueChange={setTab} className="w-full">
+            <Tabs value={tab} onValueChange={changeTab} className="w-full">
               <TabsList>
                 <TabsTrigger value="identity">
                   {t("custom_profiles.form.steps.identity_short")}
@@ -432,6 +475,7 @@ const ProfileInputComponent = ({
                 </TabsTrigger>
               </TabsList>
               <TabsContent value="identity">
+               <WizardPanel dir={tabDir}>
                 <FieldSet>
                   <div className="flex items-center justify-between">
                     <FieldDescription>
@@ -518,8 +562,10 @@ const ProfileInputComponent = ({
                     </Field>
                   </FieldGroup>
                 </FieldSet>
+               </WizardPanel>
               </TabsContent>
               <TabsContent value="network">
+               <WizardPanel dir={tabDir}>
                 <FieldSet>
                   <FieldDescription>
                     {t("custom_profiles.form.network_desc")}
@@ -652,8 +698,10 @@ const ProfileInputComponent = ({
                     </div>
                   </FieldGroup>
                 </FieldSet>
+               </WizardPanel>
               </TabsContent>
               <TabsContent value="scenario">
+               <WizardPanel dir={tabDir}>
                 <FieldSet>
                   <FieldDescription>
                     {t("custom_profiles.form.scenario_desc_inline")}
@@ -720,11 +768,29 @@ const ProfileInputComponent = ({
                             {t("custom_profiles.form.windows_empty")}
                           </div>
                         ) : (
-                          windows.map((w, i) => (
-                            <div
+                          <AnimatePresence initial={false}>
+                          {windows.map((w, i) => (
+                            <motion.div
                               key={w.id}
-                              className="bg-muted/30 rounded-lg border p-3"
+                              initial={
+                                reduceMotion
+                                  ? false
+                                  : { opacity: 0, height: 0 }
+                              }
+                              animate={{ opacity: 1, height: "auto" }}
+                              exit={
+                                reduceMotion
+                                  ? { opacity: 0 }
+                                  : { opacity: 0, height: 0 }
+                              }
+                              transition={
+                                reduceMotion
+                                  ? { duration: 0 }
+                                  : { duration: 0.25, ease: EXPO }
+                              }
+                              className="overflow-hidden"
                             >
+                            <div className="bg-muted/30 rounded-lg border p-3">
                               <div className="mb-3 flex items-center justify-between">
                                 <span className="text-sm font-medium">
                                   {t("custom_profiles.form.window_label", {
@@ -814,7 +880,9 @@ const ProfileInputComponent = ({
                                 </div>
                               </div>
                             </div>
-                          ))
+                            </motion.div>
+                          ))}
+                          </AnimatePresence>
                         )}
 
                         <div className="flex items-center justify-between">
@@ -839,8 +907,10 @@ const ProfileInputComponent = ({
                     )}
                   </FieldGroup>
                 </FieldSet>
+               </WizardPanel>
               </TabsContent>
               <TabsContent value="review">
+               <WizardPanel dir={tabDir}>
                 <FieldSet>
                   <FieldDescription>
                     {isEditing
@@ -850,7 +920,7 @@ const ProfileInputComponent = ({
                   <div className="flex flex-col gap-5">
                     <SummarySection
                       title={t("custom_profiles.form.review.section_identity")}
-                      onEdit={() => setTab("identity")}
+                      onEdit={() => changeTab("identity")}
                       rows={[
                         {
                           label: t("custom_profiles.form.review.profile_name"),
@@ -873,7 +943,7 @@ const ProfileInputComponent = ({
                     />
                     <SummarySection
                       title={t("custom_profiles.form.review.section_network")}
-                      onEdit={() => setTab("network")}
+                      onEdit={() => changeTab("network")}
                       rows={[
                         {
                           label: t("custom_profiles.form.review.apn"),
@@ -914,7 +984,7 @@ const ProfileInputComponent = ({
                     />
                     <SummarySection
                       title={t("custom_profiles.form.review.section_scenario")}
-                      onEdit={() => setTab("scenario")}
+                      onEdit={() => changeTab("scenario")}
                       rows={[
                         {
                           label: t("custom_profiles.form.review.default"),
@@ -961,6 +1031,7 @@ const ProfileInputComponent = ({
                     />
                   </div>
                 </FieldSet>
+               </WizardPanel>
               </TabsContent>
             </Tabs>
             <FieldSeparator />

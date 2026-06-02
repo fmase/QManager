@@ -14,7 +14,6 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -74,6 +73,11 @@ import { setPendingReboot } from "@/lib/reboot/pending";
 // a skeleton in the gap. SIM-mismatch is derived client-side by comparing the
 // profile's stored ICCID against the live SIM ICCID — empty ICCID is
 // SIM-agnostic and never mismatches.
+
+// Cap how many rows stagger so a long roster never plays a long page-load
+// cascade. Beyond this index, rows enter together at the cap delay.
+const STAGGER_STEP_MS = 40;
+const STAGGER_MAX_ROWS = 4;
 
 type ProfileStatus = "active" | "mismatch" | "inactive";
 
@@ -172,6 +176,53 @@ const ProfileViewComponent = ({ sim, currentIccid, onEdit }: ProfileViewProps) =
       toast.error(sim.error || t("custom_profiles.view.toast.delete_error"));
   };
 
+  // ---- Detail hydration -----------------------------------------------------
+  // list.sh returns summaries only (no APN/CID/PDP/TTL/HL/IMEI). Letting each
+  // row lazy-load its own config produced a SECOND shimmer after the list
+  // skeleton had already cleared. Instead we prefetch every profile's full
+  // config up front and hold the single list skeleton until they are all in —
+  // one loading state on page load, and rows arrive fully populated. The effect
+  // re-runs whenever the backend hands back a fresh `profiles` array (initial
+  // load, create, edit, delete, activate); since `detailsHydrated` is only ever
+  // set true, those later runs refresh in the background without re-flashing
+  // the skeleton. Keyed on `profiles` (not a roster-signature ref) so React
+  // StrictMode's mount/cleanup/mount cycle always lands on a run that resolves.
+  const [details, setDetails] = React.useState<Record<string, SimProfile>>({});
+  const [detailsHydrated, setDetailsHydrated] = React.useState(false);
+
+  React.useEffect(() => {
+    // Don't hydrate until the summary fetch has actually returned. While the
+    // initial list is still loading, `profiles` is transiently [] — treating
+    // that as "hydrated" would clear the skeleton early and let the pills pop
+    // in a beat after the rows. Keep the skeleton up until isLoading settles.
+    if (isLoading) return;
+
+    if (profiles.length === 0) {
+      setDetails({});
+      setDetailsHydrated(true);
+      return;
+    }
+
+    let cancelled = false;
+    Promise.all(profiles.map((p) => getProfile(p.id))).then((results) => {
+      if (cancelled) return;
+      const next: Record<string, SimProfile> = {};
+      profiles.forEach((p, i) => {
+        if (results[i]) next[p.id] = results[i] as SimProfile;
+      });
+      setDetails(next);
+      setDetailsHydrated(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [profiles, getProfile, isLoading]);
+
+  // One skeleton, gated on BOTH the summary fetch and the detail prefetch.
+  const showSkeleton =
+    (isLoading && profiles.length === 0) ||
+    (profiles.length > 0 && !detailsHydrated);
+
   // Active profile leads; the rest keep backend order.
   const ordered = React.useMemo(() => {
     return [...profiles].sort((a, b) => {
@@ -200,7 +251,7 @@ const ProfileViewComponent = ({ sim, currentIccid, onEdit }: ProfileViewProps) =
         )}
       </CardHeader>
       <CardContent>
-        {isLoading && profiles.length === 0 ? (
+        {showSkeleton ? (
           <ListSkeleton />
         ) : profiles.length === 0 ? (
           <EmptyProfileComponent />
@@ -210,7 +261,7 @@ const ProfileViewComponent = ({ sim, currentIccid, onEdit }: ProfileViewProps) =
           // so it stays in view; the -mr/pr pair gives the scrollbar a gutter
           // without nudging the rows. Below the cap, height is natural (no
           // scrollbar appears until the rows actually overflow).
-          <div className="-mr-2 max-h-[32rem] overflow-x-hidden overflow-y-auto pr-2 [scrollbar-width:thin]">
+          <div className="-mr-2 max-h-128 overflow-x-hidden overflow-y-auto pr-2 [scrollbar-width:thin]">
             <div className="flex flex-col gap-3">
               {ordered.map((profile, i) => (
                 <ProfileRow
@@ -228,7 +279,7 @@ const ProfileViewComponent = ({ sim, currentIccid, onEdit }: ProfileViewProps) =
                     !applyTerminal &&
                     applyState?.profile_id === profile.id
                   }
-                  getProfile={getProfile}
+                  full={details[profile.id] ?? null}
                   onActivate={() => handleActivate(profile.id)}
                   onDeactivate={() => handleDeactivate(profile)}
                   onEdit={() => onEdit(profile.id)}
@@ -290,7 +341,7 @@ const ProfileRow = ({
   index,
   scenarioName,
   busy,
-  getProfile,
+  full,
   onActivate,
   onDeactivate,
   onEdit,
@@ -301,7 +352,8 @@ const ProfileRow = ({
   index: number;
   scenarioName: string;
   busy: boolean;
-  getProfile: (id: string) => Promise<SimProfile | null>;
+  /** Full config, prefetched by the view so the row arrives populated. */
+  full: SimProfile | null;
   onActivate: () => void;
   onDeactivate: () => void;
   onEdit: () => void;
@@ -311,29 +363,19 @@ const ProfileRow = ({
   const isActive = status !== "inactive";
   const scheduled = summary.scenario.schedule.enabled;
 
-  // Lazy-load the full profile so the config pills can render APN/CID/PDP/TTL/HL/
-  // IMEI — list.sh only carries summary fields. Re-fetch when the profile's
-  // updated_at changes (an edit) so stale settings don't linger.
-  const [full, setFull] = React.useState<SimProfile | null>(null);
-  React.useEffect(() => {
-    let cancelled = false;
-    setFull(null);
-    getProfile(summary.id).then((p) => {
-      if (!cancelled) setFull(p);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [summary.id, summary.updated_at, getProfile]);
-
   const verizonMpdn = summary.mno === "Verizon";
 
   return (
     <div
-      style={{ animationDelay: `${index * 70}ms` }}
+      style={{
+        animationDelay: `${Math.min(index, STAGGER_MAX_ROWS) * STAGGER_STEP_MS}ms`,
+        animationDuration: "300ms",
+        animationTimingFunction: "cubic-bezier(0.16, 1, 0.3, 1)",
+      }}
       className={cn(
-        "flex flex-col gap-3 rounded-lg border p-3 transition-colors",
-        "animate-in fade-in-0 slide-in-from-bottom-2 fill-mode-both duration-500 motion-reduce:animate-none",
+        "flex flex-col gap-3 rounded-lg border p-3",
+        "transition-colors duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none",
+        "animate-in fade-in-0 slide-in-from-bottom-2 fill-mode-both motion-reduce:animate-none",
         status === "active" && "border-success/40 bg-success/5",
         status === "mismatch" && "border-warning/40 bg-warning/5",
         status === "inactive" && "bg-muted/20",
@@ -344,10 +386,13 @@ const ProfileRow = ({
         <div className="grid min-w-0 gap-0.5">
           <div className="flex items-center gap-1.5">
             {status === "active" && (
-              <span
-                className="bg-success size-1.5 shrink-0 rounded-full motion-safe:animate-pulse"
-                aria-hidden
-              />
+              // Live-ping: a solid dot with a pulsing halo behind it (the
+              // system pulse-ring keyframe, disabled under reduced motion).
+              // Calmer and more "alive" than a hard opacity blink.
+              <span className="relative flex size-1.5 shrink-0" aria-hidden>
+                <span className="bg-success/50 animate-pulse-ring absolute inline-flex size-full rounded-full" />
+                <span className="bg-success relative inline-flex size-1.5 rounded-full" />
+              </span>
             )}
             <span className="truncate text-sm font-semibold">
               {summary.name}
@@ -404,12 +449,9 @@ const ProfileRow = ({
         </span>
       </div>
 
-      {/* Config readout */}
-      {full ? (
-        <ConfigPills profile={full} verizonMpdn={verizonMpdn} />
-      ) : (
-        <PillsSkeleton />
-      )}
+      {/* Config readout — prefetched by the view, so the pills arrive with the
+          row as part of its entrance rather than as a second loading state. */}
+      {full && <ConfigPills profile={full} verizonMpdn={verizonMpdn} />}
 
       {/* SIM mismatch note — only when the active profile no longer matches the SIM */}
       {status === "mismatch" && (
@@ -547,34 +589,59 @@ const ConfigPills = ({
 };
 
 // -----------------------------------------------------------------------------
-// Loading affordances — shaped to match the populated row so there is no reflow.
+// Loading affordance — one calm skeleton, shaped to the populated row so there
+// is no reflow when content lands. Each card carries ONE shimmer sweep across
+// the whole surface (a single moving light source) rather than every bar
+// blinking on its own; the bars themselves rest as static muted blocks. Under
+// reduced motion the sweep is hidden and the skeleton is a quiet static block.
 // -----------------------------------------------------------------------------
-const PillsSkeleton = () => (
-  <div className="flex flex-wrap items-center gap-1.5">
-    <Skeleton className="h-5 w-24 rounded-md" />
-    <Skeleton className="h-5 w-14 rounded-md" />
-    <Skeleton className="h-5 w-20 rounded-md" />
+const Bar = ({ className }: { className?: string }) => (
+  <div className={cn("bg-muted rounded-md", className)} />
+);
+
+const SkeletonRow = () => (
+  <div className="relative overflow-hidden rounded-lg border p-3">
+    <div className="flex flex-col gap-3">
+      {/* Identity + status + overflow */}
+      <div className="flex items-start justify-between gap-3">
+        <div className="grid gap-1.5">
+          <Bar className="h-3.5 w-32" />
+          <Bar className="h-3 w-16" />
+        </div>
+        <div className="flex items-center gap-1.5">
+          <Bar className="h-5 w-16" />
+          <Bar className="size-7" />
+        </div>
+      </div>
+      {/* Scenario binding line */}
+      <div className="flex items-center gap-1.5">
+        <Bar className="size-3.5 shrink-0 rounded-full" />
+        <Bar className="h-3 w-40" />
+      </div>
+      {/* Config pills */}
+      <div className="flex flex-wrap items-center gap-1.5">
+        <Bar className="h-5 w-24" />
+        <Bar className="h-5 w-12" />
+        <Bar className="h-5 w-16" />
+      </div>
+      {/* Action */}
+      <div className="flex items-center justify-between pt-0.5">
+        <Bar className="h-3 w-28" />
+        <Bar className="h-8 w-24" />
+      </div>
+    </div>
+    {/* Single sweep across the whole card. */}
+    <div
+      aria-hidden
+      className="animate-skeleton-shimmer motion-reduce:hidden absolute inset-0 bg-gradient-to-r from-transparent via-foreground/10 to-transparent"
+    />
   </div>
 );
 
 const ListSkeleton = () => (
   <div className="flex flex-col gap-3">
     {[0, 1].map((i) => (
-      <div key={i} className="flex flex-col gap-3 rounded-lg border p-3">
-        <div className="flex items-start justify-between gap-3">
-          <div className="grid gap-1.5">
-            <Skeleton className="h-4 w-32" />
-            <Skeleton className="h-3 w-20" />
-          </div>
-          <Skeleton className="h-5 w-20 rounded-md" />
-        </div>
-        <Skeleton className="h-3 w-40" />
-        <PillsSkeleton />
-        <div className="flex items-center justify-between pt-0.5">
-          <Skeleton className="h-3 w-24" />
-          <Skeleton className="h-8 w-24 rounded-md" />
-        </div>
-      </div>
+      <SkeletonRow key={i} />
     ))}
   </div>
 );
