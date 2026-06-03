@@ -656,6 +656,10 @@
         "sa_nr5g": {
           "title": "Penguncian Band SA",
           "description": "Pilih band 5G SA yang ingin dikunci (5G standalone)."
+        },
+        "nrdc_nr5g": {
+          "title": "Penguncian Band NR-DC",
+          "description": "Pilih band NR-DC yang ingin dikunci (5G-NR konektivitas ganda)."
         }
       },
       "card_badges": {
@@ -669,13 +673,15 @@
         "select_all": "Pilih semua",
         "deselect_all": "Batalkan Pilih Semua",
         "unlock_all_aria": "Buka kunci semua band",
-        "unlock_all_title": "Buka kunci semua band (reset)"
+        "unlock_all_title": "Buka kunci semua band (reset)",
+        "swap_view": "Beralih ke band {{target}}"
       },
       "card_live_region": "Menerapkan {{category_label}} kunci band…",
       "card_category_label": {
         "lte": "LTE",
         "nsa_nr5g": "NSA",
-        "sa_nr5g": "SA"
+        "sa_nr5g": "SA",
+        "nrdc_nr5g": "NR-DC"
       },
       "toast": {
         "select_one_band": "Pilih setidaknya satu band untuk dikunci",

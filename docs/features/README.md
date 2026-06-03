@@ -14,6 +14,7 @@ Per-feature deep-dives extracted from `CLAUDE.md` to keep the always-loaded prom
 | Scenario-to-Profile Binding | `scenarios/activate.sh` (guard) + `profiles/{deactivate,list,get,save}.sh` | `use-active-profile.ts` + `hooks/use-sim-profiles.ts` | `sim-profile.ts` (ScenarioSchedule, ProfileScenarioBinding) | No |
 | SMS Inbox + Alerts | `cellular/sms.sh` + `monitoring/sms_alerts.sh` + `monitoring/sms_alert_log.sh` | `use-sms-read-state.ts` (`useSmsReadState`, `smsFingerprint`, `parseSmsTimestamp`) | `SmsMessage` (`storage:"ME"\|"SM"`) | No (boot service: `qmanager_sms_storage`) |
 | APN Management | `cellular/apn.sh` | `use-wan-profiles.ts` | `wan-profiles.ts` | No |
+| Band Locking | `bands/current.sh` + `bands/lock.sh` + `bands/failover_status.sh` + `bands/failover_toggle.sh` | `use-band-locking.ts` | `band-locking.ts` (`BandCategory`, `CurrentBands`, `BandLockResponse`) | No |
 
 ## Index
 
@@ -30,3 +31,4 @@ Per-feature deep-dives extracted from `CLAUDE.md` to keep the always-loaded prom
 | [Scenario-to-Profile Binding](scenario-profile-binding.md) | `.scenario` schema, canonical resolution rule, cron install/teardown, teardown ordering, `scenario_locked_by_schedule` guard, schedule UI contract |
 | [SMS](sms.md) | `sms_tool` binary patches, `/dev/smd11` char-device invariant, shared lock, inbox CGI, alert library, phone-number handling, client-side read/unread (`localStorage` + fingerprint), timestamp-sort invariant (`MM/DD/YY` slice-reorder), deferred toast + forwarding |
 | [APN Management](apn-management.md) | AT-only WAN profile list (IMS/SOS excluded), COPS detach/attach on save, config sidecar + legacy migration, "In Use" CID detection, Custom SIM Profile override gate |
+| [Band Locking](band-locking.md) | 4 band types → AT param mapping, SA `nr5g_band` vs NR-DC `nrdc_nr5g_band`, substring-match hazard + SA grep-v guard, SA⇄NR-DC swap UX (key-remount), failover revert (all 4 types), `supported_bands.env` 4-field cache, `policy_band` vs `ue_capability_band`, no zero-band lock |

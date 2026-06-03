@@ -656,6 +656,10 @@
         "sa_nr5g": {
           "title": "SA Band Locking",
           "description": "Select the 5G SA bands to lock (standalone 5G)."
+        },
+        "nrdc_nr5g": {
+          "title": "NR-DC Band Locking",
+          "description": "Select the NR-DC bands to lock (dual-connectivity 5G-NR)."
         }
       },
       "card_badges": {
@@ -669,13 +673,15 @@
         "select_all": "Select All",
         "deselect_all": "Deselect All",
         "unlock_all_aria": "Unlock all bands",
-        "unlock_all_title": "Unlock all bands (reset)"
+        "unlock_all_title": "Unlock all bands (reset)",
+        "swap_view": "Switch to {{target}} bands"
       },
       "card_live_region": "Applying {{category_label}} band lock…",
       "card_category_label": {
         "lte": "LTE",
         "nsa_nr5g": "NSA",
-        "sa_nr5g": "SA"
+        "sa_nr5g": "SA",
+        "nrdc_nr5g": "NR-DC"
       },
       "toast": {
         "select_one_band": "Select at least one band to lock",

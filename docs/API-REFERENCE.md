@@ -176,7 +176,8 @@ Main polling endpoint. Returns the cached modem status JSON (built by `qmanager_
     "mimo": "LTE 1x4 | NR 2x4",
     "supported_lte_bands": "B1:B2:B3:B5:B7:...",
     "supported_nsa_nr5g_bands": "N41:N71:N77:...",
-    "supported_sa_nr5g_bands": "N41:N71:N77:..."
+    "supported_sa_nr5g_bands": "N41:N71:N77:...",
+    "supported_nrdc_nr5g_bands": "1:2:3:5:7:8:12:14:25:26:28:30:40:41:48:66:71:77:78:79:257:258:259:260:261"
   },
   "connectivity": {
     "internet_available": true,
@@ -493,19 +494,63 @@ Phone-number handling: the endpoint strips a leading `+` before calling `sms_too
 
 ## Band Locking
 
+See [`docs/features/band-locking.md`](features/band-locking.md) for the full contract, the SA grep-hazard invariant, the SA⇄NR-DC swap UX, and the failover flow.
+
 ### GET `/bands/current.sh`
 
-Current locked band configuration.
+Returns the currently configured (locked) band lists and failover state.
 
-### GET/POST `/bands/lock.sh`
-
-**POST Request:**
+**Response:**
 ```json
 {
-  "lte_bands": "B2:B66",
-  "nr_bands": "N41:N71"
+  "success": true,
+  "current": {
+    "lte_bands": "1:3:7:28:41",
+    "nsa_nr5g_bands": "41:78",
+    "sa_nr5g_bands": "41:78",
+    "nrdc_nr5g_bands": "41:78:257"
+  },
+  "failover": {
+    "enabled": true,
+    "activated": false
+  }
 }
 ```
+
+Source: `AT+QNWPREFCFG="ue_capability_band"` (live, not cached). Empty string means no lock is set for that category (all supported bands allowed).
+
+### POST `/bands/lock.sh`
+
+Lock bands for a single category. One request per card — each category is independent.
+
+**Request:**
+```json
+{ "band_type": "nrdc_nr5g", "bands": "41:78:257" }
+```
+
+- `band_type`: `"lte"` | `"nsa_nr5g"` | `"sa_nr5g"` | `"nrdc_nr5g"`
+- `bands`: non-empty colon-delimited band numbers, e.g. `"1:3:7:41"`. Sending an empty or zero value is rejected — there is no "lock zero bands" state. To remove a lock, use `AT+QNWPREFCFG="restore_band"` directly.
+
+**AT parameter mapping:**
+
+| `band_type` | AT parameter |
+|---|---|
+| `lte` | `lte_band` |
+| `nsa_nr5g` | `nsa_nr5g_band` |
+| `sa_nr5g` | `nr5g_band` |
+| `nrdc_nr5g` | `nrdc_nr5g_band` |
+
+**Response:**
+```json
+{
+  "success": true,
+  "band_type": "nrdc_nr5g",
+  "bands": "41:78:257",
+  "failover_armed": true
+}
+```
+
+**Error codes:** `no_band_type`, `no_bands`, `invalid_band_type`, `invalid_bands`, `modem_error`, `at_error`
 
 ### GET `/bands/failover_status.sh`
 

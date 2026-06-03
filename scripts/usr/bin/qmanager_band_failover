@@ -79,9 +79,10 @@ fi
 # Reading from cache avoids modem lock contention during failover.
 qlog_warn "FAILOVER: Reverting to all supported bands"
 
-all_lte=$(jq -r '.device.supported_lte_bands // empty' "$STATUS_CACHE" 2>/dev/null)
-all_nsa=$(jq -r '.device.supported_nsa_nr5g_bands // empty' "$STATUS_CACHE" 2>/dev/null)
-all_sa=$(jq -r '.device.supported_sa_nr5g_bands // empty' "$STATUS_CACHE" 2>/dev/null)
+all_lte=$(jq -r '.device.supported_lte_bands | if . == null then empty else . end' "$STATUS_CACHE" 2>/dev/null)
+all_nsa=$(jq -r '.device.supported_nsa_nr5g_bands | if . == null then empty else . end' "$STATUS_CACHE" 2>/dev/null)
+all_sa=$(jq -r '.device.supported_sa_nr5g_bands | if . == null then empty else . end' "$STATUS_CACHE" 2>/dev/null)
+all_nrdc=$(jq -r '.device.supported_nrdc_nr5g_bands | if . == null then empty else . end' "$STATUS_CACHE" 2>/dev/null)
 
 # Fallback: if status.json doesn't have it yet, source the RAM env cache
 if [ -z "$all_lte" ] && [ -z "$all_nsa" ] && [ -z "$all_sa" ]; then
@@ -91,6 +92,7 @@ if [ -z "$all_lte" ] && [ -z "$all_nsa" ] && [ -z "$all_sa" ]; then
         all_lte="$boot_supported_lte_bands"
         all_nsa="$boot_supported_nsa_nr5g_bands"
         all_sa="$boot_supported_sa_nr5g_bands"
+        all_nrdc="$boot_supported_nrdc_nr5g_bands"
         qlog_info "FAILOVER: Loaded supported bands from RAM env cache"
     fi
 fi
@@ -101,7 +103,7 @@ if [ -z "$all_lte" ] && [ -z "$all_nsa" ] && [ -z "$all_sa" ]; then
     exit 1
 fi
 
-qlog_info "FAILOVER: Resetting to policy_band — LTE=$all_lte NSA=$all_nsa SA=$all_sa"
+qlog_info "FAILOVER: Resetting to policy_band — LTE=$all_lte NSA=$all_nsa SA=$all_sa NRDC=$all_nrdc"
 
 # --- Apply: reset each band type (sip-don't-gulp) ---------------------------
 fail_count=0
@@ -145,6 +147,21 @@ if [ -n "$all_sa" ]; then
             qlog_info "FAILOVER: SA NR bands reset OK"
             ;;
     esac
+    sleep 0.2
+fi
+
+if [ -n "$all_nrdc" ]; then
+    nrdc_result=$(qcmd "AT+QNWPREFCFG=\"nrdc_nr5g_band\",${all_nrdc}" 2>/dev/null)
+    case "$nrdc_result" in
+        *ERROR*|"")
+            qlog_error "FAILOVER: Failed to reset NR-DC bands"
+            fail_count=$((fail_count + 1))
+            ;;
+        *)
+            qlog_info "FAILOVER: NR-DC bands reset OK"
+            ;;
+    esac
+    sleep 0.2
 fi
 
 # --- Write activation flag for UI -------------------------------------------

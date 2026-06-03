@@ -19,6 +19,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import {
   AlertCircleIcon,
+  ArrowLeftRightIcon,
   LockIcon,
   LockOpenIcon,
   RotateCcwIcon,
@@ -58,6 +59,15 @@ interface BandCardsProps {
   error: string | null;
   /** True when a Connection Scenario controls bands — disables all interactions */
   disabled?: boolean;
+  /**
+   * When provided, renders a swap control in the header that flips this slot
+   * between SA NR5G and NR-DC. Only the shared SA/NR-DC slot passes this.
+   */
+  onSwapView?: () => void;
+  /** Short label of the mode the swap switches TO (e.g. "NR-DC"). */
+  swapLabel?: string;
+  /** Tooltip + accessible name for the swap control (e.g. "Switch to NR-DC bands"). */
+  swapTitle?: string;
 }
 
 const BandCardsComponent = ({
@@ -72,6 +82,9 @@ const BandCardsComponent = ({
   isLoading,
   error,
   disabled = false,
+  onSwapView,
+  swapLabel,
+  swapTitle,
 }: BandCardsProps) => {
   const { t } = useTranslation("cellular");
   const { saved, markSaved } = useSaveFlash();
@@ -205,11 +218,26 @@ const BandCardsComponent = ({
   return (
     <Card className="@container/card" aria-disabled={disabled || undefined}>
       <CardHeader>
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-2">
           <div className={disabled ? "text-muted-foreground" : undefined}>
             <CardTitle>{title}</CardTitle>
             <CardDescription>{description}</CardDescription>
           </div>
+          <div className="flex shrink-0 items-center gap-2">
+          {onSwapView && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onSwapView}
+              disabled={isDisabled}
+              aria-label={swapTitle}
+              title={swapTitle}
+              className="gap-1.5"
+            >
+              <ArrowLeftRightIcon className="size-3.5" />
+              {swapLabel}
+            </Button>
+          )}
           {disabled ? (
             <Badge
               variant="outline"
@@ -235,6 +263,7 @@ const BandCardsComponent = ({
               {t("cell_locking.band_locking.card_badges.bands_locked", { locked: currentLockedBands.length, total: supportedBands.length })}
             </Badge>
           )}
+          </div>
         </div>
       </CardHeader>
 

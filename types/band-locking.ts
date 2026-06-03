@@ -15,14 +15,18 @@
 
 // --- Band Category -----------------------------------------------------------
 
-/** Discriminator for the three independent band locking cards */
-export type BandCategory = "lte" | "nsa_nr5g" | "sa_nr5g";
+/**
+ * Discriminator for the independent band locking cards.
+ * `nrdc_nr5g` shares the SA card slot via a swap toggle (see BandLockingComponent).
+ */
+export type BandCategory = "lte" | "nsa_nr5g" | "sa_nr5g" | "nrdc_nr5g";
 
 /** Display labels for each band category */
 export const BAND_CATEGORY_LABELS: Record<BandCategory, string> = {
   lte: "LTE",
   nsa_nr5g: "NR5G NSA",
   sa_nr5g: "NR5G SA",
+  nrdc_nr5g: "NR-DC",
 };
 
 /** Band prefix used in UI display (e.g., "B1" for LTE, "N41" for NR) */
@@ -30,6 +34,7 @@ export const BAND_PREFIX: Record<BandCategory, string> = {
   lte: "B",
   nsa_nr5g: "N",
   sa_nr5g: "N",
+  nrdc_nr5g: "N",
 };
 
 // --- API Response Types ------------------------------------------------------
@@ -39,6 +44,7 @@ export interface CurrentBands {
   lte_bands: string; // colon-delimited: "1:3:41"
   nsa_nr5g_bands: string;
   sa_nr5g_bands: string;
+  nrdc_nr5g_bands: string;
 }
 
 /** Failover safety mechanism state */
@@ -126,7 +132,14 @@ export function formatBandName(category: BandCategory, band: number): string {
  * Maps the BandCategory key to the correct field name.
  */
 export function getBandsForCategory(
-  bands: CurrentBands | { lte_bands: string; nsa_nr5g_bands: string; sa_nr5g_bands: string },
+  bands:
+    | CurrentBands
+    | {
+        lte_bands: string;
+        nsa_nr5g_bands: string;
+        sa_nr5g_bands: string;
+        nrdc_nr5g_bands: string;
+      },
   category: BandCategory,
 ): string {
   switch (category) {
@@ -136,5 +149,7 @@ export function getBandsForCategory(
       return bands.nsa_nr5g_bands;
     case "sa_nr5g":
       return bands.sa_nr5g_bands;
+    case "nrdc_nr5g":
+      return bands.nrdc_nr5g_bands;
   }
 }

@@ -656,6 +656,10 @@
         "sa_nr5g": {
           "title": "Chiusura della banda SA",
           "description": "Selezionare le bande SA 5G da bloccare (standalone 5G)."
+        },
+        "nrdc_nr5g": {
+          "title": "Chiusura della banda NR-DC",
+          "description": "Selezionare le bande NR-DC da bloccare (5G-NR a doppia connettività)."
         }
       },
       "card_badges": {
@@ -669,13 +673,15 @@
         "select_all": "Seleziona tutto",
         "deselect_all": "Deseleziona tutto",
         "unlock_all_aria": "Sblocca tutte le bande",
-        "unlock_all_title": "Sblocca tutte le bande (reimposta)"
+        "unlock_all_title": "Sblocca tutte le bande (reimposta)",
+        "swap_view": "Passa alle bande {{target}}"
       },
       "card_live_region": "Applicazione del blocco del cinturino {{category_label}}…",
       "card_category_label": {
         "lte": "LTE",
         "nsa_nr5g": "NSA",
-        "sa_nr5g": "SA"
+        "sa_nr5g": "SA",
+        "nrdc_nr5g": "NR-DC"
       },
       "toast": {
         "select_one_band": "Seleziona almeno una banda da bloccare",

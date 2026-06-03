@@ -16,7 +16,8 @@
 #   "current": {
 #     "lte_bands": "1:3:7:28:41",
 #     "nsa_nr5g_bands": "41:78",
-#     "sa_nr5g_bands": "41:78"
+#     "sa_nr5g_bands": "41:78",
+#     "nrdc_nr5g_bands": "41:78:257"
 #   },
 #   "failover": {
 #     "enabled": true,
@@ -66,6 +67,7 @@ esac
 lte_bands=""
 nsa_nr5g_bands=""
 sa_nr5g_bands=""
+nrdc_nr5g_bands=""
 
 line=$(printf '%s\n' "$result" | grep '"lte_band"' | head -1)
 [ -n "$line" ] && lte_bands=$(printf '%s' "$line" | sed 's/.*"lte_band",//' | tr -d '\r ')
@@ -77,7 +79,10 @@ line=$(printf '%s\n' "$result" | grep '"nsa_nr5g_band"' | head -1)
 line=$(printf '%s\n' "$result" | grep '"nr5g_band"' | grep -v 'nsa_' | grep -v 'nrdc_' | head -1)
 [ -n "$line" ] && sa_nr5g_bands=$(printf '%s' "$line" | sed 's/.*"nr5g_band",//' | tr -d '\r ')
 
-qlog_debug "Current bands: LTE=$lte_bands NSA=$nsa_nr5g_bands SA=$sa_nr5g_bands"
+line=$(printf '%s\n' "$result" | grep '"nrdc_nr5g_band"' | head -1)
+[ -n "$line" ] && nrdc_nr5g_bands=$(printf '%s' "$line" | sed 's/.*"nrdc_nr5g_band",//' | tr -d '\r ')
+
+qlog_debug "Current bands: LTE=$lte_bands NSA=$nsa_nr5g_bands SA=$sa_nr5g_bands NRDC=$nrdc_nr5g_bands"
 
 # --- Read failover state -----------------------------------------------------
 failover_enabled="false"
@@ -93,5 +98,6 @@ fi
 
 # --- Response ----------------------------------------------------------------
 jq -n --arg lte "$lte_bands" --arg nsa "$nsa_nr5g_bands" --arg sa "$sa_nr5g_bands" \
+    --arg nrdc "$nrdc_nr5g_bands" \
     --argjson fe "$failover_enabled" --argjson fa "$failover_activated" \
-    '{"success":true,"current":{"lte_bands":$lte,"nsa_nr5g_bands":$nsa,"sa_nr5g_bands":$sa},"failover":{"enabled":$fe,"activated":$fa}}'
+    '{"success":true,"current":{"lte_bands":$lte,"nsa_nr5g_bands":$nsa,"sa_nr5g_bands":$sa,"nrdc_nr5g_bands":$nrdc},"failover":{"enabled":$fe,"activated":$fa}}'

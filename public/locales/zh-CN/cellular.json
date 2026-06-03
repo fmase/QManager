@@ -656,6 +656,10 @@
         "sa_nr5g": {
           "title": "SA 频段锁定",
           "description": "选择要锁定的 5G SA 频段（独立 5G）。"
+        },
+        "nrdc_nr5g": {
+          "title": "NR-DC 频段锁定",
+          "description": "选择要锁定的 NR-DC 频段（双连接 5G-NR）。"
         }
       },
       "card_badges": {
@@ -669,13 +673,15 @@
         "select_all": "全选",
         "deselect_all": "全不选",
         "unlock_all_aria": "解锁所有频段",
-        "unlock_all_title": "解锁所有频段（重置）"
+        "unlock_all_title": "解锁所有频段（重置）",
+        "swap_view": "切换到 {{target}} 频段"
       },
       "card_live_region": "正在应用 {{category_label}} 频段锁定…",
       "card_category_label": {
         "lte": "LTE",
         "nsa_nr5g": "NSA",
-        "sa_nr5g": "SA"
+        "sa_nr5g": "SA",
+        "nrdc_nr5g": "NR-DC"
       },
       "toast": {
         "select_one_band": "请至少选择一个频段进行锁定",

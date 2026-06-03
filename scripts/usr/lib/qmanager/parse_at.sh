@@ -1016,7 +1016,8 @@ parse_wan_ip() {
 #   +QNWPREFCFG: "nrdc_nr5g_band",1:2:3:5:7:8:...
 #
 # Sets: boot_supported_lte_bands, boot_supported_nsa_nr5g_bands,
-#        boot_supported_sa_nr5g_bands (colon-delimited strings)
+#        boot_supported_sa_nr5g_bands, boot_supported_nrdc_nr5g_bands
+#        (colon-delimited strings)
 
 parse_policy_band() {
     local raw="$1"
@@ -1024,6 +1025,7 @@ parse_policy_band() {
     boot_supported_lte_bands=""
     boot_supported_nsa_nr5g_bands=""
     boot_supported_sa_nr5g_bands=""
+    boot_supported_nrdc_nr5g_bands=""
 
     # Extract colon-delimited band list after the key name for each type.
     # Format per line: +QNWPREFCFG: "<key>",<bands>
@@ -1045,7 +1047,12 @@ parse_policy_band() {
         boot_supported_sa_nr5g_bands=$(printf '%s' "$line" | sed 's/.*"nr5g_band",//' | tr -d '\r ')
     fi
 
-    qlog_debug "policy_band: LTE=$boot_supported_lte_bands NSA=$boot_supported_nsa_nr5g_bands SA=$boot_supported_sa_nr5g_bands"
+    line=$(printf '%s\n' "$raw" | grep '"nrdc_nr5g_band"' | head -1)
+    if [ -n "$line" ]; then
+        boot_supported_nrdc_nr5g_bands=$(printf '%s' "$line" | sed 's/.*"nrdc_nr5g_band",//' | tr -d '\r ')
+    fi
+
+    qlog_debug "policy_band: LTE=$boot_supported_lte_bands NSA=$boot_supported_nsa_nr5g_bands SA=$boot_supported_sa_nr5g_bands NRDC=$boot_supported_nrdc_nr5g_bands"
 }
 
 # =============================================================================

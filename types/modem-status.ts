@@ -244,6 +244,8 @@ export interface DeviceStatus {
   supported_nsa_nr5g_bands: string;
   /** Hardware-supported SA NR5G bands, colon-delimited (boot-only) */
   supported_sa_nr5g_bands: string;
+  /** Hardware-supported NR-DC bands, colon-delimited (boot-only, from AT+QNWPREFCFG="policy_band") */
+  supported_nrdc_nr5g_bands: string;
   /** QManager version string */
   qmanager_version: string;
 }
