@@ -1317,34 +1317,34 @@
       "list": {
         "card": {
           "title": "APN Profiles",
-          "description": "Manage your modem's WAN connection profiles. Toggle profiles on/off or edit their configuration."
+          "description": "Five data-profile slots. Switch one on to make it your active Internet APN — only one can be active at a time."
         },
         "empty": {
-          "title": "No WAN profiles found",
-          "subtitle": "The modem did not return any profile slots."
+          "title": "No profile slots",
+          "subtitle": "Profile slots could not be loaded."
         },
         "unnamed": "Unnamed",
         "no_apn": "No APN set",
+        "slot": "Slot {{id}}",
+        "apn_on_cid": "{{apn}} · CID {{cid}}",
         "status": {
-          "in_use": "In Use",
+          "active": "Active",
           "idle": "Idle",
           "empty": "Empty"
         },
         "aria": {
-          "enable_switch": "Enable profile {{index}}",
-          "disable_switch": "Disable profile {{index}}",
-          "edit_button": "Edit profile {{index}}"
+          "activate_switch": "Activate {{name}}",
+          "active_switch": "{{name}} is the active profile",
+          "edit_button": "Edit {{name}}"
         },
         "toast": {
-          "enabled": "Profile {{index}} enabled",
-          "disabled": "Profile {{index}} disabled",
-          "enable_error": "Failed to enable profile {{index}}",
-          "disable_error": "Failed to disable profile {{index}}"
+          "activated": "{{name}} is now your active APN",
+          "activate_error": "Failed to activate {{name}}"
         }
       },
       "edit": {
-        "title": "Edit Profile {{index}}",
-        "description_default": "Configure the APN and connection settings for profile {{index}}.",
+        "title": "Edit Slot {{id}}",
+        "description_default": "Configure this data profile. Saving stores it; activate it from the list to go live.",
         "fields": {
           "name": {
             "label": "Name",
@@ -1370,14 +1370,33 @@
             "placeholder": "Select CID",
             "aria": "PDP context (CID)",
             "option_template": "CID {{cid}}",
-            "for_internet": "For Internet"
+            "for_internet": "Internet",
+            "ims_badge": "IMS",
+            "sos_badge": "SOS"
           }
+        },
+        "cid_confirm": {
+          "title": "Use a reserved context?",
+          "description_ims": "CID {{cid}} is reserved by your carrier for IMS (VoLTE / Wi-Fi calling). Writing a data APN here can disrupt voice calling. Continue anyway?",
+          "description_sos": "CID {{cid}} is reserved for emergency (SOS) calling. Writing a data APN here can disrupt emergency calls. Continue anyway?",
+          "confirm": "Use anyway",
+          "cancel": "Cancel"
+        },
+        "clear": {
+          "button": "Clear slot",
+          "disabled_active": "Switch to another profile before clearing the active one",
+          "title": "Clear this slot?",
+          "description": "This empties the profile's name and APN. It cannot be undone.",
+          "confirm": "Clear",
+          "cancel": "Cancel",
+          "toast_success": "Slot cleared",
+          "toast_error": "Failed to clear slot"
         },
         "save_button": "Save Profile",
         "cancel": "Cancel",
         "toast": {
-          "saved": "Profile {{index}} saved successfully",
-          "save_error": "Failed to save profile {{index}}"
+          "saved": "{{name}} saved",
+          "save_error": "Failed to save profile"
         }
       },
       "mbn": {

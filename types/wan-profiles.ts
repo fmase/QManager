@@ -1,46 +1,60 @@
 // =============================================================================
-// wan-profiles.ts — QManager APN (WAN) Profile Management Types
+// wan-profiles.ts — QManager APN (WAN) Profile Management Types  (v2: 5-slot)
 // =============================================================================
 // TypeScript interfaces for the AT-only APN profile system on OpenWRT
-// RM520N-class modems. Profiles are persisted to a config file
-// (/usrdata/qmanager/apn_profiles.json) and the displayed list is the set of
-// the modem's *data* PDP contexts (IMS / SOS / other carrier contexts are
-// excluded). The live WAN-bearing CID is detected per request and surfaced as
-// `is_active` (the "In Use" / Internet APN) plus the top-level `internet_cid`.
+// RM520N/RM551E-class modems.
 //
-// The legacy Casa RDB / wmmd path (auth, MTU, VLAN mapping, default route,
-// IP passthrough) has been removed — those controls only ever worked on the
-// RG520N Casa firmware, never on OpenWRT.
+// v2 model — "5 stored data-profile slots + mutually-exclusive activate":
+//   • `profiles` is FIVE app-owned slots persisted to
+//     /usrdata/qmanager/apn_profiles.json (NOT a mirror of modem CIDs).
+//   • Exactly one slot is `active` at a time (radio semantics). Activating a
+//     slot writes its APN to its target CID and runs an AT+COPS detach/attach
+//     cycle so the carrier negotiates the new APN.
+//   • `cids` is a SEPARATE list of the modem's live PDP contexts (1-6), each
+//     tagged Internet / IMS / SOS — it drives the editor's CID picker. IMS/SOS
+//     contexts are tagged here (not hidden) so the picker can badge + confirm.
 //
 // Backend contract:
 //   CGI endpoint: /cgi-bin/quecmanager/cellular/apn.sh
-//   Config file:  /usrdata/qmanager/apn_profiles.json  (keyed by CID)
+//   Config file:  /usrdata/qmanager/apn_profiles.json  (v2: {version,active,profiles[5]})
 //
 //   GET  AT+CGDCONT?;+CGACT?;+CGPADDR;+QMAP="WWAN"  (one round-trip)
-//   POST save:   AT+COPS=2 → AT+CGDCONT=<cid>,"<pdp>","<apn>" → AT+COPS=0
-//   POST toggle: AT+CGACT=<0|1>,<cid>
+//   POST save:     persist a slot; re-apply to modem only if it is the active slot
+//   POST activate: AT+COPS=2 → AT+CGDCONT=<cid>,"<pdp>","<apn>" → AT+COPS=0; set active
+//   POST clear:    empty a slot (refused on the active slot)
 // =============================================================================
 
 // --- Profile Data Model ------------------------------------------------------
 
-/** A single APN (WAN) profile — one per data PDP context CID. */
+/** Carrier classification of a modem PDP context. */
+export type ApnType = "" | "ims" | "emergency";
+
+/** A single data-profile slot (one of five). */
 export interface WanProfile {
-  /** Profile slot index (== CID). Kept as `index` for stable row keys. */
-  index: number;
-  /** PDP context ID (1-6). */
-  cid: number;
-  /** User-defined profile name (from the config sidecar). */
+  /** Slot id, 1-5. Stable row key and the POST target. */
+  id: number;
+  /** User-defined profile name (may be empty). */
   name: string;
-  /** Access Point Name. */
+  /** Access Point Name (empty = unconfigured slot). */
   apn: string;
   /** PDP context type: ipv4, ipv6, ipv4v6. */
   pdp_type: string;
-  /** Whether this PDP context is activated (AT+CGACT state). */
-  enabled: boolean;
-  /** Whether this CID is the live WAN-bearing context (the Internet APN). */
+  /** Target modem PDP context the slot writes to when activated (1-6). */
+  cid: number;
+  /** Whether this slot is the live data profile (id === active_profile). */
   is_active: boolean;
-  /** Carrier classification — always "" here (carrier contexts are excluded). */
-  apn_type: string;
+}
+
+/** A live modem PDP context — drives the editor's CID picker (badges/confirm). */
+export interface CidContext {
+  /** PDP context id (1-6). */
+  cid: number;
+  /** Live APN string on this context ("" if undefined on the modem). */
+  apn: string;
+  /** Carrier classification: "" data, "ims" VoLTE, "emergency" SOS. */
+  apn_type: ApnType;
+  /** Whether this CID currently bears the WAN (the live Internet context). */
+  is_internet: boolean;
 }
 
 // --- API Response Types ------------------------------------------------------
@@ -48,34 +62,37 @@ export interface WanProfile {
 /** Response from GET /cgi-bin/quecmanager/cellular/apn.sh */
 export interface WanProfilesResponse {
   success: boolean;
+  /** Number of data-profile slots (5). */
   max_profiles: number;
-  /** The live WAN-bearing CID (== internet_cid), detected via QMAP/CGPADDR. */
+  /** Id of the active slot, or 0 if none. */
+  active_profile: number;
+  /** The live WAN-bearing CID, detected via QMAP/CGPADDR. */
   active_cid: number;
-  /** The CID the ISP uses for the data connection (== active_cid). */
+  /** The CID the ISP uses for data (== active_cid). */
   internet_cid: number;
+  /** The five data-profile slots. */
   profiles: WanProfile[];
+  /** The modem's live PDP contexts (1-6), each tagged for the CID picker. */
+  cids: CidContext[];
   error?: string;
 }
 
-/** Response from POST save/toggle operations */
+/** Response from POST save/activate/clear operations. */
 export interface WanProfileSaveResponse {
   success: boolean;
+  active?: number;
   error?: string;
 }
 
 // --- API Request Types -------------------------------------------------------
 
-/** Request body for saving an APN profile (the chosen CID is sent as `index`). */
+/** Request body for saving a profile slot's configuration. */
 export interface WanProfileSaveRequest {
   name: string;
   apn: string;
   pdp_type: string;
-}
-
-/** Request body for toggling a profile's enabled state */
-export interface WanProfileToggleRequest {
-  index: number;
-  enabled: boolean;
+  /** Target modem PDP context (1-6). */
+  cid: number;
 }
 
 // --- Display Helpers ---------------------------------------------------------

@@ -4,19 +4,20 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import { authFetch } from "@/lib/auth-fetch";
 import type {
   WanProfile,
+  CidContext,
   WanProfilesResponse,
   WanProfileSaveRequest,
   WanProfileSaveResponse,
-  WanProfileToggleRequest,
 } from "@/types/wan-profiles";
 
 // =============================================================================
-// useWanProfiles — APN (WAN) Profile Management Hook (AT-only)
+// useWanProfiles — APN (WAN) Profile Management Hook  (v2: 5-slot model)
 // =============================================================================
-// Fetches the modem's data APN profiles on mount. The backend persists profiles
-// to a config file and detects the live WAN-bearing CID each request, so the
-// hook also exposes `activeCid` / `internetCid`. Provides saveProfile and
-// toggleProfile for configuration changes via POST.
+// Fetches five data-profile slots + the modem's live PDP contexts on mount.
+// Exactly one slot is active at a time (radio semantics): activateProfile()
+// makes a slot the live Internet APN and implicitly deactivates the prior one.
+// saveProfile() persists a slot (and re-applies to the modem only if it is the
+// active slot); clearProfile() empties a slot (refused on the active slot).
 //
 // Backend endpoint:
 //   GET/POST /cgi-bin/quecmanager/cellular/apn.sh
@@ -24,38 +25,46 @@ import type {
 
 const CGI_ENDPOINT = "/cgi-bin/quecmanager/cellular/apn.sh";
 
-// A save runs an AT+COPS detach/attach cycle so the new APN is negotiated at
-// re-attach. AT+COPS=0 returns OK before the attach fully completes, so the
-// fresh active_cid/enabled state isn't readable immediately — a short delayed
-// silent refresh reconciles the optimistic patch against reality.
+// activate (and saving the active slot) runs an AT+COPS detach/attach cycle so
+// the new APN is negotiated at re-attach. AT+COPS=0 returns OK before the
+// attach fully completes, so the fresh active_cid/cids state isn't readable
+// immediately — a short delayed silent refresh reconciles the optimistic patch.
 const RECONCILE_DELAY_MS = 1500;
 
 export interface UseWanProfilesReturn {
-  /** All data APN profiles (null before first fetch) */
+  /** The five data-profile slots (null before first fetch). */
   profiles: WanProfile[] | null;
-  /** Maximum number of profile slots (typically 6) */
+  /** The modem's live PDP contexts (1-6), tagged for the CID picker. */
+  cids: CidContext[] | null;
+  /** Number of profile slots (5). */
   maxProfiles: number;
-  /** The live WAN-bearing CID, or null before first fetch */
+  /** Id of the active slot, or null before first fetch / 0 if none. */
+  activeProfile: number | null;
+  /** The live WAN-bearing CID, or null before first fetch. */
   activeCid: number | null;
-  /** The CID the ISP uses for data (== activeCid), or null before first fetch */
+  /** The CID the ISP uses for data (== activeCid), or null before first fetch. */
   internetCid: number | null;
-  /** True while initial fetch is in progress */
+  /** True while initial fetch is in progress. */
   isLoading: boolean;
-  /** True while a save/toggle operation is in progress */
+  /** True while a save/activate/clear operation is in progress. */
   isSaving: boolean;
-  /** Error message if fetch or save failed */
+  /** Error message if fetch or a mutation failed. */
   error: string | null;
-  /** Save a profile's configuration to the chosen CID. Returns true on success. */
-  saveProfile: (index: number, request: WanProfileSaveRequest) => Promise<boolean>;
-  /** Toggle a profile's enabled state. Returns true on success. */
-  toggleProfile: (index: number, enabled: boolean) => Promise<boolean>;
-  /** Re-fetch all APN profiles */
+  /** Persist a slot's configuration. Returns true on success. */
+  saveProfile: (id: number, request: WanProfileSaveRequest) => Promise<boolean>;
+  /** Make a slot the active Internet APN (deactivates the prior). Returns true on success. */
+  activateProfile: (id: number) => Promise<boolean>;
+  /** Empty a slot (refused on the active slot). Returns true on success. */
+  clearProfile: (id: number) => Promise<boolean>;
+  /** Re-fetch all profiles + CID contexts. */
   refresh: () => void;
 }
 
 export function useWanProfiles(): UseWanProfilesReturn {
   const [profiles, setProfiles] = useState<WanProfile[] | null>(null);
-  const [maxProfiles, setMaxProfiles] = useState(6);
+  const [cids, setCids] = useState<CidContext[] | null>(null);
+  const [maxProfiles, setMaxProfiles] = useState(5);
+  const [activeProfile, setActiveProfile] = useState<number | null>(null);
   const [activeCid, setActiveCid] = useState<number | null>(null);
   const [internetCid, setInternetCid] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -72,7 +81,7 @@ export function useWanProfiles(): UseWanProfilesReturn {
   }, []);
 
   // ---------------------------------------------------------------------------
-  // Fetch APN profiles
+  // Fetch profiles + CID contexts
   // ---------------------------------------------------------------------------
   const fetchProfiles = useCallback(async (silent = false) => {
     if (!silent) setIsLoading(true);
@@ -93,7 +102,11 @@ export function useWanProfiles(): UseWanProfilesReturn {
       }
 
       setProfiles(data.profiles);
+      setCids(data.cids ?? []);
       setMaxProfiles(data.max_profiles);
+      setActiveProfile(
+        typeof data.active_profile === "number" ? data.active_profile : null
+      );
       setActiveCid(typeof data.active_cid === "number" ? data.active_cid : null);
       setInternetCid(
         typeof data.internet_cid === "number" ? data.internet_cid : null
@@ -116,17 +129,14 @@ export function useWanProfiles(): UseWanProfilesReturn {
   }, [fetchProfiles]);
 
   // ---------------------------------------------------------------------------
-  // Merge a partial update into the matching profile slot. Returns immediately;
-  // a delayed silent refresh reconciles with reality shortly after.
+  // Optimistic helpers — return immediately; a delayed silent refresh
+  // reconciles against reality shortly after.
   // ---------------------------------------------------------------------------
-  const applyOptimistic = useCallback(
-    (index: number, patch: Partial<WanProfile>) => {
-      setProfiles((prev) =>
-        prev ? prev.map((p) => (p.index === index ? { ...p, ...patch } : p)) : prev
-      );
-    },
-    []
-  );
+  const patchSlot = useCallback((id: number, patch: Partial<WanProfile>) => {
+    setProfiles((prev) =>
+      prev ? prev.map((p) => (p.id === id ? { ...p, ...patch } : p)) : prev
+    );
+  }, []);
 
   const scheduleReconcile = useCallback(() => {
     setTimeout(() => {
@@ -134,110 +144,128 @@ export function useWanProfiles(): UseWanProfilesReturn {
     }, RECONCILE_DELAY_MS);
   }, [fetchProfiles]);
 
-  // ---------------------------------------------------------------------------
-  // Save profile configuration
-  // ---------------------------------------------------------------------------
-  const saveProfile = useCallback(
-    async (index: number, request: WanProfileSaveRequest): Promise<boolean> => {
-      setError(null);
-      setIsSaving(true);
-
-      try {
-        const resp = await authFetch(CGI_ENDPOINT, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "save", index, ...request }),
-        });
-
-        if (!resp.ok) {
-          throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
-        }
-
-        const data: WanProfileSaveResponse = await resp.json();
-        if (!mountedRef.current) return false;
-
-        if (!data.success) {
-          setError(data.error || "Failed to save APN profile");
-          return false;
-        }
-
-        applyOptimistic(index, {
-          name: request.name,
-          apn: request.apn,
-          pdp_type: request.pdp_type,
-        });
-        scheduleReconcile();
-        return true;
-      } catch (err) {
-        if (!mountedRef.current) return false;
-        setError(
-          err instanceof Error ? err.message : "Failed to save APN profile"
-        );
-        return false;
-      } finally {
-        if (mountedRef.current) {
-          setIsSaving(false);
-        }
+  // Shared POST wrapper. Returns the parsed body on HTTP success, or null.
+  const postAction = useCallback(
+    async (body: Record<string, unknown>): Promise<WanProfileSaveResponse | null> => {
+      const resp = await authFetch(CGI_ENDPOINT, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!resp.ok) {
+        throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
       }
+      return (await resp.json()) as WanProfileSaveResponse;
     },
-    [applyOptimistic, scheduleReconcile]
+    []
   );
 
   // ---------------------------------------------------------------------------
-  // Toggle profile enabled/disabled
+  // Save a slot's configuration
   // ---------------------------------------------------------------------------
-  const toggleProfile = useCallback(
-    async (index: number, enabled: boolean): Promise<boolean> => {
+  const saveProfile = useCallback(
+    async (id: number, request: WanProfileSaveRequest): Promise<boolean> => {
       setError(null);
       setIsSaving(true);
-
       try {
-        const resp = await authFetch(CGI_ENDPOINT, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "toggle", index, enabled } as WanProfileToggleRequest & { action: string }),
-        });
-
-        if (!resp.ok) {
-          throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
-        }
-
-        const data: WanProfileSaveResponse = await resp.json();
+        const data = await postAction({ action: "save", id, ...request });
         if (!mountedRef.current) return false;
-
-        if (!data.success) {
-          setError(data.error || "Failed to toggle APN profile");
+        if (!data?.success) {
+          setError(data?.error || "Failed to save APN profile");
           return false;
         }
-
-        applyOptimistic(index, { enabled });
+        patchSlot(id, {
+          name: request.name,
+          apn: request.apn,
+          pdp_type: request.pdp_type,
+          cid: request.cid,
+        });
         scheduleReconcile();
         return true;
       } catch (err) {
         if (!mountedRef.current) return false;
-        setError(
-          err instanceof Error ? err.message : "Failed to toggle APN profile"
-        );
+        setError(err instanceof Error ? err.message : "Failed to save APN profile");
         return false;
       } finally {
-        if (mountedRef.current) {
-          setIsSaving(false);
-        }
+        if (mountedRef.current) setIsSaving(false);
       }
     },
-    [applyOptimistic, scheduleReconcile]
+    [postAction, patchSlot, scheduleReconcile]
+  );
+
+  // ---------------------------------------------------------------------------
+  // Activate a slot — mutually exclusive (radio). The backend writes the APN
+  // and reattaches; we optimistically move the active flag across all slots.
+  // ---------------------------------------------------------------------------
+  const activateProfile = useCallback(
+    async (id: number): Promise<boolean> => {
+      setError(null);
+      setIsSaving(true);
+      try {
+        const data = await postAction({ action: "activate", id });
+        if (!mountedRef.current) return false;
+        if (!data?.success) {
+          setError(data?.error || "Failed to activate APN profile");
+          return false;
+        }
+        setActiveProfile(id);
+        setProfiles((prev) =>
+          prev ? prev.map((p) => ({ ...p, is_active: p.id === id })) : prev
+        );
+        scheduleReconcile();
+        return true;
+      } catch (err) {
+        if (!mountedRef.current) return false;
+        setError(err instanceof Error ? err.message : "Failed to activate APN profile");
+        return false;
+      } finally {
+        if (mountedRef.current) setIsSaving(false);
+      }
+    },
+    [postAction, scheduleReconcile]
+  );
+
+  // ---------------------------------------------------------------------------
+  // Clear a slot (refused on the active slot by the backend)
+  // ---------------------------------------------------------------------------
+  const clearProfile = useCallback(
+    async (id: number): Promise<boolean> => {
+      setError(null);
+      setIsSaving(true);
+      try {
+        const data = await postAction({ action: "clear", id });
+        if (!mountedRef.current) return false;
+        if (!data?.success) {
+          setError(data?.error || "Failed to clear APN profile");
+          return false;
+        }
+        patchSlot(id, { name: "", apn: "", pdp_type: "ipv4v6", cid: 1 });
+        scheduleReconcile();
+        return true;
+      } catch (err) {
+        if (!mountedRef.current) return false;
+        setError(err instanceof Error ? err.message : "Failed to clear APN profile");
+        return false;
+      } finally {
+        if (mountedRef.current) setIsSaving(false);
+      }
+    },
+    [postAction, patchSlot, scheduleReconcile]
   );
 
   return {
     profiles,
+    cids,
     maxProfiles,
+    activeProfile,
     activeCid,
     internetCid,
     isLoading,
     isSaving,
     error,
     saveProfile,
-    toggleProfile,
+    activateProfile,
+    clearProfile,
     refresh: fetchProfiles,
   };
 }

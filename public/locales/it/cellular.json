@@ -1292,34 +1292,34 @@
       "list": {
         "card": {
           "title": "Profili APN",
-          "description": "Gestisci i profili di connessione WAN del tuo modem. Attiva/disattiva i profili o modifica la loro configurazione."
+          "description": "Cinque slot per profili dati. Attivane uno per renderlo l'APN Internet attivo — può essere attivo solo uno alla volta."
         },
         "empty": {
-          "title": "Nessun profilo WAN trovato",
-          "subtitle": "Il modem non ha restituito alcuno slot di profilo."
+          "title": "Nessuno slot profilo",
+          "subtitle": "Impossibile caricare gli slot dei profili."
         },
         "unnamed": "Senza nome",
         "no_apn": "Nessun APN impostato",
+        "slot": "Slot {{id}}",
+        "apn_on_cid": "{{apn}} · CID {{cid}}",
         "status": {
-          "in_use": "In uso",
+          "active": "Attivo",
           "idle": "Inattivo",
           "empty": "Vuoto"
         },
         "aria": {
-          "enable_switch": "Abilita profilo {{index}}",
-          "disable_switch": "Disabilita profilo {{index}}",
-          "edit_button": "Modifica profilo {{index}}"
+          "activate_switch": "Attiva {{name}}",
+          "active_switch": "{{name}} è il profilo attivo",
+          "edit_button": "Modifica {{name}}"
         },
         "toast": {
-          "enabled": "Profilo {{index}} abilitato",
-          "disabled": "Profilo {{index}} disabilitato",
-          "enable_error": "Impossibile abilitare il profilo {{index}}",
-          "disable_error": "Impossibile disabilitare il profilo {{index}}"
+          "activated": "{{name}} è ora il tuo APN attivo",
+          "activate_error": "Impossibile attivare {{name}}"
         }
       },
       "edit": {
-        "title": "Modifica profilo {{index}}",
-        "description_default": "Configura l'APN e le impostazioni di connessione per il profilo {{index}}.",
+        "title": "Modifica slot {{id}}",
+        "description_default": "Configura questo profilo dati. Salvando lo memorizzi; attivalo dall'elenco per renderlo operativo.",
         "fields": {
           "name": {
             "label": "Nome",
@@ -1345,14 +1345,33 @@
             "placeholder": "Seleziona CID",
             "aria": "Contesto PDP (CID)",
             "option_template": "CID {{cid}}",
-            "for_internet": "Per Internet"
+            "for_internet": "Internet",
+            "ims_badge": "IMS",
+            "sos_badge": "SOS"
           }
+        },
+        "cid_confirm": {
+          "title": "Usare un contesto riservato?",
+          "description_ims": "Il CID {{cid}} è riservato dal tuo operatore per l'IMS (VoLTE / chiamate Wi-Fi). Scrivere qui un APN dati può compromettere le chiamate vocali. Continuare comunque?",
+          "description_sos": "Il CID {{cid}} è riservato alle chiamate di emergenza (SOS). Scrivere qui un APN dati può compromettere le chiamate di emergenza. Continuare comunque?",
+          "confirm": "Usa comunque",
+          "cancel": "Annulla"
+        },
+        "clear": {
+          "button": "Svuota slot",
+          "disabled_active": "Passa a un altro profilo prima di svuotare quello attivo",
+          "title": "Svuotare questo slot?",
+          "description": "Questo cancella il nome e l'APN del profilo. L'operazione non può essere annullata.",
+          "confirm": "Svuota",
+          "cancel": "Annulla",
+          "toast_success": "Slot svuotato",
+          "toast_error": "Impossibile svuotare lo slot"
         },
         "save_button": "Salva profilo",
         "cancel": "Annulla",
         "toast": {
-          "saved": "Profilo {{index}} salvato correttamente",
-          "save_error": "Impossibile salvare il profilo {{index}}"
+          "saved": "{{name}} salvato",
+          "save_error": "Impossibile salvare il profilo"
         }
       },
       "mbn": {

@@ -28,12 +28,13 @@ const APNSettingsComponent = () => {
 
   const {
     profiles,
-    internetCid,
+    cids,
     isLoading,
     isSaving,
     error,
     saveProfile,
-    toggleProfile,
+    activateProfile,
+    clearProfile,
     refresh,
   } = useWanProfiles();
 
@@ -82,11 +83,11 @@ const APNSettingsComponent = () => {
     ? profileOverride.name
     : t("core_settings.apn.managed_by_profile_fallback");
 
-  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [editingId, setEditingId] = useState<number | null>(null);
 
   const editingProfile =
-    editingIndex !== null
-      ? profiles?.find((p) => p.index === editingIndex) ?? null
+    editingId !== null
+      ? profiles?.find((p) => p.id === editingId) ?? null
       : null;
 
   return (
@@ -136,19 +137,20 @@ const APNSettingsComponent = () => {
           profiles={profiles}
           isLoading={isLoading}
           isSaving={isSaving}
-          onEdit={setEditingIndex}
-          onToggle={toggleProfile}
-          editingIndex={editingIndex}
+          onEdit={setEditingId}
+          onActivate={activateProfile}
+          editingId={editingId}
         />
 
         {editingProfile !== null ? (
           <WanProfileEditCard
-            key={editingProfile.index}
+            key={editingProfile.id}
             profile={editingProfile}
             isSaving={isSaving}
-            internetCid={internetCid}
+            cids={cids}
             onSave={saveProfile}
-            onCancel={() => setEditingIndex(null)}
+            onClear={clearProfile}
+            onCancel={() => setEditingId(null)}
           />
         ) : (
           <MBNCard

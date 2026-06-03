@@ -1292,34 +1292,34 @@
       "list": {
         "card": {
           "title": "Profil APN",
-          "description": "Kelola profil koneksi WAN modem Anda. Aktifkan/nonaktifkan profil atau edit konfigurasinya."
+          "description": "Lima slot profil data. Aktifkan salah satu untuk menjadikannya APN Internet aktif — hanya satu yang bisa aktif pada satu waktu."
         },
         "empty": {
-          "title": "Tidak ada profil WAN ditemukan",
-          "subtitle": "Modem tidak mengembalikan slot profil apa pun."
+          "title": "Tidak ada slot profil",
+          "subtitle": "Slot profil tidak dapat dimuat."
         },
         "unnamed": "Tanpa Nama",
         "no_apn": "APN belum diatur",
+        "slot": "Slot {{id}}",
+        "apn_on_cid": "{{apn}} · CID {{cid}}",
         "status": {
-          "in_use": "Digunakan",
+          "active": "Aktif",
           "idle": "Siaga",
           "empty": "Kosong"
         },
         "aria": {
-          "enable_switch": "Aktifkan profil {{index}}",
-          "disable_switch": "Nonaktifkan profil {{index}}",
-          "edit_button": "Edit profil {{index}}"
+          "activate_switch": "Aktifkan {{name}}",
+          "active_switch": "{{name}} adalah profil aktif",
+          "edit_button": "Edit {{name}}"
         },
         "toast": {
-          "enabled": "Profil {{index}} diaktifkan",
-          "disabled": "Profil {{index}} dinonaktifkan",
-          "enable_error": "Gagal mengaktifkan profil {{index}}",
-          "disable_error": "Gagal menonaktifkan profil {{index}}"
+          "activated": "{{name}} kini menjadi APN aktif Anda",
+          "activate_error": "Gagal mengaktifkan {{name}}"
         }
       },
       "edit": {
-        "title": "Edit Profil {{index}}",
-        "description_default": "Konfigurasi APN dan pengaturan koneksi untuk profil {{index}}.",
+        "title": "Edit Slot {{id}}",
+        "description_default": "Konfigurasi profil data ini. Menyimpan akan menyimpannya; aktifkan dari daftar untuk menggunakannya.",
         "fields": {
           "name": {
             "label": "Nama",
@@ -1345,14 +1345,33 @@
             "placeholder": "Pilih CID",
             "aria": "Konteks PDP (CID)",
             "option_template": "CID {{cid}}",
-            "for_internet": "Untuk Internet"
+            "for_internet": "Internet",
+            "ims_badge": "IMS",
+            "sos_badge": "SOS"
           }
+        },
+        "cid_confirm": {
+          "title": "Gunakan konteks khusus?",
+          "description_ims": "CID {{cid}} dicadangkan oleh operator Anda untuk IMS (VoLTE / panggilan Wi-Fi). Menulis APN data di sini dapat mengganggu panggilan suara. Tetap lanjutkan?",
+          "description_sos": "CID {{cid}} dicadangkan untuk panggilan darurat (SOS). Menulis APN data di sini dapat mengganggu panggilan darurat. Tetap lanjutkan?",
+          "confirm": "Tetap gunakan",
+          "cancel": "Batal"
+        },
+        "clear": {
+          "button": "Kosongkan slot",
+          "disabled_active": "Beralih ke profil lain sebelum mengosongkan yang aktif",
+          "title": "Kosongkan slot ini?",
+          "description": "Ini akan mengosongkan nama dan APN profil. Tindakan ini tidak dapat dibatalkan.",
+          "confirm": "Kosongkan",
+          "cancel": "Batal",
+          "toast_success": "Slot dikosongkan",
+          "toast_error": "Gagal mengosongkan slot"
         },
         "save_button": "Simpan Profil",
         "cancel": "Batal",
         "toast": {
-          "saved": "Profil {{index}} berhasil disimpan",
-          "save_error": "Gagal menyimpan profil {{index}}"
+          "saved": "{{name}} disimpan",
+          "save_error": "Gagal menyimpan profil"
         }
       },
       "mbn": {

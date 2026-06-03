@@ -1317,34 +1317,34 @@
       "list": {
         "card": {
           "title": "APN 配置文件",
-          "description": "管理调制解调器的 WAN 连接配置文件。开启/关闭配置文件或编辑其配置。"
+          "description": "五个数据配置文件槽位。开启其中一个即可将其设为活动的互联网 APN — 同一时间只能有一个处于活动状态。"
         },
         "empty": {
-          "title": "未找到 WAN 配置文件",
-          "subtitle": "调制解调器未返回任何配置文件槽位。"
+          "title": "没有配置文件槽位",
+          "subtitle": "无法加载配置文件槽位。"
         },
         "unnamed": "未命名",
         "no_apn": "未设置 APN",
+        "slot": "槽位 {{id}}",
+        "apn_on_cid": "{{apn}} · CID {{cid}}",
         "status": {
-          "in_use": "使用中",
+          "active": "活动",
           "idle": "空闲",
           "empty": "空"
         },
         "aria": {
-          "enable_switch": "启用配置文件 {{index}}",
-          "disable_switch": "禁用配置文件 {{index}}",
-          "edit_button": "编辑配置文件 {{index}}"
+          "activate_switch": "激活 {{name}}",
+          "active_switch": "{{name}} 是活动配置文件",
+          "edit_button": "编辑 {{name}}"
         },
         "toast": {
-          "enabled": "配置文件 {{index}} 已启用",
-          "disabled": "配置文件 {{index}} 已禁用",
-          "enable_error": "启用配置文件 {{index}} 失败",
-          "disable_error": "禁用配置文件 {{index}} 失败"
+          "activated": "{{name}} 现已成为活动 APN",
+          "activate_error": "激活 {{name}} 失败"
         }
       },
       "edit": {
-        "title": "编辑配置文件 {{index}}",
-        "description_default": "为配置文件 {{index}} 配置 APN 和连接设置。",
+        "title": "编辑槽位 {{id}}",
+        "description_default": "配置此数据配置文件。保存即存储；在列表中将其激活以生效。",
         "fields": {
           "name": {
             "label": "名称",
@@ -1370,14 +1370,33 @@
             "placeholder": "选择 CID",
             "aria": "PDP 上下文（CID）",
             "option_template": "CID {{cid}}",
-            "for_internet": "用于互联网"
+            "for_internet": "互联网",
+            "ims_badge": "IMS",
+            "sos_badge": "SOS"
           }
+        },
+        "cid_confirm": {
+          "title": "使用保留的上下文？",
+          "description_ims": "CID {{cid}} 被运营商保留用于 IMS（VoLTE / Wi-Fi 通话）。在此写入数据 APN 可能会中断语音通话。仍要继续吗？",
+          "description_sos": "CID {{cid}} 被保留用于紧急（SOS）呼叫。在此写入数据 APN 可能会中断紧急呼叫。仍要继续吗？",
+          "confirm": "仍然使用",
+          "cancel": "取消"
+        },
+        "clear": {
+          "button": "清空槽位",
+          "disabled_active": "清空活动配置文件前请先切换到其他配置文件",
+          "title": "清空此槽位？",
+          "description": "这将清空该配置文件的名称和 APN。此操作无法撤销。",
+          "confirm": "清空",
+          "cancel": "取消",
+          "toast_success": "槽位已清空",
+          "toast_error": "清空槽位失败"
         },
         "save_button": "保存配置文件",
         "cancel": "取消",
         "toast": {
-          "saved": "配置文件 {{index}} 已成功保存",
-          "save_error": "保存配置文件 {{index}} 失败"
+          "saved": "{{name}} 已保存",
+          "save_error": "保存配置文件失败"
         }
       },
       "mbn": {

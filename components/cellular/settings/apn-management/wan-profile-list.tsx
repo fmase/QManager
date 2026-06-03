@@ -15,7 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
-import { GlobeIcon, MinusCircleIcon, PencilIcon } from "lucide-react";
+import { GlobeIcon, MinusCircleIcon, CircleIcon, PencilIcon } from "lucide-react";
 
 import type { WanProfile } from "@/types/wan-profiles";
 
@@ -27,9 +27,10 @@ interface WanProfileListCardProps {
   profiles: WanProfile[] | null;
   isLoading: boolean;
   isSaving: boolean;
-  editingIndex: number | null;
-  onEdit: (index: number) => void;
-  onToggle: (index: number, enabled: boolean) => Promise<boolean>;
+  editingId: number | null;
+  onEdit: (id: number) => void;
+  /** Activate a slot (mutually exclusive). Returns true on success. */
+  onActivate: (id: number) => Promise<boolean>;
 }
 
 // =============================================================================
@@ -51,17 +52,16 @@ const itemVariants: Variants = {
 };
 
 // =============================================================================
-// Status Badge — "In Use" marks the live WAN-bearing (Internet) APN.
+// Status Badge — "Active" marks the live data profile (Internet APN).
+// The globe inherits the badge text color (currentColor), no color override.
 // =============================================================================
 
 function ProfileStatusBadge({ profile }: { profile: WanProfile }) {
   const { t } = useTranslation("cellular");
   const configured = !!profile.apn;
 
-  // "In Use" only when this CID is the live WAN bearer AND it actually has an
-  // APN — an empty default-fallback CID must never read as in use.
   if (profile.is_active && configured) {
-    const label = t("core_settings.apn.list.status.in_use");
+    const label = t("core_settings.apn.list.status.active");
     return (
       <Badge
         variant="outline"
@@ -74,7 +74,6 @@ function ProfileStatusBadge({ profile }: { profile: WanProfile }) {
     );
   }
 
-  // Unconfigured slot — empty, awaiting an APN.
   if (!configured) {
     const label = t("core_settings.apn.list.status.empty");
     return (
@@ -96,7 +95,7 @@ function ProfileStatusBadge({ profile }: { profile: WanProfile }) {
       className="bg-muted/50 text-muted-foreground border-muted-foreground/30"
       title={label}
     >
-      <MinusCircleIcon className="size-3" />
+      <CircleIcon className="size-3" />
       <span className="sr-only @xs/card:not-sr-only">{label}</span>
     </Badge>
   );
@@ -149,29 +148,29 @@ export default function WanProfileListCard({
   profiles,
   isLoading,
   isSaving,
-  editingIndex,
+  editingId,
   onEdit,
-  onToggle,
+  onActivate,
 }: WanProfileListCardProps) {
   const { t } = useTranslation("cellular");
   const shouldReduceMotion = useReducedMotion();
 
   if (isLoading) return <WanProfileListSkeleton />;
 
-  const handleToggle = async (profile: WanProfile, checked: boolean) => {
-    const success = await onToggle(profile.index, checked);
+  // Resolve a human label for toasts/aria — falls back to the slot number.
+  const labelFor = (profile: WanProfile) =>
+    profile.name || t("core_settings.apn.list.slot", { id: profile.id });
+
+  const handleActivate = async (profile: WanProfile, checked: boolean) => {
+    // Radio semantics: only the OFF→ON edge activates. The active slot's
+    // switch is disabled below, so a turn-off edge can't reach here.
+    if (!checked) return;
+    const name = labelFor(profile);
+    const success = await onActivate(profile.id);
     if (success) {
-      toast.success(
-        checked
-          ? t("core_settings.apn.list.toast.enabled", { index: profile.index })
-          : t("core_settings.apn.list.toast.disabled", { index: profile.index })
-      );
+      toast.success(t("core_settings.apn.list.toast.activated", { name }));
     } else {
-      toast.error(
-        checked
-          ? t("core_settings.apn.list.toast.enable_error", { index: profile.index })
-          : t("core_settings.apn.list.toast.disable_error", { index: profile.index })
-      );
+      toast.error(t("core_settings.apn.list.toast.activate_error", { name }));
     }
   };
 
@@ -202,11 +201,13 @@ export default function WanProfileListCard({
             animate="visible"
           >
             {profiles.map((profile) => {
-              const isEditing = editingIndex === profile.index;
+              const isEditing = editingId === profile.id;
+              const configured = !!profile.apn;
+              const name = labelFor(profile);
 
               return (
                 <motion.div
-                  key={profile.index}
+                  key={profile.id}
                   variants={itemVariants}
                   initial={shouldReduceMotion ? false : "hidden"}
                   animate="visible"
@@ -214,12 +215,18 @@ export default function WanProfileListCard({
                     isEditing ? "bg-accent/50" : ""
                   }`}
                 >
-                  {/* CID */}
-                  <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold text-muted-foreground tabular-nums">
-                    {profile.index}
+                  {/* Slot id */}
+                  <span
+                    className={`flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold tabular-nums ${
+                      profile.is_active && configured
+                        ? "bg-success/15 text-success"
+                        : "bg-muted text-muted-foreground"
+                    }`}
+                  >
+                    {profile.id}
                   </span>
 
-                  {/* Name + APN */}
+                  {/* Name + APN (target CID) */}
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
                       <p className="text-sm font-medium truncate">
@@ -231,7 +238,12 @@ export default function WanProfileListCard({
                       </p>
                     </div>
                     <p className="text-xs text-muted-foreground truncate">
-                      {profile.apn || t("core_settings.apn.list.no_apn")}
+                      {configured
+                        ? t("core_settings.apn.list.apn_on_cid", {
+                            apn: profile.apn,
+                            cid: profile.cid,
+                          })
+                        : t("core_settings.apn.list.no_apn")}
                     </p>
                   </div>
 
@@ -241,24 +253,27 @@ export default function WanProfileListCard({
                   {/* Switch + Edit — row 2 on narrow, cols 4-5 inline at @md/card */}
                   <div className="col-start-2 col-span-2 flex items-center gap-2 justify-end @md/card:contents">
                     <Switch
-                      checked={profile.enabled}
+                      checked={profile.is_active}
                       onCheckedChange={(checked) =>
-                        handleToggle(profile, checked)
+                        handleActivate(profile, checked)
                       }
-                      disabled={isSaving || !profile.apn}
+                      // Radio: the active slot can't be turned off (there is
+                      // always one live data profile); empty slots can't be
+                      // activated until an APN is saved.
+                      disabled={isSaving || !configured || profile.is_active}
                       aria-label={
-                        profile.enabled
-                          ? t("core_settings.apn.list.aria.disable_switch", { index: profile.index })
-                          : t("core_settings.apn.list.aria.enable_switch", { index: profile.index })
+                        profile.is_active
+                          ? t("core_settings.apn.list.aria.active_switch", { name })
+                          : t("core_settings.apn.list.aria.activate_switch", { name })
                       }
                     />
 
                     <Button
                       variant="ghost"
                       size="icon-sm"
-                      onClick={() => onEdit(profile.index)}
+                      onClick={() => onEdit(profile.id)}
                       disabled={isSaving}
-                      aria-label={t("core_settings.apn.list.aria.edit_button", { index: profile.index })}
+                      aria-label={t("core_settings.apn.list.aria.edit_button", { name })}
                     >
                       <PencilIcon className="size-4" />
                     </Button>
