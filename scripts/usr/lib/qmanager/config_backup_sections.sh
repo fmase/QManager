@@ -253,32 +253,43 @@ apply_network_mode_apn() {
 }
 
 # =============================================================================
-# LTE/5G Bands — AT+QNWPREFCFG lte_band, nsa_nr5g_band, nr5g_band
+# LTE/5G Bands — AT+QNWPREFCFG lte_band, nsa_nr5g_band, nr5g_band, nrdc_nr5g_band
 # =============================================================================
 collect_bands() {
     local resp
     resp=$(qcmd 'AT+QNWPREFCFG="ue_capability_band"') || return 1
     # Each line: +QNWPREFCFG: "lte_band",1:3:7:28   (colon-delimited numeric list)
-    local lte nsa sa
+    # The "nr5g_band" match excludes nsa_/nrdc_ lines (substring-match hazard).
+    local lte
+    local nsa
+    local sa
+    local nrdc
     lte=$(echo "$resp" | awk -F',' '/"lte_band"/         {print $2; exit}')
     nsa=$(echo "$resp" | awk -F',' '/"nsa_nr5g_band"/    {print $2; exit}')
     sa=$(echo  "$resp" | awk -F',' '/"nr5g_band"/ && !/nsa_/ && !/nrdc_/ {print $2; exit}')
+    nrdc=$(echo "$resp" | awk -F',' '/"nrdc_nr5g_band"/  {print $2; exit}')
 
     # failover flag
     local failover
     failover=$(cat /etc/qmanager/band_failover_enabled 2>/dev/null || echo "0")
 
-    jq -n --arg l "$lte" --arg n "$nsa" --arg s "$sa" --arg f "$failover" \
-        '{lte_bands: $l, nsa_bands: $n, sa_bands: $s, failover_enabled: ($f == "1")}'
+    jq -n --arg l "$lte" --arg n "$nsa" --arg s "$sa" --arg d "$nrdc" --arg f "$failover" \
+        '{lte_bands: $l, nsa_bands: $n, sa_bands: $s, nrdc_bands: $d, failover_enabled: ($f == "1")}'
 }
 
 apply_bands() {
-    local input lte nsa sa failover
+    local input
+    local lte
+    local nsa
+    local sa
+    local nrdc
+    local failover
     input=$(cat)
     lte=$(echo "$input"       | jq -r '.lte_bands // empty')
     nsa=$(echo "$input"       | jq -r '.nsa_bands // empty')
     sa=$(echo "$input"        | jq -r '.sa_bands  // empty')
-    failover=$(echo "$input"  | jq -r '.failover_enabled // false')
+    nrdc=$(echo "$input"      | jq -r 'if .nrdc_bands == null then empty else .nrdc_bands end')
+    failover=$(echo "$input"  | jq -r 'if .failover_enabled == null then "false" else (.failover_enabled | tostring) end')
 
     # Kill any running band failover watcher before re-locking
     if [ -f /tmp/qmanager_band_failover.pid ]; then
@@ -288,9 +299,10 @@ apply_bands() {
         rm -f /tmp/qmanager_band_failover.pid /tmp/qmanager_band_failover
     fi
 
-    [ -n "$lte" ] && { qcmd "AT+QNWPREFCFG=\"lte_band\",${lte}"        >/dev/null || return 1; sleep 1; }
-    [ -n "$nsa" ] && { qcmd "AT+QNWPREFCFG=\"nsa_nr5g_band\",${nsa}"   >/dev/null || return 1; sleep 1; }
-    [ -n "$sa"  ] && { qcmd "AT+QNWPREFCFG=\"nr5g_band\",${sa}"        >/dev/null || return 1; sleep 1; }
+    [ -n "$lte" ]  && { qcmd "AT+QNWPREFCFG=\"lte_band\",${lte}"         >/dev/null || return 1; sleep 1; }
+    [ -n "$nsa" ]  && { qcmd "AT+QNWPREFCFG=\"nsa_nr5g_band\",${nsa}"    >/dev/null || return 1; sleep 1; }
+    [ -n "$sa"  ]  && { qcmd "AT+QNWPREFCFG=\"nr5g_band\",${sa}"         >/dev/null || return 1; sleep 1; }
+    [ -n "$nrdc" ] && { qcmd "AT+QNWPREFCFG=\"nrdc_nr5g_band\",${nrdc}"  >/dev/null || return 1; sleep 1; }
 
     # Restore failover flag + respawn watcher if enabled
     mkdir -p /etc/qmanager

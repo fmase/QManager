@@ -3,6 +3,7 @@
 CGI: `system/config-backup/{collect,apply,apply_status,apply_cancel}.sh` · Hooks: `use-config-backup.ts`, `use-config-restore.ts` · Types: `config-backup.ts` · Reboot: Deferred (dialog + banner for IMEI/profile)
 
 - Route: `/system-settings/config-backup`. 8 sections: Network Mode + APN, LTE/5G bands, Tower Lock, TTL/HL, IMEI, Custom SIM Profiles, SMS Alerts, Watchdog.
+- **Bands section** (`collect_bands`/`apply_bands`): captures all four band types — `lte_bands`, `nsa_bands`, `sa_bands`, `nrdc_bands` (NR-DC) — plus the failover flag. Restored via `AT+QNWPREFCFG="<param>_band"`. Old backups lacking `nrdc_bands` restore as a no-op (empty → skipped). Cross-device restore of a band a target modem doesn't support fails the write like any other unsupported band. Trailing `\r` from the AT response is captured into the stored band values (pre-existing, all four types; `qcmd` tolerates it on restore).
 - **Overlap rule**: Custom SIM Profiles is mutex with APN/TTL/HL/IMEI — profile activation owns those.
 - **Encryption**: mandatory passphrase, AES-256-GCM via WebCrypto. PBKDF2-SHA256 200k iters, 16-byte salt, 12-byte IV. Header bound as AES-GCM AAD via `canonicalHeaderAad()`. Passphrase never leaves browser.
 - **File**: `.qmbackup` JSON envelope — plaintext header + base64 ciphertext (+ appended GCM tag). Filename: `qmanager-<model>-<YYYYMMDD-HHMMSS>.qmbackup` (UTC).
