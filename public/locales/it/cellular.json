@@ -662,14 +662,15 @@
           "description": "Selezionare le bande SA 5G da bloccare (standalone 5G)."
         },
         "nrdc_nr5g": {
-          "title": "Chiusura della banda NR-DC",
-          "description": "Selezionare le bande NR-DC da bloccare (5G-NR a doppia connettività)."
+          "title": "Bande NR-DC",
+          "description": "Le bande NR-DC sono gestite dal modem e non possono essere bloccate manualmente. Qui sono mostrate le bande attualmente in uso."
         }
       },
       "card_badges": {
         "scenario_controlled": "Scenario controllato",
         "all_unlocked": "Tutto sbloccato",
-        "bands_locked": "{{locked}} / {{total}} Bande"
+        "bands_locked": "{{locked}} / {{total}} Bande",
+        "view_only": "Sola lettura"
       },
       "card_empty": "Nessuna banda supportata segnalata dal modem per questa categoria.",
       "card_buttons": {

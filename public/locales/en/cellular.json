@@ -662,14 +662,15 @@
           "description": "Select the 5G SA bands to lock (standalone 5G)."
         },
         "nrdc_nr5g": {
-          "title": "NR-DC Band Locking",
-          "description": "Select the NR-DC bands to lock (dual-connectivity 5G-NR)."
+          "title": "NR-DC Bands",
+          "description": "NR-DC bands are managed by the modem and can't be locked manually. This shows the bands currently in use."
         }
       },
       "card_badges": {
         "scenario_controlled": "Scenario Controlled",
         "all_unlocked": "All Unlocked",
-        "bands_locked": "{{locked}} / {{total}} Bands"
+        "bands_locked": "{{locked}} / {{total}} Bands",
+        "view_only": "View only"
       },
       "card_empty": "No supported bands reported by the modem for this category.",
       "card_buttons": {

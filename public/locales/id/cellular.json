@@ -662,14 +662,15 @@
           "description": "Pilih band 5G SA yang ingin dikunci (5G standalone)."
         },
         "nrdc_nr5g": {
-          "title": "Penguncian Band NR-DC",
-          "description": "Pilih band NR-DC yang ingin dikunci (5G-NR konektivitas ganda)."
+          "title": "Band NR-DC",
+          "description": "Band NR-DC dikelola oleh modem dan tidak dapat dikunci secara manual. Ini menampilkan band yang sedang digunakan."
         }
       },
       "card_badges": {
         "scenario_controlled": "Dikontrol oleh Skenario",
         "all_unlocked": "Semua Tidak Dikunci",
-        "bands_locked": "{{locked}} / {{total}} Bands"
+        "bands_locked": "{{locked}} / {{total}} Bands",
+        "view_only": "Hanya lihat"
       },
       "card_empty": "Tidak ada band yang didukung dilaporkan oleh modem untuk kategori ini.",
       "card_buttons": {

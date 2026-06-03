@@ -662,14 +662,15 @@
           "description": "选择要锁定的 5G SA 频段（独立 5G）。"
         },
         "nrdc_nr5g": {
-          "title": "NR-DC 频段锁定",
-          "description": "选择要锁定的 NR-DC 频段（双连接 5G-NR）。"
+          "title": "NR-DC 频段",
+          "description": "NR-DC 频段由调制解调器管理，无法手动锁定。此处显示当前正在使用的频段。"
         }
       },
       "card_badges": {
         "scenario_controlled": "场景控制",
         "all_unlocked": "全部解锁",
-        "bands_locked": "{{locked}} / {{total}} 个频段"
+        "bands_locked": "{{locked}} / {{total}} 个频段",
+        "view_only": "仅查看"
       },
       "card_empty": "调制解调器未报告此类别的支持频段。",
       "card_buttons": {

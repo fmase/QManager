@@ -178,6 +178,7 @@ const BandLockingComponent = () => {
           isLoading={isPageLoading}
           error={error}
           disabled={isScenarioControlled}
+          readOnly={saSlotView === "nrdc_nr5g"}
           onSwapView={() => setSaSlotView(swapTargetView)}
           swapLabel={t(
             `cell_locking.band_locking.card_category_label.${swapTargetView}`,
