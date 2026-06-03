@@ -513,7 +513,8 @@
         "select_row_aria": "选择行",
         "sim_badge": "SIM",
         "empty_unread": "没有未读消息。",
-        "empty_read": "没有已读消息。"
+        "empty_read": "没有已读消息。",
+        "empty_search": "没有符合搜索条件的短信。"
       },
       "buttons": {
         "refresh_aria": "刷新收件箱",
@@ -525,12 +526,19 @@
         "prev": "上一页",
         "next": "下一页",
         "mark_all_read": "全部标为已读",
-        "mark_all_read_aria": "将所有消息标记为已读"
+        "mark_all_read_aria": "将所有消息标记为已读",
+        "first_page": "转到第一页",
+        "prev_page": "转到上一页",
+        "next_page": "转到下一页",
+        "last_page": "转到最后一页"
       },
       "pagination": {
         "total_one": "{{count}} 条消息",
         "total_other": "{{count}} 条消息",
-        "page_info": "{{current}} / {{total}}"
+        "page_info": "{{current}} / {{total}}",
+        "rows_per_page": "每页行数",
+        "page_label": "第 {{current}} 页，共 {{total}} 页",
+        "selected_info": "已选择 {{selected}} / {{total}}"
       },
       "error": {
         "title": "加载消息失败",
@@ -573,7 +581,17 @@
         "unread": "未读",
         "read": "已读"
       },
-      "unread_aria": "未读消息"
+      "unread_aria": "未读消息",
+      "search": {
+        "placeholder": "搜索短信…",
+        "aria": "搜索短信"
+      },
+      "sort": {
+        "label": "排序",
+        "newest": "最新优先",
+        "oldest": "最早优先",
+        "aria": "排序方式"
+      }
     },
     "compose": {
       "title": "新短信",

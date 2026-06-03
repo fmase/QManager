@@ -519,7 +519,8 @@
         "empty_read": "No read messages.",
         "select_all_aria": "Select all",
         "select_row_aria": "Select row",
-        "sim_badge": "SIM"
+        "sim_badge": "SIM",
+        "empty_search": "No messages match your search."
       },
       "buttons": {
         "refresh_aria": "Refresh inbox",
@@ -531,12 +532,19 @@
         "mark_all_read": "Mark all read",
         "mark_all_read_aria": "Mark all messages as read",
         "prev": "Prev",
-        "next": "Next"
+        "next": "Next",
+        "first_page": "Go to first page",
+        "prev_page": "Go to previous page",
+        "next_page": "Go to next page",
+        "last_page": "Go to last page"
       },
       "pagination": {
         "total_one": "{{count}} message",
         "total_other": "{{count}} messages",
-        "page_info": "{{current}} / {{total}}"
+        "page_info": "{{current}} / {{total}}",
+        "rows_per_page": "Rows per page",
+        "page_label": "Page {{current}} of {{total}}",
+        "selected_info": "{{selected}} of {{total}} selected"
       },
       "error": {
         "title": "Failed to load messages",
@@ -573,6 +581,16 @@
         "delete_selected_success_other": "{{count}} messages deleted",
         "delete_selected_error": "Failed to delete selected messages",
         "mark_all_read_success": "All messages marked as read"
+      },
+      "search": {
+        "placeholder": "Search messages…",
+        "aria": "Search messages"
+      },
+      "sort": {
+        "label": "Sort",
+        "newest": "Newest first",
+        "oldest": "Oldest first",
+        "aria": "Sort order"
       }
     },
     "compose": {

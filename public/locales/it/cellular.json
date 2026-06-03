@@ -513,7 +513,8 @@
         "select_row_aria": "Seleziona riga",
         "sim_badge": "SIM",
         "empty_unread": "Nessun messaggio non letto.",
-        "empty_read": "Nessun messaggio letto."
+        "empty_read": "Nessun messaggio letto.",
+        "empty_search": "Nessun messaggio corrisponde alla ricerca."
       },
       "buttons": {
         "refresh_aria": "Aggiorna la posta in arrivo",
@@ -525,12 +526,19 @@
         "prev": "Prec",
         "next": "Avanti",
         "mark_all_read": "Segna tutti come letti",
-        "mark_all_read_aria": "Segna tutti i messaggi come letti"
+        "mark_all_read_aria": "Segna tutti i messaggi come letti",
+        "first_page": "Vai alla prima pagina",
+        "prev_page": "Vai alla pagina precedente",
+        "next_page": "Vai alla pagina successiva",
+        "last_page": "Vai all’ultima pagina"
       },
       "pagination": {
         "total_one": "messaggio {{count}}",
         "total_other": "{{count}} messaggi",
-        "page_info": "{{current}} / {{total}}"
+        "page_info": "{{current}} / {{total}}",
+        "rows_per_page": "Righe per pagina",
+        "page_label": "Pagina {{current}} di {{total}}",
+        "selected_info": "{{selected}} di {{total}} selezionati"
       },
       "error": {
         "title": "Impossibile caricare i messaggi",
@@ -573,7 +581,17 @@
         "unread": "Non letti",
         "read": "Letti"
       },
-      "unread_aria": "Messaggio non letto"
+      "unread_aria": "Messaggio non letto",
+      "search": {
+        "placeholder": "Cerca messaggi…",
+        "aria": "Cerca messaggi"
+      },
+      "sort": {
+        "label": "Ordina",
+        "newest": "Prima i più recenti",
+        "oldest": "Prima i meno recenti",
+        "aria": "Ordine"
+      }
     },
     "compose": {
       "title": "Nuovo messaggio",

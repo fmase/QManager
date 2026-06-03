@@ -18,7 +18,18 @@ import {
   TbRefresh,
   TbPlus,
 } from "react-icons/tb";
-import { AlertCircleIcon, CheckCheck, Loader2, Trash2 } from "lucide-react";
+import {
+  AlertCircleIcon,
+  ArrowDownUp,
+  CheckCheck,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+  Loader2,
+  Search,
+  Trash2,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -34,9 +45,20 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -47,6 +69,7 @@ import {
 } from "@/components/ui/table";
 
 const MotionTableRow = motion.create(TableRow);
+const MotionTableBody = motion.create(TableBody);
 import {
   Dialog,
   DialogContent,
@@ -69,6 +92,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
+import { containerVariants, itemVariants } from "@/lib/motion";
 import type { SmsData } from "@/hooks/use-sms";
 import type { SmsMessage } from "@/types/sms";
 import {
@@ -116,6 +140,8 @@ export default function SmsInboxCard({
   const [showCompose, setShowCompose] = React.useState(false);
   const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({});
   const [tab, setTab] = React.useState<SmsTab>("all");
+  const [search, setSearch] = React.useState("");
+  const [sortDir, setSortDir] = React.useState<"newest" | "oldest">("newest");
 
   // Newest-first regardless of backend ordering: parse the modem's
   // "MM/DD/YY HH:MM:SS" timestamp and sort descending. The backend also sorts
@@ -133,12 +159,27 @@ export default function SmsInboxCard({
   const { isRead, markRead, markAllRead, unreadCount } =
     useSmsReadState(sortedMessages);
 
-  // Tab filter sits on top of the sorted list; the table renders the result.
+  // Tab filter → search filter → sort-direction flip sit on top of the
+  // newest-first sorted list; the table renders the result. The oldest-first
+  // flip lives here (not in `sortedMessages`) so the read-state hook above
+  // always sees a stable newest-first order.
   const filteredMessages = React.useMemo(() => {
-    if (tab === "unread") return sortedMessages.filter((m) => !isRead(m));
-    if (tab === "read") return sortedMessages.filter((m) => isRead(m));
-    return sortedMessages;
-  }, [sortedMessages, tab, isRead]);
+    let list = sortedMessages;
+    if (tab === "unread") list = list.filter((m) => !isRead(m));
+    else if (tab === "read") list = list.filter((m) => isRead(m));
+
+    const q = search.trim().toLowerCase();
+    if (q) {
+      list = list.filter(
+        (m) =>
+          m.sender.toLowerCase().includes(q) ||
+          m.content.toLowerCase().includes(q),
+      );
+    }
+
+    // sortedMessages is newest-first, so oldest-first is just a reverse.
+    return sortDir === "oldest" ? [...list].reverse() : list;
+  }, [sortedMessages, tab, isRead, search, sortDir]);
 
   // Opening a message marks it read (the only read trigger besides "mark all").
   const openMessage = React.useCallback(
@@ -354,22 +395,59 @@ export default function SmsInboxCard({
   });
 
   // --- Loading state ---------------------------------------------------------
+  // Mirror the loaded layout so data arrival settles in place instead of
+  // reflowing: real header text, the toolbar, the tab row, and a table-shaped
+  // body. Only the dynamic rows are skeletoned.
   if (isLoading) {
     return (
-      <Card>
+      <Card className="@container/card">
         <CardHeader>
-          <CardTitle>
-            <Skeleton className="h-5 w-20" />
-          </CardTitle>
-          <CardDescription>
-            <Skeleton className="h-4 w-48" />
-          </CardDescription>
+          <CardTitle>{t("sms.inbox.title")}</CardTitle>
+          <CardDescription>{t("sms.inbox.description")}</CardDescription>
+          <CardAction>
+            <div className="flex items-center gap-2">
+              <Skeleton className="size-8 rounded-md" />
+              <Skeleton className="h-8 w-9 rounded-md @xs/card:w-28" />
+            </div>
+          </CardAction>
         </CardHeader>
         <CardContent>
-          <div className="space-y-3">
+          <div className="mb-3 flex flex-col gap-2 @lg/card:flex-row @lg/card:items-center @lg/card:justify-between">
+            <Skeleton className="h-9 w-52 rounded-lg" />
+            <div className="flex items-center gap-2">
+              <Skeleton className="h-8 w-full rounded-md @lg/card:w-48" />
+              <Skeleton className="h-8 w-9 rounded-md @sm/card:w-28" />
+            </div>
+          </div>
+          <div className="overflow-hidden rounded-lg border">
+            <div className="bg-muted flex items-center gap-3 border-b px-3 py-2.5">
+              <Skeleton className="size-4 shrink-0 rounded-sm" />
+              <Skeleton className="h-3 w-12" />
+              <Skeleton className="hidden h-3 w-16 @md/card:block" />
+              <Skeleton className="ml-auto hidden h-3 w-12 @sm/card:block" />
+            </div>
             {Array.from({ length: 5 }).map((_, i) => (
-              <Skeleton key={i} className="h-10 w-full" />
+              <div
+                key={i}
+                className="flex items-center gap-3 border-b px-3 py-3 last:border-0"
+              >
+                <Skeleton className="size-4 shrink-0 rounded-sm" />
+                <div className="min-w-0 flex-1 space-y-1.5">
+                  <Skeleton className="h-4 w-28" />
+                  <Skeleton className="h-3 w-20 @sm/card:hidden" />
+                </div>
+                <Skeleton className="hidden h-4 w-40 @md/card:block" />
+                <Skeleton className="hidden h-4 w-24 @sm/card:block" />
+                <Skeleton className="size-8 shrink-0 rounded-md" />
+              </div>
             ))}
+          </div>
+          <div className="flex items-center justify-between px-2 pt-3">
+            <Skeleton className="h-4 w-24" />
+            <div className="flex items-center gap-2">
+              <Skeleton className="hidden h-8 w-28 rounded-md @sm/card:block" />
+              <Skeleton className="h-8 w-16 rounded-md" />
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -469,7 +547,7 @@ export default function SmsInboxCard({
           </CardAction>
         </CardHeader>
         <CardContent>
-          <div className="mb-3 flex items-center justify-between gap-2">
+          <div className="mb-3 flex flex-col gap-2 @lg/card:flex-row @lg/card:items-center @lg/card:justify-between">
             <Tabs value={tab} onValueChange={(v) => setTab(v as SmsTab)}>
               <TabsList>
                 <TabsTrigger value="all">{t("sms.inbox.tabs.all")}</TabsTrigger>
@@ -477,8 +555,8 @@ export default function SmsInboxCard({
                   {t("sms.inbox.tabs.unread")}
                   {unreadCount > 0 && (
                     <Badge
-                      variant="secondary"
-                      className="ml-1.5 px-1.5 py-0 text-[10px] tabular-nums"
+                      // variant="primary"
+                      className="p-1 rounded-full size-5 text-xs tabular-nums"
                     >
                       {unreadCount}
                     </Badge>
@@ -487,20 +565,66 @@ export default function SmsInboxCard({
                 <TabsTrigger value="read">{t("sms.inbox.tabs.read")}</TabsTrigger>
               </TabsList>
             </Tabs>
-            {unreadCount > 0 && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleMarkAllRead}
-                className="text-muted-foreground"
-                aria-label={t("sms.inbox.buttons.mark_all_read_aria")}
-              >
-                <CheckCheck className="size-4" />
-                <span className="hidden @sm/card:inline">
-                  {t("sms.inbox.buttons.mark_all_read")}
-                </span>
-              </Button>
-            )}
+            <div className="flex items-center gap-2">
+              <div className="relative flex-1 @lg/card:flex-initial">
+                <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2" />
+                <Input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder={t("sms.inbox.search.placeholder")}
+                  aria-label={t("sms.inbox.search.aria")}
+                  className="h-8 w-full pl-8 @lg/card:w-48"
+                />
+              </div>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    aria-label={t("sms.inbox.sort.aria")}
+                  >
+                    <ArrowDownUp className="size-4" />
+                    <span className="hidden @sm/card:inline">
+                      {sortDir === "newest"
+                        ? t("sms.inbox.sort.newest")
+                        : t("sms.inbox.sort.oldest")}
+                    </span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuLabel>
+                    {t("sms.inbox.sort.label")}
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuRadioGroup
+                    value={sortDir}
+                    onValueChange={(v) =>
+                      setSortDir(v as "newest" | "oldest")
+                    }
+                  >
+                    <DropdownMenuRadioItem value="newest">
+                      {t("sms.inbox.sort.newest")}
+                    </DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="oldest">
+                      {t("sms.inbox.sort.oldest")}
+                    </DropdownMenuRadioItem>
+                  </DropdownMenuRadioGroup>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              {unreadCount > 0 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleMarkAllRead}
+                  aria-label={t("sms.inbox.buttons.mark_all_read_aria")}
+                >
+                  <CheckCheck className="size-4" />
+                  <span className="hidden @sm/card:inline">
+                    {t("sms.inbox.buttons.mark_all_read")}
+                  </span>
+                </Button>
+              )}
+            </div>
           </div>
           <div className="overflow-hidden rounded-lg border">
             <Table>
@@ -520,9 +644,14 @@ export default function SmsInboxCard({
                   </TableRow>
                 ))}
               </TableHeader>
-              <TableBody>
+              <MotionTableBody
+                key={tab}
+                variants={containerVariants}
+                initial="hidden"
+                animate="visible"
+              >
                 {table.getRowModel().rows?.length ? (
-                  table.getRowModel().rows.map((row, index) => (
+                  table.getRowModel().rows.map((row) => (
                     <MotionTableRow
                       key={row.id}
                       className="cursor-pointer"
@@ -535,9 +664,7 @@ export default function SmsInboxCard({
                           openMessage(row.original);
                         }
                       }}
-                      initial={{ opacity: 0, x: -8 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ duration: 0.2, delay: Math.min(index * 0.04, 0.4), ease: "easeOut" }}
+                      variants={itemVariants}
                     >
                       {row.getVisibleCells().map((cell) => (
                         <TableCell key={cell.id}>
@@ -555,51 +682,102 @@ export default function SmsInboxCard({
                       colSpan={columns.length}
                       className="h-24 text-center"
                     >
-                      {tab === "unread"
-                        ? t("sms.inbox.table.empty_unread")
-                        : tab === "read"
-                          ? t("sms.inbox.table.empty_read")
-                          : t("sms.inbox.table.empty_row")}
+                      {search.trim()
+                        ? t("sms.inbox.table.empty_search")
+                        : tab === "unread"
+                          ? t("sms.inbox.table.empty_unread")
+                          : tab === "read"
+                            ? t("sms.inbox.table.empty_read")
+                            : t("sms.inbox.table.empty_row")}
                     </TableCell>
                   </TableRow>
                 )}
-              </TableBody>
+              </MotionTableBody>
             </Table>
           </div>
 
           {filteredMessages.length > 0 && (
-            <div className="flex items-center justify-between px-2 pt-2">
+            <div className="flex flex-col gap-3 px-2 pt-3 @lg/card:flex-row @lg/card:items-center @lg/card:justify-between">
               <span className="text-muted-foreground text-sm">
-                {t("sms.inbox.pagination.total", {
-                  count: filteredMessages.length,
-                })}
+                {selectedCount > 0
+                  ? t("sms.inbox.pagination.selected_info", {
+                      selected: selectedCount,
+                      total: filteredMessages.length,
+                    })
+                  : t("sms.inbox.pagination.total", {
+                      count: filteredMessages.length,
+                    })}
               </span>
-              {table.getPageCount() > 1 && (
-                <div className="flex items-center gap-2">
+              <div className="flex items-center justify-between gap-4 @lg/card:justify-end @lg/card:gap-6">
+                <div className="hidden items-center gap-2 @sm/card:flex">
+                  <span className="text-sm font-medium whitespace-nowrap">
+                    {t("sms.inbox.pagination.rows_per_page")}
+                  </span>
+                  <Select
+                    value={`${table.getState().pagination.pageSize}`}
+                    onValueChange={(value) => table.setPageSize(Number(value))}
+                  >
+                    <SelectTrigger size="sm" className="w-18">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {[5, 10, 20, 30, 50].map((pageSize) => (
+                        <SelectItem key={pageSize} value={`${pageSize}`}>
+                          {pageSize}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <span className="text-sm font-medium whitespace-nowrap tabular-nums">
+                  {t("sms.inbox.pagination.page_label", {
+                    current: table.getState().pagination.pageIndex + 1,
+                    total: Math.max(table.getPageCount(), 1),
+                  })}
+                </span>
+                <div className="flex items-center gap-1.5">
                   <Button
                     variant="outline"
-                    size="sm"
+                    size="icon"
+                    className="hidden size-8 @sm/card:flex"
+                    onClick={() => table.setPageIndex(0)}
+                    disabled={!table.getCanPreviousPage()}
+                    aria-label={t("sms.inbox.buttons.first_page")}
+                  >
+                    <ChevronsLeft className="size-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="size-8"
                     onClick={() => table.previousPage()}
                     disabled={!table.getCanPreviousPage()}
+                    aria-label={t("sms.inbox.buttons.prev_page")}
                   >
-                    {t("sms.inbox.buttons.prev")}
+                    <ChevronLeft className="size-4" />
                   </Button>
-                  <span className="text-sm text-muted-foreground whitespace-nowrap">
-                    {t("sms.inbox.pagination.page_info", {
-                      current: table.getState().pagination.pageIndex + 1,
-                      total: table.getPageCount(),
-                    })}
-                  </span>
                   <Button
                     variant="outline"
-                    size="sm"
+                    size="icon"
+                    className="size-8"
                     onClick={() => table.nextPage()}
                     disabled={!table.getCanNextPage()}
+                    aria-label={t("sms.inbox.buttons.next_page")}
                   >
-                    {t("sms.inbox.buttons.next")}
+                    <ChevronRight className="size-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="hidden size-8 @sm/card:flex"
+                    onClick={() => table.setPageIndex(table.getPageCount() - 1)}
+                    disabled={!table.getCanNextPage()}
+                    aria-label={t("sms.inbox.buttons.last_page")}
+                  >
+                    <ChevronsRight className="size-4" />
                   </Button>
                 </div>
-              )}
+              </div>
             </div>
           )}
         </CardContent>
