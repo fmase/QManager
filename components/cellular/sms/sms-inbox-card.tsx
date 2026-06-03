@@ -27,6 +27,7 @@ import {
   ChevronsLeft,
   ChevronsRight,
   Loader2,
+  MessageSquare,
   Search,
   Trash2,
 } from "lucide-react";
@@ -98,6 +99,7 @@ import type { SmsMessage } from "@/types/sms";
 import {
   useSmsReadState,
   parseSmsTimestamp,
+  smsFingerprint,
 } from "@/hooks/use-sms-read-state";
 import SmsComposeDialog from "./sms-compose-dialog";
 
@@ -307,7 +309,7 @@ export default function SmsInboxCard({
               {row.original.storage === "SM" && (
                 <Badge
                   variant="outline"
-                  className="shrink-0 px-1.5 py-0 text-[10px] font-medium tracking-wide text-muted-foreground"
+                  className="shrink-0 px-1.5 py-0 text-xs font-medium tracking-wide text-muted-foreground"
                 >
                   {t("sms.inbox.table.sim_badge")}
                 </Badge>
@@ -351,7 +353,7 @@ export default function SmsInboxCard({
               <DropdownMenuTrigger asChild>
                 <Button
                   variant="ghost"
-                  className="data-[state=open]:bg-muted text-muted-foreground flex size-8"
+                  className="data-[state=open]:bg-muted text-muted-foreground flex size-8 pointer-coarse:size-11"
                   size="icon"
                 >
                   <TbDotsVertical />
@@ -383,6 +385,7 @@ export default function SmsInboxCard({
   const table = useReactTable({
     data: filteredMessages,
     columns,
+    getRowId: (row) => smsFingerprint(row),
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     onRowSelectionChange: setRowSelection,
@@ -488,6 +491,7 @@ export default function SmsInboxCard({
 
   const messages = data?.messages ?? [];
   const storage = data?.storage;
+  const isEmpty = messages.length === 0;
 
   return (
     <>
@@ -539,6 +543,7 @@ export default function SmsInboxCard({
                 size="sm"
                 onClick={() => setShowCompose(true)}
                 disabled={isSaving}
+                aria-label={t("sms.inbox.buttons.new_message")}
               >
                 <TbPlus className="size-4" />
                 <span className="hidden @xs/card:inline">{t("sms.inbox.buttons.new_message")}</span>
@@ -547,6 +552,27 @@ export default function SmsInboxCard({
           </CardAction>
         </CardHeader>
         <CardContent>
+          {isEmpty ? (
+            <div className="flex flex-col items-center gap-3 py-8 text-center">
+              <MessageSquare className="size-8 text-muted-foreground" />
+              <div className="space-y-1">
+                <p className="text-sm font-medium">{t("sms.inbox.empty_state.title")}</p>
+                <p className="text-xs text-muted-foreground">
+                  {t("sms.inbox.empty_state.description")}
+                </p>
+              </div>
+              <Button
+                size="sm"
+                onClick={() => setShowCompose(true)}
+                disabled={isSaving}
+                aria-label={t("sms.inbox.buttons.new_message")}
+              >
+                <TbPlus className="size-4" />
+                {t("sms.inbox.buttons.new_message")}
+              </Button>
+            </div>
+          ) : (
+          <>
           <div className="mb-3 flex flex-col gap-2 @lg/card:flex-row @lg/card:items-center @lg/card:justify-between">
             <Tabs value={tab} onValueChange={(v) => setTab(v as SmsTab)}>
               <TabsList>
@@ -555,10 +581,9 @@ export default function SmsInboxCard({
                   {t("sms.inbox.tabs.unread")}
                   {unreadCount > 0 && (
                     <Badge
-                      // variant="primary"
                       className="p-1 rounded-full size-5 text-xs tabular-nums"
                     >
-                      {unreadCount}
+                      {unreadCount > 99 ? "99+" : unreadCount}
                     </Badge>
                   )}
                 </TabsTrigger>
@@ -739,7 +764,7 @@ export default function SmsInboxCard({
                   <Button
                     variant="outline"
                     size="icon"
-                    className="hidden size-8 @sm/card:flex"
+                    className="hidden size-8 @sm/card:flex pointer-coarse:size-11"
                     onClick={() => table.setPageIndex(0)}
                     disabled={!table.getCanPreviousPage()}
                     aria-label={t("sms.inbox.buttons.first_page")}
@@ -749,7 +774,7 @@ export default function SmsInboxCard({
                   <Button
                     variant="outline"
                     size="icon"
-                    className="size-8"
+                    className="size-8 pointer-coarse:size-11"
                     onClick={() => table.previousPage()}
                     disabled={!table.getCanPreviousPage()}
                     aria-label={t("sms.inbox.buttons.prev_page")}
@@ -759,7 +784,7 @@ export default function SmsInboxCard({
                   <Button
                     variant="outline"
                     size="icon"
-                    className="size-8"
+                    className="size-8 pointer-coarse:size-11"
                     onClick={() => table.nextPage()}
                     disabled={!table.getCanNextPage()}
                     aria-label={t("sms.inbox.buttons.next_page")}
@@ -769,7 +794,7 @@ export default function SmsInboxCard({
                   <Button
                     variant="outline"
                     size="icon"
-                    className="hidden size-8 @sm/card:flex"
+                    className="hidden size-8 @sm/card:flex pointer-coarse:size-11"
                     onClick={() => table.setPageIndex(table.getPageCount() - 1)}
                     disabled={!table.getCanNextPage()}
                     aria-label={t("sms.inbox.buttons.last_page")}
@@ -779,6 +804,8 @@ export default function SmsInboxCard({
                 </div>
               </div>
             </div>
+          )}
+          </>
           )}
         </CardContent>
       </Card>

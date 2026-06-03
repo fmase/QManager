@@ -516,6 +516,10 @@
         "empty_read": "没有已读消息。",
         "empty_search": "没有符合搜索条件的短信。"
       },
+      "empty_state": {
+        "title": "暂无消息",
+        "description": "收到的短信将显示在这里。发送一条短信即可开始。"
+      },
       "buttons": {
         "refresh_aria": "刷新收件箱",
         "delete_selected": "删除 ({{count}})",

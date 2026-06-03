@@ -516,6 +516,10 @@
         "empty_read": "Tidak ada pesan dibaca.",
         "empty_search": "Tidak ada pesan yang cocok dengan pencarian Anda."
       },
+      "empty_state": {
+        "title": "Belum ada pesan",
+        "description": "Pesan yang Anda terima akan muncul di sini. Kirim pesan untuk memulai."
+      },
       "buttons": {
         "refresh_aria": "Muat ulang kotak masuk",
         "delete_selected": "Hapus ({{count}})",

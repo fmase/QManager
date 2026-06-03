@@ -516,6 +516,10 @@
         "empty_read": "Nessun messaggio letto.",
         "empty_search": "Nessun messaggio corrisponde alla ricerca."
       },
+      "empty_state": {
+        "title": "Nessun messaggio ancora",
+        "description": "I messaggi ricevuti appariranno qui. Invia un messaggio per iniziare."
+      },
       "buttons": {
         "refresh_aria": "Aggiorna la posta in arrivo",
         "delete_selected": "Elimina ({{count}})",

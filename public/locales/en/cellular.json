@@ -522,6 +522,10 @@
         "sim_badge": "SIM",
         "empty_search": "No messages match your search."
       },
+      "empty_state": {
+        "title": "No messages yet",
+        "description": "Messages you receive will appear here. Send one to get started."
+      },
       "buttons": {
         "refresh_aria": "Refresh inbox",
         "delete_selected": "Delete ({{count}})",
