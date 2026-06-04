@@ -222,9 +222,11 @@
     "status_sim_revert_dialog_description": "In questo modo tornerai allo slot SIM {{original_slot}}. La tua connessione Internet si disconnetterà brevemente mentre il modem si riconnette.",
     "status_sim_revert_cancel": "Annulla",
     "status_sim_revert_confirm": "Ripristina SIM",
-    "sim_swap_with_profile": "Rilevata nuova carta SIM. Il profilo <strong>{{profile_name}}</strong> corrisponde a questo SIM.",
-    "sim_swap_no_profile": "Rilevata nuova carta SIM. Nessun profilo corrispondente trovato.",
+    "sim_swap_title": "Rilevata nuova carta SIM",
+    "sim_swap_with_profile": "Il profilo <strong>{{profile_name}}</strong> corrisponde a questo SIM.",
+    "sim_swap_no_profile": "Nessun profilo corrispondente trovato.",
     "sim_swap_apply_button": "Applica profilo",
+    "sim_swap_dismiss_button": "Ignora",
     "sim_swap_dismiss_aria": "Ignora la notifica di scambio SIM"
   },
   "latency": {

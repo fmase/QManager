@@ -222,9 +222,11 @@
     "status_sim_revert_dialog_description": "将切换回 SIM 卡槽 {{original_slot}}。调制解调器重新连接期间网络会短暂中断。",
     "status_sim_revert_cancel": "取消",
     "status_sim_revert_confirm": "恢复 SIM",
-    "sim_swap_with_profile": "检测到新 SIM 卡。配置文件 <strong>{{profile_name}}</strong> 匹配此 SIM。",
-    "sim_swap_no_profile": "检测到新 SIM 卡。未找到匹配的配置文件。",
+    "sim_swap_title": "检测到新 SIM 卡",
+    "sim_swap_with_profile": "配置文件 <strong>{{profile_name}}</strong> 匹配此 SIM。",
+    "sim_swap_no_profile": "未找到匹配的配置文件。",
     "sim_swap_apply_button": "应用配置文件",
+    "sim_swap_dismiss_button": "关闭",
     "sim_swap_dismiss_aria": "关闭 SIM 更换通知"
   },
   "latency": {
