@@ -451,6 +451,22 @@ clear_active_profile() {
     rm -f "$ACTIVE_PROFILE_FILE"
 }
 
+# Acknowledge the current SIM as "seen" by writing its ICCID to last_iccid,
+# the same file qmanager_poller's boot-time SIM-swap detector compares against.
+# Called whenever a profile is successfully activated, so activating a profile
+# for a freshly-inserted SIM does not leave last_iccid stale and false-fire the
+# "New SIM detected" banner on the next reboot. Reads the ICCID with the SAME
+# parse pipeline as qmanager_poller (line ~413) so the stored value byte-matches
+# what the poller will read at next boot. Skips on empty read — never clobbers.
+mark_sim_acknowledged() {
+    local _cur_iccid
+    _cur_iccid=$(qcmd 'AT+QCCID' 2>/dev/null | grep '+QCCID:' | sed 's/+QCCID: //g' | tr -d '\r ')
+    if [ -n "$_cur_iccid" ]; then
+        printf '%s' "$_cur_iccid" > /etc/qmanager/last_iccid
+        qlog_info "Acknowledged current SIM in last_iccid: ...$(printf '%s' "$_cur_iccid" | tail -c 4)" 2>/dev/null
+    fi
+}
+
 # _profile_teardown_scenario_cron
 # Lazy-source scenario_mgr.sh and remove the profile-scenario cron lines.
 # Called at every active-profile clear site (deactivate, SIM mismatch, delete
