@@ -100,6 +100,11 @@ esac
 
 qlog_info "Band lock applied: $AT_PARAM=$BANDS"
 
+# --- Force an early poller Tier-2 refresh so the UI reflects the new band
+#     registration within ~2s instead of the next ~30s tier boundary ---
+sleep 2
+touch /tmp/qmanager_force_tier2
+
 # --- Clear failover activation flag (new lock supersedes previous failover) --
 rm -f "$FAILOVER_ACTIVATED_FLAG"
 

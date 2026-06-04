@@ -223,3 +223,18 @@ The installer now guards against this: `install_file()` compares `wc -c` of sour
 ## i18n Status
 
 All components are fully internationalized. `custom-profile.tsx`, `profile-input.tsx`, `profile-view.tsx`, `apply-progress-dialog.tsx`, and `empty-profile.tsx` are all wired to the `cellular` namespace. 292 `custom_profiles.*` keys exist across en/id/it/zh-CN with full parity. Key subtrees added in the most recent pass: `custom_profiles.view.*`, `custom_profiles.form.*` (including `form.review.*`, `form.verizon_inline.*`, `form.pdp_inline.*`, and `form.fields.reuse_apn_{label,placeholder,hint}`), `custom_profiles.apply_dialog.*`, `custom_profiles.pills.*`, and `custom_profiles.card.*`.
+
+## Force-Tier-2 Refresh After SIM Switch
+
+After a successful SIM slot switch, `settings.sh` sleeps 2 seconds (registration settle) and then touches `/tmp/qmanager_force_tier2`. The CGI is a write-only producer — it never reads or parses the file.
+
+The poller's `poll_cycle` checks for the flag after the `LONG_FLAG` early-return block. When present it consumes the flag (`rm -f`) and immediately runs `poll_tier2` + `read_sim_state` + `refresh_sim_identity`. `refresh_sim_identity` issues `AT+CIMI;+QCCID` and updates the `boot_imsi`/`boot_iccid` globals — no swap logic, no profile side effects. The stale window for operator name, APN, DNS, WAN-IP, ICCID, and IMSI drops from ~30 seconds to ~4 seconds.
+
+**Why:** Network-identity fields are Tier-2 (polled every `TIER2_EVERY=15` × `POLL_INTERVAL=2s` ≈ 30s). The flag forces an early execution of that tier without changing the global cadence.
+
+**Invariants to preserve:**
+- `settings.sh` MUST NOT write `/tmp/qmanager_status.json`. The poller is the sole atomic writer of that file (via `write_cache`). The CGI only touches the flag.
+- The flag check is placed AFTER the `LONG_FLAG` early-return in `poll_cycle` on purpose. A long-running cell scan returns early before reaching the Tier-2 block, so the flag is not consumed and discarded — it survives until the next normal cycle.
+- `refresh_sim_identity` re-reads live modem state only; it does not trigger auto-apply, profile deactivation, or any other side effect.
+
+See also [`docs/features/band-locking.md`](band-locking.md) — `bands/lock.sh` is the other producer of the same flag, with the identical contract.

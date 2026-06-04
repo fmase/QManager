@@ -218,7 +218,22 @@ NR-DC added keys in all four locales (`public/locales/{en,id,it,zh-CN}/cellular.
 
 ---
 
+## Force-Tier-2 Refresh After Band Lock
+
+After a successful band lock, `lock.sh` sleeps 2 seconds (modem re-registration settle) and then touches `/tmp/qmanager_force_tier2`. The CGI is a write-only producer — it never reads or parses the file.
+
+The poller's `poll_cycle` checks for the flag after the `LONG_FLAG` early-return block. When present it consumes the flag (`rm -f`) and immediately runs `poll_tier2` + `read_sim_state` + `refresh_sim_identity`. This refreshes operator name, APN, DNS, WAN-IP, ICCID, and IMSI within ~4 seconds of the lock, rather than waiting up to ~30 seconds for the next Tier-2 boundary.
+
+**Why:** A band change forces the modem to re-register on a different carrier cell. The new cell can advertise a different operator name, APN, and network addressing. Without the flag, the UI shows stale data for the full Tier-2 cadence (`TIER2_EVERY=15` × `POLL_INTERVAL=2s` ≈ 30s).
+
+**Invariants to preserve:**
+- `lock.sh` MUST NOT write `/tmp/qmanager_status.json`. The poller is the sole atomic writer of that file (via `write_cache`). The CGI only touches the flag.
+- The flag check is placed AFTER the `LONG_FLAG` early-return in `poll_cycle` on purpose. A long-running cell scan returns early before the Tier-2 block — the flag survives until the next normal cycle.
+- `refresh_sim_identity` re-reads `AT+CIMI;+QCCID` only; it has no band-lock or profile side effects.
+
+See also [`docs/features/custom-sim-profiles.md`](custom-sim-profiles.md) — `cellular/settings.sh` is the other producer of the same flag, triggered on SIM slot switch.
+
 ## Related Docs
 
-- [`docs/features/custom-sim-profiles.md`](custom-sim-profiles.md) — band lock per profile via Connection Scenario binding
+- [`docs/features/custom-sim-profiles.md`](custom-sim-profiles.md) — band lock per profile via Connection Scenario binding; also uses the force-Tier-2 flag
 - [`docs/features/scenario-profile-binding.md`](scenario-profile-binding.md) — how scenario band locks are applied at profile activation

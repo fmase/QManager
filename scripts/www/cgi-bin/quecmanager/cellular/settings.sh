@@ -345,6 +345,13 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
         unset _as_iccid _as_iccid_raw _try
     fi
 
+    # --- Force an early poller Tier-2 refresh so the UI shows the new SIM's
+    #     operator/APN/ICCID within ~2s instead of the next ~30s tier boundary ---
+    if [ -n "$sim_cfun_restored" ]; then
+        sleep 2
+        touch /tmp/qmanager_force_tier2
+    fi
+
     # 5. CFUN change (skip if SIM procedure already restored to user's desired value)
     if [ "$CFUN" != "unset" ]; then
         if [ -n "$sim_cfun_restored" ] && [ "$CFUN" = "1" ]; then

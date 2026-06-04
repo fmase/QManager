@@ -34,6 +34,7 @@
 CACHE_FILE="/tmp/qmanager_status.json"
 CACHE_TMP="/tmp/qmanager_status.json.tmp"
 LONG_FLAG="/tmp/qmanager_long_running"
+FORCE_TIER2_FLAG="/tmp/qmanager_force_tier2"
 POLL_INTERVAL=2        # seconds between Tier 1 cycles
 TIER1_5_EVERY=5        # Tier 1.5 (watchcat state + ping history) runs every N cycles (10s)
 TIER2_EVERY=15         # Tier 2 runs every N cycles
@@ -1256,6 +1257,23 @@ write_cache() {
 }
 
 # =============================================================================
+# FORCED SIM IDENTITY REFRESH
+# =============================================================================
+# Re-reads ONLY SIM identity (IMSI/ICCID display values) for the forced
+# Tier-2 path. Deliberately does NO swap detection and NO profile logic —
+# that remains owned by collect_boot_data and the apply scripts.
+refresh_sim_identity() {
+    _rsi_result=$(qcmd 'AT+CIMI;+QCCID' 2>/dev/null)
+    if [ -n "$_rsi_result" ]; then
+        _rsi_imsi=$(printf '%s\n' "$_rsi_result" | tr -d '\r' | grep -x '[0-9]\{15\}' | sed -n '1p')
+        [ -n "$_rsi_imsi" ] && boot_imsi="$_rsi_imsi"
+        _rsi_iccid=$(printf '%s\n' "$_rsi_result" | grep '+QCCID:' | sed 's/+QCCID: //g' | tr -d '\r ')
+        [ -n "$_rsi_iccid" ] && boot_iccid="$_rsi_iccid"
+    fi
+    unset _rsi_result _rsi_imsi _rsi_iccid
+}
+
+# =============================================================================
 # POLL CYCLE
 # =============================================================================
 
@@ -1324,11 +1342,20 @@ poll_cycle() {
         parse_temperature
     fi
 
-    # Tier 2 (warm data + SIM state)
-    if [ $((cycle_count % TIER2_EVERY)) -eq 0 ]; then
+    # Tier 2 (warm data + SIM state) — also fires early when an apply script
+    # (SIM switch / band lock) has touched the force flag, so the UI reflects
+    # the new registration within ~2-4s instead of the next ~30s tier boundary.
+    _force_t2=0
+    if [ -f "$FORCE_TIER2_FLAG" ]; then
+        _force_t2=1
+        rm -f "$FORCE_TIER2_FLAG"
+    fi
+    if [ $((cycle_count % TIER2_EVERY)) -eq 0 ] || [ "$_force_t2" = 1 ]; then
         poll_tier2
         read_sim_state
+        [ "$_force_t2" = 1 ] && refresh_sim_identity
     fi
+    unset _force_t2
 
     # Ping history (every Tier 1.5 interval — 10s)
     if [ $((cycle_count % TIER1_5_EVERY)) -eq 0 ]; then

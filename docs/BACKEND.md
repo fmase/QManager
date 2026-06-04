@@ -293,8 +293,10 @@ The core daemon — runs forever, polls the modem at tiered intervals.
 |------|----------|------|
 | 1 | 2s | Serving cell, uptime |
 | 1.5 | 10s | SoC temperature (thermal sysfs), per-antenna signal, history append |
-| 2 | 30s | Carrier, CA, MIMO |
+| 2 | 30s | Carrier, CA, MIMO, SIM identity (operator name, APN, DNS, WAN-IP, ICCID, IMSI) |
 | Boot | Once | Firmware, IMEI, IMSI, capabilities |
+
+**Force-Tier-2 flag (`/tmp/qmanager_force_tier2`):** CGI scripts that trigger a modem re-registration event (SIM slot switch in `cellular/settings.sh`, band lock in `bands/lock.sh`) touch this file after a 2-second settle delay. In `poll_cycle`, after the `LONG_FLAG` early-return, the poller checks for the flag: when present it consumes it (`rm -f`) and immediately executes `poll_tier2` + `read_sim_state` + `refresh_sim_identity`, collapsing the stale window for SIM-identity fields from ~30 seconds to ~4 seconds. `refresh_sim_identity` issues `AT+CIMI;+QCCID` and updates `boot_imsi`/`boot_iccid` — no profile or swap side effects. The flag check deliberately sits after `LONG_FLAG` so an in-progress cell scan does not consume and discard it. Producers MUST NOT write `/tmp/qmanager_status.json` — `write_cache` in the poller is the sole atomic writer.
 
 > ℹ️ NOTE: Live network traffic (rx/tx bytes per second) is **not** collected by the poller and is **not** present in `/tmp/qmanager_status.json`. It is served exclusively by the opt-in WebSocket bandwidth monitor (`bridge_traffic_monitor_rm551` + `websocat:8838`, managed by `init.d/qmanager_bandwidth`). The feature is off by default (UCI `quecmanager.bridge_monitor.enabled=0`). When disabled, the dashboard Live Traffic row shows a prompt to enable it rather than showing zeros. See [`docs/features/bandwidth-monitor.md`](features/bandwidth-monitor.md).
 
@@ -672,6 +674,7 @@ All auth endpoints set `_SKIP_AUTH=1`.
 | `qmanager_email_reload` | CGI | Trigger file for config reload |
 | `qmanager_sms_log.json` | poller (sms) | SMS log NDJSON |
 | `qmanager_sms_reload` | CGI | Trigger file for SMS config reload |
+| `qmanager_force_tier2` | CGI (settings.sh, bands/lock.sh) | Touch-flag; consumed by poller to force an early Tier-2 poll after SIM switch or band lock |
 | `qmanager_low_power_active` | low_power | Low power mode flag (timestamp; suppresses events + alerts) |
 | `qmanager_watchcat.lock` | low_power | Watchdog pause lock (forces LOCKED state) |
 | `qmanager_dpi_install.json` | dpi_install | nfqws installer progress/result |
