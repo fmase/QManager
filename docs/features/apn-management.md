@@ -17,8 +17,9 @@ APN Management (`/cellular/settings/apn-management`) lets users create, edit, an
 | Edit card | `components/cellular/settings/apn-management/wan-profile-edit.tsx` |
 | Shared AT libs | `run_at` from `scripts/usr/lib/qmanager/cgi_at.sh` |
 | i18n namespace | `public/locales/{en,id,it,zh-CN}/cellular.json` — `core_settings.apn.*` |
-| Reboot? | No |
+| Reboot? | No (boot-time reconcile in `qmanager_wan_guard` replays the active APN but does not reboot) |
 | Lock files? | No |
+| Boot daemon | `scripts/usr/bin/qmanager_wan_guard` — `reconcile_active_apn()` step runs at boot to reapply the active APN slot after modem power-on |
 
 ## Config File Shape (v2)
 
@@ -134,6 +135,11 @@ Error codes: `invalid_id`, `active_locked`, `persist_failed`.
 | save (active slot) / activate — deregister | `AT+COPS=2` |
 | save (active slot) / activate — write APN | `AT+CGDCONT=<cid>,"<PDP_AT>","<apn>"` |
 | save (active slot) / activate — reattach | `AT+COPS=0` |
+| boot reconcile (wan_guard) — read live contexts | `AT+CGDCONT?` |
+| boot reconcile (wan_guard) — deregister | `AT+COPS=2` |
+| boot reconcile (wan_guard) — write APN | `AT+CGDCONT=<cid>,"<PDP_AT>","<apn>"` |
+| boot reconcile (wan_guard) — reattach | `AT+COPS=0` |
+| boot reconcile (wan_guard) — re-read after apply | `AT+CGDCONT?` |
 
 PDP type translation: `ipv4` → `IP`, `ipv6` → `IPV6`, `ipv4v6` → `IPV4V6`.
 
@@ -156,6 +162,24 @@ On LTE/5G (EPS), the default EPS bearer is negotiated at *attach time* — the A
 The CGI path is LAN/Wi-Fi → lighttpd → modem. The cellular WAN drops briefly during the cycle but the HTTP path to the modem does not. No sleep is needed between steps — `run_at` goes through `qcmd`'s `flock` and is synchronous on `OK`/`ERROR`. No reboot, no `AT+CFUN`.
 
 `cops_recover()` issues `AT+COPS=0` best-effort on every post-detach error path, so the modem is never left in manual-deregistered state after a partial operation.
+
+### Boot-time APN reconcile (`qmanager_wan_guard`)
+
+The user PDP context APN does NOT survive a modem power cycle in NVRAM. Carrier-provisioned contexts (IMS, SOS on CIDs 2/3) persist, but the user data context (typically CID 1) comes back empty. Without intervention, an active APN slot stored in `apn_profiles.json` would be silently un-applied after every reboot.
+
+`reconcile_active_apn()` in `scripts/usr/bin/qmanager_wan_guard` closes this gap. It runs as a one-shot step at boot — after the initial `AT+CGDCONT?` query and before the bind-disable pass — and follows this sequence:
+
+1. **Defer to Custom SIM Profiles.** If `/etc/qmanager/active_profile` is non-empty, the profile system owns the APN at boot via `auto_apply_profile`. The reconciler returns immediately. **Authority order: Custom SIM Profile APN > APN-slot APN.**
+2. Read `apn_profiles.json`. If `active == 0` or the active slot's `apn` is empty, nothing to do.
+3. Compare the stored APN against the live `AT+CGDCONT?` value for the slot's CID.
+4. **Match:** return without touching the modem (idempotent — no WAN drop on a clean boot).
+5. **Mismatch:** run the mandatory COPS detach/attach cycle (`AT+COPS=2` → `AT+CGDCONT=<cid>,"<PDP>","<apn>"` → `AT+COPS=0`), then re-query `AT+CGDCONT?` so the downstream bind-disable pass sees the repaired contexts.
+
+**Why the re-query matters:** wan_guard's bind-disable pass uses `cgdcont_resp` to identify data-capable CIDs. Without refreshing it, the pass would operate on the stale pre-reconcile snapshot and could `bind=0` the freshly-repaired WAN context.
+
+**COPS-recovery pattern:** every AT-command failure inside a COPS=2 session issues a best-effort `AT+COPS=0` before returning, so the modem is never left in manual-deregistered state after a partial operation. No `AT+CFUN`, no reboot, no daemon exit — every error path returns.
+
+> ⚠️ WARNING: This step must remain positioned after the initial `AT+CGDCONT?` fetch and before the bind-disable pass. Reordering breaks the re-query invariant and the stale-snapshot guard.
 
 ### Radio activate (mutually exclusive)
 
@@ -185,10 +209,11 @@ The `profiles` array (the five stored slots) is unaffected by this classifier. A
 
 ### Frontend slot states
 
-`wan-profile-list.tsx` renders three slot states off each `WanProfile`:
+`wan-profile-list.tsx` renders four slot states off each `WanProfile`, plus the `overridden` prop passed from `apn-settings.tsx`:
 
 | Condition | Badge | Switch |
 |---|---|---|
+| `overridden && is_active && apn` | **Overridden** (muted + CircleSlashIcon) — i18n key `core_settings.apn.list.status.overridden` | disabled; the slot-number circle is also neutralized |
 | `is_active && apn` | **Active** (success/green + globe icon) | disabled (can't turn off; switch to another) |
 | `apn` non-empty, not active | **Idle** (muted) | enabled (activates on click) |
 | `apn == ""` | **Empty** (faint + minus icon) | disabled until an APN is saved |
@@ -216,7 +241,11 @@ After a successful save, activate, or clear the hook applies an optimistic local
 
 ### Custom SIM Profile override gate
 
-`apn-settings.tsx` checks whether an active Custom SIM Profile has a non-empty `settings.apn.name`. If it does, the page is locked read-only with a `ProfileOverrideAlert` banner showing the controlling profile name. Custom SIM Profiles remain the absolute authority for APN configuration when a profile is active.
+`apn-settings.tsx` checks whether an active Custom SIM Profile has a non-empty `settings.apn.name`. If it does, the page is locked read-only with a `ProfileOverrideAlert` banner showing the controlling profile name, and `overridden={true}` is passed to `WanProfileListCard`. The formerly-active APN slot then renders the **Overridden** badge (muted, CircleSlashIcon) in place of the green **Active** badge.
+
+> ℹ️ NOTE: `apn_profiles.json`'s `active` pointer is intentionally NOT cleared when a Custom SIM Profile takes over. The stored pointer represents the user's intent for when the profile deactivates — resetting it would silently discard which slot the user had configured. The badge change is purely presentational.
+
+Custom SIM Profiles remain the absolute authority for APN configuration when a profile is active.
 
 ## Migration
 

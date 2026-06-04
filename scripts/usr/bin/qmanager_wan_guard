@@ -66,6 +66,127 @@ cid_apn_map=$(printf '%s' "$cgdcont_resp" | awk -F',' '
 ')
 qlog_info "CID map: $cid_apn_map"
 
+# --- Reconcile the active APN slot onto the modem ----------------------------
+# The user PDP context's APN does NOT survive in modem NVRAM across a reboot
+# (carrier-provisioned ims/sos contexts on CID 2/3 do, but the user data
+# context on CID 1 comes back empty). The 5-slot APN Management system persists
+# the active slot in apn_profiles.json; nothing else replays it at boot, so the
+# active profile is effectively un-applied after a reboot. This function detects
+# the drift and re-applies via the mandatory COPS detach/attach cycle (a bare
+# CGDCONT write does NOT re-negotiate the EPS bearer — see apn.sh
+# apply_apn_to_modem). Fully fail-safe: any failure logs and returns; it never
+# exits the daemon, never reboots, never touches AT+CFUN.
+APN_CONFIG_FILE="/usrdata/qmanager/apn_profiles.json"
+
+# Extract the live apn for a given cid from $cgdcont_resp (same idiom as the
+# CID-map awk above). Echoes the apn string (possibly empty) for the match.
+_am_live_apn_for_cid() {
+    printf '%s' "$cgdcont_resp" | awk -F',' -v want="$1" '
+        /\+CGDCONT:/ {
+            cid = $1; gsub(/[^0-9]/, "", cid)
+            apn = $3; gsub(/"/, "", apn)
+            if (cid == want) { print apn; exit }
+        }
+    '
+}
+
+reconcile_active_apn() {
+    # 1. Defer to Custom SIM Profiles — if a profile owns the APN at boot, it is
+    #    applied separately via auto_apply_profile. Marker presence is enough.
+    if [ -s /etc/qmanager/active_profile ]; then
+        qlog_info "Custom SIM Profile active — skipping APN-slot reconcile"
+        return 0
+    fi
+
+    # 2. Config file must exist and be valid JSON.
+    if [ ! -f "$APN_CONFIG_FILE" ]; then
+        qlog_info "No APN config ($APN_CONFIG_FILE) — skipping reconcile"
+        return 0
+    fi
+    if ! jq -e . "$APN_CONFIG_FILE" >/dev/null 2>&1; then
+        qlog_warn "APN config is not valid JSON — skipping reconcile"
+        return 0
+    fi
+
+    # 3. Active slot pointer (non-boolean integer; // 0 is acceptable here).
+    _am_active=$(jq -r '.active // 0' "$APN_CONFIG_FILE" 2>/dev/null)
+    if [ -z "$_am_active" ] || [ "$_am_active" = "0" ] || [ "$_am_active" = "null" ]; then
+        qlog_info "No active APN slot — nothing to reconcile"
+        return 0
+    fi
+
+    # 4. Pull the active slot's fields (explicit null guards, no // on strings).
+    _am_apn=$(jq -r --argjson id "$_am_active" \
+        '.profiles[] | select(.id == $id) | if .apn == null then "" else .apn end' \
+        "$APN_CONFIG_FILE" 2>/dev/null)
+    _am_cid=$(jq -r --argjson id "$_am_active" \
+        '.profiles[] | select(.id == $id) | if .cid == null then 1 else .cid end' \
+        "$APN_CONFIG_FILE" 2>/dev/null)
+    _am_pdp_type=$(jq -r --argjson id "$_am_active" \
+        '.profiles[] | select(.id == $id) | if .pdp_type == null then "" else .pdp_type end' \
+        "$APN_CONFIG_FILE" 2>/dev/null)
+
+    if [ -z "$_am_cid" ] || [ "$_am_cid" = "null" ]; then
+        _am_cid=1
+    fi
+    if [ -z "$_am_apn" ] || [ "$_am_apn" = "null" ]; then
+        qlog_info "Active slot has empty APN — nothing to reconcile"
+        return 0
+    fi
+
+    # 5. Translate pdp_type → AT token (case-insensitive, default IPV4V6).
+    _am_pdp_at="IPV4V6"
+    case "$_am_pdp_type" in
+        [Ii][Pp][Vv]4) _am_pdp_at="IP" ;;
+        [Ii][Pp][Vv]6) _am_pdp_at="IPV6" ;;
+        [Ii][Pp][Vv]4[Vv]6) _am_pdp_at="IPV4V6" ;;
+        *) _am_pdp_at="IPV4V6" ;;
+    esac
+
+    # 6. Compare stored apn against the live apn for that cid (idempotent).
+    _am_live_apn=$(_am_live_apn_for_cid "$_am_cid")
+    if [ "$_am_live_apn" = "$_am_apn" ]; then
+        qlog_info "APN already correct for CID $_am_cid — no reconcile needed"
+        return 0
+    fi
+
+    # 7. Mismatch — re-apply via the mandatory COPS detach/attach cycle.
+    qlog_warn "Reconciling APN for CID $_am_cid: stored=$_am_apn live=$_am_live_apn"
+
+    if ! run_at "AT+COPS=2" >/dev/null; then
+        qlog_error "APN reconcile: AT+COPS=2 (detach) failed for CID $_am_cid"
+        run_at "AT+COPS=0" >/dev/null 2>&1 || true
+        return 1
+    fi
+    if ! run_at "AT+CGDCONT=$_am_cid,\"$_am_pdp_at\",\"$_am_apn\"" >/dev/null; then
+        qlog_error "APN reconcile: AT+CGDCONT write failed for CID $_am_cid"
+        run_at "AT+COPS=0" >/dev/null 2>&1 || true
+        return 1
+    fi
+    if ! run_at "AT+COPS=0" >/dev/null; then
+        qlog_error "APN reconcile: AT+COPS=0 (re-register) failed for CID $_am_cid"
+        run_at "AT+COPS=0" >/dev/null 2>&1 || true
+        return 1
+    fi
+
+    qlog_info "APN reconcile complete for CID $_am_cid"
+
+    # Re-query so the downstream data_cids / bind-disable logic sees the repaired
+    # contexts rather than the stale pre-reconcile snapshot.
+    cgdcont_resp=$(run_at "AT+CGDCONT?")
+    cid_apn_map=$(printf '%s' "$cgdcont_resp" | awk -F',' '
+        /\+CGDCONT:/ {
+            cid = $1; gsub(/[^0-9]/, "", cid)
+            apn = $3; gsub(/"/, "", apn)
+            if (cid != "") printf "%s=%s ", cid, apn
+        }
+    ')
+    qlog_info "CID map (post-reconcile): $cid_apn_map"
+    return 0
+}
+
+reconcile_active_apn
+
 # Extract only data-capable CIDs (exclude ims, sos)
 data_cids=$(printf '%s' "$cgdcont_resp" | awk -F',' '
     /\+CGDCONT:/ {

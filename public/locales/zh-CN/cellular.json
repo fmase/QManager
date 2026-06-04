@@ -1333,7 +1333,8 @@
         "status": {
           "active": "活动",
           "idle": "空闲",
-          "empty": "空"
+          "empty": "空",
+          "overridden": "已被配置文件接管"
         },
         "aria": {
           "activate_switch": "激活 {{name}}",

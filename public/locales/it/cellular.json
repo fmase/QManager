@@ -1308,7 +1308,8 @@
         "status": {
           "active": "Attivo",
           "idle": "Inattivo",
-          "empty": "Vuoto"
+          "empty": "Vuoto",
+          "overridden": "Sovrascritto"
         },
         "aria": {
           "activate_switch": "Attiva {{name}}",

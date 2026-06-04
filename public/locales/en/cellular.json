@@ -1333,7 +1333,8 @@
         "status": {
           "active": "Active",
           "idle": "Idle",
-          "empty": "Empty"
+          "empty": "Empty",
+          "overridden": "Overridden"
         },
         "aria": {
           "activate_switch": "Activate {{name}}",

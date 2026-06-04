@@ -140,6 +140,7 @@ const APNSettingsComponent = () => {
           onEdit={setEditingId}
           onActivate={activateProfile}
           editingId={editingId}
+          overridden={isProfileControlled}
         />
 
         {editingProfile !== null ? (

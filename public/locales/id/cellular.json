@@ -1308,7 +1308,8 @@
         "status": {
           "active": "Aktif",
           "idle": "Siaga",
-          "empty": "Kosong"
+          "empty": "Kosong",
+          "overridden": "Ditimpa Profil"
         },
         "aria": {
           "activate_switch": "Aktifkan {{name}}",

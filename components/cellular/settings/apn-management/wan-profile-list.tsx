@@ -15,7 +15,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
-import { GlobeIcon, MinusCircleIcon, CircleIcon, PencilIcon } from "lucide-react";
+import {
+  GlobeIcon,
+  MinusCircleIcon,
+  CircleIcon,
+  CircleSlashIcon,
+  PencilIcon,
+} from "lucide-react";
 
 import type { WanProfile } from "@/types/wan-profiles";
 
@@ -31,6 +37,12 @@ interface WanProfileListCardProps {
   onEdit: (id: number) => void;
   /** Activate a slot (mutually exclusive). Returns true on success. */
   onActivate: (id: number) => Promise<boolean>;
+  /**
+   * True when an active Custom SIM Profile owns the live APN. The stored
+   * `active` slot pointer is then stale — its "Active" badge would over-claim
+   * to be the live Internet APN, so we relabel it "Overridden" instead.
+   */
+  overridden?: boolean;
 }
 
 // =============================================================================
@@ -56,9 +68,31 @@ const itemVariants: Variants = {
 // The globe inherits the badge text color (currentColor), no color override.
 // =============================================================================
 
-function ProfileStatusBadge({ profile }: { profile: WanProfile }) {
+function ProfileStatusBadge({
+  profile,
+  overridden = false,
+}: {
+  profile: WanProfile;
+  overridden?: boolean;
+}) {
   const { t } = useTranslation("cellular");
   const configured = !!profile.apn;
+
+  // A Custom SIM Profile owns the live APN — the stored active slot is no
+  // longer the live Internet APN, so relabel rather than claim "Active".
+  if (overridden && profile.is_active && configured) {
+    const label = t("core_settings.apn.list.status.overridden");
+    return (
+      <Badge
+        variant="outline"
+        className="bg-muted/50 text-muted-foreground border-muted-foreground/30"
+        title={label}
+      >
+        <CircleSlashIcon className="size-3" />
+        <span className="sr-only @xs/card:not-sr-only">{label}</span>
+      </Badge>
+    );
+  }
 
   if (profile.is_active && configured) {
     const label = t("core_settings.apn.list.status.active");
@@ -151,6 +185,7 @@ export default function WanProfileListCard({
   editingId,
   onEdit,
   onActivate,
+  overridden = false,
 }: WanProfileListCardProps) {
   const { t } = useTranslation("cellular");
   const shouldReduceMotion = useReducedMotion();
@@ -218,7 +253,7 @@ export default function WanProfileListCard({
                   {/* Slot id */}
                   <span
                     className={`flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold tabular-nums ${
-                      profile.is_active && configured
+                      profile.is_active && configured && !overridden
                         ? "bg-success/15 text-success"
                         : "bg-muted text-muted-foreground"
                     }`}
@@ -248,7 +283,7 @@ export default function WanProfileListCard({
                   </div>
 
                   {/* Status badge — column 3 always */}
-                  <ProfileStatusBadge profile={profile} />
+                  <ProfileStatusBadge profile={profile} overridden={overridden} />
 
                   {/* Switch + Edit — row 2 on narrow, cols 4-5 inline at @md/card */}
                   <div className="col-start-2 col-span-2 flex items-center gap-2 justify-end @md/card:contents">
