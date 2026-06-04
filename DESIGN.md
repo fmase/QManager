@@ -4,10 +4,8 @@ description: Modern web GUI for managing Quectel cellular modems on OpenWRT. The
 colors:
   signal-indigo: "oklch(0.488 0.243 264.376)"
   signal-indigo-soft: "oklch(0.546 0.245 262.881)"
-  spectrum-teal: "oklch(0.74 0.13 195)"
-  spectrum-teal-dark: "oklch(0.78 0.12 195)"
-  spectrum-teal-deep: "oklch(0.52 0.11 200)"
-  spectrum-teal-deep-dark: "oklch(0.62 0.12 198)"
+  secondary-light: "oklch(0.91 0.05 264)"
+  secondary-dark: "oklch(0.40 0.08 264)"
   uplink-green: "oklch(0.59 0.18 149)"
   uplink-green-dark: "oklch(0.65 0.17 149)"
   caution-amber: "oklch(0.75 0.18 75)"
@@ -190,27 +188,23 @@ The dominant visual reference is **Apple's professional UI/UX** (macOS System Se
 
 ## 2. Colors
 
-A muted neutral foundation tinted toward the brand indigo, with one identity color (Spectrum Teal) and five named functional colors that each own a specific operational meaning. The palette stays **Restrained** in impeccable terms: the product UI runs on tinted neutrals plus one true *action* accent (Signal Indigo) at less than 10% of any given screen; the identity color lives only on brand surfaces and never enters the console's action or status vocabulary.
+A muted neutral foundation tinted toward the brand indigo, with five named functional colors that each own a specific operational meaning. The palette stays **Restrained** in impeccable terms: the product UI runs on tinted neutrals plus one true *action* accent (Signal Indigo) at less than 10% of any given screen.
 
-**Governing rule: Indigo acts · Teal identifies · Mono speaks for the machine.** Signal Indigo owns every action (buttons, focus ring, selected state). Spectrum Teal carries brand identity (login hero, wordmark, empty-state art, the brand gradient) and nothing operational. JetBrains Mono appears only where the device speaks back (the AT terminal and raw AT output). This boundary is what lets QManager hold a second brand color without diluting the one-accent product principle.
+**Governing rule: Indigo acts · Mono speaks for the machine.** Signal Indigo owns every action (buttons, focus ring, selected state). JetBrains Mono appears only where the device speaks back (the AT terminal and raw AT output). QManager has a single action accent; there is no second brand color and no identity palette.
 
 ### Primary
-- **Signal Indigo** (`oklch(0.488 0.243 264.376)`): the one true brand color. Used on primary buttons, focused inputs (via ring), the active sidebar selection, primary action affordances, and brand surfaces. Never decorative. If a screen has more than two patches of Signal Indigo, one of them is wrong.
+- **Signal Indigo** (`oklch(0.488 0.243 264.376)`): the one true action accent. Used on primary buttons, focused inputs (via ring), the active sidebar selection, primary action affordances, and brand surfaces. Never decorative. If a screen has more than two patches of Signal Indigo, one of them is wrong.
 - **Signal Indigo Soft** (`oklch(0.546 0.245 262.881)`): hover state for primary, and the active sidebar primary in dark mode. Slightly higher lightness, same hue, same chroma.
 
-### Secondary (Brand / Identity) — Spectrum Teal
+### Secondary (Functional Control Surface)
 
-QManager's one identity color: a teal-cyan (hue 195, 69° from Signal Indigo) that evokes the brand's own subject, RF and spectrum and signal. It is **identity only** and never carries an operational meaning. Chosen as the analogous-cool partner over violet (crowds Stream Violet + the AI-gradient cliché), gold (crowds Caution Amber), and azure (too close to indigo to register as a second color).
+The `--secondary` token is a lighter, desaturated shade of the primary (Signal Indigo) used as a quiet filled-control color — secondary buttons, low-priority interactive surfaces, the `Mist`-level slot where a tinted but non-action color is needed. It is **not a brand color, not an identity color, and carries no brand meaning**. Sharing the primary's hue (264) keeps the palette monochromatic: secondary reads as a quieter sibling of the action accent, not a second color.
 
-- **Spectrum Teal** (`oklch(0.74 0.13 195)` light / `oklch(0.78 0.12 195)` dark): base. The indigo→teal brand gradient, decorative glow on genuine glance surfaces, empty-state and onboarding art, logo/wordmark.
-- **Spectrum Teal Deep** (`oklch(0.52 0.11 200)` light / `oklch(0.62 0.12 198)` dark): the AA-safe variant for any teal that must carry text or a meaningful icon. The bright base fails contrast on light surfaces (~2:1), so text/icon teal uses Deep, mirroring the `-on-surface` discipline of the functional colors.
-- **Teal Wash** (`oklch(0.74 0.13 195 / 0.12)`): tinted brand surfaces.
-- **Brand gradient**: `linear-gradient(135deg, Signal Indigo, Spectrum Teal)` for the login hero, splash, and About/marketing.
-
-**Allowed:** login / auth hero, logo & wordmark, empty-state & onboarding art, the brand gradient, decorative glow on a genuine glance surface. **Forbidden:** any status / badge, button, selected or active state, chart color, or scattered accent. The functional colors below remain the *only* status vocabulary.
+- Light: `oklch(0.91 0.05 264)` with `--secondary-foreground: oklch(0.39 0.15 264)`
+- Dark: `oklch(0.40 0.08 264)` with `--secondary-foreground: oklch(0.97 0.014 264)`
 
 ### Functional / Operational Colors
-The five colors below are **functional**: each one signals a specific operational state, distinct from the identity color above. They never appear decoratively.
+The five colors below are **functional**: each one signals a specific operational state. They never appear decoratively.
 
 - **Uplink Green** (`oklch(0.59 0.18 149)` light / `oklch(0.65 0.17 149)` dark): healthy state. Active services, successful saves, watchdog-healthy, profile-applied. Paired with `CheckCircle2Icon`.
 - **Caution Amber** (`oklch(0.75 0.18 75)` light / `oklch(0.80 0.16 75)` dark): warning state. Pending reboot banners, partial-success, SIM mismatch, degraded signal. Paired with `TriangleAlertIcon`.
@@ -236,7 +230,7 @@ The five colors below are **functional**: each one signals a specific operationa
 
 **The Functional-Color Promise.** A user who learns that Uplink Green means "healthy" on the dashboard must find the same green meaning the same thing in Watchdog, in Profile Apply, and in SMS Alerts. Functional colors are a contract; never decorate with them.
 
-**The Identity-Color Boundary.** Spectrum Teal is the brand's identity color and never the console's. It may appear on identity surfaces (login hero, wordmark, empty-state art, the indigo→teal gradient) but never as a status, a button, a selected state, or a chart color. The product UI stays one-action-accent (Signal Indigo); teal is what the brand *looks like*, not what the interface *does*. This is the boundary that lets a second brand color coexist with the Restrained, one-accent product principle.
+**The One-Accent Rule.** QManager has a single action accent: Signal Indigo. There is no second brand color, no identity palette, and no decorative color layer. The `--secondary` token is a quiet functional control surface — a lighter, desaturated shade of the primary — not a brand color. Any attempt to introduce a second accent or identity color violates the Restrained principle.
 
 **The Throughput-Direction Pair.** Live traffic encodes *direction* with a fixed two-color pair: **download/ingress is Telemetry Blue** (`text-info`), **upload/egress is Stream Violet** (`text-purple-500`). They are deliberately ~45° apart in hue so the two arrows never collapse into "two shades of blue" — using `text-primary` (Signal Indigo, only 9° off Telemetry Blue) for upload is the specific mistake this rule exists to prevent. The pair is reserved for throughput readouts (the dashboard Live Traffic row, the bandwidth monitor); it is not a general status convention and Stream Violet appears nowhere else.
 
@@ -474,8 +468,7 @@ The whole system feels alive because dozens of tiles are doing this at once at l
 - **Do** leave generous editorial whitespace around and inside grouped cards (Askey iF-award influence). Calm spacing is what reads as premium; crowding is what cheapens it.
 - **Do** use `Muted` badge styling for deliberately inactive states (not-installed, disabled-by-config). Reserve `Destructive` for actual failures.
 - **Do** defer reboots via dialog + persistent banner pattern (`usePendingReboot`). Never `AT+CFUN=1,1` mid-request.
-- **Do** treat Spectrum Teal as identity only: the login hero, wordmark, empty-state art, and the indigo→teal brand gradient. Never a status, button, selected state, or chart color (The Identity-Color Boundary).
-- **Do** use JetBrains Mono (`font-mono`) for the AT terminal and raw AT / log output, and nowhere else (The Machine-Voice Rule). The bright teal base needs its `-deep` variant whenever it carries text or a meaningful icon.
+- **Do** use JetBrains Mono (`font-mono`) for the AT terminal and raw AT / log output, and nowhere else (The Machine-Voice Rule).
 
 ### Don't:
 

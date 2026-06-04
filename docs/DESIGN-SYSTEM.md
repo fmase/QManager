@@ -37,9 +37,8 @@ QManager uses OKLCH (Oklab Lightness, Chroma, Hue) for perceptually uniform colo
 | `--card` | `oklch(1 0 0)` | Card backgrounds |
 | `--primary` | `oklch(0.488 0.243 264.376)` | Primary actions, links (blue) |
 | `--primary-foreground` | `oklch(0.97 0.014 254.604)` | Text on primary bg |
-| `--brand-teal` | `oklch(0.74 0.13 195)` | Brand identity: login hero, wordmark, indigo→teal gradient (never status/action) |
-| `--brand-teal-deep` | `oklch(0.52 0.11 200)` | AA-safe teal for text/icon |
-| `--secondary` | `oklch(0.92 0.006 286.32)` | Quiet control surface (separated from muted/accent) |
+| `--secondary` | `oklch(0.91 0.05 264)` | Quiet control surface — lighter shade of primary (not a brand color) |
+| `--secondary-foreground` | `oklch(0.39 0.15 264)` | Text on secondary surface |
 | `--muted` | `oklch(0.967 0.001 286.375)` | Muted backgrounds |
 | `--muted-foreground` | `oklch(0.552 0.016 285.938)` | Secondary text |
 | `--accent` | `oklch(0.967 0.001 286.375)` | Accent backgrounds |
@@ -58,9 +57,8 @@ QManager uses OKLCH (Oklab Lightness, Chroma, Hue) for perceptually uniform colo
 | `--background` | `oklch(0.141 0.005 285.823)` | Charcoal |
 | `--foreground` | `oklch(0.985 0 0)` | Near white |
 | `--card` | `oklch(0.21 0.006 285.885)` | Elevated dark |
-| `--brand-teal` | `oklch(0.78 0.12 195)` | Brand identity (dark) |
-| `--brand-teal-deep` | `oklch(0.62 0.12 198)` | AA-safe teal for text/icon (dark) |
-| `--secondary` | `oklch(0.33 0.008 286.033)` | Quiet control surface (dark) |
+| `--secondary` | `oklch(0.40 0.08 264)` | Quiet control surface — lighter shade of primary (dark) |
+| `--secondary-foreground` | `oklch(0.97 0.014 264)` | Text on secondary surface (dark) |
 | `--muted-foreground` | `oklch(0.705 0.015 286.067)` | Lighter secondary text |
 | `--destructive` | `oklch(0.704 0.191 22.216)` | Brighter red for contrast |
 | `--success` | `oklch(0.65 0.17 149)` | Brighter green |
