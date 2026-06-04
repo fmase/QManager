@@ -427,7 +427,7 @@ const SystemLogsCard = () => {
                         </Badge>
                       </TableCell>
                       <TableCell className="hidden @md/card:table-cell">
-                        <code className="text-xs bg-muted px-1.5 py-0.5 rounded">
+                        <code className="text-xs bg-muted px-1.5 py-0.5 rounded font-mono">
                           {entry.component}
                         </code>
                       </TableCell>

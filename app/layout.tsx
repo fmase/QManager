@@ -1,54 +1,23 @@
 import type { Metadata } from "next";
 import "./globals.css";
 
-import localFont from "next/font/local";
-// import { Manrope } from "next/font/google";
+import { Manrope, JetBrains_Mono } from "next/font/google";
 import { MotionConfig } from "motion/react";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { I18nProvider } from "@/components/i18n/i18n-provider";
 
-// Google Fonts can be imported from remote
-// const manrope = Manrope({
-//   variable: "--font-manrope",
-//   subsets: ["latin"],
-// });
+const manrope = Manrope({
+  variable: "--font-manrope",
+  subsets: ["latin"],
+  display: "swap",
+});
 
-// Font files can be colocated inside of `app`
-const euclid = localFont({
-  variable: "--font-euclid",
-  src: [
-    {
-      path: "./fonts/EuclidCircularB-Light.woff2",
-      weight: "300",
-      style: "normal",
-    },
-    {
-      path: "./fonts/EuclidCircularB-Regular.woff2",
-      weight: "400",
-      style: "normal",
-    },
-    {
-      path: "./fonts/EuclidCircularB-Medium.woff2",
-      weight: "500",
-      style: "normal",
-    },
-    {
-      path: "./fonts/EuclidCircularB-SemiBold.woff2",
-      weight: "600",
-      style: "normal",
-    },
-    {
-      path: "./fonts/EuclidCircularB-Bold.woff2",
-      weight: "700",
-      style: "normal",
-    },
-    {
-      path: "./fonts/EuclidCircularB-Italic.woff2",
-      weight: "400",
-      style: "italic",
-    },
-  ],
+const jetbrainsMono = JetBrains_Mono({
+  variable: "--font-jetbrains-mono",
+  weight: ["400", "500", "700"],
+  subsets: ["latin"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -64,7 +33,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" dir="ltr" suppressHydrationWarning>
-      <body className={`${euclid.variable} ${euclid.className} antialiased`}>
+      <body className={`${manrope.variable} ${jetbrainsMono.variable} ${manrope.className} antialiased`}>
         {/* reducedMotion="user" makes every motion/react animation in the app
             honor prefers-reduced-motion automatically: transform/layout movement
             collapses to instant while opacity is preserved, so the UI stays

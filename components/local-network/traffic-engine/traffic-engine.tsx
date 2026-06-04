@@ -374,7 +374,7 @@ export default function TrafficEngine() {
                     ns="local-network"
                     components={{
                       code: (
-                        <code className="rounded bg-muted px-1 py-0.5 text-xs" />
+                        <code className="rounded bg-muted px-1 py-0.5 text-xs font-mono" />
                       ),
                     }}
                   />

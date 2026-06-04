@@ -33,6 +33,7 @@ Success looks like:
 - **Voice.** Direct, specific, never apologetic. "Lock to cell 412" beats "Are you sure you want to proceed?". Real units, real values, real consequences in plain language.
 - **Tone.** Calm by default. Risk surfaces visibly (destructive variant, warning copy, explicit dialog) but the routine 90% feels quiet and confident.
 - **Feel.** Silky and buttery in motion: every transition, panel slide, badge state change, and chart update should feel Apple-class smooth, not snappy-corporate, not springy-playful, not Material-pop. Restraint with refinement.
+- **Visual signature.** A cool indigo→teal duotone is the brand's identity: a deep indigo that does the work *inside* the interface (the one action accent), and a spectrum teal that carries brand *moments* (sign-in, empty states, the wordmark), evoking signal and RF. One action accent, one identity color, no decorative palette. The interface stays one-accent; the duotone shows up on brand surfaces. Exact tokens and the governing rule live in `DESIGN.md`.
 - **Emotional goals.** Two we want users to feel often, in this order:
   1. **Trust** that the modem will still be up tomorrow morning and that nothing the UI does behind the scenes will surprise them.
   2. **Competence**, fast. The interface should make a new user feel like they already know what they're doing within a few clicks, not after reading docs.

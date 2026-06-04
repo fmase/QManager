@@ -4,6 +4,10 @@ description: Modern web GUI for managing Quectel cellular modems on OpenWRT. The
 colors:
   signal-indigo: "oklch(0.488 0.243 264.376)"
   signal-indigo-soft: "oklch(0.546 0.245 262.881)"
+  spectrum-teal: "oklch(0.74 0.13 195)"
+  spectrum-teal-dark: "oklch(0.78 0.12 195)"
+  spectrum-teal-deep: "oklch(0.52 0.11 200)"
+  spectrum-teal-deep-dark: "oklch(0.62 0.12 198)"
   uplink-green: "oklch(0.59 0.18 149)"
   uplink-green-dark: "oklch(0.65 0.17 149)"
   caution-amber: "oklch(0.75 0.18 75)"
@@ -70,6 +74,12 @@ typography:
     lineHeight: "1"
     letterSpacing: "-0.02em"
     fontFeature: "'tnum' 1, 'ss01' 1"
+  mono:
+    fontFamily: "'JetBrains Mono', ui-monospace, SFMono-Regular, monospace"
+    fontSize: "0.78125rem"
+    fontWeight: 400
+    lineHeight: "1.55"
+    scope: "AT terminal & raw AT output only"
 rounded:
   sm: "calc(0.65rem - 4px)"
   md: "calc(0.65rem - 2px)"
@@ -180,14 +190,27 @@ The dominant visual reference is **Apple's professional UI/UX** (macOS System Se
 
 ## 2. Colors
 
-A muted neutral foundation tinted toward the brand indigo, with five named functional colors that each own a specific operational meaning. The palette is **Restrained** in impeccable terms: tinted neutrals plus one true accent (Signal Indigo) that carries less than 10% of any given screen.
+A muted neutral foundation tinted toward the brand indigo, with one identity color (Spectrum Teal) and five named functional colors that each own a specific operational meaning. The palette stays **Restrained** in impeccable terms: the product UI runs on tinted neutrals plus one true *action* accent (Signal Indigo) at less than 10% of any given screen; the identity color lives only on brand surfaces and never enters the console's action or status vocabulary.
+
+**Governing rule: Indigo acts · Teal identifies · Mono speaks for the machine.** Signal Indigo owns every action (buttons, focus ring, selected state). Spectrum Teal carries brand identity (login hero, wordmark, empty-state art, the brand gradient) and nothing operational. JetBrains Mono appears only where the device speaks back (the AT terminal and raw AT output). This boundary is what lets QManager hold a second brand color without diluting the one-accent product principle.
 
 ### Primary
 - **Signal Indigo** (`oklch(0.488 0.243 264.376)`): the one true brand color. Used on primary buttons, focused inputs (via ring), the active sidebar selection, primary action affordances, and brand surfaces. Never decorative. If a screen has more than two patches of Signal Indigo, one of them is wrong.
 - **Signal Indigo Soft** (`oklch(0.546 0.245 262.881)`): hover state for primary, and the active sidebar primary in dark mode. Slightly higher lightness, same hue, same chroma.
 
-### Secondary (Functional / Operational)
-QManager has no "secondary brand color" in the marketing sense. The five colors below are **functional**: each one signals a specific operational state. They never appear decoratively.
+### Secondary (Brand / Identity) — Spectrum Teal
+
+QManager's one identity color: a teal-cyan (hue 195, 69° from Signal Indigo) that evokes the brand's own subject, RF and spectrum and signal. It is **identity only** and never carries an operational meaning. Chosen as the analogous-cool partner over violet (crowds Stream Violet + the AI-gradient cliché), gold (crowds Caution Amber), and azure (too close to indigo to register as a second color).
+
+- **Spectrum Teal** (`oklch(0.74 0.13 195)` light / `oklch(0.78 0.12 195)` dark): base. The indigo→teal brand gradient, decorative glow on genuine glance surfaces, empty-state and onboarding art, logo/wordmark.
+- **Spectrum Teal Deep** (`oklch(0.52 0.11 200)` light / `oklch(0.62 0.12 198)` dark): the AA-safe variant for any teal that must carry text or a meaningful icon. The bright base fails contrast on light surfaces (~2:1), so text/icon teal uses Deep, mirroring the `-on-surface` discipline of the functional colors.
+- **Teal Wash** (`oklch(0.74 0.13 195 / 0.12)`): tinted brand surfaces.
+- **Brand gradient**: `linear-gradient(135deg, Signal Indigo, Spectrum Teal)` for the login hero, splash, and About/marketing.
+
+**Allowed:** login / auth hero, logo & wordmark, empty-state & onboarding art, the brand gradient, decorative glow on a genuine glance surface. **Forbidden:** any status / badge, button, selected or active state, chart color, or scattered accent. The functional colors below remain the *only* status vocabulary.
+
+### Functional / Operational Colors
+The five colors below are **functional**: each one signals a specific operational state, distinct from the identity color above. They never appear decoratively.
 
 - **Uplink Green** (`oklch(0.59 0.18 149)` light / `oklch(0.65 0.17 149)` dark): healthy state. Active services, successful saves, watchdog-healthy, profile-applied. Paired with `CheckCircle2Icon`.
 - **Caution Amber** (`oklch(0.75 0.18 75)` light / `oklch(0.80 0.16 75)` dark): warning state. Pending reboot banners, partial-success, SIM mismatch, degraded signal. Paired with `TriangleAlertIcon`.
@@ -213,6 +236,8 @@ QManager has no "secondary brand color" in the marketing sense. The five colors 
 
 **The Functional-Color Promise.** A user who learns that Uplink Green means "healthy" on the dashboard must find the same green meaning the same thing in Watchdog, in Profile Apply, and in SMS Alerts. Functional colors are a contract; never decorate with them.
 
+**The Identity-Color Boundary.** Spectrum Teal is the brand's identity color and never the console's. It may appear on identity surfaces (login hero, wordmark, empty-state art, the indigo→teal gradient) but never as a status, a button, a selected state, or a chart color. The product UI stays one-action-accent (Signal Indigo); teal is what the brand *looks like*, not what the interface *does*. This is the boundary that lets a second brand color coexist with the Restrained, one-accent product principle.
+
 **The Throughput-Direction Pair.** Live traffic encodes *direction* with a fixed two-color pair: **download/ingress is Telemetry Blue** (`text-info`), **upload/egress is Stream Violet** (`text-purple-500`). They are deliberately ~45° apart in hue so the two arrows never collapse into "two shades of blue" — using `text-primary` (Signal Indigo, only 9° off Telemetry Blue) for upload is the specific mistake this rule exists to prevent. The pair is reserved for throughput readouts (the dashboard Live Traffic row, the bandwidth monitor); it is not a general status convention and Stream Violet appears nowhere else.
 
 **The OKLCH-Only Rule.** No hex literals. No `#000`, no `#fff`. Every neutral is tinted toward the indigo brand hue (chroma 0.005-0.01 minimum). New colors enter the system in OKLCH form; conversion is the author's job, not the consumer's.
@@ -221,7 +246,9 @@ QManager has no "secondary brand color" in the marketing sense. The five colors 
 
 **Display / Body / Label / Numeric Font:** Manrope (with `system-ui, sans-serif` as fallback). Loaded via `next/font/google` with a `--font-manrope` variable; the body element applies it directly.
 
-**Character:** Manrope is geometric without being severe, technical without being cold. It has tabular-numbers and stylistic alternates that handle dense modem-data readouts (RSRP values, EARFCN numbers, ICCIDs, IMEIs) without needing a separate mono. The single-family choice is deliberate: visual coherence beats type-pairing cleverness, and the system is denser than the average dashboard, so reducing variables earns clarity.
+**Character:** Manrope is geometric without being severe, technical without being cold. It has tabular-numbers and stylistic alternates that handle dense modem-data readouts (RSRP values, EARFCN numbers, ICCIDs, IMEIs) in the UI itself. A single sans carries the entire interface; the one sanctioned exception is **JetBrains Mono**, scoped strictly to the AT terminal and raw AT output (see The Machine-Voice Rule), where fixed-width column alignment is a functional requirement, not decoration. Reducing variables earns clarity in a system denser than the average dashboard.
+
+**Weight discipline:** 400 body · 500 labels and medium emphasis · 600 headings and UI emphasis · 700 reserved for the wordmark / brand surfaces only.
 
 ### Hierarchy
 
@@ -231,10 +258,13 @@ QManager has no "secondary brand color" in the marketing sense. The five colors 
 - **Body** (Manrope 400, 0.875rem / 14px, line-height 1.5): default UI text, descriptions, paragraph copy. Line length capped at 65-75ch in long-form content.
 - **Label** (Manrope 500, 0.75rem / 12px, line-height 1, letter-spacing 0.01em): badges, table headers, button text, form labels.
 - **Numeric** (Manrope 600, 1.875rem / 30px, line-height 1, letter-spacing -0.02em, `font-feature-settings: "tnum"`): the big numbers on the signal dashboard, antenna alignment meter, bandwidth panel. **Always tabular-numbers** so values don't jitter as they update.
+- **Mono** (JetBrains Mono 400 / 500 / 700, ~0.78rem / 12.5px, line-height 1.55): the AT terminal command and output stream, raw-AT-response / log viewers, and inline `<code>` for AT command strings. **This surface only.** A disambiguated (slashed) zero and fixed advance width keep verbatim device output legible and column-aligned.
 
 ### Named Rules
 
-**The Single-Voice Rule.** Manrope is the only typeface in the system. Hierarchy comes from weight contrast (400 / 500 / 600) and scale (≥1.25 ratio between steps). Pairing Manrope with another sans is forbidden; pairing it with a mono is forbidden; the discipline is the point.
+**The Single-Voice Rule.** Manrope is the only *UI* typeface in the system. Hierarchy comes from weight contrast (400 / 500 / 600) and scale (≥1.25 ratio between steps). Pairing Manrope with another sans is forbidden. The single sanctioned exception is JetBrains Mono, scoped to the AT terminal and raw AT output only (see The Machine-Voice Rule); a mono anywhere else in the UI is forbidden. The discipline is the point.
+
+**The Machine-Voice Rule.** JetBrains Mono (`--font-mono`) is the one permitted non-Manrope face, and it speaks only for the device: the AT terminal (input + output), raw-AT-response and log viewers that show device output verbatim, and inline `<code>` rendering AT command strings (e.g. `AT+QENG="servingcell"`). It appears nowhere else. This mirrors how Apple keeps SF everywhere but SF Mono in Terminal and the Xcode console: monospace is earned by column-aligned machine output, never reached for as decoration.
 
 **The Tabular-Number Rule.** Any number that updates live (signal values, throughput, bytes counters, watchdog timers) must use `font-variant-numeric: tabular-nums`. Non-tabular updates cause perceptible jitter in dense readouts. Tabular is mandatory for numeric content; optional everywhere else.
 
@@ -444,13 +474,15 @@ The whole system feels alive because dozens of tiles are doing this at once at l
 - **Do** leave generous editorial whitespace around and inside grouped cards (Askey iF-award influence). Calm spacing is what reads as premium; crowding is what cheapens it.
 - **Do** use `Muted` badge styling for deliberately inactive states (not-installed, disabled-by-config). Reserve `Destructive` for actual failures.
 - **Do** defer reboots via dialog + persistent banner pattern (`usePendingReboot`). Never `AT+CFUN=1,1` mid-request.
+- **Do** treat Spectrum Teal as identity only: the login hero, wordmark, empty-state art, and the indigo→teal brand gradient. Never a status, button, selected state, or chart color (The Identity-Color Boundary).
+- **Do** use JetBrains Mono (`font-mono`) for the AT terminal and raw AT / log output, and nowhere else (The Machine-Voice Rule). The bright teal base needs its `-deep` variant whenever it carries text or a meaningful icon.
 
 ### Don't:
 
 - **Don't** use `#000` or `#fff`. They are forbidden in this codebase.
 - **Don't** use solid `success`/`warning`/`destructive`/`info` badge variants in feature surfaces. Outline-and-tint is the only correct status badge.
 - **Don't** add icons to `CardHeader`. They drift into hero-metric SaaS template territory.
-- **Don't** introduce a second typeface. Manrope is the single voice; Geist Mono, Inter, IBM Plex, Roboto Mono, and every other font are forbidden unless this rule is consciously revised.
+- **Don't** introduce a second *UI* typeface. Manrope is the single interface voice; Inter, Geist, IBM Plex, Euclid Circular B, Roboto Mono, and every other sans are forbidden as UI fonts. The one consciously-revised exception is **JetBrains Mono**, allowed *only* in the AT terminal and raw AT output (The Machine-Voice Rule), never as a general UI font.
 - **Don't** use side-stripe borders (`border-left: 3px solid currentColor` on cards or callouts). Banned by impeccable's absolute bans and inconsistent with the Hairline border discipline here.
 - **Don't** use `background-clip: text` gradient text. Banned. Solid color only; emphasis through weight or size.
 - **Don't** apply `backdrop-blur` decoratively. The dialog overlay is the only sanctioned glassmorphism in the system.
@@ -461,6 +493,6 @@ The whole system feels alive because dozens of tiles are doing this at once at l
 - **Don't** add bouncy, springy, or elastic motion. No `cubic-bezier` with overshoot. No Material-style decelerate-and-bounce. The Apple-instrument promise is *settled* motion, not *playful* motion. If a transition wobbles at the end, the curve is wrong.
 - **Don't** animate value changes via fade-out-then-fade-in or via layout shifts. Tabular-nums plus a 200ms color transition is the only sanctioned pattern for live values. Anything else creates perceptible flicker in dense readouts.
 - **Don't** make modals the first thought. Most "confirm an action" flows can use inline disclosure, a destructive button with an `aria-describedby` warning, or a deferred-banner pattern. Modals are for the genuinely irreversible (reboot, factory restore, IMEI write, Verizon MPDN release).
-- **Don't** style the AT terminal, system logs, or IMEI strings with a monospace font. Manrope's tabular-nums + the `'ss01'` stylistic set handles fixed-width readouts; reaching for Geist Mono violates the Single-Voice Rule.
+- **Don't** use a monospace for fixed-width *UI* readouts (signal values, IMEI / ICCID fields, dense table numbers). Manrope's tabular-nums + the `'ss01'` stylistic set handles those, and a mono there violates the Single-Voice Rule. Do, however, use JetBrains Mono for the AT terminal and raw AT / log output, where verbatim device text genuinely needs column alignment (The Machine-Voice Rule).
 - **Don't** copy the aesthetic of any anti-reference named in PRODUCT.md: classic LuCI's bare tables, QNavigator/QCOM's putty-style monospace consoles, Netgear Nighthawk's cartoon-icon consumer simplification, or the generic AI/SaaS dashboard slop with hero-metric + identical-card-grid + gradient-text headings. If the screen could be reskinned for a CRM without changing anything, it has failed.
 - **Don't** use em dashes in documentation. Use commas, colons, semicolons, periods, or parentheses. (UI copy follows its own i18n rules; this convention is for docs and code comments.)
