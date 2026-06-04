@@ -35,7 +35,7 @@ The coordinator (`custom-profile.tsx`) owns the shared data layer and renders tw
 
 The coordinator instantiates one `useSimProfiles()` and one `useCurrentSettings(true)` and passes them to both cards. A single `editingId: string | null` state is the Edit hand-off: when the user clicks Edit on a row in the right card, `setEditingId(id)` flips the left card into edit mode.
 
-The page header (`h1` + muted description) is i18n-wired via `custom_profiles.page.title` and `custom_profiles.page.description`. Both cards are now fully internationalized: `profile-input.tsx`, `profile-view.tsx`, and `empty-profile.tsx` are all wired to the `cellular` namespace `custom_profiles.*` tree. 283 `custom_profiles.*` keys exist across en/id/it/zh-CN with full parity.
+The page header (`h1` + muted description) is i18n-wired via `custom_profiles.page.title` and `custom_profiles.page.description`. Both cards are now fully internationalized: `profile-input.tsx`, `profile-view.tsx`, and `empty-profile.tsx` are all wired to the `cellular` namespace `custom_profiles.*` tree. 292 `custom_profiles.*` keys exist across en/id/it/zh-CN with full parity.
 
 ## Left Card — Add / Edit Profile (`profile-input.tsx`)
 
@@ -63,6 +63,30 @@ Selecting a carrier from the MNO picker auto-fills APN, TTL, and HL from `MNO_PR
 ### Load from SIM
 
 The "Load from SIM" button (Identity tab header) calls `currentSettings.refresh()` and autofills ICCID, IMEI, APN, CID, and PDP type once the response lands. A `loadRequestedRef` flag gates the autofill so the coordinator's mount fetch never triggers it — only an explicit user button press fills the form.
+
+### Reuse a Saved APN Profile
+
+The Network tab shows a **"Reuse a saved APN profile"** `Select` above the free-text APN input when at least one APN Management slot has a non-empty `apn`. It reads the named 5-slot APN registry via `useWanProfiles()` (`hooks/use-wan-profiles.ts`, GET `cellular/apn.sh`) and filters to slots where `apn.trim() !== ""`.
+
+Picking a slot copies three fields into the editable form:
+
+| Field | Source | Notes |
+|---|---|---|
+| APN string (`apn_name`) | `p.apn` | Always copied |
+| IP protocol (`pdp_type`) | `p.pdp_type` | Token space is identical (`ipv4/ipv6/ipv4v6`) — no translation needed |
+| CID | `p.cid` | **NOT copied** when Verizon MNO is selected (the CID field is locked to 3 by the brick-guard; copying would fight it) |
+
+The APN input remains fully editable after a pick — this is a pre-fill, not a lock. The picker resets to empty after the copy so it reads as "nothing selected" rather than the last-used name. This is a frontend-only feature: the form still emits the standard flat `apn_name/pdp_type/cid` body to `profiles/save.sh`; the backend is unchanged.
+
+This is the third APN pre-fill source alongside MNO presets (`constants/mno-presets.ts`) and Load from SIM (`currentSettings.refresh()`).
+
+**i18n keys** (all four locales: en, id, it, zh-CN):
+
+| Key | Purpose |
+|---|---|
+| `custom_profiles.form.fields.reuse_apn_label` | Field label above the `Select` |
+| `custom_profiles.form.fields.reuse_apn_placeholder` | Placeholder shown when no slot is picked |
+| `custom_profiles.form.fields.reuse_apn_hint` | Helper text below the `Select` |
 
 ### Edit-Mode Prefill
 
@@ -198,4 +222,4 @@ The installer now guards against this: `install_file()` compares `wc -c` of sour
 
 ## i18n Status
 
-All components are fully internationalized. `custom-profile.tsx`, `profile-input.tsx`, `profile-view.tsx`, `apply-progress-dialog.tsx`, and `empty-profile.tsx` are all wired to the `cellular` namespace. 283 `custom_profiles.*` keys exist across en/id/it/zh-CN with full parity. Key subtrees added in the most recent pass: `custom_profiles.view.*`, `custom_profiles.form.*` (including `form.review.*`, `form.verizon_inline.*`, `form.pdp_inline.*`), `custom_profiles.apply_dialog.*`, `custom_profiles.pills.*`, and `custom_profiles.card.*`.
+All components are fully internationalized. `custom-profile.tsx`, `profile-input.tsx`, `profile-view.tsx`, `apply-progress-dialog.tsx`, and `empty-profile.tsx` are all wired to the `cellular` namespace. 292 `custom_profiles.*` keys exist across en/id/it/zh-CN with full parity. Key subtrees added in the most recent pass: `custom_profiles.view.*`, `custom_profiles.form.*` (including `form.review.*`, `form.verizon_inline.*`, `form.pdp_inline.*`, and `form.fields.reuse_apn_{label,placeholder,hint}`), `custom_profiles.apply_dialog.*`, `custom_profiles.pills.*`, and `custom_profiles.card.*`.

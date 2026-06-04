@@ -61,6 +61,7 @@ import type {
 } from "@/hooks/use-sim-profiles";
 import type { UseCurrentSettingsReturn } from "@/hooks/use-current-settings";
 import { useScenarioList } from "@/hooks/use-scenario-list";
+import { useWanProfiles } from "@/hooks/use-wan-profiles";
 import type { DayOfWeek } from "@/types/sim-profile";
 import {
   MNO_PRESETS,
@@ -158,6 +159,7 @@ const ProfileInputComponent = ({
   const { t } = useTranslation("cellular");
   const router = useRouter();
   const { scenarios, nameForId } = useScenarioList();
+  const wan = useWanProfiles();
 
   const [tab, setTab] = React.useState("identity");
   const [tabDir, setTabDir] = React.useState(1);
@@ -192,6 +194,10 @@ const ProfileInputComponent = ({
   const [imei, setImei] = React.useState("");
   const [ttl, setTtl] = React.useState("");
   const [hl, setHl] = React.useState("");
+  // Action-picker value for "reuse a saved APN profile". Always reset to "" after
+  // a pick so the Select shows its placeholder again (it pre-fills, never holds a
+  // committed selection — the APN field below stays the source of truth).
+  const [reusePick, setReusePick] = React.useState("");
 
   // --- Scenario -------------------------------------------------------------
   const [defaultScenario, setDefaultScenario] = React.useState("balanced");
@@ -367,6 +373,27 @@ const ProfileInputComponent = ({
   React.useEffect(() => {
     if (!currentSettings.isLoading) setLoadingSim(false);
   }, [currentSettings.isLoading]);
+
+  // --- Reuse a saved APN profile --------------------------------------------
+  // The named 5-slot APN registry (APN Management) is a third pre-fill source,
+  // alongside MNO presets and Load-from-SIM. Only configured slots (non-empty
+  // apn) are offered. Picking one copies apn + IP protocol + CID into the
+  // editable fields; the PDP token space is identical (ipv4/ipv6/ipv4v6), so no
+  // translation is needed here. CID is NOT copied while Verizon is selected —
+  // that field is locked to context 3 and we must not fight the brick-guard.
+  const savedApnProfiles = React.useMemo(
+    () => (wan.profiles ?? []).filter((p) => p.apn.trim() !== ""),
+    [wan.profiles],
+  );
+
+  const handleReuseApn = (slotId: string) => {
+    const p = savedApnProfiles.find((x) => String(x.id) === slotId);
+    if (!p) return;
+    if (p.apn) setApn(p.apn);
+    if (p.pdp_type in PDP_DISPLAY) setPdp(p.pdp_type);
+    if (!isVerizon) setCid(String(p.cid));
+    setReusePick("");
+  };
 
   // --- Submit / Cancel ------------------------------------------------------
   const buildFormData = (): ProfileFormData => ({
@@ -571,6 +598,42 @@ const ProfileInputComponent = ({
                     {t("custom_profiles.form.network_desc")}
                   </FieldDescription>
                   <FieldGroup>
+                    {savedApnProfiles.length > 0 && (
+                      <>
+                        <Field>
+                          <FieldLabel>
+                            {t("custom_profiles.form.fields.reuse_apn_label")}
+                          </FieldLabel>
+                          <Select
+                            value={reusePick}
+                            onValueChange={handleReuseApn}
+                          >
+                            <SelectTrigger>
+                              <SelectValue
+                                placeholder={t(
+                                  "custom_profiles.form.fields.reuse_apn_placeholder",
+                                )}
+                              />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectGroup>
+                                {savedApnProfiles.map((p) => (
+                                  <SelectItem key={p.id} value={String(p.id)}>
+                                    {p.name.trim()
+                                      ? `${p.name.trim()} — ${p.apn}`
+                                      : p.apn}
+                                  </SelectItem>
+                                ))}
+                              </SelectGroup>
+                            </SelectContent>
+                          </Select>
+                          <FieldDescription>
+                            {t("custom_profiles.form.fields.reuse_apn_hint")}
+                          </FieldDescription>
+                        </Field>
+                        <FieldSeparator />
+                      </>
+                    )}
                     <Field>
                       <FieldLabel>
                         {t("custom_profiles.form.fields.apn_name_label")}
