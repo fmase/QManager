@@ -73,7 +73,7 @@ function CidBadge({ ctx }: { ctx: CidContext }) {
   if (ctx.apn_type === "ims") {
     return (
       <Badge variant="outline" className="bg-warning/15 text-warning border-warning/30">
-        <PhoneCallIcon className="size-3" />
+        <PhoneCallIcon className="text-warning size-3" />
         {t("core_settings.apn.edit.fields.modem_profile.ims_badge")}
       </Badge>
     );
@@ -81,7 +81,7 @@ function CidBadge({ ctx }: { ctx: CidContext }) {
   if (ctx.apn_type === "emergency") {
     return (
       <Badge variant="outline" className="bg-destructive/15 text-destructive border-destructive/30">
-        <SirenIcon className="size-3" />
+        <SirenIcon className="text-destructive size-3" />
         {t("core_settings.apn.edit.fields.modem_profile.sos_badge")}
       </Badge>
     );
@@ -89,7 +89,7 @@ function CidBadge({ ctx }: { ctx: CidContext }) {
   if (ctx.is_internet) {
     return (
       <Badge variant="outline" className="bg-success/15 text-success border-success/30">
-        <GlobeIcon className="size-3" />
+        <GlobeIcon className="text-success size-3" />
         {t("core_settings.apn.edit.fields.modem_profile.for_internet")}
       </Badge>
     );

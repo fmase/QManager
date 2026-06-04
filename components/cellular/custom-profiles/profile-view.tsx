@@ -469,7 +469,7 @@ const ProfileRow = ({
           {formatProfileDate(summary.updated_at)}
         </span>
         {isActive ? (
-          <Button variant="outline" size="sm" onClick={onDeactivate}>
+          <Button variant="secondary" size="sm" onClick={onDeactivate}>
             <PowerIcon className="size-4" />
             {t("custom_profiles.table.actions_menu.deactivate")}
           </Button>
