@@ -407,6 +407,7 @@ profile_delete() {
     if [ "$active_id" = "$id" ]; then
         clear_active_profile
         _profile_teardown_scenario_cron
+        _profile_reset_scenario_to_default
         qlog_info "Cleared active profile (deleted: $id)" 2>/dev/null
     fi
 
@@ -477,6 +478,20 @@ _profile_teardown_scenario_cron() {
         . /usr/lib/qmanager/scenario_mgr.sh 2>/dev/null
     fi
     command -v scenario_teardown_cron >/dev/null 2>&1 && scenario_teardown_cron
+    return 0
+}
+
+# _profile_reset_scenario_to_default
+# Lazy-source scenario_mgr.sh and reset the radio + active_scenario marker to
+# Balanced (mode-only: AUTO). Called at every active-profile clear site so a
+# deactivated profile's custom scenario no longer keeps the modem locked to its
+# network mode. Mirrors _profile_teardown_scenario_cron. Best-effort: never
+# blocks the clear path.
+_profile_reset_scenario_to_default() {
+    if ! command -v scenario_reset_to_default >/dev/null 2>&1; then
+        . /usr/lib/qmanager/scenario_mgr.sh 2>/dev/null
+    fi
+    command -v scenario_reset_to_default >/dev/null 2>&1 && scenario_reset_to_default
     return 0
 }
 
@@ -570,6 +585,7 @@ auto_apply_profile() {
                 fi
                 clear_active_profile
                 _profile_teardown_scenario_cron
+                _profile_reset_scenario_to_default
                 _profile_emit_event "profile_deactivated" "Profile '${_ap_name:-unknown}' auto-deactivated (SIM mismatch)" "warning"
                 qlog_info "[$caller] Deactivated profile $_ap_id (SIM mismatch: current ICCID ...$iccid_suffix)" 2>/dev/null
             fi

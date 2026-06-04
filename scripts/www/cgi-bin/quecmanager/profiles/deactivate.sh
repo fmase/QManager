@@ -71,6 +71,13 @@ if command -v scenario_teardown_cron >/dev/null 2>&1; then
     scenario_teardown_cron
 fi
 
+# --- Reset connection scenario to Balanced (default) -------------------------
+# Deactivating a profile must not leave the radio locked to the profile's
+# scenario. Mode-only: returns mode_pref to AUTO and writes active_scenario.
+if command -v scenario_reset_to_default >/dev/null 2>&1; then
+    scenario_reset_to_default
+fi
+
 # --- Emit network event ------------------------------------------------------
 if [ -n "$_deact_name" ]; then
     append_event "profile_deactivated" "Profile '$_deact_name' deactivated" "info"

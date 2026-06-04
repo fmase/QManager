@@ -468,7 +468,7 @@ collect_boot_data() {
                 _ap_iccid=$(jq -r '(.sim_iccid) | if . == null then empty else . end' "/etc/qmanager/profiles/${_ap_id}.json" 2>/dev/null)
                 if [ -n "$_ap_iccid" ] && [ "$_ap_iccid" != "$boot_iccid" ]; then
                     _ap_name=$(jq -r '(.name) | if . == null then empty else . end' "/etc/qmanager/profiles/${_ap_id}.json" 2>/dev/null)
-                    rm -f "$_ap_file"
+                    ( . /usr/lib/qmanager/profile_mgr.sh 2>/dev/null && clear_active_profile && _profile_teardown_scenario_cron && _profile_reset_scenario_to_default )
                     qlog_warn "Auto-deactivated profile '$_ap_name' — SIM ICCID mismatch (profile: ...$(printf '%s' "$_ap_iccid" | tail -c 4), current: ...$(printf '%s' "$boot_iccid" | tail -c 4))"
                     append_event "profile_deactivated" "Profile '$_ap_name' auto-deactivated (SIM mismatch)" "warning"
                 fi

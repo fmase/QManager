@@ -175,6 +175,16 @@ scenario_apply() {
     return 0
 }
 
+# scenario_reset_to_default
+# Reset the radio + active_scenario marker to the canonical default (Balanced).
+# MODE-ONLY: scenario_apply "balanced" issues AT+QNWPREFCFG="mode_pref",AUTO and
+# writes the active_scenario marker. Band locks a prior custom scenario applied
+# are intentionally NOT cleared (built-in Balanced is mode-only by design).
+# This is the deactivate-time inverse of scenario_install_cron. Never reboots.
+scenario_reset_to_default() {
+    scenario_apply "balanced"
+}
+
 # =============================================================================
 # Per-Profile Scenario Block Readers (read-time migration defaults)
 # =============================================================================

@@ -121,7 +121,7 @@ On dialog close (`handleApplyClose`):
 
 While the apply is in flight (not terminal) and `applyState.profile_id` matches the row, the Activate button shows a `Loader2Icon` spinner as a secondary affordance — the dialog is the primary signal. Deactivate and Delete still use `sonner` toasts.
 
-**Deactivate** calls `sim.deactivateProfile()`. On success → `toast.success`. If `requiresReboot` is true (Verizon MPDN revert) → `setPendingReboot("verizon_revert")`. The deferred-reboot banner (`usePendingReboot`) picks up both sources.
+**Deactivate** calls `sim.deactivateProfile()`. On success → `toast.success`. If `requiresReboot` is true (Verizon MPDN revert) → `setPendingReboot("verizon_revert")`. The deferred-reboot banner (`usePendingReboot`) picks up both sources. Deactivation also resets the Connection Scenario to Balanced (`mode_pref` → `AUTO`) — the radio is no longer left locked to the deactivated profile's network mode. See [`docs/features/scenario-profile-binding.md`](scenario-profile-binding.md) — "Teardown at Every Clear Site" for the full reset path.
 
 **Delete** → `AlertDialog` confirm → `sim.deleteProfile(id)` → `toast.success/error`.
 

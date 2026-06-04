@@ -558,6 +558,9 @@ elif [ "$apply_status" = "failed" ]; then
     if command -v scenario_teardown_cron >/dev/null 2>&1; then
         scenario_teardown_cron
     fi
+    if command -v scenario_reset_to_default >/dev/null 2>&1; then
+        scenario_reset_to_default
+    fi
 fi
 
 # --- Emit network event ------------------------------------------------------

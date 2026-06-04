@@ -127,7 +127,16 @@ The marker is appended by `scenario_install_cron` via `sed "s|\$|  # ${SCENARIO_
 
 ## Teardown at Every Clear Site
 
-Scenario cron must be removed whenever the profile it belongs to stops being active. The helper `_profile_teardown_scenario_cron` in `profile_mgr.sh` lazy-sources `scenario_mgr.sh` and calls `scenario_teardown_cron`. It is called from every active-profile clear site:
+Scenario cron must be removed whenever the profile it belongs to stops being active, and the Connection Scenario must be reset to Balanced so the radio does not stay locked to the deactivated profile's network mode.
+
+Two helpers in `profile_mgr.sh` cover this, and both are called at every clear site:
+
+- `_profile_teardown_scenario_cron` — lazy-sources `scenario_mgr.sh` and calls `scenario_teardown_cron`. Removes the `qmanager_profile_scenario` cron lines.
+- `_profile_reset_scenario_to_default` — lazy-sources `scenario_mgr.sh` and calls `scenario_reset_to_default` (a thin wrapper over `scenario_apply "balanced"`). Issues `AT+QNWPREFCFG="mode_pref",AUTO` and writes `active_scenario=balanced`. This is the deactivate-time inverse of `scenario_install_cron` — the only activation path that calls `scenario_apply`.
+
+**Mode-only reset by design.** `scenario_apply "balanced"` sets `mode_pref` to `AUTO` but does **not** clear any band locks a prior custom scenario applied. Built-in Balanced is mode-only; clearing band locks is not its job. Do not "fix" this.
+
+The two helpers are called in sequence (teardown cron first, then reset scenario) at all five clear sites:
 
 | Site | File | Notes |
 |---|---|---|
@@ -135,8 +144,11 @@ Scenario cron must be removed whenever the profile it belongs to stops being act
 | Profile delete (was active) | `profile_mgr.sh::profile_delete` | Active id captured **before** `rm -f` — see ordering note below |
 | SIM mismatch auto-clear | `profile_mgr.sh::auto_apply_profile` | After `clear_active_profile` |
 | Worker total failure | `qmanager_profile_apply` | After `clear_active_profile` in the `failed` branch |
+| Poller boot SIM mismatch | `qmanager_poller::collect_boot_data` | Previously a bare `rm -f "$_ap_file"`; upgraded to `( . profile_mgr.sh && clear_active_profile && _profile_teardown_scenario_cron && _profile_reset_scenario_to_default )` — this also closes a pre-existing gap where the bare rm skipped cron teardown entirely |
 
 > ⚠️ WARNING: **`profile_delete` ordering invariant.** `get_active_profile` validates the marker by checking whether the profile file exists. In `profile_delete`, the active profile id is captured into `active_id` **before** `rm -f "$file"` — if the rm runs first, `get_active_profile` returns empty and the teardown branch never executes, leaving orphaned cron lines. This was a deliberate ordering fix; do not reorder.
+
+The reset never reboots and is safe in the CGI request path. No UCI is involved — scenario state is the `active_scenario` marker file plus live modem only.
 
 The cron worker has a **self-heal guard** as a backstop (not the primary teardown path): on each fire it checks whether a schedule-enabled profile is active. If not, it tears down the stale lines and exits without applying.
 
