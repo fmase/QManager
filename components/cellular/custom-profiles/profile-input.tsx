@@ -482,7 +482,7 @@ const ProfileInputComponent = ({
                       {t("custom_profiles.form.sections.identity_desc")}
                     </FieldDescription>
                     <Button
-                      variant="outline"
+                      variant="secondary"
                       size="sm"
                       type="button"
                       onClick={handleLoadFromSim}
