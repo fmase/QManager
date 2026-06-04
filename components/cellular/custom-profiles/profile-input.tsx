@@ -114,6 +114,12 @@ const CREATE_SCENARIO_VALUE = "__create_scenario__";
 const SCENARIOS_CREATE_HREF =
   "/cellular/custom-profiles/connection-scenarios?create=1";
 
+// Synthetic "Custom" value for the APN Profiles select — shown automatically
+// when the typed APN matches none of the saved slots. Picking it is a no-op
+// (the APN Name field stays the source of truth); it exists so the trigger
+// reads "Custom" instead of going blank while the user types a custom APN.
+const APN_CUSTOM_VALUE = "__custom__";
+
 interface ScheduleWindow {
   id: number;
   scenario: string;
@@ -194,10 +200,6 @@ const ProfileInputComponent = ({
   const [imei, setImei] = React.useState("");
   const [ttl, setTtl] = React.useState("");
   const [hl, setHl] = React.useState("");
-  // Action-picker value for "reuse a saved APN profile". Always reset to "" after
-  // a pick so the Select shows its placeholder again (it pre-fills, never holds a
-  // committed selection — the APN field below stays the source of truth).
-  const [reusePick, setReusePick] = React.useState("");
 
   // --- Scenario -------------------------------------------------------------
   const [defaultScenario, setDefaultScenario] = React.useState("balanced");
@@ -374,7 +376,7 @@ const ProfileInputComponent = ({
     if (!currentSettings.isLoading) setLoadingSim(false);
   }, [currentSettings.isLoading]);
 
-  // --- Reuse a saved APN profile --------------------------------------------
+  // --- APN Profiles picker --------------------------------------------------
   // The named 5-slot APN registry (APN Management) is a third pre-fill source,
   // alongside MNO presets and Load-from-SIM. Only configured slots (non-empty
   // apn) are offered. Picking one copies apn + IP protocol + CID into the
@@ -386,13 +388,24 @@ const ProfileInputComponent = ({
     [wan.profiles],
   );
 
-  const handleReuseApn = (slotId: string) => {
-    const p = savedApnProfiles.find((x) => String(x.id) === slotId);
+  // The Select value is DERIVED from the typed APN — no separate state. If the
+  // current APN matches a saved slot, that slot is shown selected; otherwise a
+  // synthetic "Custom" option is shown (only once the field is non-empty), so
+  // the trigger reflects reality as the user types or picks.
+  const matchedApnProfile = savedApnProfiles.find((p) => p.apn === apn);
+  const apnSelectValue = matchedApnProfile
+    ? String(matchedApnProfile.id)
+    : apn.trim() !== ""
+      ? APN_CUSTOM_VALUE
+      : "";
+
+  const handleApnSelect = (value: string) => {
+    if (value === APN_CUSTOM_VALUE) return; // display-only; keep typed APN
+    const p = savedApnProfiles.find((x) => String(x.id) === value);
     if (!p) return;
     if (p.apn) setApn(p.apn);
     if (p.pdp_type in PDP_DISPLAY) setPdp(p.pdp_type);
     if (!isVerizon) setCid(String(p.cid));
-    setReusePick("");
   };
 
   // --- Submit / Cancel ------------------------------------------------------
@@ -598,15 +611,28 @@ const ProfileInputComponent = ({
                     {t("custom_profiles.form.network_desc")}
                   </FieldDescription>
                   <FieldGroup>
-                    {savedApnProfiles.length > 0 && (
-                      <>
+                    {savedApnProfiles.length > 0 ? (
+                      <div className="grid grid-cols-2 gap-4">
+                        <Field>
+                          <FieldLabel>
+                            {t("custom_profiles.form.fields.apn_name_label")}
+                          </FieldLabel>
+                          <Input
+                            placeholder={t(
+                              "custom_profiles.form.fields.apn_name_placeholder",
+                            )}
+                            required
+                            value={apn}
+                            onChange={(e) => setApn(e.target.value)}
+                          />
+                        </Field>
                         <Field>
                           <FieldLabel>
                             {t("custom_profiles.form.fields.reuse_apn_label")}
                           </FieldLabel>
                           <Select
-                            value={reusePick}
-                            onValueChange={handleReuseApn}
+                            value={apnSelectValue}
+                            onValueChange={handleApnSelect}
                           >
                             <SelectTrigger>
                               <SelectValue
@@ -617,6 +643,13 @@ const ProfileInputComponent = ({
                             </SelectTrigger>
                             <SelectContent>
                               <SelectGroup>
+                                {apnSelectValue === APN_CUSTOM_VALUE && (
+                                  <SelectItem value={APN_CUSTOM_VALUE}>
+                                    {t(
+                                      "custom_profiles.form.fields.reuse_apn_custom",
+                                    )}
+                                  </SelectItem>
+                                )}
                                 {savedApnProfiles.map((p) => (
                                   <SelectItem key={p.id} value={String(p.id)}>
                                     {p.name.trim()
@@ -627,26 +660,23 @@ const ProfileInputComponent = ({
                               </SelectGroup>
                             </SelectContent>
                           </Select>
-                          <FieldDescription>
-                            {t("custom_profiles.form.fields.reuse_apn_hint")}
-                          </FieldDescription>
                         </Field>
-                        <FieldSeparator />
-                      </>
+                      </div>
+                    ) : (
+                      <Field>
+                        <FieldLabel>
+                          {t("custom_profiles.form.fields.apn_name_label")}
+                        </FieldLabel>
+                        <Input
+                          placeholder={t(
+                            "custom_profiles.form.fields.apn_name_placeholder",
+                          )}
+                          required
+                          value={apn}
+                          onChange={(e) => setApn(e.target.value)}
+                        />
+                      </Field>
                     )}
-                    <Field>
-                      <FieldLabel>
-                        {t("custom_profiles.form.fields.apn_name_label")}
-                      </FieldLabel>
-                      <Input
-                        placeholder={t(
-                          "custom_profiles.form.fields.apn_name_placeholder",
-                        )}
-                        required
-                        value={apn}
-                        onChange={(e) => setApn(e.target.value)}
-                      />
-                    </Field>
                     <div className="grid grid-cols-2 gap-4">
                       <Field>
                         <FieldLabel>

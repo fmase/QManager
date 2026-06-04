@@ -64,9 +64,9 @@ Selecting a carrier from the MNO picker auto-fills APN, TTL, and HL from `MNO_PR
 
 The "Load from SIM" button (Identity tab header) calls `currentSettings.refresh()` and autofills ICCID, IMEI, APN, CID, and PDP type once the response lands. A `loadRequestedRef` flag gates the autofill so the coordinator's mount fetch never triggers it — only an explicit user button press fills the form.
 
-### Reuse a Saved APN Profile
+### APN Profiles Picker
 
-The Network tab shows a **"Reuse a saved APN profile"** `Select` above the free-text APN input when at least one APN Management slot has a non-empty `apn`. It reads the named 5-slot APN registry via `useWanProfiles()` (`hooks/use-wan-profiles.ts`, GET `cellular/apn.sh`) and filters to slots where `apn.trim() !== ""`.
+The Network tab pairs the free-text **APN Name** input with an **"APN Profiles"** `Select` in a two-column row, shown when at least one APN Management slot has a non-empty `apn`. (With no configured slots the APN Name input spans the row on its own.) The picker reads the named 5-slot APN registry via `useWanProfiles()` (`hooks/use-wan-profiles.ts`, GET `cellular/apn.sh`) and filters to slots where `apn.trim() !== ""`.
 
 Picking a slot copies three fields into the editable form:
 
@@ -76,7 +76,7 @@ Picking a slot copies three fields into the editable form:
 | IP protocol (`pdp_type`) | `p.pdp_type` | Token space is identical (`ipv4/ipv6/ipv4v6`) — no translation needed |
 | CID | `p.cid` | **NOT copied** when Verizon MNO is selected (the CID field is locked to 3 by the brick-guard; copying would fight it) |
 
-The APN input remains fully editable after a pick — this is a pre-fill, not a lock. The picker resets to empty after the copy so it reads as "nothing selected" rather than the last-used name. This is a frontend-only feature: the form still emits the standard flat `apn_name/pdp_type/cid` body to `profiles/save.sh`; the backend is unchanged.
+The Select value is **derived from the typed APN**, not held in its own state: when the current APN matches a saved slot that slot shows selected; otherwise a synthetic **"Custom"** option appears automatically (once the field is non-empty) so the trigger reflects a hand-typed APN. Picking "Custom" is a no-op — the APN Name input remains the source of truth and stays fully editable. This is a frontend-only feature: the form still emits the standard flat `apn_name/pdp_type/cid` body to `profiles/save.sh`; the backend is unchanged.
 
 This is the third APN pre-fill source alongside MNO presets (`constants/mno-presets.ts`) and Load from SIM (`currentSettings.refresh()`).
 
@@ -84,9 +84,9 @@ This is the third APN pre-fill source alongside MNO presets (`constants/mno-pres
 
 | Key | Purpose |
 |---|---|
-| `custom_profiles.form.fields.reuse_apn_label` | Field label above the `Select` |
-| `custom_profiles.form.fields.reuse_apn_placeholder` | Placeholder shown when no slot is picked |
-| `custom_profiles.form.fields.reuse_apn_hint` | Helper text below the `Select` |
+| `custom_profiles.form.fields.reuse_apn_label` | Label for the APN Profiles `Select` |
+| `custom_profiles.form.fields.reuse_apn_placeholder` | Placeholder shown when the APN field is empty |
+| `custom_profiles.form.fields.reuse_apn_custom` | Synthetic "Custom" option label |
 
 ### Edit-Mode Prefill
 
@@ -222,7 +222,7 @@ The installer now guards against this: `install_file()` compares `wc -c` of sour
 
 ## i18n Status
 
-All components are fully internationalized. `custom-profile.tsx`, `profile-input.tsx`, `profile-view.tsx`, `apply-progress-dialog.tsx`, and `empty-profile.tsx` are all wired to the `cellular` namespace. 292 `custom_profiles.*` keys exist across en/id/it/zh-CN with full parity. Key subtrees added in the most recent pass: `custom_profiles.view.*`, `custom_profiles.form.*` (including `form.review.*`, `form.verizon_inline.*`, `form.pdp_inline.*`, and `form.fields.reuse_apn_{label,placeholder,hint}`), `custom_profiles.apply_dialog.*`, `custom_profiles.pills.*`, and `custom_profiles.card.*`.
+All components are fully internationalized. `custom-profile.tsx`, `profile-input.tsx`, `profile-view.tsx`, `apply-progress-dialog.tsx`, and `empty-profile.tsx` are all wired to the `cellular` namespace. 292 `custom_profiles.*` keys exist across en/id/it/zh-CN with full parity. Key subtrees added in the most recent pass: `custom_profiles.view.*`, `custom_profiles.form.*` (including `form.review.*`, `form.verizon_inline.*`, `form.pdp_inline.*`, and `form.fields.reuse_apn_{label,placeholder,custom}`), `custom_profiles.apply_dialog.*`, `custom_profiles.pills.*`, and `custom_profiles.card.*`.
 
 ## Force-Tier-2 Refresh After SIM Switch
 
