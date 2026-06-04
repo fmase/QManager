@@ -47,7 +47,7 @@ const APNSettingsComponent = () => {
     rebootDevice,
   } = useMbnSettings();
 
-  const { activeProfileId, getProfile } = useSimProfiles();
+  const { activeProfileId, isLoading: simLoading, getProfile } = useSimProfiles();
 
   // --- SIM Profile override check (async) ----------------------------------
   // Gate iff the active profile has a non-empty APN name. Empty APN = profile
@@ -57,8 +57,18 @@ const APNSettingsComponent = () => {
     name: string;
   } | null>(null);
 
+  // The override verdict arrives over TWO sequential fetches: useSimProfiles
+  // first learns `activeProfileId`, then the effect below fetches that
+  // profile's APN. `checkedId` records the profile id whose APN fetch has
+  // completed, so render can tell whether the current verdict is settled or
+  // still in flight — without any synchronous setState in the effect.
+  const [checkedId, setCheckedId] = useState<string | null>(null);
+
   useEffect(() => {
-    if (!activeProfileId) return;
+    // Only fetch once the profile list has settled and there is an active
+    // profile to inspect. Until then the verdict stays "undetermined" (derived
+    // below) so the UI holds its skeleton rather than exposing live controls.
+    if (simLoading || !activeProfileId) return;
 
     let cancelled = false;
     (async () => {
@@ -70,15 +80,24 @@ const APNSettingsComponent = () => {
       } else {
         setProfileOverride(null);
       }
+      setCheckedId(activeProfileId);
     })();
 
     return () => {
       cancelled = true;
     };
-  }, [activeProfileId, getProfile]);
+  }, [activeProfileId, simLoading, getProfile]);
 
   const isProfileControlled =
     !!activeProfileId && profileOverride?.profileId === activeProfileId;
+
+  // True while we still can't tell whether a profile owns the APN: the list is
+  // still loading, or an active profile's APN fetch hasn't resolved yet
+  // (`checkedId` lags `activeProfileId`). The interactive cards stay in their
+  // loading state and the fieldset stays disabled until this clears, closing
+  // the window where every button is live before the override gate engages.
+  const overrideUndetermined =
+    simLoading || (!!activeProfileId && checkedId !== activeProfileId);
   const profileName = isProfileControlled
     ? profileOverride.name
     : t("core_settings.apn.managed_by_profile_fallback");
@@ -126,7 +145,7 @@ const APNSettingsComponent = () => {
           two-card grid. `pointer-events-none opacity-60` makes the
           disabled state visually obvious while leaving values readable. */}
       <fieldset
-        disabled={isProfileControlled}
+        disabled={isProfileControlled || overrideUndetermined}
         className={
           isProfileControlled
             ? "pointer-events-none opacity-60 grid grid-cols-1 @3xl/main:grid-cols-2 grid-flow-row gap-4 border-0 p-0 m-0"
@@ -135,7 +154,7 @@ const APNSettingsComponent = () => {
       >
         <WanProfileListCard
           profiles={profiles}
-          isLoading={isLoading}
+          isLoading={isLoading || overrideUndetermined}
           isSaving={isSaving}
           onEdit={setEditingId}
           onActivate={activateProfile}

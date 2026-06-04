@@ -243,6 +243,8 @@ After a successful save, activate, or clear the hook applies an optimistic local
 
 `apn-settings.tsx` checks whether an active Custom SIM Profile has a non-empty `settings.apn.name`. If it does, the page is locked read-only with a `ProfileOverrideAlert` banner showing the controlling profile name, and `overridden={true}` is passed to `WanProfileListCard`. The formerly-active APN slot then renders the **Overridden** badge (muted, CircleSlashIcon) in place of the green **Active** badge.
 
+The verdict arrives over **two sequential fetches** — `useSimProfiles` first learns `activeProfileId` (`list.sh`), then `apn-settings.tsx`'s effect fetches that profile's APN (`get.sh`). Until both settle, the page holds the WAN list card in its loading skeleton and keeps the fieldset disabled (`overrideUndetermined`), so no Activate/Edit/Save control is ever live during the window before the gate engages. The "still determining" status is **derived during render** from `simLoading` + a `checkedId` state (the profile id whose APN fetch has completed) — there is no synchronous `setState` in the effect, satisfying the React-Compiler `set-state-in-effect` rule.
+
 > ℹ️ NOTE: `apn_profiles.json`'s `active` pointer is intentionally NOT cleared when a Custom SIM Profile takes over. The stored pointer represents the user's intent for when the profile deactivates — resetting it would silently discard which slot the user had configured. The badge change is purely presentational.
 
 Custom SIM Profiles remain the absolute authority for APN configuration when a profile is active.
