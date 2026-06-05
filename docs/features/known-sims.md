@@ -64,15 +64,18 @@ The canonical QCCID read pipeline is:
 qcmd 'AT+QCCID' 2>/dev/null | grep '+QCCID:' | sed 's/+QCCID: //g' | tr -d '\r '
 ```
 
-All five write sites use exactly this pipeline (or `sim_db_normalize`, which reproduces its effect). They are:
+All six write sites use exactly this pipeline (or `sim_db_normalize`, which reproduces its effect). They are:
 
 | Site | File | Approx. line |
 |---|---|---|
 | Boot detector | `qmanager_poller` | ~462 |
 | Profile activation | `qmanager_profile_apply` (via `mark_sim_acknowledged`) | ~401, ~543 |
+| UI SIM-slot switch | `cellular/settings.sh` (post-switch `sim_switch` block) | ~346 |
 | Watchcat SIM revert | `qmanager_watchcat` | ~440 |
 | Watchcat SIM failover | `qmanager_watchcat` | ~644 |
 | CGI clear action | `system/known_sims.sh` | ~56 |
+
+> ℹ️ NOTE: The UI SIM-slot switch (`cellular/settings.sh`) registers the switched-to SIM so the Known SIMs count updates immediately and a deliberate switch does not trigger a redundant "New SIM" toast on the next poller boot. Without it, a slot switch would not register the new SIM until the next reboot ran the boot detector.
 
 > ⚠️ WARNING: If you add a new QCCID read site, use the identical pipeline. Do not use the profile's stored `sim_iccid` field as a substitute — that field may be hand-typed or carry a different format than the modem's `AT+QCCID` response.
 
@@ -82,7 +85,7 @@ All five write sites use exactly this pipeline (or `sim_db_normalize`, which rep
 
 This is intentional. Membership (`grep -qxF`) is indifferent to duplicates — a line appearing twice reads as a match just as well as once. The `sim_db_count` function uses `grep -c .` which counts lines (so duplicates inflate the count slightly), but the count is only used for the UI display and has no behavioral effect on detection logic.
 
-> ℹ️ NOTE: No flock or mutex guards `sim_db_add`. Do not add one without auditing that all five write sites can acquire it — the poller and watchcat run as independent daemons and a deadlock here would block boot-time SIM detection indefinitely.
+> ℹ️ NOTE: No flock or mutex guards `sim_db_add`. Do not add one without auditing that all six write sites can acquire it — the poller and watchcat run as independent daemons and a deadlock here would block boot-time SIM detection indefinitely.
 
 ## CGI: `system/known_sims.sh`
 

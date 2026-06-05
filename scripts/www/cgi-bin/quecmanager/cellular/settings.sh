@@ -338,6 +338,12 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
             sleep 1
         done
         if [ -n "$_as_iccid" ]; then
+            # Register the switched-to SIM in the known-SIMs database so the
+            # Known SIMs count reflects it immediately. A deliberate slot switch
+            # is an expected SIM (like a watchdog failover), not a physical swap
+            # to alert on — so this also suppresses a redundant "New SIM" toast
+            # on the next poller boot.
+            ( . /usr/lib/qmanager/sim_db.sh 2>/dev/null && sim_db_add "$_as_iccid" )
             ( . /usr/lib/qmanager/profile_mgr.sh && auto_apply_profile "$_as_iccid" "sim_switch" )
         else
             qlog_info "[sim_switch] ICCID query failed after SIM switch, skipping auto-apply"
