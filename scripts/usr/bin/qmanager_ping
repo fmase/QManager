@@ -42,8 +42,8 @@ qlog_init "ping"
 # via resolve_profile(); the daemon holds the profile->params table as the
 # single source of truth (UCI stores only the profile name + 2 targets).
 PING_PROFILE="${PING_PROFILE:-relaxed}"
-PING_TARGET_1="${PING_TARGET_1:-https://google.com}"
-PING_TARGET_2="${PING_TARGET_2:-https://cloudflare.com}"
+PING_TARGET_1="${PING_TARGET_1:-https://cloudflare.com}"
+PING_TARGET_2="${PING_TARGET_2:-https://google.com}"
 PING_INTERVAL="${PING_INTERVAL:-5}"
 FAIL_THRESHOLD="${FAIL_THRESHOLD:-3}"
 RECOVER_THRESHOLD="${RECOVER_THRESHOLD:-2}"

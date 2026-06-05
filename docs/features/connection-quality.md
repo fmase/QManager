@@ -53,8 +53,8 @@ The daemon holds the profile→parameters table. UCI stores only the **profile n
 ```
 quecmanager.ping_profile=ping_profile
 quecmanager.ping_profile.profile=relaxed
-quecmanager.ping_profile.target_1=https://google.com
-quecmanager.ping_profile.target_2=https://cloudflare.com
+quecmanager.ping_profile.target_1=https://cloudflare.com
+quecmanager.ping_profile.target_2=https://google.com
 ```
 
 The `ping_profile.sh` CGI also seeds these defaults on-read (via `ensure_ping_profile_config`) if the section is absent — so the section always exists after the first GET.
@@ -121,8 +121,8 @@ Both daemons check for their respective flag at the **top of their main loop**, 
 {
   "success": true,
   "profile": "relaxed",
-  "target1": "https://google.com",
-  "target2": "https://cloudflare.com"
+  "target1": "https://cloudflare.com",
+  "target2": "https://google.com"
 }
 ```
 
@@ -134,8 +134,8 @@ Both daemons check for their respective flag at the **top of their main loop**, 
 {
   "action": "save",
   "profile": "sensitive",
-  "target_1": "https://google.com",
-  "target_2": "https://cloudflare.com"
+  "target_1": "https://cloudflare.com",
+  "target_2": "https://google.com"
 }
 ```
 

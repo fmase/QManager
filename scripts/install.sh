@@ -809,14 +809,14 @@ seed_uci_defaults() {
         info "quecmanager.ping_profile.profile already set — preserving user choice"
     fi
     if ! uci -q get quecmanager.ping_profile.target_1 >/dev/null 2>&1; then
-        uci set quecmanager.ping_profile.target_1='https://google.com'
-        info "Seeded quecmanager.ping_profile.target_1=https://google.com"
+        uci set quecmanager.ping_profile.target_1='https://cloudflare.com'
+        info "Seeded quecmanager.ping_profile.target_1=https://cloudflare.com"
     else
         info "quecmanager.ping_profile.target_1 already set — preserving user choice"
     fi
     if ! uci -q get quecmanager.ping_profile.target_2 >/dev/null 2>&1; then
-        uci set quecmanager.ping_profile.target_2='https://cloudflare.com'
-        info "Seeded quecmanager.ping_profile.target_2=https://cloudflare.com"
+        uci set quecmanager.ping_profile.target_2='https://google.com'
+        info "Seeded quecmanager.ping_profile.target_2=https://google.com"
     else
         info "quecmanager.ping_profile.target_2 already set — preserving user choice"
     fi
