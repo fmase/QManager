@@ -20,7 +20,10 @@ interface SccStatusProps {
 
 const SccStatusComponent = ({ carriers }: SccStatusProps) => {
   const sccCarriers = carriers.filter((c) => c.type === "SCC");
-  const totalBw = sccCarriers.reduce(
+  // Count every active carrier (PCC + SCCs) and aggregate bandwidth across all
+  // of them — the summary reflects the full carrier aggregation, while the row
+  // list below stays scoped to the secondary carriers.
+  const totalBw = carriers.reduce(
     (sum, c) => sum + (c.bandwidth_mhz || 0),
     0,
   );
@@ -45,7 +48,7 @@ const SccStatusComponent = ({ carriers }: SccStatusProps) => {
                   aria-hidden
                 />
                 <p className="text-muted-foreground text-xs">
-                  {t("scc.active_carriers", { count: sccCarriers.length })}
+                  {t("scc.active_carriers", { count: carriers.length })}
                 </p>
               </div>
             </div>
@@ -53,7 +56,7 @@ const SccStatusComponent = ({ carriers }: SccStatusProps) => {
               variant="outline"
               className="bg-info/15 text-info hover:bg-info/20 border-info/30 tabular-nums"
             >
-              +{totalBw} MHz
+              {totalBw} MHz
             </Badge>
           </div>
 

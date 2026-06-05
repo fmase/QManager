@@ -12,6 +12,7 @@
 
 ## ✅ Improvements
 
+- **The Secondary Carriers card now counts the primary carrier too, and shows the full aggregated bandwidth.** Previously the card counted only the secondary carriers (so a 4-carrier connection read as "3 active carriers") and its bandwidth badge showed only the extra bandwidth from the secondaries. It now reports every active carrier including the primary and the total aggregated bandwidth across all of them, for a number that matches what the modem is actually running.
 - **APN profiles are now automatically re-applied after a reboot.** Previously, the active APN could be lost after the modem restarted — the profile was recorded but never replayed onto the modem at boot. The active slot is now reconciled at startup, so your configured APN is live immediately after a power cycle without any manual intervention.
 - **The APN page no longer shows a profile as "Active" when a Custom SIM Profile has taken over.** The slot now shows "Overridden" so it is clear the APN is being managed by the active SIM profile, not the APN slot — and that the slot's settings are preserved for when the profile is deactivated.
 - **The APN page no longer briefly shows editable controls when a Custom SIM Profile is in charge.** It now waits until it knows whether a profile is managing the APN before revealing the controls, closing the short window where buttons appeared live before locking — so you can't accidentally change a setting the profile is about to take back.
