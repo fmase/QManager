@@ -60,7 +60,7 @@ export function EngineCheckRow({
         </div>
         <Button
           type="button"
-          variant="outline"
+          variant="secondary"
           size="sm"
           onClick={onRun}
           disabled={!running || busy}

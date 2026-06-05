@@ -387,8 +387,9 @@ export default function TrafficEngine() {
                 <TabsTrigger value="video">
                   {videoLabel}
                   {voRunning && (
+                    // Make this pulse
                     <span
-                      className="ml-1.5 size-2.5 rounded-full bg-success"
+                      className="ml-1.5 size-2.5 rounded-full bg-success animate-pulse"
                       aria-hidden="true"
                     />
                   )}
@@ -397,7 +398,7 @@ export default function TrafficEngine() {
                   {masqueradeLabel}
                   {masqRunning && (
                     <span
-                      className="ml-1.5 size-2.5 rounded-full bg-success"
+                      className="ml-1.5 size-2.5 rounded-full bg-success animate-pulse"
                       aria-hidden="true"
                     />
                   )}
