@@ -198,7 +198,8 @@ check_locked() {
 # Check if tower lock is active (Tier 2 must be skipped)
 tower_lock_active() {
     [ ! -f "$TOWER_LOCK_CONFIG" ] && return 1
-    local lte_locked nr_locked
+    local lte_locked
+    local nr_locked
     lte_locked=$(jq -r '(.lte.enabled) | if . == null then "false" else tostring end' \
         "$TOWER_LOCK_CONFIG" 2>/dev/null)
     nr_locked=$(jq -r '(.nr_sa.enabled) | if . == null then "false" else tostring end' \
@@ -238,7 +239,8 @@ read_ping() {
     ping_during_recovery=$(printf '%s' "$_pdata" | cut -f4)
 
     # Staleness check
-    local now age
+    local now
+    local age
     now=$(date +%s)
     age=$((now - ping_ts))
     if [ "$age" -gt "$PING_STALE_THRESHOLD" ]; then
@@ -255,7 +257,9 @@ count_recent_reboots() {
         reboots_this_hour=0
         return
     fi
-    local now cutoff count
+    local now
+    local cutoff
+    local count
     now=$(date +%s)
     cutoff=$((now - 3600))
     count=$(awk -v cutoff="$cutoff" -F'|' '$1 >= cutoff { n++ } END { print n+0 }' "$CRASH_LOG" 2>/dev/null)
@@ -332,7 +336,8 @@ execute_tier3() {
     fi
 
     # Read current SIM slot
-    local current_slot_raw current_slot
+    local current_slot_raw
+    local current_slot
     current_slot_raw=$(qcmd 'AT+QUIMSLOT?' 2>/dev/null)
     current_slot=$(printf '%s' "$current_slot_raw" | grep '+QUIMSLOT:' | sed 's/.*: *//' | tr -d '\r ')
 
@@ -389,7 +394,9 @@ execute_tier3() {
     fi
 
     # Read new ICCID for logging
-    local new_iccid_raw new_iccid iccid_suffix
+    local new_iccid_raw
+    local new_iccid
+    local iccid_suffix
     new_iccid_raw=$(qcmd 'AT+QCCID' 2>/dev/null)
     new_iccid=$(printf '%s' "$new_iccid_raw" | grep '+QCCID:' | sed 's/+QCCID: //g' | tr -d '\r ')
     iccid_suffix=$(printf '%s' "$new_iccid" | tail -c 4)
@@ -426,7 +433,9 @@ sim_failover_fallback() {
     fi
 
     # Auto-apply profile matching reverted SIM (watchdog_revert)
-    local _rv_iccid_raw _rv_iccid _try
+    local _rv_iccid_raw
+    local _rv_iccid
+    local _try
     _rv_iccid=""
     for _try in 1 2 3; do
         _rv_iccid_raw=$(qcmd 'AT+QCCID' 2>/dev/null)
@@ -619,7 +628,9 @@ finish_cooldown() {
             sim_failover_active="true"
 
             # Read ICCID with 3×1s retry — matches sim_failover_fallback pattern
-            local curr_iccid_raw curr_iccid _try
+            local curr_iccid_raw
+            local curr_iccid
+            local _try
             curr_iccid=""
             for _try in 1 2 3; do
                 curr_iccid_raw=$(qcmd 'AT+QCCID' 2>/dev/null)
@@ -732,7 +743,9 @@ main() {
         local sf_active_val
         sf_active_val=$(jq -r '(.active) | if . == null then "false" else tostring end' "$SIM_FAILOVER_FILE" 2>/dev/null)
         if [ "$sf_active_val" = "true" ]; then
-            local _sf_orig _sf_curr _live_slot
+            local _sf_orig
+            local _sf_curr
+            local _live_slot
             _sf_orig=$(jq -r '(.original_slot) | if . == null then "null" else tostring end' "$SIM_FAILOVER_FILE" 2>/dev/null)
             _sf_curr=$(jq -r '(.current_slot) | if . == null then "null" else tostring end' "$SIM_FAILOVER_FILE" 2>/dev/null)
             _live_slot=$(qcmd 'AT+QUIMSLOT?' 2>/dev/null | grep '+QUIMSLOT:' | sed 's/.*: *//' | tr -d '\r ')
