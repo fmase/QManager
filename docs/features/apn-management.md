@@ -16,6 +16,7 @@ APN Management (`/cellular/settings/apn-management`) lets users create, edit, an
 | List card | `components/cellular/settings/apn-management/wan-profile-list.tsx` |
 | Edit card | `components/cellular/settings/apn-management/wan-profile-edit.tsx` |
 | Shared AT libs | `run_at` from `scripts/usr/lib/qmanager/cgi_at.sh` |
+| Shared APN lib | `scripts/usr/lib/qmanager/apn_mgr.sh` — v2 config I/O (`read_config_v2`, `write_config_v2`, `normalize_v2`), COPS apply primitives (`cops_recover`, `apply_apn_to_modem`), slot constants (`MAX_SLOTS`, `MAX_CID`, `PROFILE_FILE`), and `reapply_active_apn_slot`. Sourced by `apn.sh` and `profiles/deactivate.sh`. |
 | i18n namespace | `public/locales/{en,id,it,zh-CN}/cellular.json` — `core_settings.apn.*` |
 | Reboot? | No (boot-time reconcile in `qmanager_wan_guard` replays the active APN but does not reboot) |
 | Lock files? | No |
@@ -246,6 +247,10 @@ After a successful save, activate, or clear the hook applies an optimistic local
 The verdict arrives over **two sequential fetches** — `useSimProfiles` first learns `activeProfileId` (`list.sh`), then `apn-settings.tsx`'s effect fetches that profile's APN (`get.sh`). Until both settle, the page holds the WAN list card in its loading skeleton and keeps the fieldset disabled (`overrideUndetermined`), so no Activate/Edit/Save control is ever live during the window before the gate engages. The "still determining" status is **derived during render** from `simLoading` + a `checkedId` state (the profile id whose APN fetch has completed) — there is no synchronous `setState` in the effect, satisfying the React-Compiler `set-state-in-effect` rule.
 
 > ℹ️ NOTE: `apn_profiles.json`'s `active` pointer is intentionally NOT cleared when a Custom SIM Profile takes over. The stored pointer represents the user's intent for when the profile deactivates — resetting it would silently discard which slot the user had configured. The badge change is purely presentational.
+
+When the Custom SIM Profile is **deactivated** (non-Verizon path), `deactivate.sh` consumes that preserved pointer to immediately restore the live APN: it calls `reapply_active_apn_slot` (defined in `apn_mgr.sh`) which runs a COPS detach/attach cycle against the stored active slot. Slot resolution: if `active != 0` and that slot has a non-empty APN, it is reapplied directly. If `active == 0` but a configured slot exists, the lowest-id non-empty slot is selected, `active` is updated atomically, and that slot is reapplied. If all slots are empty, no modem change is made and `active` stays 0. Reapply is best-effort — a failure does NOT fail the deactivation; the response stays `{success:true, requires_reboot:false}`. The Verizon path skips this step (a reboot is already pending); `qmanager_wan_guard` reconciles the active slot after the user reboots.
+
+Two new events emitted to the `dataConnection` event tab: `apn_reapplied` (info, on success) and `apn_reapply_failed` (warning, on failure). No new CGI error codes; the deactivate response shape is unchanged.
 
 Custom SIM Profiles remain the absolute authority for APN configuration when a profile is active.
 

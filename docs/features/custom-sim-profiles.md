@@ -145,7 +145,7 @@ On dialog close (`handleApplyClose`):
 
 While the apply is in flight (not terminal) and `applyState.profile_id` matches the row, the Activate button shows a `Loader2Icon` spinner as a secondary affordance — the dialog is the primary signal. Deactivate and Delete still use `sonner` toasts.
 
-**Deactivate** calls `sim.deactivateProfile()`. On success → `toast.success`. If `requiresReboot` is true (Verizon MPDN revert) → `setPendingReboot("verizon_revert")`. The deferred-reboot banner (`usePendingReboot`) picks up both sources. Deactivation also resets the Connection Scenario to Balanced (`mode_pref` → `AUTO`) — the radio is no longer left locked to the deactivated profile's network mode. See [`docs/features/scenario-profile-binding.md`](scenario-profile-binding.md) — "Teardown at Every Clear Site" for the full reset path.
+**Deactivate** calls `sim.deactivateProfile()`. On success → `toast.success`. If `requiresReboot` is true (Verizon MPDN revert) → `setPendingReboot("verizon_revert")`. The deferred-reboot banner (`usePendingReboot`) picks up both sources. Deactivation also resets the Connection Scenario to Balanced (`mode_pref` → `AUTO`) — the radio is no longer left locked to the deactivated profile's network mode. See [`docs/features/scenario-profile-binding.md`](scenario-profile-binding.md) — "Teardown at Every Clear Site" for the full reset path. On the **non-Verizon path**, deactivation also reapplies the APN-Management active slot to the modem (COPS detach/attach) so the live APN matches the slot the UI badges as Active — see the Apply Pipeline section below and [`docs/features/apn-management.md`](apn-management.md) for the slot-resolution logic. The Verizon path skips this step because a pending reboot is already set; `qmanager_wan_guard` restores the active slot after reboot.
 
 **Delete** → `AlertDialog` confirm → `sim.deleteProfile(id)` → `toast.success/error`.
 
@@ -159,7 +159,7 @@ While the apply is in flight (not terminal) and `applyState.profile_id` matches 
 
 - **Async 4-step apply** (APN → TTL/HL → IMEI → MPDN rule, least → most disruptive). Each step skips when unchanged. Worker: `qmanager_profile_apply`, polled via `profiles/apply_status.sh` at 500ms.
 - Active marker: `/etc/qmanager/active_profile` (plain text, profile ID). Written BEFORE `AT+CFUN=1,1` (USB reset can kill the script). Finalization re-writes on success/partial; clears on total failure.
-- Activate = runs full pipeline. Deactivate = clears marker only, zero modem changes.
+- Activate = runs full pipeline. Deactivate = clears marker + tears down scenario cron + resets `mode_pref` to AUTO + (non-Verizon only) reapplies the APN-Management active slot. Verizon deactivation sets `requires_reboot=true` and defers APN reapply to `qmanager_wan_guard` boot reconcile.
 - **SIM mismatch**: poller `collect_boot_data()` auto-clears marker + emits `profile_deactivated` when active profile's `sim_iccid` ≠ current SIM. Empty `sim_iccid` = SIM-agnostic, left alone.
 - TTL override: `ttl-settings-card.tsx` disables form when active profile has TTL/HL > 0.
 - **ICCID auto-apply**: `profile_mgr.sh::auto_apply_profile <iccid> <caller>` spawns worker detached. Called via `( . /usr/lib/qmanager/profile_mgr.sh && auto_apply_profile "$iccid" "<tag>" )` from: poller boot (`boot`), `cellular/settings.sh` post-SIM-switch (`sim_switch`, 3×1s ICCID retry), watchcat Tier 3 success (`watchdog`), watchcat SIM failover fallback (`watchdog_revert`, 3×1s retry).
