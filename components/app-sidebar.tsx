@@ -73,6 +73,10 @@ const data = {
         },
         { t_key: "ssh_password", url: "/system-settings/ssh-password" },
         {
+          t_key: "connection_quality",
+          url: "/system-settings/connection-quality",
+        },
+        {
           t_key: "bandwidth_monitor",
           url: "/system-settings/bandwidth-monitor",
         },

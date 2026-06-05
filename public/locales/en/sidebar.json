@@ -42,6 +42,7 @@
     "system_settings": "System Settings",
     "configuration_backup": "Configuration Backup",
     "ssh_password": "SSH Password",
+    "connection_quality": "Connection Quality",
     "bandwidth_monitor": "Bandwidth Monitor",
     "logs": "Logs",
     "software_update": "Software Update",

@@ -792,6 +792,35 @@ seed_uci_defaults() {
         info "quecmanager.tailscale_workarounds.enabled already set — preserving user choice"
     fi
 
+    # Connection Quality — ping profile (drives qmanager_ping interval +
+    # fail/recover thresholds and the 2 HTTP probe targets). The profile NAME
+    # is the only knob persisted; the daemon holds the profile->params table.
+    # Seed concrete, user-editable defaults. NOTE: quality_thresholds is
+    # deliberately NOT seeded — its absence is the "default" signal that drives
+    # the frontend isDefault hint and the tolerant/tolerant fallback in the
+    # poller + quality_thresholds.sh CGI.
+    if ! uci -q get quecmanager.ping_profile >/dev/null 2>&1; then
+        uci set quecmanager.ping_profile=ping_profile
+    fi
+    if ! uci -q get quecmanager.ping_profile.profile >/dev/null 2>&1; then
+        uci set quecmanager.ping_profile.profile='relaxed'
+        info "Seeded quecmanager.ping_profile.profile=relaxed"
+    else
+        info "quecmanager.ping_profile.profile already set — preserving user choice"
+    fi
+    if ! uci -q get quecmanager.ping_profile.target_1 >/dev/null 2>&1; then
+        uci set quecmanager.ping_profile.target_1='https://google.com'
+        info "Seeded quecmanager.ping_profile.target_1=https://google.com"
+    else
+        info "quecmanager.ping_profile.target_1 already set — preserving user choice"
+    fi
+    if ! uci -q get quecmanager.ping_profile.target_2 >/dev/null 2>&1; then
+        uci set quecmanager.ping_profile.target_2='https://cloudflare.com'
+        info "Seeded quecmanager.ping_profile.target_2=https://cloudflare.com"
+    else
+        info "quecmanager.ping_profile.target_2 already set — preserving user choice"
+    fi
+
     uci commit quecmanager 2>/dev/null || warn "uci commit quecmanager failed"
 }
 

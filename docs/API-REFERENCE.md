@@ -982,6 +982,102 @@ Resets the set to contain only the currently-inserted SIM (read live via `AT+QCC
 { "success": false, "error": "invalid_action", "detail": "Action must be: list or clear" }
 ```
 
+### GET/POST `/system/ping_profile.sh`
+
+Read or write the ping-daemon sensitivity profile and probe targets. See [`docs/features/connection-quality.md`](../features/connection-quality.md) for the full apply pipeline and reload semantics.
+
+**GET Response:**
+
+```json
+{
+  "success": true,
+  "profile": "relaxed",
+  "target1": "https://google.com",
+  "target2": "https://cloudflare.com"
+}
+```
+
+`profile` is one of: `sensitive`, `regular`, `relaxed`, `quiet`. GET keys are `target1`/`target2` (no underscore).
+
+**POST Request (`action: "save"`):**
+
+```json
+{
+  "action": "save",
+  "profile": "sensitive",
+  "target_1": "https://google.com",
+  "target_2": "https://cloudflare.com"
+}
+```
+
+POST body keys are `target_1`/`target_2` (with underscore, matching UCI field names).
+
+**POST Success:**
+```json
+{ "success": true }
+```
+
+Drops `/tmp/qmanager_ping_reload`; the ping daemon re-reads UCI within one probe cycle (≤10 s on `quiet`, ≤1 s on `sensitive`). No reboot.
+
+**Error codes:** `invalid_profile`, `invalid_target`, `missing_action`, `unknown_action`
+
+---
+
+### GET/POST `/system/quality_thresholds.sh`
+
+Read or write the latency and packet-loss event-threshold presets. These control when QManager fires `high_latency` / `high_packet_loss` events into Recent Activities. See [`docs/features/connection-quality.md`](../features/connection-quality.md) for the preset→numeric mapping and the `isDefault` semantics.
+
+**GET Response (section present — user has saved at least once):**
+
+```json
+{
+  "success": true,
+  "thresholds": {
+    "latency": { "preset": "tolerant" },
+    "loss": { "preset": "tolerant" }
+  },
+  "isDefault": false
+}
+```
+
+**GET Response (section absent — factory / never saved):**
+
+```json
+{
+  "success": true,
+  "thresholds": {
+    "latency": { "preset": "tolerant" },
+    "loss": { "preset": "tolerant" }
+  },
+  "isDefault": true
+}
+```
+
+`isDefault: true` means the `quecmanager.quality_thresholds` UCI section does not exist; the tolerant/tolerant values are the hardcoded fallback, not a stored setting.
+
+**POST Request (`action: "save"`):**
+
+```json
+{
+  "action": "save",
+  "latency_preset": "standard",
+  "loss_preset": "tolerant"
+}
+```
+
+Each preset is one of: `standard`, `tolerant`, `very-tolerant`.
+
+**POST Success:**
+```json
+{ "success": true }
+```
+
+Creates the `quality_thresholds` UCI section on first save, then drops `/tmp/qmanager_quality_reload`; the poller re-maps presets to numeric thresholds within one poll cycle. No reboot.
+
+**Error codes:** `invalid_preset`, `missing_action`, `unknown_action`
+
+---
+
 ### GET/POST `/system/settings.sh`
 
 System preferences, scheduled reboot, and low power mode.

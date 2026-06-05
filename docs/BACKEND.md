@@ -302,13 +302,16 @@ The core daemon — runs forever, polls the modem at tiered intervals.
 
 ### qmanager_ping (Ping Daemon)
 
-Pings a target every 5 seconds to monitor internet connectivity.
+HTTP-probe daemon that monitors internet reachability and latency. Uses `curl` — not ICMP ping — so reported latency includes TCP connect, TLS handshake, and time-to-first-byte.
 
 **Location:** `scripts/usr/bin/qmanager_ping`
 **Output:** `/tmp/qmanager_ping.json`
-**History:** `/tmp/qmanager_ping_history.json` (written by poller)
+**History:** `/tmp/qmanager_ping_history` (flat-file ring buffer; read + processed by the poller)
+**Dependency:** `curl` full build, 8.7.1+ (hard runtime dependency — without it the daemon emits no results)
 
-Writes minimal JSON: `{ timestamp, reachable, last_rtt, streaks }`. The poller handles all statistical analysis.
+Writes slim JSON: `{ timestamp, profile, targets, interval_sec, last_rtt_ms, reachable, streak_success, streak_fail, during_recovery }`. The poller handles all statistical analysis (avg/min/max/jitter/loss) in a single awk pass over the raw history file.
+
+The active probe sensitivity is set by the **ping profile** (`sensitive` / `regular` / `relaxed` / `quiet`). The daemon owns the profile→interval/fail/recover table; UCI stores only the profile name. A saved profile change drops `/tmp/qmanager_ping_reload`; the daemon re-reads UCI within one probe cycle without a restart. See [`docs/features/connection-quality.md`](features/connection-quality.md) for the full profile table and reload pipeline.
 
 ### qmanager_watchcat (Connection Watchdog)
 

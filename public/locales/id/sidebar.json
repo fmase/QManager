@@ -42,6 +42,7 @@
     "system_settings": "Pengaturan Sistem",
     "configuration_backup": "Cadangan Konfigurasi",
     "ssh_password": "Kata Sandi SSH",
+    "connection_quality": "Kualitas Koneksi",
     "bandwidth_monitor": "Monitor Bandwidth",
     "logs": "Log",
     "software_update": "Pembaruan Perangkat Lunak",

@@ -358,6 +358,37 @@ export interface ConnectivityStatus {
   history_size: number;
   /** Whether watchcat recovery is currently active */
   during_recovery: boolean;
+  /**
+   * Active ping-daemon sensitivity profile (mirrors the saved ping_profile).
+   * Optional: present once the daemon emits it; consumers must tolerate
+   * undefined for older poller output.
+   */
+  profile?: PingProfile;
+}
+
+// --- Connection Quality Settings ---------------------------------------------
+
+/**
+ * Ping-daemon sensitivity profiles. The daemon (`qmanager_ping`) is the source
+ * of truth for the profile→interval/threshold table; UCI stores only the name.
+ * The UI uses this list purely to render the segmented control and preview
+ * per-preset timing before save.
+ */
+export const PING_PROFILES = ["sensitive", "regular", "relaxed", "quiet"] as const;
+export type PingProfile = (typeof PING_PROFILES)[number];
+
+/** Latency / packet-loss tolerance presets for quality-event thresholds. */
+export const QUALITY_PRESETS = ["standard", "tolerant", "very-tolerant"] as const;
+export type QualityPreset = (typeof QUALITY_PRESETS)[number];
+
+/**
+ * Saved quality-threshold settings. The nested shape mirrors the GET envelope
+ * (`thresholds.latency.preset` / `thresholds.loss.preset`); the save hook
+ * flattens it to the flat wire keys the shell CGI parses.
+ */
+export interface QualityThresholdsSettings {
+  latency: { preset: QualityPreset };
+  loss: { preset: QualityPreset };
 }
 
 // --- Watchcat State (from /tmp/qmanager_watchcat.json via poller) ------------

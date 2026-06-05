@@ -184,10 +184,22 @@ conn_history="[]"
 conn_history_interval=5
 conn_history_size=60
 conn_during_recovery="false"
+conn_profile=""          # active ping profile name from ping.json (.profile)
 _last_ping_ts=0          # tracks last processed ping.json timestamp (awk gate)
 
 # History size constant (must match ping daemon)
 CONN_HISTORY_SIZE=60
+
+# Connection-quality event thresholds (consumed by events.sh
+# detect_data_connection_events). Resolved from UCI presets by
+# resolve_quality_thresholds(); the table lives here, UCI stores only the
+# preset names. Defaults mirror the "tolerant" preset (used when the
+# quecmanager.quality_thresholds section is absent).
+QUALITY_LAT_THRESHOLD=250    # ms
+QUALITY_LAT_DEBOUNCE=3       # consecutive readings
+QUALITY_LOSS_THRESHOLD=30    # percent
+QUALITY_LOSS_DEBOUNCE=3      # consecutive readings
+QUALITY_RELOAD_FLAG="/tmp/qmanager_quality_reload"
 
 # Connection uptime tracking
 conn_uptime_seconds=0
@@ -809,6 +821,35 @@ PING_CACHE="/tmp/qmanager_ping.json"
 PING_HISTORY_RAW="/tmp/qmanager_ping_history"   # flat-file ring buffer from ping daemon
 PING_STALE_THRESHOLD=10  # seconds before ping data is considered stale
 
+# =============================================================================
+# CONNECTION-QUALITY THRESHOLDS (UCI presets -> event thresholds)
+# =============================================================================
+# Maps quecmanager.quality_thresholds.{latency_preset,loss_preset} to the four
+# QUALITY_* globals that events.sh reads. The section's ABSENCE means "default"
+# -> both presets fall back to "tolerant". Unknown values also fall back to
+# tolerant so a hand-edited UCI never leaves an empty/invalid threshold.
+#   Latency: standard{150,3} · tolerant{250,3} · very-tolerant{500,2}
+#   Loss:    standard{15,3}  · tolerant{30,3}  · very-tolerant{50,2}
+resolve_quality_thresholds() {
+    local _lat_preset
+    local _loss_preset
+
+    _lat_preset=$(uci -q get quecmanager.quality_thresholds.latency_preset 2>/dev/null)
+    _loss_preset=$(uci -q get quecmanager.quality_thresholds.loss_preset 2>/dev/null)
+
+    case "$_lat_preset" in
+        standard)      QUALITY_LAT_THRESHOLD=150; QUALITY_LAT_DEBOUNCE=3 ;;
+        very-tolerant) QUALITY_LAT_THRESHOLD=500; QUALITY_LAT_DEBOUNCE=2 ;;
+        tolerant|*)    QUALITY_LAT_THRESHOLD=250; QUALITY_LAT_DEBOUNCE=3 ;;
+    esac
+
+    case "$_loss_preset" in
+        standard)      QUALITY_LOSS_THRESHOLD=15; QUALITY_LOSS_DEBOUNCE=3 ;;
+        very-tolerant) QUALITY_LOSS_THRESHOLD=50; QUALITY_LOSS_DEBOUNCE=2 ;;
+        tolerant|*)    QUALITY_LOSS_THRESHOLD=30; QUALITY_LOSS_DEBOUNCE=3 ;;
+    esac
+}
+
 read_ping_data() {
     # Reset to defaults if ping file missing or stale
     if [ ! -f "$PING_CACHE" ]; then
@@ -823,6 +864,7 @@ read_ping_data() {
         conn_ping_target=""
         conn_history="[]"
         conn_during_recovery="false"
+        conn_profile=""
         return
     fi
 
@@ -859,7 +901,8 @@ read_ping_data() {
         ((.last_rtt_ms) | if . == null then "null" else tostring end),
         ((.during_recovery) | if . == null then "false" else tostring end),
         ((.interval_sec) | if . == null then "5" else tostring end),
-        (.targets[0] // "")
+        (.targets[0] // ""),
+        (.profile // "")
     ] | @tsv' "$PING_CACHE" 2>/dev/null)
 
     conn_internet_available=$(printf '%s' "$_pdata" | cut -f1)
@@ -867,6 +910,7 @@ read_ping_data() {
     conn_during_recovery=$(printf '%s' "$_pdata" | cut -f3)
     conn_history_interval=$(printf '%s' "$_pdata" | cut -f4)
     conn_ping_target=$(printf '%s' "$_pdata" | cut -f5)
+    conn_profile=$(printf '%s' "$_pdata" | cut -f6)
 
     # Step B: Single awk pass — only when ping timestamp changed (saves awk fork every 2s)
     # With ping daemon at 5s, awk runs ~every 5s instead of every cycle.
@@ -1138,6 +1182,7 @@ write_cache() {
         --argjson jit "${conn_jitter:-null}" \
         --argjson pkt_loss "${conn_packet_loss:-0}" \
         --arg ping_tgt "$conn_ping_target" \
+        --arg conn_profile "$conn_profile" \
         --argjson lat_hist "${conn_history:-[]}" \
         --argjson hist_int "${conn_history_interval:-2}" \
         --argjson hist_size "${CONN_HISTORY_SIZE:-60}" \
@@ -1234,7 +1279,7 @@ write_cache() {
                 jitter_ms: $jit, packet_loss_pct: $pkt_loss,
                 ping_target: $ping_tgt, latency_history: $lat_hist,
                 history_interval_sec: $hist_int, history_size: $hist_size,
-                during_recovery: $during_rec
+                during_recovery: $during_rec, profile: $conn_profile
             },
             watchcat: {
                 enabled: $wc_enabled, state: $wc_state,
@@ -1283,6 +1328,13 @@ refresh_sim_identity() {
 # =============================================================================
 
 poll_cycle() {
+    # Live reload of connection-quality thresholds when the CGI drops the flag.
+    if [ -f "$QUALITY_RELOAD_FLAG" ]; then
+        resolve_quality_thresholds
+        rm -f "$QUALITY_RELOAD_FLAG"
+        qlog_info "Reloaded quality thresholds: lat=${QUALITY_LAT_THRESHOLD}ms/${QUALITY_LAT_DEBOUNCE} loss=${QUALITY_LOSS_THRESHOLD}%/${QUALITY_LOSS_DEBOUNCE}"
+    fi
+
     # --- Ping-based checks FIRST (no modem dependency) ---
     # These must run before AT commands in case qcmd blocks on serial I/O.
     update_proc_metrics
@@ -1386,6 +1438,7 @@ main() {
     qlog_info "========================================"
 
     collect_boot_data
+    resolve_quality_thresholds
     update_proc_metrics
     email_alerts_init
     sms_alerts_init
