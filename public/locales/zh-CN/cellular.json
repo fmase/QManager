@@ -1342,6 +1342,7 @@
           "edit_button": "编辑 {{name}}"
         },
         "toast": {
+          "activating": "正在激活 {{name}}…",
           "activated": "{{name}} 现已成为活动 APN",
           "activate_error": "激活 {{name}} 失败"
         }

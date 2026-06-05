@@ -1317,6 +1317,7 @@
           "edit_button": "Edit {{name}}"
         },
         "toast": {
+          "activating": "Mengaktifkan {{name}}…",
           "activated": "{{name}} kini menjadi APN aktif Anda",
           "activate_error": "Gagal mengaktifkan {{name}}"
         }

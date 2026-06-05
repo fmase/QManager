@@ -201,12 +201,23 @@ export default function WanProfileListCard({
     // switch is disabled below, so a turn-off edge can't reach here.
     if (!checked) return;
     const name = labelFor(profile);
-    const success = await onActivate(profile.id);
-    if (success) {
-      toast.success(t("core_settings.apn.list.toast.activated", { name }));
-    } else {
-      toast.error(t("core_settings.apn.list.toast.activate_error", { name }));
-    }
+
+    // onActivate resolves false on failure (the hook never rejects); convert
+    // that into a rejection so toast.promise lands on its error branch. The
+    // loading toast bridges the COPS-cycle wait — every switch is disabled
+    // while it's in flight, so the toast is the user's signal something's
+    // happening.
+    const activation = onActivate(profile.id).then((success) => {
+      if (!success) throw new Error("activate_failed");
+    });
+    toast.promise(activation, {
+      loading: t("core_settings.apn.list.toast.activating", { name }),
+      success: t("core_settings.apn.list.toast.activated", { name }),
+      error: t("core_settings.apn.list.toast.activate_error", { name }),
+    });
+    await activation.catch(() => {
+      // toast.promise already surfaced the error; swallow the rejection.
+    });
   };
 
   return (

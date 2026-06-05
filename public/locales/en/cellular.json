@@ -1342,6 +1342,7 @@
           "edit_button": "Edit {{name}}"
         },
         "toast": {
+          "activating": "Activating {{name}}…",
           "activated": "{{name}} is now your active APN",
           "activate_error": "Failed to activate {{name}}"
         }

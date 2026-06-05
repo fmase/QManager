@@ -1317,6 +1317,7 @@
           "edit_button": "Modifica {{name}}"
         },
         "toast": {
+          "activating": "Attivazione di {{name}}…",
           "activated": "{{name}} è ora il tuo APN attivo",
           "activate_error": "Impossibile attivare {{name}}"
         }
