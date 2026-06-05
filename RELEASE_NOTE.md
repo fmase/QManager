@@ -12,6 +12,7 @@
 
 ## ✅ Improvements
 
+- **Band Locking's "Active LTE Bands" now lists every active carrier, matching the channel count.** With carrier aggregation that puts two carriers on the same band (for example two carriers on B41), the bands row previously collapsed them into one entry — so a 4-carrier connection showed 4 channels but only 3 bands. Both rows now show one entry per carrier, so the band and channel counts always line up.
 - **The Secondary Carriers card now counts the primary carrier too, and shows the full aggregated bandwidth.** Previously the card counted only the secondary carriers (so a 4-carrier connection read as "3 active carriers") and its bandwidth badge showed only the extra bandwidth from the secondaries. It now reports every active carrier including the primary and the total aggregated bandwidth across all of them, for a number that matches what the modem is actually running.
 - **APN profiles are now automatically re-applied after a reboot.** Previously, the active APN could be lost after the modem restarted — the profile was recorded but never replayed onto the modem at boot. The active slot is now reconciled at startup, so your configured APN is live immediately after a power cycle without any manual intervention.
 - **The APN page no longer shows a profile as "Active" when a Custom SIM Profile has taken over.** The slot now shows "Overridden" so it is clear the APN is being managed by the active SIM profile, not the APN slot — and that the slot's settings are preserved for when the profile is deactivated.
