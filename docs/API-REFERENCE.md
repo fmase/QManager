@@ -957,6 +957,31 @@ Device hardware and firmware information.
 
 System log output.
 
+### GET/POST `/system/known_sims.sh`
+
+Read or manage the persistent known-SIMs set. The poller fires the "New SIM detected" banner when the inserted SIM's ICCID is **not** in this set. See [`docs/features/known-sims.md`](../features/known-sims.md) for full invariants.
+
+**GET Response:**
+```json
+{ "success": true, "count": 3 }
+```
+
+`count` is the number of distinct ICCIDs currently in the set.
+
+**POST `{"action":"list"}` Response:** identical to GET.
+
+**POST `{"action":"clear"}` Response:**
+```json
+{ "success": true, "count": 1 }
+```
+
+Resets the set to contain only the currently-inserted SIM (read live via `AT+QCCID`). The current SIM is kept so clearing never immediately re-fires the banner. Also removes the stale `/tmp/qmanager_sim_swap_detected` banner flag. If no SIM is readable, the set is emptied (`count: 0`). No reboot.
+
+**Error response (unknown action):**
+```json
+{ "success": false, "error": "invalid_action", "detail": "Action must be: list or clear" }
+```
+
 ### GET/POST `/system/settings.sh`
 
 System preferences, scheduled reboot, and low power mode.
