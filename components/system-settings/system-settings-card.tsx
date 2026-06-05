@@ -46,6 +46,7 @@ import {
   ChevronsUpDown,
 } from "lucide-react";
 import { SaveButton, useSaveFlash } from "@/components/ui/save-button";
+import KnownSimsRow from "@/components/system-settings/known-sims-row";
 import { motion } from "motion/react";
 import { containerVariants, itemVariants } from "@/lib/motion";
 import { TbInfoCircleFilled } from "react-icons/tb";
@@ -410,6 +411,10 @@ function SystemSettingsForm({
               </Label>
             </div>
           </motion.div>
+
+          {/* ── Known SIMs (clear remembered SIM list) ────────────── */}
+          <Separator />
+          <KnownSimsRow />
 
           {/* ── Temperature Unit ──────────────────────────────────── */}
           <Separator />

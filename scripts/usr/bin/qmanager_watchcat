@@ -41,6 +41,11 @@ MAX_EVENTS=50
     append_event() { :; }
 }
 
+# --- Known-SIMs database (for sim_db_add on SIM revert/failover) -------------
+. /usr/lib/qmanager/sim_db.sh 2>/dev/null || {
+    sim_db_add() { :; }
+}
+
 # --- File Paths --------------------------------------------------------------
 PING_CACHE="/tmp/qmanager_ping.json"
 STATE_FILE="/tmp/qmanager_watchcat.json"
@@ -429,10 +434,10 @@ sim_failover_fallback() {
         [ -n "$_rv_iccid" ] && break
         sleep 1
     done
-    # Persist the reverted SIM's ICCID so the poller's boot-time swap
+    # Mark the reverted SIM as known so the poller's boot-time swap
     # detector doesn't false-fire on the next reboot.
     if [ -n "$_rv_iccid" ]; then
-        printf '%s' "$_rv_iccid" > /etc/qmanager/last_iccid
+        sim_db_add "$_rv_iccid"
     fi
 
     if [ -n "$_rv_iccid" ]; then
@@ -633,10 +638,10 @@ finish_cooldown() {
                 '{active:true, original_slot:$orig, current_slot:$curr, switched_at:$ts, reason:"connectivity_failure", original_iccid:"", current_iccid:$iccid}' \
                 > "$SIM_FAILOVER_FILE"
 
-            # Update last_iccid so poller's boot-time SIM swap detector treats
-            # this failover SIM as expected (not a physical user swap).
+            # Mark this failover SIM as known so the poller's boot-time SIM
+            # swap detector treats it as expected (not a physical user swap).
             if [ -n "$curr_iccid" ]; then
-                printf '%s' "$curr_iccid" > /etc/qmanager/last_iccid
+                sim_db_add "$curr_iccid"
             fi
 
             qlog_info "SIM failover state saved: slot $original_sim_slot → $current_sim_slot"
