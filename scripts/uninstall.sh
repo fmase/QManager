@@ -418,7 +418,7 @@ remove_runtime_state() {
     # JSON cache and state files
     for f in /tmp/qmanager_status.json \
              /tmp/qmanager_ping.json \
-             /tmp/qmanager_ping_history.json \
+             /tmp/qmanager_ping_history \
              /tmp/qmanager_signal_history.json \
              /tmp/qmanager_events.json \
              /tmp/qmanager_email_log.json \
@@ -448,6 +448,8 @@ remove_runtime_state() {
           /tmp/qmanager_*.pid \
           /tmp/qmanager_email_reload \
           /tmp/qmanager_sms_reload \
+          /tmp/qmanager_ping_reload \
+          /tmp/qmanager_quality_reload \
           /tmp/qmanager_imei_check_done \
           /tmp/qmanager_long_running \
           /tmp/qmanager_low_power_active \
