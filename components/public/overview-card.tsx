@@ -18,6 +18,7 @@ import {
   Card,
   CardAction,
   CardContent,
+  CardDescription,
   CardFooter,
   CardHeader,
   CardTitle,
@@ -44,6 +45,7 @@ import {
 import type { ConnectionState } from "@/types/modem-status";
 import type { PublicOverviewBand } from "@/types/public-overview";
 import { useEffect, useRef, useState } from "react";
+import { LoginDeviceName } from "../auth/login-device-name";
 
 // Temperature warning thresholds — kept in sync with device-metrics.tsx
 const TEMP_WARN = 60; // °C
@@ -60,7 +62,10 @@ function temperatureBand(temp: number | null): TempBand {
 
 type Tone = "success" | "warning" | "info" | "destructive" | "muted";
 
-function qualityVisual(quality: SignalQuality, reachable: boolean): {
+function qualityVisual(
+  quality: SignalQuality,
+  reachable: boolean,
+): {
   tone: Tone;
   Icon: LucideIcon;
 } {
@@ -434,80 +439,79 @@ export default function OverviewCard() {
   // there the motion carries meaning (signal growing into place).
   return (
     <Card className="@container/overview w-full">
-        <CardHeader className="items-center">
-          <div className="flex items-center gap-3">
-            <div className="flex size-10 items-center justify-center">
-              {/* Decorative: the adjacent CardTitle already names the product
+      <CardHeader className="items-center">
+        <div className="flex items-center gap-3">
+          <div className="flex size-10 items-center justify-center">
+            {/* Decorative: the adjacent CardTitle already names the product
                   for screen readers. */}
-              <img
-                src="/qmanager-logo.svg"
-                alt=""
-                aria-hidden="true"
-                width={40}
-                height={40}
-                className="size-full"
-              />
-            </div>
+            <img
+              src="/qmanager-logo.svg"
+              alt=""
+              aria-hidden="true"
+              width={40}
+              height={40}
+              className="size-full"
+            />
+          </div>
+          <div className="grid gap-0">
             <CardTitle as="h1" className="text-base">
               {t("overview.title")}
             </CardTitle>
+            <CardDescription>
+              <LoginDeviceName />
+            </CardDescription>
           </div>
+        </div>
 
-          {/* Top-right action cluster: LuCI passthrough + theme switcher. The
+        {/* Top-right action cluster: LuCI passthrough + theme switcher. The
               two icon buttons live in CardAction so the header keeps the
               No-Header-Icon contract — icons appear in the action slot, not
               alongside the title. */}
-          <CardAction className="flex items-center gap-1.5">
-            <Button
-              variant="outline"
-              size="icon"
-              asChild
-              aria-label={t("overview.actions.luci_aria")}
-              title={t("overview.actions.luci")}
-            >
-              <a
-                href="/cgi-bin/luci"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <SiOpenwrt className="h-[1.2rem] w-[1.2rem]" aria-hidden />
-                <span className="sr-only">
-                  {t("overview.actions.luci")}
-                </span>
-              </a>
-            </Button>
-            <ModeToggle />
-          </CardAction>
-        </CardHeader>
+        <CardAction className="flex items-center gap-1.5">
+          <Button
+            variant="outline"
+            size="icon"
+            asChild
+            aria-label={t("overview.actions.luci_aria")}
+            title={t("overview.actions.luci")}
+          >
+            <a href="/cgi-bin/luci" target="_blank" rel="noopener noreferrer">
+              <SiOpenwrt className="h-[1.2rem] w-[1.2rem]" aria-hidden />
+              <span className="sr-only">{t("overview.actions.luci")}</span>
+            </a>
+          </Button>
+          <ModeToggle />
+        </CardAction>
+      </CardHeader>
 
-        <CardContent>
-          {renderBody({
-            data,
-            isLoading,
-            isStale,
-            error,
-            consecutiveFailures,
-            t,
-            refresh,
-            bandMetric,
-            onBandMetricChange: setBandMetric,
-          })}
-          {/* Single visually-hidden announcer for verdict transitions. Lives
+      <CardContent>
+        {renderBody({
+          data,
+          isLoading,
+          isStale,
+          error,
+          consecutiveFailures,
+          t,
+          refresh,
+          bandMetric,
+          onBandMetricChange: setBandMetric,
+        })}
+        {/* Single visually-hidden announcer for verdict transitions. Lives
               outside the polled UI surfaces so SR users hear deltas
               ("Internet: Searching") instead of the full trio every tick. */}
-          <span className="sr-only" aria-live="polite" aria-atomic="true">
-            {announcement}
-          </span>
-        </CardContent>
+        <span className="sr-only" aria-live="polite" aria-atomic="true">
+          {announcement}
+        </span>
+      </CardContent>
 
-        <CardFooter className="flex flex-col gap-3">
-          <Button asChild className="w-full">
-            <Link href="/login/">{t("overview.actions.login")}</Link>
-          </Button>
-          <p className="text-muted-foreground text-xs">
-            {t("overview.copyright", { year: new Date().getFullYear() })}
-          </p>
-        </CardFooter>
+      <CardFooter className="flex flex-col gap-3">
+        <Button asChild className="w-full">
+          <Link href="/login/">{t("overview.actions.login")}</Link>
+        </Button>
+        <p className="text-muted-foreground text-xs">
+          {t("overview.copyright", { year: new Date().getFullYear() })}
+        </p>
+      </CardFooter>
     </Card>
   );
 }
@@ -610,9 +614,8 @@ function renderBody({
   // Round to one decimal so float channel widths (e.g. 1.4 MHz LTE) don't
   // surface FP noise like "46.40000001 MHz" once summed.
   const totalBandwidth =
-    Math.round(
-      bands.reduce((sum, b) => sum + (b.bandwidth_mhz || 0), 0) * 10,
-    ) / 10;
+    Math.round(bands.reduce((sum, b) => sum + (b.bandwidth_mhz || 0), 0) * 10) /
+    10;
   const bandsHeaderValue =
     totalBandwidth > 0
       ? t("overview.bands.bandwidth", { bandwidth: totalBandwidth })
@@ -672,10 +675,7 @@ function renderBody({
           value={carrier}
           title={data.network.carrier}
         />
-        <HeaderCell
-          label={t("overview.header.network")}
-          value={networkType}
-        />
+        <HeaderCell label={t("overview.header.network")} value={networkType} />
         {/* Legacy key id `header.bands` now reads "Bandwidth" — the cell shows
             aggregate channel bandwidth, with the band list kept in the tooltip.
             Key kept (not renamed to .bandwidth) so installed language packs that
@@ -775,10 +775,7 @@ function SkeletonBody({ loadingLabel }: { loadingLabel?: string } = {}) {
           value h-3.5 ≈ 14px text-sm. */}
       <div className="grid grid-cols-3 gap-3">
         {[0, 1, 2].map((i) => (
-          <div
-            key={i}
-            className="flex flex-col items-start gap-1.5"
-          >
+          <div key={i} className="flex flex-col items-start gap-1.5">
             <Skeleton className="h-2.5 w-12" />
             <Skeleton className="h-3.5 w-16" />
           </div>
