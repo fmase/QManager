@@ -1307,19 +1307,39 @@
         "apn_on_cid": "{{apn}} · CID {{cid}}",
         "status": {
           "active": "Attivo",
+          "not_live": "Non attivo",
           "idle": "Inattivo",
           "empty": "Vuoto",
           "overridden": "Sovrascritto"
         },
+        "live": {
+          "mismatch_title": "L'APN memorizzato non è attivo",
+          "mismatch": "La rete sta usando: {{apn}}",
+          "mismatch_default": "La rete sta usando il valore predefinito dell'operatore"
+        },
+        "carrier_default": {
+          "title": "Nessun profilo attivo",
+          "subtitle": "Il tuo operatore sta scegliendo l'APN automaticamente."
+        },
         "aria": {
           "activate_switch": "Attiva {{name}}",
           "active_switch": "{{name}} è il profilo attivo",
+          "deactivate_switch": "Disattiva {{name}} e lascia che l'operatore scelga l'APN",
           "edit_button": "Modifica {{name}}"
         },
         "toast": {
           "activating": "Attivazione di {{name}}…",
           "activated": "{{name}} è ora il tuo APN attivo",
-          "activate_error": "Impossibile attivare {{name}}"
+          "activate_error": "Impossibile attivare {{name}}",
+          "deactivating": "Disattivazione dei profili…",
+          "deactivated": "Profili disattivati — ora il tuo operatore sceglie l'APN",
+          "deactivate_error": "Impossibile disattivare i profili"
+        },
+        "deactivate": {
+          "title": "Disattivare il profilo APN?",
+          "description": "Il tuo operatore sceglierà l'APN automaticamente. La connessione cellulare si interromperà brevemente mentre il modem si riconnette.",
+          "confirm": "Disattiva",
+          "cancel": "Annulla"
         }
       },
       "edit": {

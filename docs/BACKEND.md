@@ -296,6 +296,8 @@ The core daemon — runs forever, polls the modem at tiered intervals.
 | 2 | 30s | Carrier, CA, MIMO, SIM identity (operator name, APN, DNS, WAN-IP, ICCID, IMSI) |
 | Boot | Once | Firmware, IMEI, IMSI, capabilities |
 
+**Boot APN reconcile:** `collect_boot_data()` invokes `reconcile_active_apn_slot_at_boot()` (defined in `apn_mgr.sh`) immediately after the profile auto-apply step. The function compares the stored active APN slot against the live `AT+CGDCONT?` value and runs a COPS detach/attach cycle only on mismatch — no AT commands fire when the APN is already correct. Two gates must both pass: no active Custom SIM Profile (`/etc/qmanager/active_profile` empty/absent) and a non-zero `active` pointer in `apn_profiles.json`. See [`docs/features/apn-management.md`](features/apn-management.md) for the full invariant.
+
 **Force-Tier-2 flag (`/tmp/qmanager_force_tier2`):** CGI scripts that trigger a modem re-registration event (SIM slot switch in `cellular/settings.sh`, band lock in `bands/lock.sh`) touch this file after a 2-second settle delay. In `poll_cycle`, after the `LONG_FLAG` early-return, the poller checks for the flag: when present it consumes it (`rm -f`) and immediately executes `poll_tier2` + `read_sim_state` + `refresh_sim_identity`, collapsing the stale window for SIM-identity fields from ~30 seconds to ~4 seconds. `refresh_sim_identity` issues `AT+CIMI;+QCCID` and updates `boot_imsi`/`boot_iccid` — no profile or swap side effects. The flag check deliberately sits after `LONG_FLAG` so an in-progress cell scan does not consume and discard it. Producers MUST NOT write `/tmp/qmanager_status.json` — `write_cache` in the poller is the sole atomic writer.
 
 > ℹ️ NOTE: Live network traffic (rx/tx bytes per second) is **not** collected by the poller and is **not** present in `/tmp/qmanager_status.json`. It is served exclusively by the opt-in WebSocket bandwidth monitor (`bridge_traffic_monitor_rm551` + `websocat:8838`, managed by `init.d/qmanager_bandwidth`). The feature is off by default (UCI `quecmanager.bridge_monitor.enabled=0`). When disabled, the dashboard Live Traffic row shows a prompt to enable it rather than showing zeros. See [`docs/features/bandwidth-monitor.md`](features/bandwidth-monitor.md).
@@ -362,10 +364,6 @@ Waits for `rmnet_data0` interface (up to 120s), then applies MTU from `/etc/fire
 ### qmanager_imei_check
 
 Boot-time one-shot: checks if IMEI was rejected (cause 5 from `AT+QNETRC?`), restores backup IMEI if configured.
-
-### qmanager_wan_guard
-
-Boot-time one-shot: validates WAN profiles against active CIDs, disables orphaned profiles to prevent netifd retry loops.
 
 ### qmanager_scheduled_reboot
 
@@ -479,7 +477,6 @@ result=$(qcmd 'AT+QENG="servingcell"')
 | `qmanager_ttl` | non-procd | 99 | — | Apply TTL/HL rules on boot (sources `/etc/firewall.user.ttl`) |
 | `qmanager_mtu` | non-procd | 99 | `qmanager_mtu_apply` | MTU application daemon |
 | `qmanager_imei_check` | non-procd | 99 | `qmanager_imei_check` | Boot-time IMEI check (one-shot, double-fork) |
-| `qmanager_wan_guard` | non-procd | 99 | `qmanager_wan_guard` | WAN profile validation (one-shot) |
 | `qmanager_tower_failover` | non-procd | 99 | `qmanager_tower_failover` | Tower failover watchdog |
 | `qmanager_low_power_check` | non-procd | 99 | `qmanager_low_power_check` | Boot-time low power window check (one-shot, double-fork) |
 | `qmanager_dpi` | procd | 99 | `nfqws` (x2) | DPI evasion: Video Optimizer (queue 200) + Traffic Masquerade (queue 201), each UCI-gated |

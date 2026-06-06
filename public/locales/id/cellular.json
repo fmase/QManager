@@ -1307,19 +1307,39 @@
         "apn_on_cid": "{{apn}} · CID {{cid}}",
         "status": {
           "active": "Aktif",
+          "not_live": "Tidak aktif",
           "idle": "Siaga",
           "empty": "Kosong",
           "overridden": "Ditimpa Profil"
         },
+        "live": {
+          "mismatch_title": "APN tersimpan tidak aktif",
+          "mismatch": "Jaringan menggunakan: {{apn}}",
+          "mismatch_default": "Jaringan menggunakan default operator"
+        },
+        "carrier_default": {
+          "title": "Tidak ada profil aktif",
+          "subtitle": "Operator Anda memilih APN secara otomatis."
+        },
         "aria": {
           "activate_switch": "Aktifkan {{name}}",
           "active_switch": "{{name}} adalah profil aktif",
+          "deactivate_switch": "Nonaktifkan {{name}} dan biarkan operator memilih APN",
           "edit_button": "Edit {{name}}"
         },
         "toast": {
           "activating": "Mengaktifkan {{name}}…",
           "activated": "{{name}} kini menjadi APN aktif Anda",
-          "activate_error": "Gagal mengaktifkan {{name}}"
+          "activate_error": "Gagal mengaktifkan {{name}}",
+          "deactivating": "Menonaktifkan profil…",
+          "deactivated": "Profil dinonaktifkan — operator Anda kini memilih APN",
+          "deactivate_error": "Gagal menonaktifkan profil"
+        },
+        "deactivate": {
+          "title": "Nonaktifkan profil APN?",
+          "description": "Operator Anda akan memilih APN secara otomatis. Koneksi seluler akan terputus sebentar saat modem menyambung ulang.",
+          "confirm": "Nonaktifkan",
+          "cancel": "Batal"
         }
       },
       "edit": {

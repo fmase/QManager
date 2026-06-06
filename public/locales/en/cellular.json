@@ -1332,19 +1332,39 @@
         "apn_on_cid": "{{apn}} · CID {{cid}}",
         "status": {
           "active": "Active",
+          "not_live": "Not live",
           "idle": "Idle",
           "empty": "Empty",
           "overridden": "Overridden"
         },
+        "live": {
+          "mismatch_title": "Stored APN isn't live",
+          "mismatch": "Network is using: {{apn}}",
+          "mismatch_default": "Network is using the carrier default"
+        },
+        "carrier_default": {
+          "title": "No profile active",
+          "subtitle": "Your carrier is choosing the APN automatically."
+        },
         "aria": {
           "activate_switch": "Activate {{name}}",
           "active_switch": "{{name}} is the active profile",
+          "deactivate_switch": "Disable {{name}} and let the carrier choose the APN",
           "edit_button": "Edit {{name}}"
         },
         "toast": {
           "activating": "Activating {{name}}…",
           "activated": "{{name}} is now your active APN",
-          "activate_error": "Failed to activate {{name}}"
+          "activate_error": "Failed to activate {{name}}",
+          "deactivating": "Disabling profiles…",
+          "deactivated": "Profiles disabled — your carrier now chooses the APN",
+          "deactivate_error": "Failed to disable profiles"
+        },
+        "deactivate": {
+          "title": "Disable APN profile?",
+          "description": "Your carrier will choose the APN automatically. The cellular connection will drop briefly while the modem reconnects.",
+          "confirm": "Disable",
+          "cancel": "Cancel"
         }
       },
       "edit": {

@@ -5,12 +5,6 @@
   "system": {
     "card_title": "Pengaturan Sistem",
     "card_description": "Konfigurasikan preferensi perangkat dan opsi tampilan.",
-    "wan_guard_label": "WAN Guard",
-    "wan_guard_info_aria": "Info WAN Guard",
-    "wan_guard_tooltip": "Memeriksa profil antarmuka WAN saat boot dan menonaktifkan yang tidak memiliki koneksi data aktif, mencegah penggunaan CPU yang tidak perlu.",
-    "wan_guard_toast_enabled": "WAN Guard diaktifkan",
-    "wan_guard_toast_disabled": "WAN Guard dinonaktifkan",
-    "wan_guard_toast_failed": "Gagal memperbarui WAN Guard",
     "temperature_unit_label": "Satuan Suhu",
     "temperature_unit_aria": "Satuan suhu",
     "temperature_celsius": "Celsius",

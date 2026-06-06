@@ -29,7 +29,7 @@
 #
 # GET  -> { max_profiles, active_profile, active_cid, internet_cid,
 #           profiles[5], cids[6] }
-# POST -> {"action":"save"|"activate"|"clear", ...} applies a change.
+# POST -> {"action":"save"|"activate"|"deactivate"|"clear", ...} applies a change.
 #
 # AT commands used (GET):
 #   AT+CGDCONT?;+CGACT?;+CGPADDR;+QMAP="WWAN"   -> one round-trip, four sections
@@ -320,6 +320,53 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
     fi
 
     # -----------------------------------------------------------------------
+    # action: deactivate — revert the live modem to the carrier-default APN
+    # (blank APN, carrier reassigns its default on re-attach) and set active=0.
+    # No slot fields change; this is the deliberate inverse of activate.
+    # -----------------------------------------------------------------------
+    if [ "$ACTION" = "deactivate" ]; then
+        config_json=$(read_config_v2)
+        active_id=$(printf '%s' "$config_json" | jq -r '.active')
+
+        # Already carrier-default: nothing to revert, do NOT touch the modem.
+        if [ "$active_id" = "0" ]; then
+            jq -n '{success: true, active: 0}'
+            exit 0
+        fi
+
+        # --- Load the active slot's CID + PDP for the revert AT write -------
+        SLOT_CID=$(printf '%s' "$config_json" | jq -r \
+            --argjson id "$active_id" '.profiles[] | select(.id == $id) | .cid')
+        SLOT_PDP=$(printf '%s' "$config_json" | jq -r \
+            --argjson id "$active_id" '.profiles[] | select(.id == $id) | .pdp_type')
+
+        PDP_AT=$(pdp_to_at "$SLOT_PDP")
+        [ -z "$PDP_AT" ] && PDP_AT="IPV4V6"
+        # Active config is normalized, but guard the CID before driving AT.
+        case "$SLOT_CID" in
+            ''|*[!0-9]*) SLOT_CID=1 ;;
+        esac
+
+        qlog_info "Deactivate: reverting slot $active_id (cid=$SLOT_CID) to carrier default; active=0"
+
+        # --- Drive the modem first; empty APN -> carrier reassigns default --
+        apply_apn_to_modem "$SLOT_CID" "$PDP_AT" "" || die "$APN_APPLY_ERR_CODE" "$APN_APPLY_ERR_DETAIL"
+
+        # --- Persist active=0. As with activate, a persist failure AFTER a
+        # successful modem revert still reports success: the modem is already
+        # on carrier-default, so failing the request would mislead the UI.
+        new_config=$(printf '%s' "$config_json" | jq -c '.active = 0' 2>/dev/null)
+        if [ -n "$new_config" ] && write_config_v2 "$new_config"; then
+            :
+        else
+            qlog_warn "Reverted slot $active_id on modem but failed to persist active=0"
+        fi
+
+        jq -n '{success: true, active: 0}'
+        exit 0
+    fi
+
+    # -----------------------------------------------------------------------
     # action: clear — empty a slot (refuse if it is the active one)
     # -----------------------------------------------------------------------
     if [ "$ACTION" = "clear" ]; then
@@ -354,7 +401,7 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
         exit 0
     fi
 
-    die "invalid_action" "action must be save, activate, or clear"
+    die "invalid_action" "action must be save, activate, deactivate, or clear"
 fi
 
 # --- Method not allowed -------------------------------------------------------

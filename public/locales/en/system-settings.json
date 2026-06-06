@@ -5,12 +5,6 @@
   "system": {
     "card_title": "System Settings",
     "card_description": "Configure device preferences and display options.",
-    "wan_guard_label": "WAN Guard",
-    "wan_guard_info_aria": "WAN Guard info",
-    "wan_guard_tooltip": "Checks WAN interface profiles at boot and disables any that don't have an active data connection, preventing unnecessary CPU usage.",
-    "wan_guard_toast_enabled": "WAN Guard enabled",
-    "wan_guard_toast_disabled": "WAN Guard disabled",
-    "wan_guard_toast_failed": "Failed to update WAN Guard",
     "force_tailscale_fixes_label": "Force Tailscale Fixes",
     "force_tailscale_fixes_info_aria": "Force Tailscale Fixes info",
     "force_tailscale_fixes_tooltip": "Applies QManager's own Tailscale firewall and routing fixes on top of your firmware. Recommended for R02 firmware.",

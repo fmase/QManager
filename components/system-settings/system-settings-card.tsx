@@ -145,7 +145,7 @@ export default function SystemSettingsCard({
   // Key-based remount: when settings change after save/re-fetch,
   // the form reinitializes with fresh values from useState defaults.
   const formKey = settings
-    ? `${settings.wan_guard_enabled}-${settings.force_tailscale_fixes}-${settings.temp_unit}-${settings.distance_unit}-${settings.zonename}`
+    ? `${settings.force_tailscale_fixes}-${settings.temp_unit}-${settings.distance_unit}-${settings.zonename}`
     : "empty";
 
   return (
@@ -188,12 +188,6 @@ function SystemSettingsForm({
   const [timezone, setTimezone] = useState(settings?.timezone ?? "UTC0");
   const [tzOpen, setTzOpen] = useState(false);
 
-  // WAN Guard toggle state (saves immediately, not via Save button)
-  const [wanGuardEnabled, setWanGuardEnabled] = useState(
-    settings?.wan_guard_enabled ?? false,
-  );
-  const [wanGuardSaving, setWanGuardSaving] = useState(false);
-
   // Force Tailscale Fixes toggle state (saves immediately, not via Save button).
   // Re-introduces the historical fw4 zone + mwan3 ipset workarounds for
   // tailscale0. Off by default; recommended for R02 firmware users.
@@ -202,7 +196,7 @@ function SystemSettingsForm({
   );
   const [forceTailscaleFixesSaving, setForceTailscaleFixesSaving] = useState(false);
 
-  // --- Dirty check (only for items 2-4, not WAN Guard) ---
+  // --- Dirty check (Save-button items only, not the immediate toggles) ---
   const isDirty = useMemo(() => {
     if (!settings) return false;
     return (
@@ -214,35 +208,6 @@ function SystemSettingsForm({
 
   const canSave = isDirty && !isSaving;
 
-  // --- WAN Guard immediate toggle handler ---
-  const handleWanGuardChange = useCallback(
-    async (checked: boolean) => {
-      setWanGuardEnabled(checked);
-      setWanGuardSaving(true);
-
-      const success = await saveSettings({
-        action: "save_settings",
-        wan_guard_enabled: checked,
-        force_tailscale_fixes: forceTailscaleFixes,
-        temp_unit: settings?.temp_unit ?? "celsius",
-        distance_unit: settings?.distance_unit ?? "km",
-        timezone: settings?.timezone ?? "UTC0",
-        zonename: settings?.zonename ?? "UTC",
-      });
-
-      setWanGuardSaving(false);
-
-      if (success) {
-        toast.success(checked ? t("system.wan_guard_toast_enabled") : t("system.wan_guard_toast_disabled"));
-      } else {
-        // Revert on failure
-        setWanGuardEnabled(!checked);
-        toast.error(t("system.wan_guard_toast_failed"));
-      }
-    },
-    [saveSettings, settings, t, forceTailscaleFixes],
-  );
-
   // --- Force Tailscale Fixes immediate toggle handler ---
   const handleForceTailscaleFixesChange = useCallback(
     async (checked: boolean) => {
@@ -251,7 +216,6 @@ function SystemSettingsForm({
 
       const success = await saveSettings({
         action: "save_settings",
-        wan_guard_enabled: wanGuardEnabled,
         force_tailscale_fixes: checked,
         temp_unit: settings?.temp_unit ?? "celsius",
         distance_unit: settings?.distance_unit ?? "km",
@@ -272,7 +236,7 @@ function SystemSettingsForm({
         toast.error(t("system.force_tailscale_fixes_toast_failed"));
       }
     },
-    [saveSettings, settings, t, wanGuardEnabled],
+    [saveSettings, settings, t],
   );
 
   // --- Timezone change handler ---
@@ -290,7 +254,6 @@ function SystemSettingsForm({
 
     const success = await saveSettings({
       action: "save_settings",
-      wan_guard_enabled: wanGuardEnabled,
       force_tailscale_fixes: forceTailscaleFixes,
       temp_unit: tempUnit,
       distance_unit: distanceUnit,
@@ -307,7 +270,6 @@ function SystemSettingsForm({
   }, [
     canSave,
     saveSettings,
-    wanGuardEnabled,
     forceTailscaleFixes,
     tempUnit,
     distanceUnit,
@@ -340,41 +302,6 @@ function SystemSettingsForm({
           initial="hidden"
           animate="visible"
         >
-          {/* ── WAN Guard Toggle ──────────────────────────────────── */}
-          <Separator />
-          <motion.div variants={itemVariants} className="flex items-center justify-between">
-            <div className="flex items-center gap-1.5">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    className="inline-flex"
-                    aria-label={t("system.wan_guard_info_aria")}
-                  >
-                    <TbInfoCircleFilled className="size-5 text-info" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p className="text-balance max-w-sm">{t("system.wan_guard_tooltip")}</p>
-                </TooltipContent>
-              </Tooltip>
-              <p className="font-semibold text-muted-foreground text-sm">
-                {t("system.wan_guard_label")}
-              </p>
-            </div>
-            <div className="flex items-center space-x-2">
-              <Switch
-                id="wan-guard-enabled"
-                checked={wanGuardEnabled}
-                onCheckedChange={handleWanGuardChange}
-                disabled={wanGuardSaving}
-              />
-              <Label htmlFor="wan-guard-enabled">
-                {wanGuardEnabled ? t("state.enabled", { ns: "common" }) : t("state.disabled", { ns: "common" })}
-              </Label>
-            </div>
-          </motion.div>
-
           {/* ── Force Tailscale Fixes Toggle ──────────────────────── */}
           <Separator />
           <motion.div variants={itemVariants} className="flex items-center justify-between">

@@ -29,11 +29,13 @@ const APNSettingsComponent = () => {
   const {
     profiles,
     cids,
+    activeProfile,
     isLoading,
     isSaving,
     error,
     saveProfile,
     activateProfile,
+    deactivateProfile,
     clearProfile,
     refresh,
   } = useWanProfiles();
@@ -154,10 +156,13 @@ const APNSettingsComponent = () => {
       >
         <WanProfileListCard
           profiles={profiles}
+          cids={cids}
+          activeProfile={activeProfile}
           isLoading={isLoading || overrideUndetermined}
           isSaving={isSaving}
           onEdit={setEditingId}
           onActivate={activateProfile}
+          onDeactivate={deactivateProfile}
           editingId={editingId}
           overridden={isProfileControlled}
         />

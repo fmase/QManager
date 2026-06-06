@@ -5,12 +5,6 @@
   "system": {
     "card_title": "Impostazioni di sistema",
     "card_description": "Configura le preferenze del dispositivo e le opzioni di visualizzazione.",
-    "wan_guard_label": "WAN Guardia",
-    "wan_guard_info_aria": "WAN Informazioni sulla guardia",
-    "wan_guard_tooltip": "Controlla i profili di interfaccia WAN all'avvio e disabilita quelli che non dispongono di una connessione dati attiva, impedendo un utilizzo non necessario di CPU.",
-    "wan_guard_toast_enabled": "WAN Guardia abilitata",
-    "wan_guard_toast_disabled": "WAN Guardia disabilitata",
-    "wan_guard_toast_failed": "Impossibile aggiornare WAN Guard",
     "temperature_unit_label": "Unità di temperatura",
     "temperature_unit_aria": "Unità di temperatura",
     "temperature_celsius": "Centigrado",

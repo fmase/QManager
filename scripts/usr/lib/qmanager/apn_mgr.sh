@@ -288,10 +288,8 @@ apply_apn_to_modem() {
 #
 # Resolution:
 #   - active != 0 and that slot has a non-empty apn  -> reapply that slot.
-#   - active == 0 but a configured slot exists       -> pick the LOWEST-id slot
-#       with a non-empty apn, persist active = <that id> (atomic), reapply it.
-#   - ALL slots empty                                -> no-op (active stays 0,
-#       no modem change), return 0.
+#   - active == 0 (carrier-default)                  -> no-op (carrier-assigned
+#       APN is left untouched; NEVER auto-resurrects a slot), return 0.
 #
 # Best-effort modem apply: on apply failure, propagate return 1 with
 # APN_APPLY_ERR_* set; the caller decides whether to fail. On a successful
@@ -300,25 +298,13 @@ reapply_active_apn_slot() {
     _ra_config=$(read_config_v2)
     _ra_active=$(printf '%s' "$_ra_config" | jq -r '.active')
 
-    # Resolve the target slot id.
-    if [ "$_ra_active" != "0" ] && [ -n "$_ra_active" ]; then
-        _ra_target="$_ra_active"
-    else
-        # active == 0: pick the lowest-id slot that carries a non-empty apn.
-        _ra_target=$(printf '%s' "$_ra_config" | jq -r '
-            ( .profiles | map(select(.apn != "") | .id) ) as $eligible
-            | if ($eligible | length) == 0 then "" else ($eligible | min | tostring) end')
-        # No configured slot -> nothing to restore.
-        [ -z "$_ra_target" ] && return 0
-        # Persist the newly-resolved active pointer before driving the modem.
-        _ra_new=$(printf '%s' "$_ra_config" | jq -c \
-            --argjson id "$_ra_target" '.active = $id' 2>/dev/null)
-        if [ -n "$_ra_new" ] && write_config_v2 "$_ra_new"; then
-            _ra_config="$_ra_new"
-        else
-            qlog_warn "reapply_active_apn_slot: failed to persist resolved active=$_ra_target"
-        fi
+    # active == 0 (or empty) is a deliberate carrier-default choice: leave the
+    # live carrier-assigned APN untouched and never auto-resurrect a slot.
+    if [ "$_ra_active" = "0" ] || [ -z "$_ra_active" ]; then
+        qlog_info "Reapply active APN slot: active=0, carrier-default preserved (no-op)"
+        return 0
     fi
+    _ra_target="$_ra_active"
 
     # Load the resolved slot's fields.
     _ra_apn=$(printf '%s' "$_ra_config" | jq -r \
@@ -342,5 +328,101 @@ reapply_active_apn_slot() {
     fi
 
     printf '%s' "$_ra_target"
+    return 0
+}
+
+# reconcile_active_apn_slot_at_boot — IDEMPOTENT boot-time replay of the active
+# APN slot onto the modem. Called once from the poller's boot sequence.
+#
+# WHY this exists: the user PDP context's APN does NOT survive in modem NVRAM
+# across a power-cycle (carrier-provisioned ims/sos contexts on CID 2/3 do, but
+# the user data context comes back empty/carrier-default). The 5-slot APN
+# Management config persists the active slot in apn_profiles.json; nothing else
+# replays it at boot, so the active slot is effectively un-applied after a
+# reboot unless we reconcile it here.
+#
+# DISTINCT from reapply_active_apn_slot: that one applies UNCONDITIONALLY (used
+# right after a Custom SIM Profile deactivation, where the profile is known to
+# have left its own APN on the modem). This one is IDEMPOTENT — it compares the
+# stored slot APN against the live AT+CGDCONT? value for the slot's CID and runs
+# the COPS detach/attach cycle ONLY on mismatch. An unconditional reapply would
+# drop the WAN on every clean boot; live recon confirmed the active slot already
+# matches live in the common case, so this fires ZERO AT commands then.
+#
+# GATING: skipped when (a) a Custom SIM Profile is active (the profile owns the
+# APN and auto-applies separately — profile authority wins) or (b) no slot is
+# active (active=0 is the deliberate carrier-default no-op).
+#
+# This is the relocation of the retired qmanager_wan_guard boot reconcile. The
+# bind-disable pass that used to accompany it in wan_guard was DROPPED as
+# obsolete (no longer relocated).
+#
+# Fully fail-safe: every path returns, NEVER reboots, NEVER touches AT+CFUN.
+reconcile_active_apn_slot_at_boot() {
+    # 1. Profile authority wins — if a Custom SIM Profile owns the APN at boot,
+    #    it is applied separately via auto_apply_profile. Marker presence is
+    #    enough; do not touch the slot.
+    if [ -s /etc/qmanager/active_profile ]; then
+        qlog_info "Custom SIM Profile active — skipping APN-slot boot reconcile"
+        return 0
+    fi
+
+    # 2. Resolve the active slot via the lib's own reader.
+    _rc_config=$(read_config_v2)
+    _rc_active=$(printf '%s' "$_rc_config" | jq -r '.active')
+    if [ "$_rc_active" = "0" ] || [ -z "$_rc_active" ] || [ "$_rc_active" = "null" ]; then
+        qlog_info "No active APN slot — nothing to reconcile at boot"
+        return 0
+    fi
+
+    # 3. Load the active slot's fields.
+    _rc_apn=$(printf '%s' "$_rc_config" | jq -r \
+        --argjson id "$_rc_active" '.profiles[] | select(.id == $id) | .apn')
+    _rc_pdp=$(printf '%s' "$_rc_config" | jq -r \
+        --argjson id "$_rc_active" '.profiles[] | select(.id == $id) | .pdp_type')
+    _rc_cid=$(printf '%s' "$_rc_config" | jq -r \
+        --argjson id "$_rc_active" '.profiles[] | select(.id == $id) | .cid')
+
+    if [ -z "$_rc_apn" ] || [ "$_rc_apn" = "null" ]; then
+        qlog_info "Active slot has empty APN — nothing to reconcile"
+        return 0
+    fi
+    case "$_rc_cid" in
+        ''|*[!0-9]*) _rc_cid=1 ;;
+    esac
+
+    # 4. PDP token (default IPV4V6).
+    _rc_pdp_at=$(pdp_to_at "$_rc_pdp")
+    [ -z "$_rc_pdp_at" ] && _rc_pdp_at="IPV4V6"
+
+    # 5. Idempotent compare: query the live contexts ONCE.
+    _rc_cgdcont=$(run_at "AT+CGDCONT?")
+    if [ -z "$_rc_cgdcont" ]; then
+        qlog_warn "AT+CGDCONT? empty at boot reconcile — skipping (fail-safe)"
+        return 0
+    fi
+    # Extract the live apn for the target cid (ported from wan_guard's
+    # _am_live_apn_for_cid, but reading the local snapshot not a global).
+    _rc_live_apn=$(printf '%s' "$_rc_cgdcont" | awk -F',' -v want="$_rc_cid" '
+        /\+CGDCONT:/ {
+            cid = $1; gsub(/[^0-9]/, "", cid)
+            apn = $3; gsub(/"/, "", apn)
+            if (cid == want) { print apn; exit }
+        }
+    ')
+
+    # 6. Skip on match — the common clean-boot case, zero AT commands.
+    if [ "$_rc_live_apn" = "$_rc_apn" ]; then
+        qlog_info "APN already correct for CID $_rc_cid — no boot reconcile needed"
+        return 0
+    fi
+
+    # 7. Mismatch — re-apply via the shared COPS detach/attach cycle.
+    qlog_warn "Boot reconcile APN for CID $_rc_cid: stored=$_rc_apn live=$_rc_live_apn"
+    if ! apply_apn_to_modem "$_rc_cid" "$_rc_pdp_at" "$_rc_apn"; then
+        qlog_error "Boot reconcile failed for CID $_rc_cid: $APN_APPLY_ERR_CODE"
+        return 1
+    fi
+    qlog_info "Boot reconcile complete for CID $_rc_cid"
     return 0
 }

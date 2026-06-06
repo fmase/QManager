@@ -58,14 +58,6 @@ if [ "$REQUEST_METHOD" = "GET" ]; then
     qlog_info "Fetching system settings"
     ensure_settings_config
 
-    # --- WAN Guard status ---
-    wan_guard_enabled="false"
-    if [ -x /etc/init.d/qmanager_wan_guard ]; then
-        if ls /etc/rc.d/S99qmanager_wan_guard 2>/dev/null >/dev/null; then
-            wan_guard_enabled="true"
-        fi
-    fi
-
     # --- Force Tailscale Fixes status ---
     # Source of truth is the UCI flag (set by this same endpoint). The
     # qmanager_vpn_zone init.d enable state is a downstream effect of the
@@ -106,7 +98,6 @@ if [ "$REQUEST_METHOD" = "GET" ]; then
     [ -z "$lp_days_json" ] && lp_days_json="[0,1,2,3,4,5,6]"
 
     jq -n \
-        --argjson wan_guard "$wan_guard_enabled" \
         --argjson force_ts_fixes "$force_tailscale_fixes" \
         --arg hostname "$hostname" \
         --arg temp_unit "$temp_unit" \
@@ -123,7 +114,6 @@ if [ "$REQUEST_METHOD" = "GET" ]; then
         '{
             success: true,
             settings: {
-                wan_guard_enabled: $wan_guard,
                 force_tailscale_fixes: $force_ts_fixes,
                 hostname: $hostname,
                 temp_unit: $temp_unit,
@@ -168,15 +158,6 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
         ensure_settings_config
 
         val=""
-
-        # --- WAN Guard toggle ---
-        val=$(printf '%s' "$POST_DATA" | jq -r 'if has("wan_guard_enabled") then (.wan_guard_enabled | tostring) else "" end')
-        if [ -n "$val" ]; then
-            case "$val" in
-                true)  /etc/init.d/qmanager_wan_guard enable 2>/dev/null ;;
-                false) /etc/init.d/qmanager_wan_guard disable 2>/dev/null ;;
-            esac
-        fi
 
         # --- Force Tailscale Fixes toggle ---
         # Re-introduces the historical fw4 zone + mwan3 ipset workarounds for

@@ -1332,19 +1332,39 @@
         "apn_on_cid": "{{apn}} · CID {{cid}}",
         "status": {
           "active": "活动",
+          "not_live": "未生效",
           "idle": "空闲",
           "empty": "空",
           "overridden": "已被配置文件接管"
         },
+        "live": {
+          "mismatch_title": "存储的 APN 未生效",
+          "mismatch": "网络正在使用：{{apn}}",
+          "mismatch_default": "网络正在使用运营商默认值"
+        },
+        "carrier_default": {
+          "title": "无活动配置文件",
+          "subtitle": "您的运营商正在自动选择 APN。"
+        },
         "aria": {
           "activate_switch": "激活 {{name}}",
           "active_switch": "{{name}} 是活动配置文件",
+          "deactivate_switch": "停用 {{name}}，让运营商选择 APN",
           "edit_button": "编辑 {{name}}"
         },
         "toast": {
           "activating": "正在激活 {{name}}…",
           "activated": "{{name}} 现已成为活动 APN",
-          "activate_error": "激活 {{name}} 失败"
+          "activate_error": "激活 {{name}} 失败",
+          "deactivating": "正在停用配置文件…",
+          "deactivated": "配置文件已停用 — 现由运营商选择 APN",
+          "deactivate_error": "停用配置文件失败"
+        },
+        "deactivate": {
+          "title": "停用 APN 配置文件？",
+          "description": "您的运营商将自动选择 APN。调制解调器重新连接时，蜂窝连接会短暂中断。",
+          "confirm": "停用",
+          "cancel": "取消"
         }
       },
       "edit": {

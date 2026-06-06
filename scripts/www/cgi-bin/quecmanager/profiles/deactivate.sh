@@ -90,8 +90,8 @@ fi
 # mismatch. Restore the active slot so the live APN matches the UI.
 #
 # Non-Verizon path ONLY. A Verizon revert already requires a reboot and leaves
-# the MPDN rule mid-revert; wan_guard's boot reconcile restores the slot after
-# reboot, so we must NOT fire a COPS cycle into that pending-reboot state.
+# the MPDN rule mid-revert; the poller's boot APN reconcile restores the slot
+# after reboot, so we must NOT fire a COPS cycle into that pending-reboot state.
 #
 # Best-effort: a reapply failure does NOT change the response — deactivation
 # still succeeds with requires_reboot=false. Failures are surfaced as events.

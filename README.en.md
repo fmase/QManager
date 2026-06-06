@@ -295,7 +295,6 @@ QManager runs 11 init.d services on the device:
 | `qmanager_watchcat` | Connection watchdog — 4-tier auto-recovery state machine |
 | `qmanager_bandwidth` | Live bandwidth monitor — WebSocket + traffic binary |
 | `qmanager_dpi` | DPI service — nfqws in video optimizer or traffic masquerade mode |
-| `qmanager_wan_guard` | WAN guard — disables phantom CID profiles at boot |
 | `qmanager_tower_failover` | Tower failover — restores lock after cell loss |
 | `qmanager_eth_link` | Ethernet link speed — applies saved speed/duplex settings |
 | `qmanager_ttl` | TTL/HL — applies iptables rules at boot |

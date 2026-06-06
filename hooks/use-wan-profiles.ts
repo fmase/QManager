@@ -54,6 +54,8 @@ export interface UseWanProfilesReturn {
   saveProfile: (id: number, request: WanProfileSaveRequest) => Promise<boolean>;
   /** Make a slot the active Internet APN (deactivates the prior). Returns true on success. */
   activateProfile: (id: number) => Promise<boolean>;
+  /** Disable all slots (active=0): revert the modem to its carrier-default APN. Returns true on success. */
+  deactivateProfile: () => Promise<boolean>;
   /** Empty a slot (refused on the active slot). Returns true on success. */
   clearProfile: (id: number) => Promise<boolean>;
   /** Re-fetch all profiles + CID contexts. */
@@ -79,6 +81,14 @@ export function useWanProfiles(): UseWanProfilesReturn {
       mountedRef.current = false;
     };
   }, []);
+
+  // Mirror of `profiles` for reads inside async mutation callbacks (which don't
+  // list `profiles` as a dep). Written in an effect, read only in callbacks —
+  // never during render — so it stays clear of the React-Compiler ref rule.
+  const profilesRef = useRef<WanProfile[] | null>(null);
+  useEffect(() => {
+    profilesRef.current = profiles;
+  }, [profiles]);
 
   // ---------------------------------------------------------------------------
   // Fetch profiles + CID contexts
@@ -138,6 +148,17 @@ export function useWanProfiles(): UseWanProfilesReturn {
     );
   }, []);
 
+  // Optimistically reflect a just-applied APN on its live CID so the honest
+  // "Active vs Not live" badge doesn't flash "Not live" against a stale cids[]
+  // snapshot during the ~1.5s before the reconcile lands. The reconcile is the
+  // source of truth — if the carrier overrode the APN, it flips back to "Not
+  // live" with the real value.
+  const patchCidApn = useCallback((cid: number, apn: string) => {
+    setCids((prev) =>
+      prev ? prev.map((c) => (c.cid === cid ? { ...c, apn } : c)) : prev
+    );
+  }, []);
+
   const scheduleReconcile = useCallback(() => {
     setTimeout(() => {
       if (mountedRef.current) fetchProfiles(true);
@@ -180,6 +201,10 @@ export function useWanProfiles(): UseWanProfilesReturn {
           pdp_type: request.pdp_type,
           cid: request.cid,
         });
+        // Saving the ACTIVE slot re-applies its APN to the modem (COPS cycle),
+        // so reflect it on the live CID too — keeps the honest badge from
+        // flashing "Not live" before the reconcile confirms.
+        if (activeProfile === id) patchCidApn(request.cid, request.apn);
         scheduleReconcile();
         return true;
       } catch (err) {
@@ -190,7 +215,7 @@ export function useWanProfiles(): UseWanProfilesReturn {
         if (mountedRef.current) setIsSaving(false);
       }
     },
-    [postAction, patchSlot, scheduleReconcile]
+    [postAction, patchSlot, patchCidApn, scheduleReconcile, activeProfile]
   );
 
   // ---------------------------------------------------------------------------
@@ -209,6 +234,8 @@ export function useWanProfiles(): UseWanProfilesReturn {
           return false;
         }
         setActiveProfile(id);
+        const activated = profilesRef.current?.find((p) => p.id === id);
+        if (activated) patchCidApn(activated.cid, activated.apn);
         setProfiles((prev) =>
           prev ? prev.map((p) => ({ ...p, is_active: p.id === id })) : prev
         );
@@ -222,8 +249,41 @@ export function useWanProfiles(): UseWanProfilesReturn {
         if (mountedRef.current) setIsSaving(false);
       }
     },
-    [postAction, scheduleReconcile]
+    [postAction, patchCidApn, scheduleReconcile]
   );
+
+  // ---------------------------------------------------------------------------
+  // Deactivate — disable all slots (active=0). The backend writes a blank APN
+  // and re-attaches, so the carrier reassigns its default. We optimistically
+  // clear the active flag across all slots; the delayed reconcile picks up the
+  // fresh cids[] so the "Active" badge resolves to the live carrier APN.
+  // ---------------------------------------------------------------------------
+  const deactivateProfile = useCallback(async (): Promise<boolean> => {
+    setError(null);
+    setIsSaving(true);
+    try {
+      const data = await postAction({ action: "deactivate" });
+      if (!mountedRef.current) return false;
+      if (!data?.success) {
+        setError(data?.error || "Failed to disable APN profiles");
+        return false;
+      }
+      setActiveProfile(0);
+      setProfiles((prev) =>
+        prev ? prev.map((p) => ({ ...p, is_active: false })) : prev
+      );
+      scheduleReconcile();
+      return true;
+    } catch (err) {
+      if (!mountedRef.current) return false;
+      setError(
+        err instanceof Error ? err.message : "Failed to disable APN profiles"
+      );
+      return false;
+    } finally {
+      if (mountedRef.current) setIsSaving(false);
+    }
+  }, [postAction, scheduleReconcile]);
 
   // ---------------------------------------------------------------------------
   // Clear a slot (refused on the active slot by the backend)
@@ -265,6 +325,7 @@ export function useWanProfiles(): UseWanProfilesReturn {
     error,
     saveProfile,
     activateProfile,
+    deactivateProfile,
     clearProfile,
     refresh: fetchProfiles,
   };

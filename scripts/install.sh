@@ -82,7 +82,7 @@ CONFLICT_PACKAGES="sms-tool socat-at-bridge socat"
 # UCI-gated services — only enabled if a prior install had them enabled.
 # Everything else is enabled unconditionally. This is the ONLY hardcoded
 # service list in this script.
-UCI_GATED_SERVICES="qmanager_tower_failover qmanager_watchcat qmanager_bandwidth qmanager_dpi qmanager_wan_guard qmanager_vpn_zone"
+UCI_GATED_SERVICES="qmanager_tower_failover qmanager_watchcat qmanager_bandwidth qmanager_dpi qmanager_vpn_zone"
 
 # Expected modem firmware signature (after normalization: upper + alnum only)
 REQUIRED_FIRMWARE="RM551EGL"
@@ -1275,6 +1275,20 @@ cleanup_legacy_scripts() {
     step "Cleaning up legacy scripts"
 
     local removed=0 fname
+
+    # Retire the legacy qmanager_wan_guard daemon (removed in this version). OTA
+    # overlays do not prune absent-from-tree files, so remove it explicitly on
+    # upgraded devices. Idempotent — silent no-op on fresh installs. The generic
+    # loops below would also catch it, but this guarantees the running daemon is
+    # stopped and the binary gone before enable_services runs.
+    if [ -f "$INITD_DIR/qmanager_wan_guard" ]; then
+        "$INITD_DIR/qmanager_wan_guard" stop 2>/dev/null || true
+        "$INITD_DIR/qmanager_wan_guard" disable 2>/dev/null || true
+        rm -f "$INITD_DIR/qmanager_wan_guard"
+        info "  Retired legacy daemon: qmanager_wan_guard"
+    fi
+    rm -f "$BIN_DIR/qmanager_wan_guard"
+    rm -f /etc/rc.d/*qmanager_wan_guard 2>/dev/null || true
 
     # Daemons: /usr/bin/qmanager_*, qcmd, bridge_traffic_monitor_*
     for f in "$BIN_DIR"/qmanager_* "$BIN_DIR/qcmd" "$BIN_DIR"/bridge_traffic_monitor_*; do

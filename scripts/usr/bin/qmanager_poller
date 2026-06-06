@@ -499,6 +499,16 @@ collect_boot_data() {
         ( . /usr/lib/qmanager/profile_mgr.sh && auto_apply_profile "$boot_iccid" "boot" )
     fi
 
+    # --- Reconcile APN Management active slot (boot) ---
+    # Replays the active APN slot onto the modem if it drifted across the power
+    # cycle (user PDP APN does not survive in NVRAM). Idempotent: re-applies only
+    # on mismatch. Skipped when a Custom SIM Profile owns the APN (it auto-applies
+    # above) or when no slot is active (active=0 = carrier default). This replaces
+    # the retired qmanager_wan_guard boot reconcile.
+    if [ ! -s /etc/qmanager/active_profile ]; then
+        ( . /usr/lib/qmanager/apn_mgr.sh && reconcile_active_apn_slot_at_boot )
+    fi
+
     # =========================================================================
     # Pre-boot serving cell — needed to gate MIMO reads by network mode
     # =========================================================================
