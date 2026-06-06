@@ -4,7 +4,7 @@ This release adds LAN address configuration to the Local Network page and polish
 
 ## ✨ New Features
 
-- **Set your LAN gateway address and subnet from the Local Network page.** You can now change the modem's LAN IP address and subnet prefix (/16–/30) directly in QManager — no SSH required. After saving, the device reconnects to the new address automatically. A persistent banner shows you exactly where to navigate once the LAN comes back up.
+- **Set your LAN gateway address and subnet from the Local Network page.** You can now change the modem's LAN IP address and subnet prefix (/16–/30) directly in QManager — no SSH required. A confirmation dialog reminds you that the LAN briefly drops on apply, and a persistent banner shows the new address to browse to (reconnect your LAN/Ethernet cable after a few seconds so your device picks up the new IP).
 
 ## ✅ Improvements
 
