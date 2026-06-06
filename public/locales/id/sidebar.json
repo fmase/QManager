@@ -47,10 +47,13 @@
     "logs": "Log",
     "software_update": "Pembaruan Perangkat Lunak",
     "at_terminal": "AT Terminal",
-    "luci": "Luci",
+    "luci": "LuCI",
     "about_device": "Tentang Perangkat",
     "support": "Dukungan",
     "donate": "Donasi untuk Proyek",
     "languages": "Bahasa"
+  },
+  "switcher": {
+    "opens_new_tab": "Membuka di tab baru"
   }
 }

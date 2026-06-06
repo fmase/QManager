@@ -47,10 +47,13 @@
     "logs": "日志",
     "software_update": "软件更新",
     "at_terminal": "AT 终端",
-    "luci": "Luci",
+    "luci": "LuCI",
     "about_device": "关于设备",
     "support": "支持",
     "donate": "捐赠项目",
     "languages": "语言"
+  },
+  "switcher": {
+    "opens_new_tab": "在新标签页中打开"
   }
 }

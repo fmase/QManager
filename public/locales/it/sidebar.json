@@ -52,5 +52,8 @@
     "support": "Supporto",
     "donate": "Dona al progetto",
     "languages": "Lingue"
+  },
+  "switcher": {
+    "opens_new_tab": "Si apre in una nuova scheda"
   }
 }

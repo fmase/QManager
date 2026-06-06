@@ -47,10 +47,13 @@
     "logs": "Logs",
     "software_update": "Software Update",
     "at_terminal": "AT Terminal",
-    "luci": "Luci",
+    "luci": "LuCI",
     "about_device": "About Device",
     "support": "Support",
     "donate": "Donate to the Project",
     "languages": "Languages"
+  },
+  "switcher": {
+    "opens_new_tab": "Opens in a new tab"
   }
 }

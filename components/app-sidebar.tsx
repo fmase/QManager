@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import { useTranslation } from "react-i18next";
 import {
   LifeBuoy,
   PieChart,
@@ -26,6 +25,7 @@ import {
 
 import QManagerLogo from "@/public/qmanager-logo.svg";
 
+import { AppSwitcher } from "@/components/app-switcher";
 import { NavMain } from "@/components/nav-main";
 import { NavLocalNetwork } from "@/components/nav-localNetwork";
 import { NavSecondary } from "@/components/nav-secondary";
@@ -39,12 +39,7 @@ import {
   SidebarContent,
   SidebarFooter,
   SidebarHeader,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
 } from "@/components/ui/sidebar";
-import Image from "next/image";
-import Link from "next/link";
 
 // t_key values are keys inside the "sidebar" namespace's "items" object.
 const data = {
@@ -81,7 +76,6 @@ const data = {
           url: "/system-settings/bandwidth-monitor",
         },
         { t_key: "logs", url: "/system-settings/logs" },
-        { t_key: "luci", url: "/cgi-bin/luci" },
       ],
     },
     {
@@ -200,7 +194,6 @@ const data = {
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const [donateOpen, setDonateOpen] = React.useState(false);
-  const { t } = useTranslation("sidebar");
 
   const navSecondaryItems = data.navSecondary.map((item) =>
     item.t_key === "donate"
@@ -211,26 +204,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   return (
     <Sidebar variant="inset" {...props}>
       <SidebarHeader>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton size="lg" asChild>
-              <Link href="/dashboard">
-                <div className="flex aspect-square size-8 items-center justify-center rounded-lg">
-                  <Image
-                    src={QManagerLogo}
-                    alt={t("items.home")}
-                    className="size-full"
-                    priority
-                  />
-                </div>
-                <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-medium">QManager</span>
-                  <span className="truncate text-xs">Admin</span>
-                </div>
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
+        <AppSwitcher />
       </SidebarHeader>
       <SidebarContent>
         <NavMain items={data.navMain} />
