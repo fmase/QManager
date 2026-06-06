@@ -14,12 +14,16 @@ import { Input } from "@/components/ui/input";
 import { SaveButton, useSaveFlash } from "@/components/ui/save-button";
 import { HintIcon } from "@/components/ui/hint-icon";
 import type { useVideoOptimizer } from "@/hooks/use-video-optimizer";
+import type { UseTtlSettingsReturn } from "@/hooks/use-ttl-settings";
 import { EngineEnableRow } from "./engine-enable-row";
+import { BypassHotspotRow } from "./bypass-hotspot-row";
 import { EngineCheckRow } from "./engine-check-row";
 import { ResultAlert } from "./result-alert";
 
 interface VideoOptimizerPanelProps {
   hook: ReturnType<typeof useVideoOptimizer>;
+  /** Composer-owned global TTL/HL hook, for the Bypass Hotspot row. */
+  ttl: UseTtlSettingsReturn;
   /** Whether Video Optimizer owns the engine. */
   running: boolean;
   /** Whether Masquerade owns the engine (enabling video takes over). */
@@ -41,6 +45,7 @@ interface VideoOptimizerPanelProps {
  */
 export function VideoOptimizerPanel({
   hook,
+  ttl,
   running,
   otherOwns,
   otherModeLabel,
@@ -112,6 +117,9 @@ export function VideoOptimizerPanel({
               : t("traffic_engine.aria_enable_engine")
           }
         />
+
+        {/* Hotspot bypass — global TTL/HL shortcut, shared with Masquerade */}
+        <BypassHotspotRow ttl={ttl} />
 
         {/* Desync strength */}
         <div className="flex flex-col gap-2 border-t pt-5">

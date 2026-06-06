@@ -72,7 +72,16 @@
     "video_tagline": "让视频更流畅。对抗运营商对视频的限速，减少缓冲。",
     "masquerade_tagline": "隐藏你的流量。将 HTTPS 伪装成单一白名单域名，使运营商无法识别并限速。",
     "enable_mode": "启用{{mode}}",
-    "aria_enable_engine": "开启引擎"
+    "aria_enable_engine": "开启引擎",
+    "bypass_label": "绕过热点检测",
+    "bypass_state_on": "已开启",
+    "bypass_helper_idle": "将 TTL 和跳数限制固定为 64，使共享设备不被识别为热点。",
+    "bypass_helper_active": "已启用 — 所有流量均以 TTL/HL 64 发出。",
+    "bypass_helper_external": "已在其他处设为 TTL {{ttl}} / HL {{hl}}（TTL 页面或 SIM 配置文件）。请在那里管理。",
+    "bypass_toast_enabled": "热点绕过已开启 — TTL/HL 设为 64",
+    "bypass_toast_disabled": "热点绕过已关闭 — TTL/HL 已清除",
+    "bypass_toast_error": "无法更改热点绕过",
+    "bypass_aria": "切换热点绕过（TTL 和跳数限制 64）"
   },
   "ethernet": {
     "page_title": "以太网状态信息",

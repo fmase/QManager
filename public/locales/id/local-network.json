@@ -72,7 +72,16 @@
     "video_tagline": "Streaming lebih mulus. Melawan throttling video oleh operator agar lebih sedikit buffering.",
     "masquerade_tagline": "Sembunyikan lalu lintas Anda. Menyamarkan HTTPS di balik satu domain whitelist agar operator tidak bisa menargetkannya untuk throttling.",
     "enable_mode": "Aktifkan {{mode}}",
-    "aria_enable_engine": "Nyalakan mesin"
+    "aria_enable_engine": "Nyalakan mesin",
+    "bypass_label": "Lewati Deteksi Hotspot",
+    "bypass_state_on": "Aktif",
+    "bypass_helper_idle": "Mengunci TTL dan hop-limit ke 64 agar perangkat yang di-tethering tidak terdeteksi sebagai hotspot.",
+    "bypass_helper_active": "Aktif — semua lalu lintas keluar dengan TTL/HL 64.",
+    "bypass_helper_external": "Diatur di tempat lain ke TTL {{ttl}} / HL {{hl}} (halaman TTL atau profil SIM). Kelola di sana.",
+    "bypass_toast_enabled": "Lewati hotspot aktif — TTL/HL disetel ke 64",
+    "bypass_toast_disabled": "Lewati hotspot nonaktif — TTL/HL dihapus",
+    "bypass_toast_error": "Tidak dapat mengubah lewati hotspot",
+    "bypass_aria": "Alihkan lewati hotspot (TTL dan hop-limit 64)"
   },
   "ethernet": {
     "page_title": "Informasi Status Ethernet",

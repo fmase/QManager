@@ -23,6 +23,7 @@ import { AlertTriangle, RefreshCcwIcon } from "lucide-react";
 
 import { useVideoOptimizer } from "@/hooks/use-video-optimizer";
 import { useTrafficMasquerade } from "@/hooks/use-traffic-masquerade";
+import { useTtlSettings } from "@/hooks/use-ttl-settings";
 
 import { EngineStatusCard } from "./engine-status-card";
 import { VideoOptimizerPanel } from "./video-optimizer-panel";
@@ -81,7 +82,10 @@ function StackSkeleton({ showHostlist }: { showHostlist: boolean }) {
       <div className="flex flex-col gap-6">
         <Skeleton className="h-40 w-full rounded-xl" />
         <Skeleton className="h-9 w-full rounded-lg" />
-        <Skeleton className="h-72 w-full rounded-xl" />
+        {/* Panel block: enable row + Bypass Hotspot row + the mode's input +
+            check row. Bumped from h-72 when the Bypass row was added so the
+            skeleton->content swap doesn't jump. */}
+        <Skeleton className="h-[22rem] w-full rounded-xl" />
       </div>
       {showHostlist && <HostlistSkeleton />}
     </div>
@@ -118,6 +122,10 @@ export default function TrafficEngine() {
 
   const vo = useVideoOptimizer();
   const masq = useTrafficMasquerade();
+  // Owned here (not in the row) so it survives tab switches — the row's panel
+  // unmounts on every Video<->Masquerade flip, which would otherwise refetch
+  // TTL and flash a spinner mid-card. Folded into the page skeleton below.
+  const ttl = useTtlSettings();
 
   const initialMode: ViewMode =
     searchParams.get("mode") === "masquerade" ? "masquerade" : "video";
@@ -273,7 +281,10 @@ export default function TrafficEngine() {
   const masqueradeLabel = t("traffic_engine.mode_masquerade");
 
   // --- State machine ---
-  const isLoading = vo.isLoading || masq.isLoading;
+  // Gate on ttl too so the Bypass Hotspot row's first fetch is covered by the
+  // page skeleton — same treatment vo/masq already get; all three are fast
+  // local CGI fired in parallel on mount.
+  const isLoading = vo.isLoading || masq.isLoading || ttl.isLoading;
   const showSkeleton = useDelayedFlag(isLoading);
   const loadError = (vo.error && !vo.settings) || (masq.error && !masq.settings);
   const anyRunning = voRunning || masqRunning;
@@ -424,6 +435,7 @@ export default function TrafficEngine() {
                     {viewMode === "video" ? (
                       <VideoOptimizerPanel
                         hook={vo}
+                        ttl={ttl}
                         running={voRunning}
                         otherOwns={masqRunning}
                         otherModeLabel={masqueradeLabel}
@@ -437,6 +449,7 @@ export default function TrafficEngine() {
                     ) : (
                       <MasqueradePanel
                         hook={masq}
+                        ttl={ttl}
                         running={masqRunning}
                         otherOwns={voRunning}
                         otherModeLabel={videoLabel}

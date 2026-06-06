@@ -72,7 +72,16 @@
     "video_tagline": "Streaming più fluido. Contrasta il throttling video dell'operatore per ridurre il buffering.",
     "masquerade_tagline": "Nascondi il tuo traffico. Maschera l'HTTPS dietro un unico dominio in whitelist così l'operatore non può isolarlo per limitarlo.",
     "enable_mode": "Attiva {{mode}}",
-    "aria_enable_engine": "Accendi il motore"
+    "aria_enable_engine": "Accendi il motore",
+    "bypass_label": "Aggira Hotspot",
+    "bypass_state_on": "Attivo",
+    "bypass_helper_idle": "Fissa TTL e hop-limit a 64 così i dispositivi in tethering non vengono rilevati come hotspot.",
+    "bypass_helper_active": "Attivo — tutto il traffico esce con TTL/HL 64.",
+    "bypass_helper_external": "Impostato altrove su TTL {{ttl}} / HL {{hl}} (pagina TTL o un profilo SIM). Gestiscilo lì.",
+    "bypass_toast_enabled": "Aggira hotspot attivo — TTL/HL impostato a 64",
+    "bypass_toast_disabled": "Aggira hotspot disattivato — TTL/HL azzerato",
+    "bypass_toast_error": "Impossibile modificare aggira hotspot",
+    "bypass_aria": "Attiva/disattiva aggira hotspot (TTL e hop-limit 64)"
   },
   "ethernet": {
     "page_title": "Informazioni sullo stato Ethernet",

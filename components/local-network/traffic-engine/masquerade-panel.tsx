@@ -14,8 +14,10 @@ import { FieldError } from "@/components/ui/field";
 import { SaveButton, useSaveFlash } from "@/components/ui/save-button";
 import { HintIcon } from "@/components/ui/hint-icon";
 import type { useTrafficMasquerade } from "@/hooks/use-traffic-masquerade";
+import type { UseTtlSettingsReturn } from "@/hooks/use-ttl-settings";
 import { validateDomainKey } from "@/lib/validate-domain";
 import { EngineEnableRow } from "./engine-enable-row";
+import { BypassHotspotRow } from "./bypass-hotspot-row";
 import { EngineCheckRow } from "./engine-check-row";
 import { ResultAlert } from "./result-alert";
 
@@ -25,6 +27,8 @@ export const DEFAULT_SNI_DOMAIN = "speedtest.net";
 
 interface MasqueradePanelProps {
   hook: ReturnType<typeof useTrafficMasquerade>;
+  /** Composer-owned global TTL/HL hook, for the Bypass Hotspot row. */
+  ttl: UseTtlSettingsReturn;
   /** Whether Masquerade owns the engine. */
   running: boolean;
   /** Whether Video Optimizer owns the engine (enabling masquerade takes over). */
@@ -47,6 +51,7 @@ interface MasqueradePanelProps {
  */
 export function MasqueradePanel({
   hook,
+  ttl,
   running,
   otherOwns,
   otherModeLabel,
@@ -105,6 +110,9 @@ export function MasqueradePanel({
               : t("traffic_engine.aria_enable_engine")
           }
         />
+
+        {/* Hotspot bypass — global TTL/HL shortcut, shared with Video Optimizer */}
+        <BypassHotspotRow ttl={ttl} />
 
         {/* Disguise domain */}
         <div className="flex flex-col gap-2 border-t pt-5">
