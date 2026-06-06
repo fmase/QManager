@@ -3,7 +3,9 @@
 import { useState, useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-import { Loader2Icon, RouterIcon, TriangleAlertIcon, ExternalLinkIcon } from "lucide-react";
+import { TriangleAlertIcon, ExternalLinkIcon } from "lucide-react";
+import { motion, AnimatePresence } from "motion/react";
+import { EASE_OUT_EXPO, DUR } from "@/lib/motion";
 
 import {
   Card,
@@ -27,7 +29,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Button } from "@/components/ui/button";
+import { SaveButton } from "@/components/ui/save-button";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -163,51 +165,27 @@ const LanConfigCard = () => {
           <CardDescription>{t("lan_config.card_description")}</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-4">
-            <Skeleton className="h-10 w-full" />
-            <Skeleton className="h-10 w-full" />
-            <Skeleton className="h-10 w-36" />
+          <div className="grid gap-6">
+            <div className="grid gap-2">
+              <Skeleton className="h-3 w-24" />
+              <Skeleton className="h-9 max-w-xs w-full" />
+              <Skeleton className="h-3 w-48" />
+            </div>
+            <div className="grid gap-2">
+              <Skeleton className="h-3 w-24" />
+              <Skeleton className="h-9 max-w-xs w-full" />
+              <Skeleton className="h-3 w-48" />
+            </div>
+            <Skeleton className="h-9 w-32" />
           </div>
         </CardContent>
       </Card>
     );
   }
 
-  // --- Applied: persistent banner (connection is dropping) --------------------
-  if (applied) {
-    const url = `http://${applied.newIpaddr}`;
-    return (
-      <Card className="@container/card">
-        <CardHeader>
-          <CardTitle>{t("lan_config.card_title")}</CardTitle>
-          <CardDescription>{t("lan_config.card_description")}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Alert variant="warning">
-            <TriangleAlertIcon />
-            <AlertTitle>{t("lan_config.applied_title")}</AlertTitle>
-            <AlertDescription>
-              <p>
-                {t("lan_config.applied_body", {
-                  address: `${applied.newIpaddr}/${applied.prefix}`,
-                  seconds: applied.windowSeconds,
-                })}
-              </p>
-              <a
-                href={url}
-                className="inline-flex items-center gap-1.5 font-medium text-foreground underline underline-offset-4 tabular-nums"
-              >
-                <ExternalLinkIcon className="size-3.5" />
-                {url}
-              </a>
-            </AlertDescription>
-          </Alert>
-        </CardContent>
-      </Card>
-    );
-  }
+  // --- Unified render (applied banner + normal form, crossfaded) --------------
+  const appliedUrl = applied ? `http://${applied.newIpaddr}` : null;
 
-  // --- Normal render ----------------------------------------------------------
   return (
     <Card className="@container/card">
       <CardHeader>
@@ -215,94 +193,140 @@ const LanConfigCard = () => {
         <CardDescription>{t("lan_config.card_description")}</CardDescription>
       </CardHeader>
       <CardContent>
-        <form
-          className="grid gap-6"
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (canApply) setConfirmOpen(true);
-          }}
-        >
-          <FieldSet>
-            <FieldGroup>
-              <Field>
-                <FieldLabel htmlFor="lan-ipaddr">
-                  {t("lan_config.label_gateway")}
-                </FieldLabel>
-                <Input
-                  id="lan-ipaddr"
-                  inputMode="numeric"
-                  autoComplete="off"
-                  spellCheck={false}
-                  placeholder="192.168.1.1"
-                  value={ipInput}
-                  onChange={(e) => setIpInput(e.target.value.trim())}
-                  disabled={isSaving}
-                  aria-invalid={ipInput !== "" && !isValid}
-                  className="font-mono tabular-nums max-w-xs"
-                />
-                <FieldDescription>
-                  {ipInput !== "" && validationKey ? (
-                    <span className="text-destructive">
-                      {t(`lan_config.error_${validationKey}`)}
-                    </span>
-                  ) : (
-                    t("lan_config.help_gateway")
-                  )}
-                </FieldDescription>
-              </Field>
-
-              <Field>
-                <FieldLabel htmlFor="lan-prefix">
-                  {t("lan_config.label_subnet")}
-                </FieldLabel>
-                <Select
-                  value={String(prefix)}
-                  onValueChange={(v) => setPrefix(Number(v))}
-                  disabled={isSaving}
-                >
-                  <SelectTrigger
-                    id="lan-prefix"
-                    className="font-mono tabular-nums max-w-xs"
+        <AnimatePresence mode="wait" initial={false}>
+          {applied ? (
+            <motion.div
+              key="applied"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: DUR.base, ease: EASE_OUT_EXPO }}
+            >
+              <Alert variant="warning">
+                <TriangleAlertIcon />
+                <AlertTitle>{t("lan_config.applied_title")}</AlertTitle>
+                <AlertDescription>
+                  <p>
+                    {t("lan_config.applied_body", {
+                      address: `${applied.newIpaddr}/${applied.prefix}`,
+                      seconds: applied.windowSeconds,
+                    })}
+                  </p>
+                  <a
+                    href={appliedUrl!}
+                    className="inline-flex items-center gap-1.5 font-medium text-foreground underline underline-offset-4 tabular-nums"
                   >
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {PREFIX_OPTIONS.map((p) => (
-                      <SelectItem
-                        key={p}
-                        value={String(p)}
-                        className="font-mono tabular-nums"
+                    <ExternalLinkIcon className="size-3.5" />
+                    {appliedUrl}
+                  </a>
+                </AlertDescription>
+              </Alert>
+            </motion.div>
+          ) : (
+            <motion.div
+              key="form"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: DUR.base, ease: EASE_OUT_EXPO }}
+            >
+              <form
+                className="grid gap-6"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (canApply) setConfirmOpen(true);
+                }}
+              >
+                <FieldSet>
+                  <FieldGroup>
+                    <Field>
+                      <FieldLabel htmlFor="lan-ipaddr">
+                        {t("lan_config.label_gateway")}
+                      </FieldLabel>
+                      <Input
+                        id="lan-ipaddr"
+                        inputMode="decimal"
+                        autoComplete="off"
+                        spellCheck={false}
+                        placeholder="192.168.1.1"
+                        value={ipInput}
+                        onChange={(e) => setIpInput(e.target.value.trim())}
+                        disabled={isSaving}
+                        aria-invalid={ipInput !== "" && !isValid}
+                        className="tabular-nums max-w-xs"
+                      />
+                      <FieldDescription>
+                        {ipInput !== "" && validationKey ? (
+                          <span
+                            role="alert"
+                            className="inline-flex items-center gap-1.5 text-destructive"
+                          >
+                            <TriangleAlertIcon className="size-3.5 shrink-0" />
+                            {t(`lan_config.error_${validationKey}`)}
+                          </span>
+                        ) : (
+                          t("lan_config.help_gateway")
+                        )}
+                      </FieldDescription>
+                    </Field>
+
+                    <Field>
+                      <FieldLabel htmlFor="lan-prefix">
+                        {t("lan_config.label_subnet")}
+                      </FieldLabel>
+                      <Select
+                        value={String(prefix)}
+                        onValueChange={(v) => setPrefix(Number(v))}
+                        disabled={isSaving}
                       >
-                        /{p} · {prefixToNetmask(p)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FieldDescription>
-                  {t("lan_config.help_subnet")}
-                </FieldDescription>
-              </Field>
-            </FieldGroup>
-          </FieldSet>
+                        <SelectTrigger
+                          id="lan-prefix"
+                          className="tabular-nums max-w-xs"
+                        >
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {PREFIX_OPTIONS.map((p) => (
+                            <SelectItem
+                              key={p}
+                              value={String(p)}
+                              className="tabular-nums"
+                            >
+                              /{p} · {prefixToNetmask(p)}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FieldDescription>
+                        {t("lan_config.help_subnet")}
+                      </FieldDescription>
+                    </Field>
+                  </FieldGroup>
+                </FieldSet>
 
-          {error && !applied && (
-            <p className="text-sm text-destructive">{error}</p>
+                {error && !applied && (
+                  <p
+                    role="alert"
+                    className="inline-flex items-center gap-1.5 text-sm text-destructive"
+                  >
+                    <TriangleAlertIcon className="size-3.5 shrink-0" />
+                    {error}
+                  </p>
+                )}
+
+                <SaveButton
+                  type="submit"
+                  className="w-fit"
+                  isSaving={isSaving}
+                  saved={false}
+                  disabled={!canApply}
+                  label={t("lan_config.action_apply")}
+                  savingLabel={tCommon("state.applying")}
+                />
+              </form>
+            </motion.div>
           )}
-
-          <Button type="submit" className="w-fit" disabled={!canApply}>
-            {isSaving ? (
-              <>
-                <Loader2Icon className="size-4 animate-spin" />
-                {tCommon("state.applying")}
-              </>
-            ) : (
-              <>
-                <RouterIcon className="size-4" />
-                {t("lan_config.action_apply")}
-              </>
-            )}
-          </Button>
-        </form>
+        </AnimatePresence>
       </CardContent>
 
       {/* Confirm dialog — applying severs the LAN connection */}
