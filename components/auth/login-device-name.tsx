@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 
 import { useDeviceHostname } from "@/hooks/use-device-hostname";
 import { Skeleton } from "@/components/ui/skeleton";
+import { DUR, EASE_OUT_EXPO } from "@/lib/motion";
 
 // =============================================================================
 // LoginDeviceName — pre-auth device-identity line for the login title block.
@@ -29,9 +30,12 @@ export function LoginDeviceName() {
   const { hostname, isLoading } = useDeviceHostname();
   const shouldReduceMotion = useReducedMotion();
 
+  // Tokenized from lib/motion.ts so the skeleton↔name swap settles on the
+  // same curve and cadence as the login column's own entrance — one
+  // instrument, not two slightly different timings.
   const transition = shouldReduceMotion
     ? { duration: 0 }
-    : { duration: 0.3, ease: [0.16, 1, 0.3, 1] as const };
+    : { duration: DUR.base, ease: EASE_OUT_EXPO };
 
   return (
     // mode="wait" so the skeleton fades fully out before the resolved name (or
@@ -45,8 +49,12 @@ export function LoginDeviceName() {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={transition}
+          // h-5 reserves the same 20px line-box the resolved text-sm name
+          // occupies, with the 14px bar optically centered inside it — so the
+          // skeleton→name swap lands on the same baseline with no vertical jump.
+          className="flex h-5 items-center"
         >
-          <Skeleton className="h-4 w-36 rounded-sm" />
+          <Skeleton className="h-3.5 w-36 rounded" />
         </motion.div>
       ) : hostname ? (
         <motion.p
@@ -63,7 +71,7 @@ export function LoginDeviceName() {
           <span className="sr-only">
             {t("login.signing_in_to", { hostname })}
           </span>
-          <span aria-hidden>{hostname}</span>
+          <span aria-hidden>{t("login.signing_in_as", { hostname })}</span>
         </motion.p>
       ) : null}
     </AnimatePresence>

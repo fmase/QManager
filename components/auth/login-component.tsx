@@ -17,17 +17,18 @@ import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { resolveErrorMessage } from "@/lib/i18n/resolve-error";
+import { DUR, EASE_OUT_EXPO } from "@/lib/motion";
 
 // =============================================================================
 // LoginComponent — centered brand mark, product headline, in-place recovery.
 // =============================================================================
 // Composition follows the shadcn Field reference: a centered cluster (logo →
-// "Welcome to QManager" → helper-text affordance) sits above the password
-// field. The helper-text slot — which the reference uses for "Don't have an
-// account? Sign up" — becomes the visible toggle for the recovery disclosure
-// that used to live at the bottom of the form. The disclosure expands in
-// place between the headline and the password field, so the answer appears
-// where the question was asked.
+// "Welcome to QManager" → device-name line) sits above the password field.
+// Below the field, a quiet "Can't sign in?" toggle owns the recovery
+// disclosure: the panel expands in place directly beneath the toggle, so the
+// answer appears right where the question was asked. The toggle lives inside
+// the password Field (not the input's positioning wrapper), so the Field's own
+// gap-3 sets a calm, deliberate distance from the input above.
 // =============================================================================
 
 export default function LoginComponent() {
@@ -58,7 +59,9 @@ export default function LoginComponent() {
   // promotes the banner if applicable. Avoids the hydration-mismatch tax
   // of reading window.location.search during render.
   useEffect(() => {
-    if (new URLSearchParams(window.location.search).get("reason") === "offline") {
+    if (
+      new URLSearchParams(window.location.search).get("reason") === "offline"
+    ) {
       setWasOffline(true);
     }
   }, []);
@@ -127,14 +130,16 @@ export default function LoginComponent() {
       // settle). useReducedMotion zeroes the duration so vestibular-sensitive
       // users see the column mount in place rather than slide. animateMount
       // gates the entrance to the first visit per session.
-      initial={shouldReduceMotion || !animateMount ? false : { opacity: 0, y: 12 }}
+      initial={
+        shouldReduceMotion || !animateMount ? false : { opacity: 0, y: 8 }
+      }
       animate={
         shouldReduceMotion || !animateMount ? undefined : { opacity: 1, y: 0 }
       }
       transition={
         shouldReduceMotion || !animateMount
           ? { duration: 0 }
-          : { duration: 0.35, ease: [0.16, 1, 0.3, 1] }
+          : { duration: DUR.slow, ease: EASE_OUT_EXPO }
       }
       className="flex flex-col gap-6"
     >
@@ -172,66 +177,8 @@ export default function LoginComponent() {
                   link simply centers alone. */}
               <div className="flex flex-wrap items-center justify-center gap-x-2.5 gap-y-1">
                 <LoginDeviceName />
-                <button
-                  type="button"
-                  onClick={() => setRecoveryOpen((v) => !v)}
-                  aria-expanded={recoveryOpen}
-                  aria-controls={recoveryPanelId}
-                  className="text-muted-foreground hover:text-foreground focus-visible:ring-ring/50 inline-flex cursor-pointer items-center rounded-sm px-1 py-0.5 text-sm underline-offset-4 transition-colors outline-none hover:underline focus-visible:ring-2"
-                >
-                  {t("login.recovery.toggle")}
-                </button>
               </div>
             </div>
-
-            {/* In-place recovery disclosure. The panel only exists in the
-                DOM when open: flex/grid gap is applied between *existing*
-                children regardless of their rendered height, so an always-
-                mounted collapsed wrapper would stack two FieldGroup gap-7s
-                (~56px) between the toggle and the password field. Mounting
-                conditionally lets the gap collapse to a single 28px when
-                closed. AnimatePresence drives the smooth height: 0 ↔ auto
-                enter/exit, with motion's built-in measurement; the inline
-                style cuts duration to 0 for reduced-motion users. */}
-            <AnimatePresence initial={false}>
-              {recoveryOpen && (
-                <motion.div
-                  key="recovery"
-                  id={recoveryPanelId}
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: "auto", opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                  transition={
-                    shouldReduceMotion
-                      ? { duration: 0 }
-                      : { duration: 0.3, ease: [0.16, 1, 0.3, 1] }
-                  }
-                  style={{ overflow: "hidden" }}
-                >
-                  <div className="border-border bg-muted/40 text-muted-foreground space-y-2 rounded-lg border px-4 py-3 text-left text-sm leading-relaxed">
-                    <p>{t("login.recovery.intro")}</p>
-                    <ul className="list-disc space-y-1.5 pl-5">
-                      <li>
-                        {/* Trans + <code> mapping keeps the command semantic
-                            and translatable without fragmenting the sentence
-                            into before/after tokens that break under different
-                            word orders. */}
-                        <Trans
-                          i18nKey="login.recovery.option_reset"
-                          ns="common"
-                          components={{
-                            code: (
-                              <code className="bg-background text-foreground border-border rounded border px-1 py-0.5 font-mono text-[0.85em]" />
-                            ),
-                          }}
-                        />
-                      </li>
-                      <li>{t("login.recovery.option_backup")}</li>
-                    </ul>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
 
             {/* Banners share one shape: rounded-lg + tinted border + tinted
                 bg + leading icon + tinted text. The role is carried by
@@ -265,6 +212,7 @@ export default function LoginComponent() {
                   autoFocus
                   className="pr-10"
                 />
+
                 <Button
                   type="button"
                   variant="ghost"
@@ -284,6 +232,66 @@ export default function LoginComponent() {
                     <EyeIcon className="size-4" />
                   )}
                 </Button>
+              </div>
+
+              {/* Recovery affordance + in-place disclosure, kept inside the
+                  password Field so the Field's own gap-3 (12px) sets the
+                  spacing to the input above. (The toggle was previously
+                  trapped in the input's positioning wrapper, where a
+                  single-child `grid gap-8` could never apply a gap.) The
+                  answer expands directly beneath the question; the inner gap
+                  only spans the toggle↔panel while the panel is mounted, so a
+                  closed disclosure collapses to just the toggle. */}
+              <div className="flex flex-col gap-2">
+                <button
+                  type="button"
+                  onClick={() => setRecoveryOpen((v) => !v)}
+                  aria-expanded={recoveryOpen}
+                  aria-controls={recoveryPanelId}
+                  className="text-muted-foreground hover:text-foreground focus-visible:ring-ring/50 inline-flex w-fit cursor-pointer items-center self-start rounded-sm px-1 py-0.5 text-sm underline-offset-4 transition-colors outline-none hover:underline focus-visible:ring-2"
+                >
+                  {t("login.recovery.toggle")}
+                </button>
+
+                <AnimatePresence initial={false}>
+                  {recoveryOpen && (
+                    <motion.div
+                      key="recovery"
+                      id={recoveryPanelId}
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={
+                        shouldReduceMotion
+                          ? { duration: 0 }
+                          : { duration: DUR.slow, ease: EASE_OUT_EXPO }
+                      }
+                      style={{ overflow: "hidden" }}
+                    >
+                      <div className="border-border bg-muted/40 text-muted-foreground space-y-2 rounded-lg border px-4 py-3 text-left text-sm leading-relaxed">
+                        <p>{t("login.recovery.intro")}</p>
+                        <ul className="list-disc space-y-1.5 pl-5">
+                          <li>
+                            {/* Trans + <code> mapping keeps the command semantic
+                              and translatable without fragmenting the sentence
+                              into before/after tokens that break under different
+                              word orders. */}
+                            <Trans
+                              i18nKey="login.recovery.option_reset"
+                              ns="common"
+                              components={{
+                                code: (
+                                  <code className="bg-background text-foreground border-border rounded border px-1 py-0.5 font-mono text-[0.85em]" />
+                                ),
+                              }}
+                            />
+                          </li>
+                          <li>{t("login.recovery.option_backup")}</li>
+                        </ul>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
             </Field>
 

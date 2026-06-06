@@ -60,6 +60,7 @@
     "hide_password": "Hide password",
     "session_expired": "Your session ended because the device was unreachable for too long.",
     "signing_in_to": "Signing in to {{hostname}}",
+    "signing_in_as": "Sign in as {{hostname}}",
     "recovery": {
       "toggle": "Can't sign in?",
       "intro": "If you've lost the admin password, you have two recovery paths:",
