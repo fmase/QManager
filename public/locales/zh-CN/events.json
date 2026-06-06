@@ -29,6 +29,6 @@
     "config_restore_section_failed": "分段恢复失败",
     "config_restore_section_skipped": "分段已跳过",
     "config_restore_completed": "恢复完成",
-    "wol_changed": "WoL 设置已更改"
+    "lan_address_changed": "LAN 地址已更改"
   }
 }

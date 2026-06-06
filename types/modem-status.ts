@@ -574,7 +574,7 @@ export type NetworkEventType =
   | "config_restore_section_failed" // Single section failed after retries
   | "config_restore_section_skipped" // Single section skipped (incompatible or sim_mismatch)
   | "config_restore_completed" // Configuration restore completed
-  | "wol_changed"; // Wake-on-LAN setting changed by user
+  | "lan_address_changed"; // LAN IP address / subnet changed by user
 
 /** Severity level for UI icon coloring */
 export type EventSeverity = "info" | "warning" | "error";

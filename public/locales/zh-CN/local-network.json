@@ -102,14 +102,24 @@
     "label_duplex": "双工模式",
     "alt_device_icon": "设备图标"
   },
-  "ethernet_leds": {
-    "card_title": "Wake-on-LAN",
-    "card_description": "启用或禁用以太网端口的 Wake-on-LAN。启用后，网络上的其他设备可通过发送魔术包将本机从休眠状态唤醒。若未使用此功能，请保持禁用 — 始终在线的调制解调器网关通常不需要它。",
-    "label_disable_wol": "关闭 Wake-on-LAN",
-    "applying": "正在应用… 连接可能会短暂中断（{{seconds}} 秒）",
-    "toast_success_enabled": "已禁用 Wake-on-LAN",
-    "toast_success_disabled": "已启用 Wake-on-LAN",
-    "toast_error_save": "保存 Wake-on-LAN 设置失败"
+  "lan_config": {
+    "card_title": "LAN 地址",
+    "card_description": "设置路由器的 LAN IP 地址（设备所用的网关）以及 br-lan 网络的子网大小。",
+    "label_gateway": "网关 IP 地址",
+    "help_gateway": "路由器在 LAN 上的自身地址。设备将其用作默认网关。",
+    "label_subnet": "子网掩码",
+    "help_subnet": "以 CIDR 前缀形式选择 LAN 网络的大小。",
+    "action_apply": "应用更改",
+    "confirm_title": "更改 LAN 地址？",
+    "confirm_body": "LAN 将切换为 {{address}}（掩码 {{netmask}}）。此操作会重新绑定网络，您当前的连接将中断。",
+    "confirm_reconnect": "应用后请稍候几秒，然后手动重新插拔 LAN 或以太网线缆，让设备获取新的 IP。您需要访问新地址才能继续。",
+    "confirm_action": "应用并重新连接",
+    "applied_title": "LAN 地址正在更改",
+    "applied_body": "设备正在切换到 {{address}}。连接将中断约 {{seconds}} 秒 — 请重新插拔 LAN 或以太网线缆，然后打开新地址：",
+    "toast_error_save": "应用 LAN 设置失败",
+    "error_invalid_ipaddr": "请输入有效的单播 IPv4 地址（例如 192.168.1.1）。",
+    "error_invalid_host_in_subnet": "这是所选子网的网络地址或广播地址。请选择可用的主机地址。",
+    "error_invalid_prefix": "请选择 /16 到 /30 之间的子网前缀。"
   },
   "dns": {
     "page_title": "自定义 DNS 设置",

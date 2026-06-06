@@ -1,11 +1,16 @@
 # 🚀 QManager BETA v0.1.25
 
-This release polishes the login screen: clearer "Can't sign in?" recovery help, tighter alignment between the device-name line and its loading state, and a fully translated device-name label.
+This release adds LAN address configuration to the Local Network page and polishes the login screen.
+
+## ✨ New Features
+
+- **Set your LAN gateway address and subnet from the Local Network page.** You can now change the modem's LAN IP address and subnet prefix (/16–/30) directly in QManager — no SSH required. After saving, the device reconnects to the new address automatically. A persistent banner shows you exactly where to navigate once the LAN comes back up.
 
 ## ✅ Improvements
 
 - **The login screen's "Can't sign in?" help is clearer and better aligned.** The recovery link now sits with comfortable spacing below the password field, and tapping it expands the recovery steps directly beneath the link — right where you asked — instead of above the field. The device-name line and its loading placeholder now share the same baseline, so the screen settles into place without a flicker, and all of its motion runs on one unified timing.
-- **The login device-name line now reads "Sign in as <your device name>" in every supported language.** The phrase was previously shown only in English; it is now translated across all supported languages.
+- **The login device-name line now reads "Sign in as <your device name>" in every supported language.**
+- **Wake-on-LAN removed.** The WoL toggle has been removed. Upgrading devices will have the stale WoL configuration cleaned up automatically.
 
 ## 📥 Installation
 

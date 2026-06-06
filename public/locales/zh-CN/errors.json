@@ -154,8 +154,11 @@
   "updater_not_executable": "更新程序二进制文件不可执行",
   "usbnet_failed": "USB 网络接口配置失败",
   "usb_mode_incompatible_for_verizon": "Verizon 配置要求 USB 模式为 ECM 或 RNDIS — 请在 IP 直通设置中更改 USB 模式后再激活",
-  "wol_not_supported": "此硬件不支持 Wake-on-LAN 控制",
-  "wol_save_failed": "保存 Wake-on-LAN 设置失败",
+  "invalid_host_in_subnet": "该地址不能用作所选子网中的主机",
+  "invalid_ipaddr": "IP 地址无效",
+  "invalid_prefix": "子网前缀超出范围",
+  "lan_read_failed": "无法读取当前 LAN 设置",
+  "lan_save_failed": "无法保存 LAN 设置",
   "write_failed": "将配置写入存储失败",
   "wrong_schema": "备份架构版本与当前版本不匹配"
 }

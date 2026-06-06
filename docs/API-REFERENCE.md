@@ -677,6 +677,50 @@ Custom DNS override settings.
 
 IP passthrough mode configuration.
 
+### GET/POST `/network/lan_config.sh`
+
+Read or write the LAN bridge (`br-lan`) IPv4 address and subnet. Auth-gated. See [`docs/features/lan-config.md`](features/lan-config.md) for the self-severing apply pattern and validation invariants.
+
+**GET Response:**
+
+```json
+{
+  "success": true,
+  "device": "br-lan",
+  "ipaddr": "192.168.1.1",
+  "netmask": "255.255.255.0",
+  "prefix": 24
+}
+```
+
+`prefix` is derived from the stored `netmask` by a pure-shell popcount; it is never stored independently.
+
+**POST Request:**
+
+```json
+{ "ipaddr": "192.168.2.1", "prefix": 24 }
+```
+
+- `ipaddr` — 4 dotted-decimal octets, each 0–255, no leading zeros, first octet 1–223 and not 127 (unicast only).
+- `prefix` — integer, **16–30** (enforced). Values outside this range are rejected.
+
+**POST Success Response:**
+
+```json
+{
+  "success": true,
+  "apply_in_progress": true,
+  "disconnect_window_seconds": 15,
+  "new_ipaddr": "192.168.2.1",
+  "netmask": "255.255.255.0",
+  "prefix": 24
+}
+```
+
+> ⚠️ WARNING: This response is emitted **before** the `network reload` fires. Changing the LAN IP severs the serving HTTP connection and makes the old origin unreachable. The frontend hook does not retry — it transitions directly to an applied state and shows a persistent banner with the new address.
+
+**Error codes:** `invalid_ipaddr`, `invalid_prefix`, `invalid_host_in_subnet` (IP is the network/broadcast address of the resulting subnet), `lan_read_failed`, `lan_save_failed`
+
 ---
 
 ## Custom Profiles

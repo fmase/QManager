@@ -17,6 +17,7 @@ Per-feature deep-dives extracted from `CLAUDE.md` to keep the always-loaded prom
 | Band Locking | `bands/current.sh` + `bands/lock.sh` + `bands/failover_status.sh` + `bands/failover_toggle.sh` | `use-band-locking.ts` | `band-locking.ts` (`BandCategory`, `CurrentBands`, `BandLockResponse`) | No |
 | Known-SIMs Database | `system/known_sims.sh` (GET + POST list/clear) | — (fetched inline in `known-sims-row.tsx`) | — | No |
 | Connection Quality | `system/ping_profile.sh` (GET/POST) + `system/quality_thresholds.sh` (GET/POST) | `use-ping-profile.ts` + `use-quality-thresholds.ts` | `PingProfile`, `PING_PROFILES`, `QualityPreset`, `QUALITY_PRESETS`, `QualityThresholdsSettings` | No |
+| LAN Gateway / Subnet | `network/lan_config.sh` (GET/POST) | `use-lan-config.ts` | `LanConfigStatus`, `LanConfigSaveRequest`, `LanConfigSaveResponse` | No (network reload) |
 
 ## Index
 
@@ -36,3 +37,4 @@ Per-feature deep-dives extracted from `CLAUDE.md` to keep the always-loaded prom
 | [Band Locking](band-locking.md) | 4 band types → AT param mapping, SA `nr5g_band` vs NR-DC `nrdc_nr5g_band`, substring-match hazard + SA grep-v guard, SA⇄NR-DC swap UX (key-remount), NR-DC view-only (no write path), failover revert (LTE/NSA/SA only), `supported_bands.env` 4-field cache, `policy_band` vs `ue_capability_band`, no zero-band lock |
 | [Known-SIMs Database](known-sims.md) | Persistent ICCID set model, `sim_db_seed_if_absent` return semantics (fresh-device suppression + migration from `last_iccid`), byte-parity requirement, lock-free duplicate tolerance, `sim_db_clear_keep` keeps current SIM, CGI `known_sims.sh` list/clear contract, `previous_iccid` shape-compat |
 | [Connection Quality](connection-quality.md) | HTTP-probe daemon (curl, not ICMP), ping profile→params table (daemon-owned), `isDefault` absence semantics for quality_thresholds, ceil-division secs→samples, reload flags, GET/POST key asymmetry (`target1` vs `target_1`) |
+| [LAN Gateway / Subnet](lan-config.md) | LAN IP + prefix editor, self-severing apply pattern (response before `network reload`), hand-rolled POSIX validation (no `ipcalc.sh`, no jq regex), null-byte-in-shell-source / SCP deploy quirk, WoL removal artifact, `lan_address_changed` event |

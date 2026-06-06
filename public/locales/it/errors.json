@@ -154,8 +154,11 @@
   "updater_not_executable": "Il file binario dell'aggiornamento non è eseguibile",
   "usbnet_failed": "La configurazione dell'interfaccia di rete USB non è riuscita",
   "usb_mode_incompatible_for_verizon": "I profili Verizon richiedono la modalità USB ECM o RNDIS — modifica la modalità USB nelle impostazioni IP Passthrough prima di attivare",
-  "wol_not_supported": "Il controllo Wake-on-LAN non è supportato su questo hardware",
-  "wol_save_failed": "Impossibile salvare l'impostazione Wake-on-LAN",
+  "invalid_host_in_subnet": "Questo indirizzo non può essere usato come host nella sottorete scelta",
+  "invalid_ipaddr": "L'indirizzo IP non è valido",
+  "invalid_prefix": "Il prefisso di sottorete è fuori intervallo",
+  "lan_read_failed": "Impossibile leggere le impostazioni LAN attuali",
+  "lan_save_failed": "Impossibile salvare le impostazioni LAN",
   "write_failed": "Impossibile scrivere la configurazione nell'archivio",
   "wrong_schema": "La versione dello schema di backup non corrisponde alla versione corrente"
 }

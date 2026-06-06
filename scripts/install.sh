@@ -760,22 +760,6 @@ stop_services() {
 seed_uci_defaults() {
     step "Seeding UCI defaults"
 
-    # Wake-on-LAN disabled by default (CLAUDE.md / Ethernet WoL change).
-    # Only seed when the key is ABSENT — preserves any explicit user choice
-    # (whether 0=enabled or 1=disabled) across upgrades. The qmanager_wol_fix
-    # init.d picks up the value at next boot via its existing
-    # `disable_wol == "1"` guard; no live ethtool call needed here because
-    # install ends in a reboot.
-    if ! uci -q get quecmanager.network >/dev/null 2>&1; then
-        uci set quecmanager.network=network
-    fi
-    if ! uci -q get quecmanager.network.disable_wol >/dev/null 2>&1; then
-        uci set quecmanager.network.disable_wol=1
-        info "Seeded quecmanager.network.disable_wol=1 (WoL disabled by default)"
-    else
-        info "quecmanager.network.disable_wol already set — preserving user choice"
-    fi
-
     # Force Tailscale Fixes — opt-in toggle, default OFF. Re-enables the
     # historical fw4 zone + mwan3 ipset workarounds for tailscale0 on top of
     # any firmware that already handles routing (sdxpinn-patch). Recommended
@@ -1289,6 +1273,12 @@ cleanup_legacy_scripts() {
     fi
     rm -f "$BIN_DIR/qmanager_wan_guard"
     rm -f /etc/rc.d/*qmanager_wan_guard 2>/dev/null || true
+
+    # Retire orphaned Wake-on-LAN UCI flag (WoL feature removed). Key-only
+    # delete — preserves the quecmanager.network section in case a SKU adds
+    # sibling keys. The qmanager_wol_fix init.d is auto-pruned by the stale
+    # init.d loop below; wol.sh CGI is harmless if it lingers.
+    uci -q delete quecmanager.network.disable_wol 2>/dev/null && uci -q commit quecmanager 2>/dev/null || true
 
     # Daemons: /usr/bin/qmanager_*, qcmd, bridge_traffic_monitor_*
     for f in "$BIN_DIR"/qmanager_* "$BIN_DIR/qcmd" "$BIN_DIR"/bridge_traffic_monitor_*; do

@@ -101,14 +101,24 @@
     "label_duplex": "Duplex",
     "alt_device_icon": "Icona del dispositivo"
   },
-  "ethernet_leds": {
-    "card_title": "Wake-on-LAN",
-    "card_description": "Abilita o disabilita Wake-on-LAN sulla porta Ethernet. Quando è attivo, un altro dispositivo sulla rete può risvegliare questa unità dalla sospensione inviando un magic packet. Lascia disabilitato se non lo usi — la maggior parte dei gateway modem sempre accesi non ne ha bisogno.",
-    "label_disable_wol": "Disabilita Wake-on-LAN",
-    "applying": "Applicazione in corso… la connessione potrebbe interrompersi brevemente ({{seconds}}s)",
-    "toast_success_enabled": "Wake-on-LAN disabilitato",
-    "toast_success_disabled": "Wake-on-LAN abilitato",
-    "toast_error_save": "Impossibile salvare l'impostazione Wake-on-LAN"
+  "lan_config": {
+    "card_title": "Indirizzo LAN",
+    "card_description": "Imposta l'indirizzo IP LAN del router (il gateway usato dai tuoi dispositivi) e la dimensione della sottorete per la rete br-lan.",
+    "label_gateway": "Indirizzo IP Gateway",
+    "help_gateway": "L'indirizzo del router sulla LAN. I dispositivi lo usano come gateway predefinito.",
+    "label_subnet": "Maschera di Sottorete",
+    "help_subnet": "Scegli la dimensione della rete LAN come prefisso CIDR.",
+    "action_apply": "Applica Modifiche",
+    "confirm_title": "Cambiare l'indirizzo LAN?",
+    "confirm_body": "La LAN passerà a {{address}} (maschera {{netmask}}). Questo riavvia la rete e la connessione attuale verrà interrotta.",
+    "confirm_reconnect": "Dopo aver applicato, attendi qualche secondo, quindi ricollega manualmente il cavo LAN o Ethernet affinché il dispositivo riceva il nuovo IP. Dovrai accedere al nuovo indirizzo per continuare.",
+    "confirm_action": "Applica e Riconnetti",
+    "applied_title": "L'indirizzo LAN sta cambiando",
+    "applied_body": "Il dispositivo si sta spostando su {{address}}. La connessione si interromperà per circa {{seconds}} secondi — ricollega il cavo LAN o Ethernet, quindi apri il nuovo indirizzo:",
+    "toast_error_save": "Impossibile applicare le impostazioni LAN",
+    "error_invalid_ipaddr": "Inserisci un indirizzo IPv4 unicast valido (es. 192.168.1.1).",
+    "error_invalid_host_in_subnet": "Questo è l'indirizzo di rete o di broadcast per la sottorete scelta. Scegli un indirizzo host utilizzabile.",
+    "error_invalid_prefix": "Scegli un prefisso di sottorete tra /16 e /30."
   },
   "dns": {
     "page_title": "Impostazioni DNS personalizzate",

@@ -102,14 +102,24 @@
     "label_duplex": "Duplex",
     "alt_device_icon": "Device Icon"
   },
-  "ethernet_leds": {
-    "card_title": "Wake-on-LAN",
-    "card_description": "Enable or disable Wake-on-LAN on the Ethernet port. When enabled, another device on the network can power this unit out of sleep by sending a magic packet. Leave disabled if you don't use it — most always-on modem gateways have no need for it.",
-    "label_disable_wol": "Disable Wake-on-LAN",
-    "applying": "Applying… your connection may briefly drop ({{seconds}}s)",
-    "toast_success_enabled": "Wake-on-LAN disabled",
-    "toast_success_disabled": "Wake-on-LAN enabled",
-    "toast_error_save": "Failed to save Wake-on-LAN setting"
+  "lan_config": {
+    "card_title": "LAN Address",
+    "card_description": "Set the router's LAN IP address (the gateway your devices use) and the subnet size for the br-lan network.",
+    "label_gateway": "Gateway IP Address",
+    "help_gateway": "The router's own address on the LAN. Devices use it as their default gateway.",
+    "label_subnet": "Subnet Mask",
+    "help_subnet": "Choose the size of the LAN network as a CIDR prefix.",
+    "action_apply": "Apply Changes",
+    "confirm_title": "Change LAN address?",
+    "confirm_body": "The LAN will switch to {{address}} (netmask {{netmask}}). This rebinds the network and your current connection will drop.",
+    "confirm_reconnect": "After applying, wait a few seconds, then manually reconnect your LAN or Ethernet cable so your device picks up the new IP. You'll need to browse to the new address to continue.",
+    "confirm_action": "Apply & Reconnect",
+    "applied_title": "LAN address is changing",
+    "applied_body": "The device is moving to {{address}}. Your connection will drop for about {{seconds}} seconds — reconnect your LAN or Ethernet cable, then open the new address:",
+    "toast_error_save": "Failed to apply LAN settings",
+    "error_invalid_ipaddr": "Enter a valid unicast IPv4 address (e.g. 192.168.1.1).",
+    "error_invalid_host_in_subnet": "This is the network or broadcast address for the chosen subnet. Pick a usable host address.",
+    "error_invalid_prefix": "Choose a subnet prefix between /16 and /30."
   },
   "dns": {
     "page_title": "Custom DNS Settings",

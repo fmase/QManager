@@ -57,6 +57,26 @@ This is why CGI scripts that extract boolean fields use `if . == null then empty
 
 `jq -r '.missing_key'` on a key that does not exist prints the four-character string `null`, not an empty string. Subsequent shell `[ -z "$var" ]` checks pass incorrectly. Use `// empty` (for non-boolean fields) or `if . == null then empty else . end` to produce a truly empty output.
 
+### Null Bytes in Shell Source Are Invalid; SCP Masks the Defect
+
+A NUL byte (`\x00`) embedded in a shell script — for example as a sentinel prefix in a `jq` filter string — corrupts the script at parse time and can break text tooling on the device. The production deploy path (`cp -r` + `tr -d '\r'` in `install.sh`) preserves null bytes verbatim.
+
+SCP-based transfers silently convert null bytes to newlines (`\n`). This means a script that contains a null byte may pass SCP-based on-device tests and then fail in production because the production installer uses `cp`.
+
+**Safe pattern:** use a leading space as a sentinel in `jq` case-pattern guards. A shell `case` glob catches it identically, and a leading space is valid in shell source:
+
+```sh
+# CORRECT — leading-space sentinel; valid source, caught cleanly by case glob
+val=$(jq -r 'if type != "object" then " not_object" else .field end' file.json)
+case "$val" in
+    " not_object") cgi_error "bad_field" "..."; exit 0 ;;
+esac
+```
+
+Using a literal NUL (`\x00`) as a sentinel instead is dangerous: `cp -r` (the production install path) preserves null bytes verbatim, corrupting the script, while SCP silently converts them to newlines — so SCP-based on-device tests pass and production breaks.
+
+This is the pattern used in `network/lan_config.sh`'s `ipaddr` parser (`" not_object"`, `" missing"`, `" not_string"` sentinels).
+
 ## Known Debt — Cron Writers Without Crond Reload
 
 The existing scheduler subsystems — `tower/schedule.sh` (`qmanager_tower_schedule`), scheduled-reboot, and low-power (`system/settings.sh`) — write the crontab via `crontab -` without issuing `( /etc/init.d/cron reload & )`. This means they share the "dormant crond" gap: on a device that has never had a crontab, the schedule writes correctly but crond never fires because procd has not spawned it yet.

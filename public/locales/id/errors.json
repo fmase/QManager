@@ -1,6 +1,11 @@
 {
   "unknown": "Kesalahan tidak diketahui",
   "unknown_with_detail": "Modem melaporkan: {{detail}}",
+  "invalid_host_in_subnet": "Alamat itu tidak dapat digunakan sebagai host di subnet yang dipilih",
+  "invalid_ipaddr": "Alamat IP tidak valid",
+  "invalid_prefix": "Prefiks subnet di luar rentang",
+  "lan_read_failed": "Tidak dapat membaca pengaturan LAN saat ini",
+  "lan_save_failed": "Tidak dapat menyimpan pengaturan LAN",
   "all_steps_failed": "Penerapan profil gagal — tidak ada pengaturan yang berhasil diterapkan",
   "already_installed": "Layanan sudah terinstal",
   "already_running": "Operasi sedang berjalan",
