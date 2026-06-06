@@ -4,10 +4,14 @@ This release adds LAN address configuration to the Local Network page and polish
 
 ## ✨ New Features
 
+- **The connection watchdog can now recover from degraded-but-reachable links.** When enabled, you can set a latency ceiling (ms) and a packet-loss ceiling (%) — if either is exceeded for a configurable number of consecutive checks, the watchdog runs through the same recovery steps it uses for a full outage. The feature is off by default; turn it on in Monitoring → Connection Watchdog under Connection Quality Monitoring.
+
 - **Set your LAN gateway address and subnet from the Local Network page.** You can now change the modem's LAN IP address and subnet prefix (/16–/30) directly in QManager — no SSH required. A confirmation dialog reminds you that the LAN briefly drops on apply, and a persistent banner shows the new address to browse to (reconnect your LAN/Ethernet cable after a few seconds so your device picks up the new IP).
 - **One-tap Bypass Hotspot in the Traffic Engine.** A new switch under each engine mode pins TTL and hop-limit to 64 so tethered devices aren't flagged as a hotspot — no need to open the TTL/HL page. If TTL/HL is already set elsewhere (the TTL page or a SIM profile), the switch shows on and stays locked so it never fights your existing setup.
 
 ## ✅ Improvements
+
+- **The watchdog's first recovery step now re-registers the modem on the network** instead of bouncing the software WAN interface. This gives the modem a real chance to recover a stalled network attach and is a more effective first action before escalating to a radio toggle or reboot.
 
 - **The login screen's "Can't sign in?" help is clearer and better aligned.** The recovery link now sits with comfortable spacing below the password field, and tapping it expands the recovery steps directly beneath the link — right where you asked — instead of above the field. The device-name line and its loading placeholder now share the same baseline, so the screen settles into place without a flicker, and all of its motion runs on one unified timing.
 - **The login device-name line now reads "Sign in as <your device name>" in every supported language.**

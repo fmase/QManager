@@ -95,7 +95,7 @@ export function WatchdogSettingsCard({
   // Key-based remount: when settings change (initial load or post-save re-fetch),
   // the form reinitializes with fresh values from useState defaults.
   const formKey = settings
-    ? `${settings.enabled}-${settings.max_failures}-${settings.check_interval}-${settings.cooldown}-${settings.backup_sim_slot}`
+    ? `${settings.enabled}-${settings.max_failures}-${settings.check_interval}-${settings.cooldown}-${settings.backup_sim_slot}-${settings.quality_enabled}-${settings.latency_ceiling_ms}-${settings.loss_ceiling_pct}-${settings.quality_consecutive}`
     : "empty";
 
   return (
@@ -147,6 +147,18 @@ function WatchdogSettingsForm({
   const [maxRebootsPerHour, setMaxRebootsPerHour] = useState(
     String(settings?.max_reboots_per_hour ?? 3),
   );
+  const [qualityEnabled, setQualityEnabled] = useState(
+    settings?.quality_enabled ?? false,
+  );
+  const [latencyCeiling, setLatencyCeiling] = useState(
+    String(settings?.latency_ceiling_ms ?? 800),
+  );
+  const [lossCeiling, setLossCeiling] = useState(
+    String(settings?.loss_ceiling_pct ?? 20),
+  );
+  const [qualityConsecutive, setQualityConsecutive] = useState(
+    String(settings?.quality_consecutive ?? 5),
+  );
 
   // --- Validation ---
   const maxFailuresError =
@@ -176,11 +188,52 @@ function WatchdogSettingsForm({
       ? t("watchdog.backup_sim_required_error")
       : null;
 
+  // Quality-trigger validation only applies when quality monitoring is on.
+  const latencyCeilingError =
+    qualityEnabled &&
+    latencyCeiling &&
+    (isNaN(Number(latencyCeiling)) ||
+      Number(latencyCeiling) < 0 ||
+      Number(latencyCeiling) > 10000)
+      ? t("watchdog.latency_ceiling_error")
+      : null;
+
+  const lossCeilingError =
+    qualityEnabled &&
+    lossCeiling &&
+    (isNaN(Number(lossCeiling)) ||
+      Number(lossCeiling) < 0 ||
+      Number(lossCeiling) > 100)
+      ? t("watchdog.loss_ceiling_error")
+      : null;
+
+  const qualityConsecutiveError =
+    qualityEnabled &&
+    qualityConsecutive &&
+    (isNaN(Number(qualityConsecutive)) ||
+      Number(qualityConsecutive) < 1 ||
+      Number(qualityConsecutive) > 60)
+      ? t("watchdog.quality_consecutive_error")
+      : null;
+
+  // When quality monitoring is on, at least one ceiling must be active (>0),
+  // otherwise the trigger can never fire (OR logic, 0 = ignore).
+  const qualityNoCeilingError =
+    qualityEnabled &&
+    Number(latencyCeiling) === 0 &&
+    Number(lossCeiling) === 0
+      ? t("watchdog.quality_no_ceiling_error")
+      : null;
+
   const hasValidationErrors = !!(
     maxFailuresError ||
     cooldownError ||
     maxRebootsError ||
-    backupSimSlotError
+    backupSimSlotError ||
+    latencyCeilingError ||
+    lossCeilingError ||
+    qualityConsecutiveError ||
+    qualityNoCeilingError
   );
 
   // --- Dirty check ---
@@ -199,7 +252,11 @@ function WatchdogSettingsForm({
         (settings.backup_sim_slot != null
           ? String(settings.backup_sim_slot)
           : "") ||
-      maxRebootsPerHour !== String(settings.max_reboots_per_hour)
+      maxRebootsPerHour !== String(settings.max_reboots_per_hour) ||
+      qualityEnabled !== settings.quality_enabled ||
+      latencyCeiling !== String(settings.latency_ceiling_ms) ||
+      lossCeiling !== String(settings.loss_ceiling_pct) ||
+      qualityConsecutive !== String(settings.quality_consecutive)
     );
   }, [
     settings,
@@ -213,6 +270,10 @@ function WatchdogSettingsForm({
     tier4Enabled,
     backupSimSlot,
     maxRebootsPerHour,
+    qualityEnabled,
+    latencyCeiling,
+    lossCeiling,
+    qualityConsecutive,
   ]);
 
   const canSave = !hasValidationErrors && isDirty && !isSaving;
@@ -235,6 +296,10 @@ function WatchdogSettingsForm({
         tier4_enabled: tier4Enabled,
         backup_sim_slot: backupSimSlot ? parseInt(backupSimSlot, 10) : null,
         max_reboots_per_hour: parseInt(maxRebootsPerHour, 10),
+        quality_enabled: qualityEnabled,
+        latency_ceiling_ms: parseInt(latencyCeiling || "0", 10),
+        loss_ceiling_pct: parseInt(lossCeiling || "0", 10),
+        quality_consecutive: parseInt(qualityConsecutive || "5", 10),
       };
 
       const success = await saveSettings(payload);
@@ -257,6 +322,10 @@ function WatchdogSettingsForm({
       tier4Enabled,
       backupSimSlot,
       maxRebootsPerHour,
+      qualityEnabled,
+      latencyCeiling,
+      lossCeiling,
+      qualityConsecutive,
       saveSettings,
       error,
       markSaved,
@@ -532,6 +601,163 @@ function WatchdogSettingsForm({
                     disabled={!isEnabled}
                   />
                 </Field>
+              </div>
+
+              <Separator />
+              <div className="grid gap-2">
+                <div className="flex items-center gap-1.5">
+                  <CardTitle>{t("watchdog.quality_title")}</CardTitle>
+                  <Tooltip>
+                    <TooltipTrigger>
+                      <button
+                        type="button"
+                        className="inline-flex"
+                        aria-label={t("watchdog.quality_more_info_aria")}
+                      >
+                        <TbInfoCircleFilled className="size-5 text-info" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-xs">
+                      <p>{t("watchdog.quality_tooltip")}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+                <CardDescription>
+                  {t("watchdog.quality_description")}
+                </CardDescription>
+              </div>
+
+              {/* Quality monitoring toggle */}
+              <Field orientation="horizontal" className="w-fit">
+                <FieldLabel htmlFor="quality-enabled">
+                  {t("watchdog.quality_enable_label")}
+                </FieldLabel>
+                <Switch
+                  id="quality-enabled"
+                  checked={qualityEnabled}
+                  onCheckedChange={setQualityEnabled}
+                  disabled={!isEnabled}
+                />
+              </Field>
+
+              <div aria-live="polite">
+                {qualityEnabled && (
+                  <div className="grid gap-4">
+                    <div className="grid grid-cols-1 @sm/card:grid-cols-2 gap-4">
+                      {/* Latency ceiling */}
+                      <Field>
+                        <FieldLabel htmlFor="latency-ceiling">
+                          {t("watchdog.latency_ceiling_label")}
+                        </FieldLabel>
+                        <Input
+                          id="latency-ceiling"
+                          type="number"
+                          inputMode="numeric"
+                          min="0"
+                          max="10000"
+                          placeholder={t("watchdog.latency_ceiling_placeholder")}
+                          className="max-w-sm tabular-nums"
+                          value={latencyCeiling}
+                          onChange={(e) => setLatencyCeiling(e.target.value)}
+                          disabled={!isEnabled}
+                          aria-invalid={!!latencyCeilingError}
+                          aria-describedby={
+                            latencyCeilingError
+                              ? "latency-ceiling-error"
+                              : "latency-ceiling-desc"
+                          }
+                        />
+                        {latencyCeilingError ? (
+                          <FieldError id="latency-ceiling-error">
+                            {latencyCeilingError}
+                          </FieldError>
+                        ) : (
+                          <FieldDescription id="latency-ceiling-desc">
+                            {t("watchdog.latency_ceiling_description")}
+                          </FieldDescription>
+                        )}
+                      </Field>
+
+                      {/* Loss ceiling */}
+                      <Field>
+                        <FieldLabel htmlFor="loss-ceiling">
+                          {t("watchdog.loss_ceiling_label")}
+                        </FieldLabel>
+                        <Input
+                          id="loss-ceiling"
+                          type="number"
+                          inputMode="numeric"
+                          min="0"
+                          max="100"
+                          placeholder={t("watchdog.loss_ceiling_placeholder")}
+                          className="max-w-sm tabular-nums"
+                          value={lossCeiling}
+                          onChange={(e) => setLossCeiling(e.target.value)}
+                          disabled={!isEnabled}
+                          aria-invalid={!!lossCeilingError}
+                          aria-describedby={
+                            lossCeilingError
+                              ? "loss-ceiling-error"
+                              : "loss-ceiling-desc"
+                          }
+                        />
+                        {lossCeilingError ? (
+                          <FieldError id="loss-ceiling-error">
+                            {lossCeilingError}
+                          </FieldError>
+                        ) : (
+                          <FieldDescription id="loss-ceiling-desc">
+                            {t("watchdog.loss_ceiling_description")}
+                          </FieldDescription>
+                        )}
+                      </Field>
+
+                      {/* Consecutive breaches */}
+                      <Field>
+                        <FieldLabel htmlFor="quality-consecutive">
+                          {t("watchdog.quality_consecutive_label")}
+                        </FieldLabel>
+                        <Input
+                          id="quality-consecutive"
+                          type="number"
+                          inputMode="numeric"
+                          min="1"
+                          max="60"
+                          placeholder={t(
+                            "watchdog.quality_consecutive_placeholder",
+                          )}
+                          className="max-w-sm tabular-nums"
+                          value={qualityConsecutive}
+                          onChange={(e) =>
+                            setQualityConsecutive(e.target.value)
+                          }
+                          disabled={!isEnabled}
+                          aria-invalid={!!qualityConsecutiveError}
+                          aria-describedby={
+                            qualityConsecutiveError
+                              ? "quality-consecutive-error"
+                              : "quality-consecutive-desc"
+                          }
+                        />
+                        {qualityConsecutiveError ? (
+                          <FieldError id="quality-consecutive-error">
+                            {qualityConsecutiveError}
+                          </FieldError>
+                        ) : (
+                          <FieldDescription id="quality-consecutive-desc">
+                            {t("watchdog.quality_consecutive_description")}
+                          </FieldDescription>
+                        )}
+                      </Field>
+                    </div>
+
+                    {qualityNoCeilingError && (
+                      <FieldError id="quality-no-ceiling-error">
+                        {qualityNoCeilingError}
+                      </FieldError>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Save Button */}

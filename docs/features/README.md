@@ -18,6 +18,7 @@ Per-feature deep-dives extracted from `CLAUDE.md` to keep the always-loaded prom
 | Known-SIMs Database | `system/known_sims.sh` (GET + POST list/clear) | — (fetched inline in `known-sims-row.tsx`) | — | No |
 | Connection Quality | `system/ping_profile.sh` (GET/POST) + `system/quality_thresholds.sh` (GET/POST) | `use-ping-profile.ts` + `use-quality-thresholds.ts` | `PingProfile`, `PING_PROFILES`, `QualityPreset`, `QUALITY_PRESETS`, `QualityThresholdsSettings` | No |
 | LAN Gateway / Subnet | `network/lan_config.sh` (GET/POST) | `use-lan-config.ts` | `LanConfigStatus`, `LanConfigSaveRequest`, `LanConfigSaveResponse` | No (network reload) |
+| Connection Watchdog | `monitoring/watchdog.sh` (GET/POST: `save_settings`, `dismiss_sim_swap`, `revert_sim`) | `use-watchdog-settings.ts` (`WatchdogSettings`, `WatchdogLiveStatus`, `WatchdogSavePayload`) | — (inline in hook) | Tier 4 only (token-bucketed `reboot`) |
 
 ## Index
 
@@ -38,3 +39,4 @@ Per-feature deep-dives extracted from `CLAUDE.md` to keep the always-loaded prom
 | [Known-SIMs Database](known-sims.md) | Persistent ICCID set model, `sim_db_seed_if_absent` return semantics (fresh-device suppression + migration from `last_iccid`), byte-parity requirement, lock-free duplicate tolerance, `sim_db_clear_keep` keeps current SIM, CGI `known_sims.sh` list/clear contract, `previous_iccid` shape-compat |
 | [Connection Quality](connection-quality.md) | HTTP-probe daemon (curl, not ICMP), ping profile→params table (daemon-owned), `isDefault` absence semantics for quality_thresholds, ceil-division secs→samples, reload flags, GET/POST key asymmetry (`target1` vs `target_1`) |
 | [LAN Gateway / Subnet](lan-config.md) | LAN IP + prefix editor, self-severing apply pattern (response before `network reload`), hand-rolled POSIX validation (no `ipcalc.sh`, no jq regex), null-byte-in-shell-source / SCP deploy quirk, WoL removal artifact, `lan_address_changed` event |
+| [Connection Watchdog](connection-watchdog.md) | Dual-trigger model (reachability + quality), Tier 1 AT+COPS re-registration, reason-aware cooldown, quality UCI schema (`quality_enabled`, `latency_ceiling_ms`, `loss_ceiling_pct`, `quality_consecutive`), float-comparison awk rule, STATUS_STALE_THRESHOLD, NO-SIGNAL policy, state file fields, auto-disable token bucket |

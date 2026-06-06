@@ -805,6 +805,39 @@ seed_uci_defaults() {
         info "quecmanager.ping_profile.target_2 already set — preserving user choice"
     fi
 
+    # Connection Watchdog (watchcat) — connection-quality trigger keys. The
+    # full watchcat section is otherwise seeded lazily by the watchdog.sh CGI
+    # (ensure_watchcat_config) on first read; seed only the quality keys here
+    # so fresh installs match that contract. Idempotent + preserve-user-choice,
+    # same shape as the blocks above. Defaults: quality off, 800ms / 20% / 5.
+    if ! uci -q get quecmanager.watchcat >/dev/null 2>&1; then
+        uci set quecmanager.watchcat=watchcat
+    fi
+    if ! uci -q get quecmanager.watchcat.quality_enabled >/dev/null 2>&1; then
+        uci set quecmanager.watchcat.quality_enabled=0
+        info "Seeded quecmanager.watchcat.quality_enabled=0 (off by default)"
+    else
+        info "quecmanager.watchcat.quality_enabled already set — preserving user choice"
+    fi
+    if ! uci -q get quecmanager.watchcat.latency_ceiling_ms >/dev/null 2>&1; then
+        uci set quecmanager.watchcat.latency_ceiling_ms=800
+        info "Seeded quecmanager.watchcat.latency_ceiling_ms=800"
+    else
+        info "quecmanager.watchcat.latency_ceiling_ms already set — preserving user choice"
+    fi
+    if ! uci -q get quecmanager.watchcat.loss_ceiling_pct >/dev/null 2>&1; then
+        uci set quecmanager.watchcat.loss_ceiling_pct=20
+        info "Seeded quecmanager.watchcat.loss_ceiling_pct=20"
+    else
+        info "quecmanager.watchcat.loss_ceiling_pct already set — preserving user choice"
+    fi
+    if ! uci -q get quecmanager.watchcat.quality_consecutive >/dev/null 2>&1; then
+        uci set quecmanager.watchcat.quality_consecutive=5
+        info "Seeded quecmanager.watchcat.quality_consecutive=5"
+    else
+        info "quecmanager.watchcat.quality_consecutive already set — preserving user choice"
+    fi
+
     uci commit quecmanager 2>/dev/null || warn "uci commit quecmanager failed"
 }
 

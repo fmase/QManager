@@ -10,7 +10,7 @@
 #         LOCKED (maintenance mode — sleeps until lock removed)
 #
 # Escalation Tiers:
-#   Tier 1: Restart WAN interface (ifdown/ifup)
+#   Tier 1: Network re-registration (AT+COPS=2 -> AT+COPS=0)
 #   Tier 2: Radio toggle (AT+CFUN=0/1) — skipped if tower lock active
 #   Tier 3: SIM failover (AT+QUIMSLOT) — Golden Rule sequence
 #   Tier 4: System reboot — token bucket: max N/hour, auto-disables
@@ -73,6 +73,12 @@ CFG_TIER3_ENABLED=0
 CFG_TIER4_ENABLED=1
 CFG_BACKUP_SIM_SLOT=""
 CFG_MAX_REBOOTS_PER_HOUR=3
+CFG_QUALITY_ENABLED=0
+CFG_LATENCY_CEILING_MS=800
+CFG_LOSS_CEILING_PCT=20
+CFG_QUALITY_CONSECUTIVE=5
+STATUS_CACHE="/tmp/qmanager_status.json"
+STATUS_STALE_THRESHOLD=30
 BOOT_SETTLE=30
 PING_STALE_THRESHOLD=15
 MODEM_WAIT_TIMEOUT=60
@@ -91,6 +97,8 @@ original_sim_slot="null"
 current_sim_slot="null"
 reboots_this_hour=0
 cooldown_stale_retries=0
+quality_breach_counter=0
+recovery_reason="unreachable"   # "unreachable" | "quality" — why current/last recovery fired
 
 # =============================================================================
 # CONFIGURATION
@@ -128,8 +136,21 @@ read_config() {
     val=$(uci -q get quecmanager.watchcat.max_reboots_per_hour 2>/dev/null)
     [ -n "$val" ] && CFG_MAX_REBOOTS_PER_HOUR="$val"
 
+    CFG_QUALITY_ENABLED=$(uci -q get quecmanager.watchcat.quality_enabled 2>/dev/null)
+    [ -z "$CFG_QUALITY_ENABLED" ] && CFG_QUALITY_ENABLED=0
+
+    val=$(uci -q get quecmanager.watchcat.latency_ceiling_ms 2>/dev/null)
+    [ -n "$val" ] && CFG_LATENCY_CEILING_MS="$val"
+
+    val=$(uci -q get quecmanager.watchcat.loss_ceiling_pct 2>/dev/null)
+    [ -n "$val" ] && CFG_LOSS_CEILING_PCT="$val"
+
+    val=$(uci -q get quecmanager.watchcat.quality_consecutive 2>/dev/null)
+    [ -n "$val" ] && CFG_QUALITY_CONSECUTIVE="$val"
+
     qlog_info "Config loaded: interval=${CFG_CHECK_INTERVAL}s max_fail=${CFG_MAX_FAILURES} cooldown=${CFG_COOLDOWN}s"
     qlog_info "  Tiers: T1=${CFG_TIER1_ENABLED} T2=${CFG_TIER2_ENABLED} T3=${CFG_TIER3_ENABLED} T4=${CFG_TIER4_ENABLED} backup_sim=${CFG_BACKUP_SIM_SLOT:-none}"
+    qlog_info "  Quality: enabled=${CFG_QUALITY_ENABLED} latency_ceiling=${CFG_LATENCY_CEILING_MS}ms loss_ceiling=${CFG_LOSS_CEILING_PCT}% consecutive=${CFG_QUALITY_CONSECUTIVE}"
 }
 
 # =============================================================================
@@ -154,6 +175,9 @@ write_state() {
         --argjson sf_orig "${original_sim_slot:-null}" \
         --argjson sf_curr "${current_sim_slot:-null}" \
         --argjson reboots "$reboots_this_hour" \
+        --argjson quality_breach "$quality_breach_counter" \
+        --argjson quality_enabled "$CFG_QUALITY_ENABLED" \
+        --arg recovery_reason "$recovery_reason" \
         '{
             timestamp: $ts, enabled: ($enabled == 1),
             state: $state, current_tier: $tier,
@@ -165,7 +189,10 @@ write_state() {
             sim_failover_active: ($sf_active == "true"),
             original_sim_slot: $sf_orig,
             current_sim_slot: $sf_curr,
-            reboots_this_hour: $reboots
+            reboots_this_hour: $reboots,
+            quality_breach_count: $quality_breach,
+            quality_enabled: ($quality_enabled == 1),
+            last_recovery_reason: $recovery_reason
         }' > "$STATE_TMP"
 
     mv "$STATE_TMP" "$STATE_FILE"
@@ -251,6 +278,92 @@ read_ping() {
     return 0
 }
 
+# Read poller status.json for connection-quality metrics, with a staleness
+# guard. The .connectivity object has no timestamp of its own, so freshness
+# is judged from the ROOT .timestamp. Returns 0 if FRESH+valid, 1 if
+# stale/missing/unparseable (= NO-SIGNAL).
+# Sets: q_avg_latency (may be "null"), q_packet_loss (sanitized int)
+q_avg_latency="null"
+q_packet_loss="0"
+read_quality() {
+    [ -f "$STATUS_CACHE" ] || return 1
+    local _qdata
+    _qdata=$(jq -r '[
+        (.timestamp | if . == null then "0" else tostring end),
+        (.connectivity.avg_latency_ms | if . == null then "null" else tostring end),
+        (.connectivity.packet_loss_pct | if . == null then "0" else tostring end)
+    ] | @tsv' "$STATUS_CACHE" 2>/dev/null)
+    [ -z "$_qdata" ] && return 1
+    local _ts
+    _ts=$(printf '%s' "$_qdata" | cut -f1)
+    q_avg_latency=$(printf '%s' "$_qdata" | cut -f2)
+    q_packet_loss=$(printf '%s' "$_qdata" | cut -f3)
+    # sanitize loss to a clean integer (avg_latency may legitimately be "null")
+    case "$q_packet_loss" in ''|*[!0-9]*) q_packet_loss=0 ;; esac
+    local _now
+    local _age
+    _now=$(date +%s)
+    _age=$((_now - _ts))
+    if [ "$_ts" -le 0 ] 2>/dev/null || [ "$_age" -gt "$STATUS_STALE_THRESHOLD" ]; then
+        qlog_warn "Quality data stale (age=${_age}s) — treating as no-signal"
+        return 1
+    fi
+    return 0
+}
+
+# Decide whether current quality (already read by read_quality) breaches the
+# configured ceilings. OR logic; a ceiling of 0 means IGNORE that metric.
+# avg_latency_ms is a FLOAT — comparison MUST use awk (BusyBox [ -gt ] errors
+# on decimals). Returns 0 if breached, 1 if not.
+quality_breached() {
+    # latency: only if ceiling > 0 AND we have a numeric latency
+    if [ "$CFG_LATENCY_CEILING_MS" -gt 0 ] 2>/dev/null && [ "$q_avg_latency" != "null" ]; then
+        if awk -v a="$q_avg_latency" -v c="$CFG_LATENCY_CEILING_MS" 'BEGIN{ exit !((a+0) > (c+0)) }'; then
+            qlog_warn "QUALITY breach: latency ${q_avg_latency}ms > ${CFG_LATENCY_CEILING_MS}ms"
+            return 0
+        fi
+    fi
+    # loss: only if ceiling > 0
+    if [ "$CFG_LOSS_CEILING_PCT" -gt 0 ] 2>/dev/null; then
+        if [ "$q_packet_loss" -ge "$CFG_LOSS_CEILING_PCT" ] 2>/dev/null; then
+            qlog_warn "QUALITY breach: loss ${q_packet_loss}% >= ${CFG_LOSS_CEILING_PCT}%"
+            return 0
+        fi
+    fi
+    return 1
+}
+
+# Accrue the consecutive-breach counter and, on reaching the threshold, kick
+# off the SAME Tier 1->4 recovery ladder used by the reachability path.
+# Returns 0 if it TRIGGERED recovery this cycle (caller skips rest of cycle),
+# 1 otherwise.
+evaluate_quality() {
+    [ "$CFG_QUALITY_ENABLED" = "1" ] || return 1
+    if ! read_quality; then
+        # no-signal: leave counter unchanged (never count as breach, never reset)
+        return 1
+    fi
+    if quality_breached; then
+        quality_breach_counter=$((quality_breach_counter + 1))
+        qlog_info "QUALITY: breach ${quality_breach_counter}/${CFG_QUALITY_CONSECUTIVE}"
+        if [ "$quality_breach_counter" -ge "$CFG_QUALITY_CONSECUTIVE" ]; then
+            qlog_warn "QUALITY threshold reached — entering recovery"
+            append_event "watchcat_recovery" "Watchcat: connection quality degraded (latency ${q_avg_latency}ms / loss ${q_packet_loss}%) — starting recovery" "warning"
+            quality_breach_counter=0
+            recovery_reason="quality"
+            state="recovery"
+            if [ "$current_tier" -eq 0 ]; then
+                find_next_tier 1
+            fi
+            do_recovery
+            return 0
+        fi
+    else
+        quality_breach_counter=0
+    fi
+    return 1
+}
+
 # Count reboots in the last hour from crash.log
 count_recent_reboots() {
     if [ ! -f "$CRASH_LOG" ]; then
@@ -286,13 +399,13 @@ wait_for_modem() {
 # =============================================================================
 
 execute_tier1() {
-    qlog_info "TIER 1: Restarting WAN interface"
-    append_event "watchcat_recovery" "Watchcat: restarting WAN interface (Tier 1)" "warning"
+    qlog_info "TIER 1: Network re-registration (AT+COPS=2 -> AT+COPS=0)"
+    append_event "watchcat_recovery" "Watchcat: re-registering on network (Tier 1)" "warning"
 
     touch "$RECOVERY_FLAG"
-    ifdown wan 2>/dev/null
+    qcmd 'AT+COPS=2' >/dev/null 2>&1
     sleep 2
-    ifup wan 2>/dev/null
+    qcmd 'AT+COPS=0' >/dev/null 2>&1
     return 0
 }
 
@@ -604,6 +717,44 @@ _cooldown_handle_failure() {
 finish_cooldown() {
     rm -f "$RECOVERY_FLAG"
 
+    # --- Reason-aware success criteria ---
+    # A quality-triggered recovery cannot use reachability as the success
+    # signal: a degraded-but-reachable link reports reachable the whole time,
+    # so it would ALWAYS look "restored". Judge success from a FRESH quality
+    # read against the configured ceilings instead.
+    if [ "$recovery_reason" = "quality" ]; then
+        if ! read_quality; then
+            if [ "$cooldown_stale_retries" -lt 3 ]; then
+                cooldown_stale_retries=$((cooldown_stale_retries + 1))
+                qlog_warn "COOLDOWN(quality): status data stale (retry $cooldown_stale_retries/3) — extending by ${CFG_CHECK_INTERVAL}s"
+                cooldown_remaining="$CFG_CHECK_INTERVAL"
+                touch "$RECOVERY_FLAG"   # keep events suppressed during extension
+                return
+            fi
+            qlog_error "COOLDOWN(quality): status data still stale after 3 retries — treating as recovery failure"
+            cooldown_stale_retries=0
+            _cooldown_handle_failure
+            return
+        fi
+        cooldown_stale_retries=0
+
+        if ! quality_breached; then
+            qlog_info "COOLDOWN(quality) complete: quality RESTORED after Tier $current_tier"
+            # Quality path never engages the Tier-3 SIM-failover finalization
+            # block — that is only meaningful for the reachability path.
+            state="monitor"
+            current_tier=0
+            failure_counter=0
+            quality_breach_counter=0
+            return
+        fi
+
+        qlog_warn "COOLDOWN(quality) complete: quality STILL degraded after Tier $current_tier"
+        _cooldown_handle_failure
+        return
+    fi
+
+    # --- Reachability path (recovery_reason="unreachable") — unchanged ---
     # Try to read fresh ping data
     if ! read_ping; then
         if [ "$cooldown_stale_retries" -lt 3 ]; then
@@ -796,6 +947,7 @@ main() {
                 current_tier=0
                 failure_counter=0
                 cooldown_stale_retries=0
+                quality_breach_counter=0
             fi
             write_state
             sleep "$CFG_CHECK_INTERVAL"
@@ -809,6 +961,7 @@ main() {
             current_tier=0
             failure_counter=0
             cooldown_stale_retries=0
+            quality_breach_counter=0
         fi
 
         # --- COOLDOWN state ---
@@ -848,6 +1001,7 @@ main() {
                     qlog_info "SUSPECT → MONITOR: connectivity restored naturally"
                     state="monitor"
                     failure_counter=0
+                    quality_breach_counter=0
                 else
                     failure_counter=$((failure_counter + 1))
                     qlog_debug "SUSPECT: failure_counter=$failure_counter/$CFG_MAX_FAILURES"
@@ -855,6 +1009,7 @@ main() {
                     if [ "$failure_counter" -ge "$CFG_MAX_FAILURES" ]; then
                         qlog_warn "SUSPECT → RECOVERY: threshold breached ($failure_counter >= $CFG_MAX_FAILURES)"
                         state="recovery"
+                        recovery_reason="unreachable"
 
                         # Find first enabled tier
                         if [ "$current_tier" -eq 0 ]; then
@@ -875,6 +1030,14 @@ main() {
                 current_tier=0
                 ;;
         esac
+
+        # --- Quality-degradation trigger (independent of reachability) ---
+        # Only when the reachability path did NOT already move us into
+        # recovery/cooldown this cycle. evaluate_quality runs the same Tier
+        # ladder via do_recovery; if it triggers it sets state itself.
+        if [ "$state" = "monitor" ] || [ "$state" = "suspect" ]; then
+            evaluate_quality
+        fi
 
         write_state
         sleep "$CFG_CHECK_INTERVAL"
