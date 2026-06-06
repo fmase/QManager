@@ -59,6 +59,7 @@
     "show_password": "Mostra password",
     "hide_password": "Nascondi password",
     "session_expired": "La sessione è terminata perché il dispositivo è stato irraggiungibile troppo a lungo.",
+    "signing_in_to": "Accesso a {{hostname}}",
     "recovery": {
       "toggle": "Non riesci ad accedere?",
       "intro": "Se hai perso la password di amministratore, hai due opzioni di ripristino:",

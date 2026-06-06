@@ -15,6 +15,7 @@
 
 ## ✅ Improvements
 
+- **The login screen now shows which modem you're signing into.** Your device's hostname appears beneath the welcome heading, next to the "Can't sign in?" link, so you can confirm you're on the right device before entering your password. It loads on its own and quietly stays hidden on devices that don't have a hostname set. Available in all supported languages.
 - **Latency readings in Connection Quality now reflect real HTTP reachability checks.** The probe measures the full round-trip including TCP connect, TLS, and response time — a more honest signal than a raw ping, and more representative of whether your connection is actually usable for web traffic.
 - **Band Locking's "Active LTE Bands" now lists every active carrier, matching the channel count.** With carrier aggregation that puts two carriers on the same band (for example two carriers on B41), the bands row previously collapsed them into one entry — so a 4-carrier connection showed 4 channels but only 3 bands. Both rows now show one entry per carrier, so the band and channel counts always line up.
 - **The Secondary Carriers card now counts the primary carrier too, and shows the full aggregated bandwidth.** Previously the card counted only the secondary carriers (so a 4-carrier connection read as "3 active carriers") and its bandwidth badge showed only the extra bandwidth from the secondaries. It now reports every active carrier including the primary and the total aggregated bandwidth across all of them, for a number that matches what the modem is actually running.

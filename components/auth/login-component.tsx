@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 
 import { useLogin } from "@/hooks/use-auth";
+import { LoginDeviceName } from "@/components/auth/login-device-name";
 import { Button } from "@/components/ui/button";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
@@ -163,15 +164,24 @@ export default function LoginComponent() {
               </div>
               <span className="sr-only">{t("overview.title")}</span>
               <h1 className="text-xl font-bold">{t("login.welcome")}</h1>
-              <button
-                type="button"
-                onClick={() => setRecoveryOpen((v) => !v)}
-                aria-expanded={recoveryOpen}
-                aria-controls={recoveryPanelId}
-                className="text-muted-foreground hover:text-foreground focus-visible:ring-ring/50 inline-flex cursor-pointer items-center rounded-sm px-1 py-0.5 text-sm underline-offset-4 transition-colors outline-none hover:underline focus-visible:ring-2"
-              >
-                {t("login.recovery.toggle")}
-              </button>
+              {/* Meta row: which modem this gate guards, paired with the
+                  recovery affordance. flex-wrap lets a long hostname stack the
+                  name above the link rather than overflow the column. The name
+                  line is self-contained (owns its fetch + states) and silently
+                  absent on older firmware or unnamed devices, in which case the
+                  link simply centers alone. */}
+              <div className="flex flex-wrap items-center justify-center gap-x-2.5 gap-y-1">
+                <LoginDeviceName />
+                <button
+                  type="button"
+                  onClick={() => setRecoveryOpen((v) => !v)}
+                  aria-expanded={recoveryOpen}
+                  aria-controls={recoveryPanelId}
+                  className="text-muted-foreground hover:text-foreground focus-visible:ring-ring/50 inline-flex cursor-pointer items-center rounded-sm px-1 py-0.5 text-sm underline-offset-4 transition-colors outline-none hover:underline focus-visible:ring-2"
+                >
+                  {t("login.recovery.toggle")}
+                </button>
+              </div>
             </div>
 
             {/* In-place recovery disclosure. The panel only exists in the

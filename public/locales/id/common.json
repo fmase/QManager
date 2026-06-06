@@ -59,6 +59,7 @@
     "show_password": "Tampilkan kata sandi",
     "hide_password": "Sembunyikan kata sandi",
     "session_expired": "Sesi Anda berakhir karena perangkat tidak dapat dijangkau terlalu lama.",
+    "signing_in_to": "Masuk ke {{hostname}}",
     "recovery": {
       "toggle": "Tidak bisa masuk?",
       "intro": "Jika Anda kehilangan kata sandi admin, ada dua jalur pemulihan:",

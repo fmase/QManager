@@ -59,6 +59,7 @@
     "show_password": "显示密码",
     "hide_password": "隐藏密码",
     "session_expired": "由于设备长时间无法连接,您的会话已结束。",
+    "signing_in_to": "正在登录到 {{hostname}}",
     "recovery": {
       "toggle": "无法登录?",
       "intro": "如果您忘记了管理员密码,有两种恢复方式:",
