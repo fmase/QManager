@@ -321,7 +321,7 @@ export default function LoginComponent() {
               >
                 {isSubmitting ? (
                   <>
-                    <Spinner className="mr-2" />
+                    <Spinner />
                     {t("login.signing_in")}
                   </>
                 ) : retryAfter > 0 ? (
