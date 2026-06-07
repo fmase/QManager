@@ -20,7 +20,6 @@ import { Badge } from "@/components/ui/badge";
 import {
   AlertCircleIcon,
   ArrowLeftRightIcon,
-  EyeIcon,
   LockIcon,
   LockOpenIcon,
   RotateCcwIcon,
@@ -32,7 +31,7 @@ import { formatBandName, type BandCategory } from "@/types/band-locking";
 // =============================================================================
 // BandCardsComponent — Per-Category Band Checkbox Grid + Lock/Unlock Actions
 // =============================================================================
-// One instance per band category (LTE, NSA NR5G, SA NR5G).
+// One instance per band category (LTE, NSA NR5G, SA NR5G, NR-DC).
 // All data flows in via props from BandLockingComponent (coordinator).
 //
 // Local state: checkbox selection (initialized from currentLockedBands).
@@ -80,12 +79,6 @@ interface BandCardsProps {
   swapLabel?: string;
   /** Tooltip + accessible name for the swap control (e.g. "Switch to NR-DC bands"). */
   swapTitle?: string;
-  /**
-   * Read-only mode: the band set is reported by the modem but cannot be locked
-   * manually (NR-DC). Hides all action controls and shows the current active
-   * bands as a disabled grid with a "view only" badge.
-   */
-  readOnly?: boolean;
 }
 
 const BandCardsComponent = ({
@@ -104,7 +97,6 @@ const BandCardsComponent = ({
   onSwapView,
   swapLabel,
   swapTitle,
-  readOnly = false,
 }: BandCardsProps) => {
   const { t } = useTranslation("cellular");
   const { saved, markSaved } = useSaveFlash();
@@ -284,14 +276,6 @@ const BandCardsComponent = ({
               <ShieldIcon className="h-3 w-3" />
               {t("cell_locking.band_locking.card_badges.scenario_controlled")}
             </Badge>
-          ) : readOnly ? (
-            <Badge
-              variant="outline"
-              className="bg-info/15 text-info hover:bg-info/20 border-info/30"
-            >
-              <EyeIcon className="h-3 w-3" />
-              {t("cell_locking.band_locking.card_badges.view_only")}
-            </Badge>
           ) : isAllUnlocked ? (
             <Badge
               variant="outline"
@@ -333,9 +317,9 @@ const BandCardsComponent = ({
             >
               <Checkbox
                 id={`${bandCategory}-${band}`}
-                checked={readOnly ? currentLockedBands.includes(band) : checkedBands.has(band)}
-                onCheckedChange={readOnly ? undefined : () => handleCheckboxChange(band)}
-                disabled={isDisabled || readOnly}
+                checked={checkedBands.has(band)}
+                onCheckedChange={() => handleCheckboxChange(band)}
+                disabled={isDisabled}
                 className={
                   unused
                     ? "border-warning-on-surface/50 data-[state=checked]:bg-warning data-[state=checked]:border-warning data-[state=checked]:text-warning-foreground dark:data-[state=checked]:bg-warning"
@@ -344,7 +328,7 @@ const BandCardsComponent = ({
               />
               <Label
                 htmlFor={`${bandCategory}-${band}`}
-                className={`${disabled || readOnly ? "cursor-default" : "cursor-pointer"}${unused ? " text-warning-on-surface" : ""}`}
+                className={`${disabled ? "cursor-default" : "cursor-pointer"}${unused ? " text-warning-on-surface" : ""}`}
               >
                 {formatBandName(bandCategory, band)}
               </Label>
@@ -354,7 +338,7 @@ const BandCardsComponent = ({
         </motion.div>
 
         {/* Legend — only when the card has modem-supported-but-unused (yellow) bands */}
-        {hasUnusedBands && !readOnly && (
+        {hasUnusedBands && (
           <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-1.5 text-xs text-muted-foreground">
             <span className="flex items-center gap-1.5">
               <span className="size-2.5 shrink-0 rounded-[3px] bg-primary" aria-hidden="true" />
@@ -388,46 +372,44 @@ const BandCardsComponent = ({
         }) : ""}
       </div>
 
-      {!readOnly && (
-        <CardFooter className="flex flex-wrap items-center justify-between gap-2 mt-4">
-          <div className="flex items-center gap-2">
-            <SaveButton
-              onClick={handleLock}
-              isSaving={isLocking}
-              saved={saved}
-              label={t("cell_locking.band_locking.card_buttons.lock_selected")}
-              disabled={isDisabled || noneSelected || !hasChanges}
-            />
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={handleUnlockAll}
-              disabled={isDisabled || isAllUnlocked}
-              aria-label={t("cell_locking.band_locking.card_buttons.unlock_all_aria")}
-              title={t("cell_locking.band_locking.card_buttons.unlock_all_title")}
-            >
-              <RotateCcwIcon />
-            </Button>
-          </div>
-          {/* Quick actions row */}
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              onClick={handleSelectAll}
-              disabled={isDisabled}
-            >
-              {t("cell_locking.band_locking.card_buttons.select_all")}
-            </Button>
-            <Button
-              variant="outline"
-              onClick={handleSelectNone}
-              disabled={isDisabled}
-            >
-              {t("cell_locking.band_locking.card_buttons.deselect_all")}
-            </Button>
-          </div>
-        </CardFooter>
-      )}
+      <CardFooter className="flex flex-wrap items-center justify-between gap-2 mt-4">
+        <div className="flex items-center gap-2">
+          <SaveButton
+            onClick={handleLock}
+            isSaving={isLocking}
+            saved={saved}
+            label={t("cell_locking.band_locking.card_buttons.lock_selected")}
+            disabled={isDisabled || noneSelected || !hasChanges}
+          />
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={handleUnlockAll}
+            disabled={isDisabled || isAllUnlocked}
+            aria-label={t("cell_locking.band_locking.card_buttons.unlock_all_aria")}
+            title={t("cell_locking.band_locking.card_buttons.unlock_all_title")}
+          >
+            <RotateCcwIcon />
+          </Button>
+        </div>
+        {/* Quick actions row */}
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            onClick={handleSelectAll}
+            disabled={isDisabled}
+          >
+            {t("cell_locking.band_locking.card_buttons.select_all")}
+          </Button>
+          <Button
+            variant="outline"
+            onClick={handleSelectNone}
+            disabled={isDisabled}
+          >
+            {t("cell_locking.band_locking.card_buttons.deselect_all")}
+          </Button>
+        </div>
+      </CardFooter>
     </Card>
   );
 };

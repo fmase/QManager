@@ -1,8 +1,8 @@
 # Band Locking
 
-Band Locking lets users restrict which LTE, NSA NR5G, and SA NR5G bands the modem is allowed to use. Constraining the band set can improve stability, latency, or throughput when one or two bands are dominant at a given site. It is independent of Connection Scenarios (which control network mode); the two features compose — a scenario can also carry a band lock via the Custom SIM Profiles integration.
+Band Locking lets users restrict which LTE, NSA NR5G, SA NR5G, and NR-DC bands the modem is allowed to use. Constraining the band set can improve stability, latency, or throughput when one or two bands are dominant at a given site. It is independent of Connection Scenarios (which control network mode); the two features compose — a scenario can also carry a band lock via the Custom SIM Profiles integration.
 
-NR-DC bands are **view-only**: the modem manages NR-DC band selection internally, and the UI surfaces the current active NR-DC bands as a read-only display with no action controls.
+NR-DC bands are **fully lockable** via the same apply path as LTE/NSA/SA. On-device testing confirmed that `AT+QNWPREFCFG="nrdc_nr5g_band",<list>` writes stick verbatim on the RM551E — the modem does not coerce or reject the value, even for bands outside the current policy set.
 
 ## Quick Reference
 
@@ -36,18 +36,18 @@ NR-DC bands are **view-only**: the modem manages NR-DC band selection internally
 
 ## Band Types and AT Parameter Mapping
 
-Three band categories are lockable, each mapping to a distinct `AT+QNWPREFCFG` parameter name. NR-DC is read-only and has no write path. This mapping is the authoritative source; get it wrong and you write to the wrong radio capability.
+All four band categories are lockable, each mapping to a distinct `AT+QNWPREFCFG` parameter name. This mapping is the authoritative source; get it wrong and you write to the wrong radio capability.
 
 | `BandCategory` (frontend) | `band_type` (POST body) | AT parameter (`QNWPREFCFG`) | Band prefix (UI) | Writable? |
 |---|---|---|---|---|
 | `"lte"` | `"lte"` | `lte_band` | `B` | Yes |
 | `"nsa_nr5g"` | `"nsa_nr5g"` | `nsa_nr5g_band` | `N` | Yes |
 | `"sa_nr5g"` | `"sa_nr5g"` | `nr5g_band` | `N` | Yes |
-| `"nrdc_nr5g"` | — (no write path) | `nrdc_nr5g_band` (read-only) | `N` | **No** |
+| `"nrdc_nr5g"` | `"nrdc_nr5g"` | `nrdc_nr5g_band` | `N` | **Yes** |
 
-Note the asymmetry on the SA row: the frontend key is `sa_nr5g` but the AT parameter is `nr5g_band` (no `sa_` prefix). NR-DC read extraction uses `nrdc_nr5g_band`, which is a unique substring and does not collide with the SA guard.
+Note the asymmetry on the SA row: the frontend key is `sa_nr5g` but the AT parameter is `nr5g_band` (no `sa_` prefix). NR-DC uses `nrdc_nr5g_band`, which is a unique substring and does not collide with the SA guard.
 
-> ℹ️ NOTE: `lock.sh` rejects `band_type=nrdc_nr5g` with `invalid_band_type`. The NR-DC category is intentionally excluded from the lockable set.
+> ℹ️ NOTE: On-device testing confirmed that `AT+QNWPREFCFG="nrdc_nr5g_band",<list>` writes stick verbatim — the modem applies the value without coercion, even for bands outside the current policy set or speculative bands (n91–94, mmWave). The old assumption that the modem managed this register internally was incorrect.
 
 ---
 
@@ -109,7 +109,7 @@ The Band Locking page works with three distinct band sets. Confusing any two of 
 
 **Boot fallback.** If `/etc/qmanager/supported_bands_hw.env` is missing (pre-upgrade device that hasn't re-run install), the poller falls back to the `boot_supported_*` (policy_band) values for all three HW fields. The page degrades to the old single-layer behavior: every band checkbox uses the policy set as its universe, and no yellow bands appear. The fallback is self-healing — it resolves on the next `install.sh` run.
 
-**NR-DC has no HW field.** NR-DC remains view-only with no hardware-universe extension; `device.supported_nrdc_nr5g_bands` is still sourced from `policy_band` only.
+**NR-DC has no dedicated HW field.** `device.supported_nrdc_nr5g_bands` is still sourced from `policy_band` only. The NR-DC card borrows `hw_sa_nr5g_bands` as its checkbox universe (NR-DC bands are NR bands ⊆ the SA set), falling back to `supported_nrdc_nr5g_bands` on pre-upgrade devices.
 
 ### UI Two-Tone Coloring
 
@@ -124,7 +124,7 @@ Inside `band-cards.tsx`, a band checkbox renders in **primary** (Signal Indigo) 
 
 > ⚠️ WARNING: The modem may reject locking bands that lie outside its current policy set. A Reset that includes yellow (modem-supported-but-policy-unused) bands can therefore fail at the modem. This is an accepted tradeoff — the user can see every band they chose to lock rather than having policy silently shrink the display.
 
-**NR-DC view-only card:** NR-DC has no dedicated HW band list. `band-locking.tsx` borrows `hwBands.sa_nr5g` as the NR-DC checkbox universe (NR-DC bands are NR bands ⊆ the SA set), falling back to `policyBands.nrdc_nr5g` on pre-upgrade devices. Because the NR-DC card is read-only, its `policyBands` prop is set to its own universe (`supportedBands.nrdc_nr5g`), so every band renders in primary and no yellow appears — the legend is suppressed entirely for this card.
+**NR-DC card:** `band-locking.tsx` sets `supportedBands` for NR-DC to `hwBands.sa_nr5g` (NR-DC bands are NR bands ⊆ the SA set), falling back to `policyBands.nrdc_nr5g` on pre-upgrade devices. Its `policyBands` prop is `device.supported_nrdc_nr5g_bands` — bands in the policy set render in primary; bands in the SA HW universe but not the NR-DC policy set render in yellow. The legend appears when any yellow band is present. The card uses the same footer controls (Lock, Unlock all, Select all, Deselect all) as LTE/NSA/SA.
 
 ### Static HW Spec File
 
@@ -179,7 +179,7 @@ boot_supported_sa_nr5g_bands="..."
 boot_supported_nrdc_nr5g_bands="..."
 ```
 
-**Stale-cache tolerance (pre-NR-DC):** A cache written before NR-DC support was added will lack the fourth line. That line feeds only the NR-DC view-only display; its absence means the NR-DC card shows no bands until the next cold boot clears `/tmp` and the poller rewrites the full cache. Self-healing.
+**Stale-cache tolerance (pre-NR-DC):** A cache written before NR-DC support was added will lack the fourth line. Its absence means the NR-DC card checkbox universe falls back to an empty set until the next cold boot clears `/tmp` and the poller rewrites the full cache. Self-healing.
 
 **Cache rewrite on SIM swap:** Since `refresh_policy_band()` rewrites the same cache file, the env cache now reflects the current SIM's policy set rather than only the boot-time set. The `hw_*` binds are emitted from the in-memory variables sourced at boot; they are not re-read from disk on swap.
 
@@ -198,7 +198,7 @@ The Band Locking page uses three cards. LTE and NSA NR5G are fixed. The third sl
 
 **Why remount rather than re-render:** Remounting resets checkbox state from the new mode's locked band list, rather than showing the previous mode's checked bands in the new category's checkbox grid. It also replays the card's entrance animation, giving a clear "mode changed" cue without any additional animation logic.
 
-**Behavioral note:** Swapping does not send any AT command. It only changes which category is displayed and which band set is loaded. For SA, the user presses Save to apply changes. **For NR-DC, the card is rendered read-only** (`readOnly` prop on `BandCardsComponent`): a disabled band grid reflecting the modem's current active NR-DC bands, a "View only" badge, and no Save/Unlock/Select/Deselect controls.
+**Behavioral note:** Swapping does not send any AT command. It only changes which category is displayed and which band set is loaded. For both SA and NR-DC, the user presses Save to apply changes. NR-DC uses identical card controls to SA — Lock, Unlock all, Select all, Deselect all. The `readOnly` prop and "View only" badge branch have been removed from `band-cards.tsx` as dead code (the `card_badges.view_only` i18n key is retained but currently unused).
 
 ---
 
@@ -212,7 +212,7 @@ Each band card sends an independent lock request. The lock is per-category; the 
 { "band_type": "sa_nr5g", "bands": "41:78" }
 ```
 
-- `band_type`: one of `lte`, `nsa_nr5g`, `sa_nr5g` (NR-DC is read-only and rejected with `invalid_band_type`)
+- `band_type`: one of `lte`, `nsa_nr5g`, `sa_nr5g`, `nrdc_nr5g`
 - `bands`: colon-delimited non-empty list of band numbers. Must match `^[0-9:]+$`. There is no "lock zero bands" state.
 
 **AT command sent:**
@@ -240,7 +240,7 @@ AT+QNWPREFCFG="nr5g_band",41:78
 |---|---|
 | `no_band_type` | Missing `band_type` field |
 | `no_bands` | Missing or empty `bands` field |
-| `invalid_band_type` | `band_type` not in the three allowed values (includes `nrdc_nr5g`, which is read-only) |
+| `invalid_band_type` | `band_type` not one of `lte`, `nsa_nr5g`, `sa_nr5g`, `nrdc_nr5g` |
 | `invalid_bands` | `bands` contains characters other than digits and colons |
 | `modem_error` | `qcmd` returned non-zero or empty |
 | `at_error` | Modem responded with `ERROR` |
@@ -270,7 +270,7 @@ When failover is enabled, `lock.sh` spawns `qmanager_band_failover` (double-fork
 
 1. Sleeps 5 seconds to let the modem settle after the band change.
 2. Queries `AT+QCAINFO`. If any `+QCAINFO:` line is present, signal is OK and the watcher exits.
-3. If no carrier data is returned, it reads the LTE/NSA/SA supported band sets from `status.json` (falling back to the env cache) and resets each category to its full supported set. **NR-DC is not reset** — it is modem-managed and never written.
+3. If no carrier data is returned, it reads the LTE/NSA/SA/NR-DC supported band sets from `status.json` (falling back to the env cache) and resets each category to its full supported set. NR-DC is reset via `AT+QNWPREFCFG="nrdc_nr5g_band",${all_nrdc}` using `.device.supported_nrdc_nr5g_bands` (env fallback: `boot_supported_nrdc_nr5g_bands`).
 4. Writes the `/tmp/qmanager_band_failover` flag: `"activated"` on full success, `"partial"` if any category's reset AT command failed.
 
 The UI reads `failover_status.sh` to surface the `activated` flag as a banner.
@@ -286,10 +286,10 @@ All four locales (`public/locales/{en,id,it,zh-CN}/cellular.json`) carry these b
 | Key path | Purpose |
 |---|---|
 | `cell_locking.band_locking.cards.nrdc_nr5g.title` | Card title ("NR-DC Bands") |
-| `cell_locking.band_locking.cards.nrdc_nr5g.description` | Card description (explains NR-DC is modem-managed / view-only) |
+| `cell_locking.band_locking.cards.nrdc_nr5g.description` | Card description |
 | `cell_locking.band_locking.card_category_label.nrdc_nr5g` | Swap button label (shows target mode) |
 | `cell_locking.band_locking.card_buttons.swap_view` | Swap button tooltip template (`"Switch to {{target}}"`) |
-| `cell_locking.band_locking.card_badges.view_only` | "View only" badge shown on the read-only NR-DC card |
+| `cell_locking.band_locking.card_badges.view_only` | "View only" badge — key retained in all locales but currently unused (NR-DC is now lockable) |
 | `cell_locking.band_locking.legend.used` | Legend swatch label — bands the network/SIM uses (primary color) |
 | `cell_locking.band_locking.legend.unused` | Legend swatch label — "Supported by modem" (warning/yellow). Previously included "· not used by network"; that clause was removed in all four locales to keep the label concise. |
 

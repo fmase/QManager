@@ -93,10 +93,10 @@ const BandLockingComponent = () => {
   //   This is the checkbox universe. Bands present here but NOT in policyBands are
   //   modem-supported-but-network-unused → rendered in warning/yellow.
   // hwBands falls back to policyBands when the static field is absent (pre-upgrade
-  //   device) so the page degrades to the old behavior. NR-DC is view-only with no
-  //   dedicated hw list, so it borrows the SA hardware list as its universe (NR-DC
-  //   bands are NR bands ⊆ the SA set) and renders all-primary (no yellow — see the
-  //   per-card policyBands override below).
+  //   device) so the page degrades to the old behavior. NR-DC has no dedicated hw
+  //   list, so it borrows the SA hardware list as its universe (NR-DC bands are NR
+  //   bands ⊆ the SA set); it's fully lockable (verified on-device) and uses the
+  //   same two-tone coloring as the other categories via policyBands.nrdc_nr5g.
   const policyBands: Record<BandCategory, number[]> = {
     lte: parseBandString(data?.device.supported_lte_bands),
     nsa_nr5g: parseBandString(data?.device.supported_nsa_nr5g_bands),
@@ -116,8 +116,8 @@ const BandLockingComponent = () => {
     lte: hwBands.lte.length > 0 ? hwBands.lte : policyBands.lte,
     nsa_nr5g: hwBands.nsa_nr5g.length > 0 ? hwBands.nsa_nr5g : policyBands.nsa_nr5g,
     sa_nr5g: hwBands.sa_nr5g.length > 0 ? hwBands.sa_nr5g : policyBands.sa_nr5g,
-    // NR-DC borrows the SA hardware universe so the read-only card shows the
-    // modem's full NR band support; falls back to policy nrdc pre-upgrade.
+    // NR-DC borrows the SA hardware universe (full NR band support) as its lockable
+    // checkbox set; falls back to policy nrdc pre-upgrade.
     nrdc_nr5g: hwBands.sa_nr5g.length > 0 ? hwBands.sa_nr5g : policyBands.nrdc_nr5g,
   };
 
@@ -196,13 +196,7 @@ const BandLockingComponent = () => {
           )}
           bandCategory={saSlotView}
           supportedBands={supportedBands[saSlotView]}
-          // NR-DC is view-only: pass its full universe as the policy set so every
-          // band renders primary (no yellow), with active bands shown checked.
-          policyBands={
-            saSlotView === "nrdc_nr5g"
-              ? supportedBands.nrdc_nr5g
-              : policyBands.sa_nr5g
-          }
+          policyBands={policyBands[saSlotView]}
           currentLockedBands={
             currentBands
               ? parseBandString(getBandsForCategory(currentBands, saSlotView))
@@ -214,7 +208,6 @@ const BandLockingComponent = () => {
           isLoading={isPageLoading}
           error={error}
           disabled={isScenarioControlled}
-          readOnly={saSlotView === "nrdc_nr5g"}
           onSwapView={() => setSaSlotView(swapTargetView)}
           swapLabel={t(
             `cell_locking.band_locking.card_category_label.${swapTargetView}`,
