@@ -16,7 +16,7 @@ This release adds LAN address configuration to the Local Network page and polish
 
 - **Band Locking now shows every band you've actually locked, including ones outside your carrier's plan.** Previously, bands locked outside the network policy silently vanished from the readback. The display now reflects what's configured on the modem verbatim.
 - **Reset (Unlock all) now restores the modem's full hardware band support,** not just the carrier-policy subset. Every band the modem is physically capable of using is included in the reset.
-- **NR-DC now shows the modem's full NR band list** instead of only the carrier-announced subset, giving a complete picture of which NR bands are available for dual connectivity.
+- **NR-DC bands can now be locked and reset, just like LTE, NSA, and SA.** The NR-DC card in Band Locking is no longer view-only — you can select specific NR-DC bands, save the lock, and reset to the full supported set. Failover also resets NR-DC bands automatically on connectivity loss.
 
 - **The login screen's "Can't sign in?" help is clearer and better aligned.** The recovery link now sits with comfortable spacing below the password field, and tapping it expands the recovery steps directly beneath the link — right where you asked — instead of above the field. The device-name line and its loading placeholder now share the same baseline, so the screen settles into place without a flicker, and all of its motion runs on one unified timing.
 - **The login device-name line now reads "Sign in as <your device name>" in every supported language.**
