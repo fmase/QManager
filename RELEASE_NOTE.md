@@ -24,6 +24,7 @@ This release adds LAN address configuration to the Local Network page and polish
 - **The login screen's "Can't sign in?" help is clearer and better aligned.** The recovery link now sits with comfortable spacing below the password field, and tapping it expands the recovery steps directly beneath the link — right where you asked — instead of above the field. The device-name line and its loading placeholder now share the same baseline, so the screen settles into place without a flicker, and all of its motion runs on one unified timing.
 - **The login device-name line now reads "Sign in as <your device name>" in every supported language.**
 - **Wake-on-LAN removed.** The WoL toggle has been removed. Upgrading devices will have the stale WoL configuration cleaned up automatically.
+- **Indonesian and Italian translations are caught up with the rest of the app.** Recently added screens — including the public overview page, Tower Locking's simple-mode controls, and the Tailscale connectivity-fixes toggle — now appear in Indonesian and Italian instead of falling back to English. **Translation contributors:** these strings were filled in to restore full key parity, so please double-check the wording for the `overview.*` (in `common.json`), `cell_locking.tower_locking.*` (in `cellular.json`), and `force_tailscale_fixes_*` (in `system-settings.json`) keys in the `id` and `it` locales and refine anything that reads awkwardly.
 
 ## 📥 Installation
 

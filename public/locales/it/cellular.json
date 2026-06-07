@@ -762,6 +762,8 @@
         "title": "LTE Blocco della torre",
         "description": "Blocca una torre cellulare LTE specifica inserendone il canale e l'ID cella.",
         "enabled_label": "Blocco BTS LTE abilitato",
+        "enabled_tooltip": "Forza il modem a collegarsi solo a celle LTE specifiche, identificate da EARFCN e PCI. Utile per ancorarsi a una torre affidabile quando il modem continua a spostarsi tra celle più deboli.",
+        "enabled_info_aria": "Informazioni sul blocco BTS LTE",
         "channel_label": "Canale (EARFCN)",
         "channel_label_n": "Canale (EARFCN) {{n}}",
         "channel_placeholder": "Inserisci EARFCN",
@@ -770,6 +772,16 @@
         "pci_label_n": "ID cella (PCI) {{n}}",
         "pci_placeholder": "Inserisci PCI",
         "pci_placeholder_n": "Inserisci PCI {{n}}",
+        "simple_mode": {
+          "toggle_label": "Modalità semplice",
+          "switch_aria": "Modalità semplice LTE",
+          "info_aria": "Informazioni sulla modalità semplice LTE",
+          "info_tooltip": "Scegli tra gli operatori attualmente attivi del tuo modem",
+          "empty_tooltip": "Nessun operatore LTE attivo rilevato — connettiti prima, oppure usa la modalità personalizzata",
+          "select_placeholder": "Seleziona un operatore attivo",
+          "custom_value_label": "Personalizzato: {{earfcn}} / PCI {{pci}}",
+          "slot_used_suffix": "(usato nello slot {{n}})"
+        },
         "lock_dialog": {
           "title": "Blocca sulla torre LTE?",
           "description_single": "In questo modo il modem verrà bloccato su EARFCN {{earfcn}}, PCI {{pci}}. Il modem si collegherà solo a questa torre e potrebbe disconnettersi brevemente durante il passaggio.",
@@ -801,6 +813,8 @@
         "description_suffix_nsa_mode": " Non compatibile con la modalità NR5G-NSA.",
         "description_suffix_lte_only": " Nessuna connessione NR disponibile.",
         "enabled_label": "Blocco BTS NR abilitato",
+        "enabled_tooltip": "Forza il modem a collegarsi solo a una cella 5G NR specifica, identificata da ARFCN, PCI, banda e SCS. Disponibile solo in modalità NR-SA.",
+        "enabled_info_aria": "Informazioni sul blocco BTS NR",
         "arfcn_label": "Canale (ARFCN)",
         "arfcn_placeholder": "Inserisci ARFCN",
         "pci_label": "ID cella (PCI)",
@@ -809,6 +823,17 @@
         "band_placeholder": "Inserisci NR Banda",
         "scs_label": "Spaziatura sottoportante",
         "scs_placeholder": "SCS",
+        "simple_mode": {
+          "toggle_label": "Modalità semplice",
+          "switch_aria": "Modalità semplice NR",
+          "info_aria": "Informazioni sulla modalità semplice NR",
+          "info_tooltip": "Scegli tra gli operatori attualmente attivi del tuo modem",
+          "empty_tooltip": "Nessun operatore 5G NR attivo rilevato — connettiti prima, oppure usa la modalità personalizzata",
+          "select_placeholder": "Seleziona un operatore attivo",
+          "custom_value_label": "Personalizzato: {{arfcn}} / PCI {{pci}}",
+          "scs_band_default_warning": "Questo è l'SCS tipico per N{{band}}. Il tuo operatore potrebbe usare un valore diverso — verifica prima di bloccare.",
+          "scs_warning_aria": "Avviso spaziatura sottoportante"
+        },
         "lock_dialog": {
           "title": "Blocca la Torre NR-SA?",
           "description": "In questo modo il modem verrà bloccato su NR ARFCN {{arfcn}}, PCI {{pci}} (banda {{band}}). Il modem si collegherà solo a questa torre e potrebbe disconnettersi brevemente durante il passaggio.",

@@ -762,6 +762,8 @@
         "title": "Penguncian Tower LTE",
         "description": "Kunci ke tower seluler LTE tertentu dengan memasukkan kanal dan ID sel.",
         "enabled_label": "Penguncian Tower LTE Aktif",
+        "enabled_tooltip": "Paksa modem untuk hanya terhubung ke sel LTE tertentu, yang diidentifikasi oleh EARFCN dan PCI. Berguna untuk menambatkan ke tower yang diketahui bagus saat modem terus berpindah ke sel yang lebih lemah.",
+        "enabled_info_aria": "Info Penguncian Tower LTE",
         "channel_label": "Channel (EARFCN)",
         "channel_label_n": "Channel (EARFCN) {{n}}",
         "channel_placeholder": "Masukkan EARFCN",
@@ -770,6 +772,16 @@
         "pci_label_n": "ID Sel (PCI) {{n}}",
         "pci_placeholder": "Masukkan PCI",
         "pci_placeholder_n": "Masukkan PCI {{n}}",
+        "simple_mode": {
+          "toggle_label": "Mode Sederhana",
+          "switch_aria": "Mode Sederhana LTE",
+          "info_aria": "Info Mode Sederhana LTE",
+          "info_tooltip": "Pilih dari carrier yang sedang aktif di modem Anda",
+          "empty_tooltip": "Tidak ada carrier LTE aktif yang terdeteksi — hubungkan terlebih dahulu, atau gunakan mode Kustom",
+          "select_placeholder": "Pilih carrier yang aktif",
+          "custom_value_label": "Kustom: {{earfcn}} / PCI {{pci}}",
+          "slot_used_suffix": "(digunakan di slot {{n}})"
+        },
         "lock_dialog": {
           "title": "Kunci ke Tower LTE?",
           "description_single": "Ini akan mengunci modem Anda ke EARFCN {{earfcn}}, PCI {{pci}}. Modem hanya akan terhubung ke tower ini dan mungkin akan terputus sebentar saat proses perpindahan.",
@@ -801,6 +813,8 @@
         "description_suffix_nsa_mode": " Tidak kompatibel dengan mode NR5G-NSA.",
         "description_suffix_lte_only": " Tidak ada koneksi NR tersedia.",
         "enabled_label": "Penguncian Tower NR Aktif",
+        "enabled_tooltip": "Paksa modem untuk hanya terhubung ke sel 5G NR tertentu, yang diidentifikasi oleh ARFCN, PCI, Band, dan SCS. Hanya tersedia dalam mode NR-SA.",
+        "enabled_info_aria": "Info Penguncian Tower NR",
         "arfcn_label": "channel (ARFCN)",
         "arfcn_placeholder": "Masukkan ARFCN",
         "pci_label": "ID Sel (PCI)",
@@ -809,6 +823,17 @@
         "band_placeholder": "Masukkan Band NR",
         "scs_label": "Subcarrier Spacing",
         "scs_placeholder": "SCS",
+        "simple_mode": {
+          "toggle_label": "Mode Sederhana",
+          "switch_aria": "Mode Sederhana NR",
+          "info_aria": "Info Mode Sederhana NR",
+          "info_tooltip": "Pilih dari carrier yang sedang aktif di modem Anda",
+          "empty_tooltip": "Tidak ada carrier 5G NR aktif yang terdeteksi — hubungkan terlebih dahulu, atau gunakan mode Kustom",
+          "select_placeholder": "Pilih carrier yang aktif",
+          "custom_value_label": "Kustom: {{arfcn}} / PCI {{pci}}",
+          "scs_band_default_warning": "Ini adalah SCS umum untuk N{{band}}. Operator Anda mungkin menggunakan nilai yang berbeda — verifikasi sebelum mengunci.",
+          "scs_warning_aria": "Peringatan subcarrier spacing"
+        },
         "lock_dialog": {
           "title": "Kunci ke Tower NR-SA?",
           "description": "Ini akan mengunci modem Anda ke NR ARFCN {{arfcn}}, PCI {{pci}} (Band {{band}}). Modem hanya akan terhubung ke tower ini dan mungkin akan terputus sebentar saat proses perpindahan.",

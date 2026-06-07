@@ -67,5 +67,100 @@
       "option_reset": "Apri una sessione SSH sul dispositivo ed esegui <code>qmanager_reset_password</code> per impostare una nuova password di amministratore. (Richiede l'accesso SSH già abilitato.)",
       "option_backup": "Se hai salvato un file .qmbackup, riprogramma il firmware del dispositivo e ripristina da quel file."
     }
+  },
+  "overview": {
+    "title": "QManager",
+    "tagline": "Stato del modem in tempo reale",
+    "login_button": "Accedi",
+    "header": {
+      "carrier": "Operatore",
+      "network": "Rete",
+      "bands": "Larghezza di banda"
+    },
+    "status": {
+      "overall": "Generale",
+      "connectivity": "Internet",
+      "temperature": "Temperatura"
+    },
+    "actions": {
+      "login": "Accedi",
+      "luci": "LuCI",
+      "luci_aria": "Apri l'interfaccia avanzata LuCI",
+      "theme_toggle_aria": "Cambia tema",
+      "theme_light": "Chiaro",
+      "theme_dark": "Scuro",
+      "theme_system": "Sistema"
+    },
+    "field": {
+      "carrier": "Operatore",
+      "aggregation": "Bande",
+      "uptime": "Tempo di attività",
+      "temperature": "Temp",
+      "temp_warn": "Surriscaldamento lieve",
+      "temp_danger": "Surriscaldamento",
+      "empty": "—"
+    },
+    "aggregation": {
+      "band_with_bw": "{{band}} ({{bandwidth}} MHz)",
+      "band_only": "{{band}}",
+      "pci_label": "PCI"
+    },
+    "bands": {
+      "toggle_multi_band": "Bande attive",
+      "toggle_single_band": "Operatore singolo",
+      "section": "Bande",
+      "count_one": "{{count}} attiva",
+      "count_other": "{{count}} attive",
+      "bandwidth": "{{bandwidth}} MHz",
+      "rsrp_unit": "{{rsrp}} dBm"
+    },
+    "metrics": {
+      "rsrp": "RSRP",
+      "rsrq": "RSRQ",
+      "sinr": "SINR",
+      "rsrp_value": "{{rsrp}} dBm",
+      "rsrq_value": "{{rsrq}} dB",
+      "sinr_value": "{{sinr}} dB",
+      "toggle_aria": "Cambia metrica del segnale della banda"
+    },
+    "signal": {
+      "dual": "{{rsrp}} dBm · {{sinr}} dB SINR",
+      "rsrp_only": "{{rsrp}} dBm",
+      "sinr_only": "{{sinr}} dB SINR",
+      "none": "—"
+    },
+    "quality": {
+      "overall_label": "Generale",
+      "excellent": "Eccellente",
+      "good": "Buono",
+      "fair": "Discreto",
+      "poor": "Scarso",
+      "none": "Nessun segnale"
+    },
+    "connection": {
+      "connected": "Connesso",
+      "searching": "Ricerca in corso",
+      "limited": "Limitato",
+      "inactive": "Inattivo",
+      "error": "Errore",
+      "disconnected": "Disconnesso",
+      "unknown": "Sconosciuto",
+      "modem_unreachable": "Modem irraggiungibile"
+    },
+    "stale_indicator": "I dati potrebbero non essere aggiornati",
+    "redirecting_setup": "Reindirizzamento alla configurazione iniziale…",
+    "loading_status": "Caricamento dello stato del modem…",
+    "empty": {
+      "title": "Stato del modem non disponibile",
+      "subtitle": "Accedi per i dettagli diagnostici.",
+      "fetch_error": "Impossibile raggiungere il dispositivo.",
+      "retry": "Riprova"
+    },
+    "uptime": {
+      "days": "{{days}}g {{hours}}h",
+      "hours": "{{hours}}h {{minutes}}m",
+      "minutes": "{{minutes}}m"
+    },
+    "copyright": "© {{year}} QManager"
   }
 }
