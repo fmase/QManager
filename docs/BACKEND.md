@@ -59,6 +59,16 @@ result=$(qcmd 'AT+QENG="servingcell"')
 
 Never access the modem serial port directly.
 
+### Temperature: sysfs only — never AT+QTEMP
+
+> ⚠️ WARNING: Do not reintroduce `AT+QTEMP` on RM551E-GL (SDX75) firmware. Issuing it on `/dev/smd11` can crash the AT channel, making the modem unreachable until the channel recovers or the device reboots.
+
+Temperature is read exclusively from the SoC thermal sysfs (`/sys/class/thermal/thermal_zone*/`) and runs at **Tier 1.5 (10 s)**. The parser (`parse_temperature()` in `scripts/usr/lib/qmanager/parse_at.sh`) selects zones by **type-name allowlist** (`mdmss-*|mdmq6-*|sdr[0-9]*|xo-therm*|sys-therm-*|cpuss-*`), not by zone index — indices renumber across firmware builds, type names are stable. The allowlist spans the modem die (`mdmss`, `mdmq6`), the RF transceiver (`sdr`), the board/system thermistors (`sys-therm`, `xo-therm`), and the application-processor cores (`cpuss`), so the single averaged value reflects overall device temperature. Unavailable-sensor sentinels (`-273000`, `-40960`) are filtered by an `awk '$1 > 0'` pass before averaging. The result is millidegrees-to-degrees via `printf "%.0f", sum/1000/count`.
+
+The poller global for this value is `t1_temperature` (renamed from `t2_temperature` when the read moved from Tier 2 to Tier 1.5). The `.temperature` key in `/tmp/qmanager_status.json` and `device.temperature` in the API response are unchanged.
+
+> ℹ️ NOTE: `scripts/debug_poller_at.sh` lines 56–57 still reference `AT+QTEMP` as a Tier 3 probe. That file is a development diagnostic, not production code, and its cleanup is tracked separately — do not treat it as evidence that AT+QTEMP is safe to call.
+
 ### No `setsid`
 
 BusyBox doesn't have `setsid`. Use the double-fork pattern for background daemons:
@@ -202,6 +212,7 @@ Downtime SMS alert logic (sourced by poller):
 - Test-send helper for CGI (`send_test` action)
 - Log writing to `/tmp/qmanager_sms_log.json`
 - Failures are logged via `qlog_error` (full context: `modem_reachable`, `lte_state`, `nr_state`, `conn`, and the cleaned `sms_tool` stderr). No breadcrumb file.
+- Stderr noise filtering (`tcgetattr`/`tcsetattr` / "Inappropriate ioctl for device") is retained as defense-in-depth; the patched `sms_tool` binary now self-guards via `isatty()` so these filters are no-ops in practice. See [`docs/features/sms.md`](features/sms.md).
 
 ### ethtool_helper.sh
 
@@ -280,20 +291,29 @@ The core daemon — runs forever, polls the modem at tiered intervals.
 
 | Tier | Interval | Data |
 |------|----------|------|
-| 1 | 2s | Serving cell, traffic, uptime |
-| 1.5 | 10s | Per-antenna signal, history append |
-| 2 | 30s | Temperature, carrier, CA, MIMO |
+| 1 | 2s | Serving cell, uptime |
+| 1.5 | 10s | SoC temperature (thermal sysfs), per-antenna signal, history append |
+| 2 | 30s | Carrier, CA, MIMO, SIM identity (operator name, APN, DNS, WAN-IP, ICCID, IMSI) |
 | Boot | Once | Firmware, IMEI, IMSI, capabilities |
+
+**Boot APN reconcile:** `collect_boot_data()` invokes `reconcile_active_apn_slot_at_boot()` (defined in `apn_mgr.sh`) immediately after the profile auto-apply step. The function compares the stored active APN slot against the live `AT+CGDCONT?` value and runs a COPS detach/attach cycle only on mismatch — no AT commands fire when the APN is already correct. Two gates must both pass: no active Custom SIM Profile (`/etc/qmanager/active_profile` empty/absent) and a non-zero `active` pointer in `apn_profiles.json`. See [`docs/features/apn-management.md`](features/apn-management.md) for the full invariant.
+
+**Force-Tier-2 flag (`/tmp/qmanager_force_tier2`):** CGI scripts that trigger a modem re-registration event (SIM slot switch in `cellular/settings.sh`, band lock in `bands/lock.sh`) touch this file after a 2-second settle delay. In `poll_cycle`, after the `LONG_FLAG` early-return, the poller checks for the flag: when present it consumes it (`rm -f`) and immediately executes `poll_tier2` + `read_sim_state` + `refresh_sim_identity`, collapsing the stale window for SIM-identity fields from ~30 seconds to ~4 seconds. `refresh_sim_identity` issues `AT+CIMI;+QCCID` and updates `boot_imsi`/`boot_iccid` — no profile or swap side effects. The flag check deliberately sits after `LONG_FLAG` so an in-progress cell scan does not consume and discard it. Producers MUST NOT write `/tmp/qmanager_status.json` — `write_cache` in the poller is the sole atomic writer.
+
+> ℹ️ NOTE: Live network traffic (rx/tx bytes per second) is **not** collected by the poller and is **not** present in `/tmp/qmanager_status.json`. It is served exclusively by the opt-in WebSocket bandwidth monitor (`bridge_traffic_monitor_rm551` + `websocat:8838`, managed by `init.d/qmanager_bandwidth`). The feature is off by default (UCI `quecmanager.bridge_monitor.enabled=0`). When disabled, the dashboard Live Traffic row shows a prompt to enable it rather than showing zeros. See [`docs/features/bandwidth-monitor.md`](features/bandwidth-monitor.md).
 
 ### qmanager_ping (Ping Daemon)
 
-Pings a target every 5 seconds to monitor internet connectivity.
+HTTP-probe daemon that monitors internet reachability and latency. Uses `curl` — not ICMP ping — so reported latency includes TCP connect, TLS handshake, and time-to-first-byte.
 
 **Location:** `scripts/usr/bin/qmanager_ping`
 **Output:** `/tmp/qmanager_ping.json`
-**History:** `/tmp/qmanager_ping_history.json` (written by poller)
+**History:** `/tmp/qmanager_ping_history` (flat-file ring buffer; read + processed by the poller)
+**Dependency:** `curl` full build, 8.7.1+ (hard runtime dependency — without it the daemon emits no results)
 
-Writes minimal JSON: `{ timestamp, reachable, last_rtt, streaks }`. The poller handles all statistical analysis.
+Writes slim JSON: `{ timestamp, profile, targets, interval_sec, last_rtt_ms, reachable, streak_success, streak_fail, during_recovery }`. The poller handles all statistical analysis (avg/min/max/jitter/loss) in a single awk pass over the raw history file.
+
+The active probe sensitivity is set by the **ping profile** (`sensitive` / `regular` / `relaxed` / `quiet`). The daemon owns the profile→interval/fail/recover table; UCI stores only the profile name. A saved profile change drops `/tmp/qmanager_ping_reload`; the daemon re-reads UCI within one probe cycle without a restart. See [`docs/features/connection-quality.md`](features/connection-quality.md) for the full profile table and reload pipeline.
 
 ### qmanager_watchcat (Connection Watchdog)
 
@@ -344,10 +364,6 @@ Waits for `rmnet_data0` interface (up to 120s), then applies MTU from `/etc/fire
 ### qmanager_imei_check
 
 Boot-time one-shot: checks if IMEI was rejected (cause 5 from `AT+QNETRC?`), restores backup IMEI if configured.
-
-### qmanager_wan_guard
-
-Boot-time one-shot: validates WAN profiles against active CIDs, disables orphaned profiles to prevent netifd retry loops.
 
 ### qmanager_scheduled_reboot
 
@@ -461,10 +477,10 @@ result=$(qcmd 'AT+QENG="servingcell"')
 | `qmanager_ttl` | non-procd | 99 | — | Apply TTL/HL rules on boot (sources `/etc/firewall.user.ttl`) |
 | `qmanager_mtu` | non-procd | 99 | `qmanager_mtu_apply` | MTU application daemon |
 | `qmanager_imei_check` | non-procd | 99 | `qmanager_imei_check` | Boot-time IMEI check (one-shot, double-fork) |
-| `qmanager_wan_guard` | non-procd | 99 | `qmanager_wan_guard` | WAN profile validation (one-shot) |
 | `qmanager_tower_failover` | non-procd | 99 | `qmanager_tower_failover` | Tower failover watchdog |
 | `qmanager_low_power_check` | non-procd | 99 | `qmanager_low_power_check` | Boot-time low power window check (one-shot, double-fork) |
 | `qmanager_dpi` | procd | 99 | `nfqws` (x2) | DPI evasion: Video Optimizer (queue 200) + Traffic Masquerade (queue 201), each UCI-gated |
+| `qmanager_bandwidth` | procd | 99 | `websocat` + `bridge_traffic_monitor_rm551` | Live bandwidth monitor (UCI-gated, default off). Starts only when `quecmanager.bridge_monitor.enabled=1` |
 
 Non-procd services use the double-fork pattern for daemonization:
 ```sh
@@ -658,6 +674,7 @@ All auth endpoints set `_SKIP_AUTH=1`.
 | `qmanager_email_reload` | CGI | Trigger file for config reload |
 | `qmanager_sms_log.json` | poller (sms) | SMS log NDJSON |
 | `qmanager_sms_reload` | CGI | Trigger file for SMS config reload |
+| `qmanager_force_tier2` | CGI (settings.sh, bands/lock.sh) | Touch-flag; consumed by poller to force an early Tier-2 poll after SIM switch or band lock |
 | `qmanager_low_power_active` | low_power | Low power mode flag (timestamp; suppresses events + alerts) |
 | `qmanager_watchcat.lock` | low_power | Watchdog pause lock (forces LOCKED state) |
 | `qmanager_dpi_install.json` | dpi_install | nfqws installer progress/result |
@@ -700,6 +717,10 @@ All auth endpoints set `_SKIP_AUTH=1`.
 | `quecmanager.video_optimizer.interface` | interface name | WAN interface (default `rmnet_data0`) |
 | `quecmanager.traffic_masquerade.enabled` | `0`, `1` | Traffic Masquerade on/off |
 | `quecmanager.traffic_masquerade.sni_domain` | domain name | Spoofed SNI domain (default `speedtest.net`) |
+| `quecmanager.bridge_monitor.enabled` | `0`, `1` | Bandwidth monitor on/off (default `0`) |
+| `quecmanager.bridge_monitor.ws_port` | port number | WebSocket port for `websocat` (default `8838`) |
+| `quecmanager.bridge_monitor.refresh_rate_ms` | milliseconds | Poll interval for the monitor binary (default `1000`) |
+| `quecmanager.bridge_monitor.interfaces` | comma-separated list | Interfaces to monitor (default `br-lan,eth0,rmnet_data0,rmnet_data1,rmnet_ipa0`) |
 | `system.@system[0].timezone` | POSIX TZ string | System timezone |
 | `system.@system[0].zonename` | IANA zone name | System timezone display name |
 
@@ -733,6 +754,41 @@ All auth endpoints set `_SKIP_AUTH=1`.
 5. Source `qlog.sh` and call `qlog_init`
 6. Write state to `/tmp/qmanager_<name>.json`
 7. Handle `SIGTERM` and `SIGINT` via `trap cleanup EXIT INT TERM`
+
+---
+
+## Installer (`scripts/install.sh`)
+
+The installer copies QManager onto the device filesystem and starts services. It is used both for fresh installs (via `qmanager-installer.sh`) and for OTA updates (Software Update path, `--no-reboot --skip-packages`).
+
+### File-copy helpers
+
+| Function | Used for |
+|----------|----------|
+| `install_file(src, dst, mode)` | Single file (daemons, libs, config defaults) |
+| `install_dir_flat(src, dst, mode)` | All files in a flat directory (e.g. `usr/bin/`) |
+| `install_tree(src, dst)` | Recursive directory tree (CGI endpoints) |
+
+`install_dir_flat` calls `install_file` per file and `die`s on the first failure. `install_tree` copies with `cp -r`, then runs its own integrity sweep (see below) before the CRLF strip.
+
+### Truncation-integrity check
+
+Both `install_file` and `install_tree` verify that each copied file is byte-for-byte the same size as its source. This catches truncated transfers caused by ENOSPC, an interrupted OTA download, or an aborted SSH copy.
+
+**`install_file`:** After `cp` and before the CRLF strip, compares `wc -c < "$src"` with `wc -c < "$tmp"`. On mismatch:
+1. Logs `install_file: SIZE MISMATCH (truncated copy) <src> (<N> B) -> <tmp> (<M> B)` to `/tmp/qmanager_install.log`.
+2. Removes the temp file and returns 1.
+3. `install_dir_flat` receives the failure and calls `die`, aborting the entire install.
+
+**`install_tree`:** After `cp -r "$src"/. "$dst"/` and before the CRLF strip, walks `find "$src" -type f` and compares `wc -c` for each file pair. Mismatches are recorded to a temp marker file (`/tmp/qm_install_treechk.$$`). After the loop (not inside it — the `while` body runs in a subshell, so `die` there would only kill the subshell), if any mismatches were recorded the installer logs them and calls `die "install_tree: $src -> $dst copy truncated (see $LOG_FILE)"`.
+
+**Why this matters:** A truncated-but-present shell script (including a 0-byte file) passes `sh -n` syntax check and execs cleanly — it just exits immediately without doing anything. This once shipped an empty `qmanager_profile_apply` to a device, which caused SIM Profile activation to fail with `start_failed` every time with no visible error in the script layer. The integrity check turns that silent breakage into a loud install failure.
+
+**Log location:** `/tmp/qmanager_install.log`. Both signatures — `SIZE MISMATCH` and `copy truncated` — appear here and can be grepped after a failed install to identify which files were affected.
+
+> ℹ️ NOTE: The integrity check runs on byte counts, not checksums, to stay within BusyBox's toolset without requiring `md5sum` or `stat`. `wc -c` is a BusyBox core applet. `tr -d ' '` normalizes the leading whitespace that some `wc` builds emit.
+
+---
 
 ### JSON Response Conventions
 

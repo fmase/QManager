@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import { logout } from "@/hooks/use-auth";
 import { useModemReconnect } from "@/hooks/use-modem-reconnect";
 import { authFetch } from "@/lib/auth-fetch";
+import { rebootNow } from "@/lib/reboot";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -163,18 +164,7 @@ export function NavUser({
   const handleReboot = async (e: React.MouseEvent) => {
     e.preventDefault();
     setRebooting(true);
-
-    // Fire-and-forget: send the reboot POST, don't await the response.
-    fetch("/cgi-bin/quecmanager/system/reboot.sh", { method: "POST" }).catch(
-      () => {},
-    );
-
-    // Clear session and redirect to countdown page.
-    setTimeout(() => {
-      sessionStorage.setItem("qm_rebooting", "1");
-      document.cookie = "qm_logged_in=; Path=/; Max-Age=0";
-      window.location.href = "/reboot/";
-    }, 2000);
+    rebootNow("manual");
   };
 
   const handleReconnect = async (e: React.MouseEvent) => {

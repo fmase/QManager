@@ -267,22 +267,43 @@ parse_serving_cell() {
 }
 
 # -----------------------------------------------------------------------------
-# Parse AT+QTEMP — Average temperature (excluding non-positive/unavailable sensors)
-# Populates: t2_temperature
+# SoC thermal — Average temperature from /sys/class/thermal (no AT channel)
+# Populates: t1_temperature
+#
+# Reads sysfs instead of AT+QTEMP: AT+QTEMP can crash this firmware's AT
+# channel (/dev/smd11). Thermal sysfs is independent of AT and stable.
+#
+# Selection is by thermal-zone TYPE NAME, not zone index: indices renumber
+# across firmware builds but type names are stable.
 # -----------------------------------------------------------------------------
 parse_temperature() {
-    local raw="$1"
-
+    local zone
+    local ztype
     local result
-    result=$(printf '%s\n' "$raw" | grep '+QTEMP:' | \
-        sed -n 's/.*,"\(-\{0,1\}[0-9]*\)".*/\1/p' | \
-        awk '$1 > 0' | \
-        awk '{ sum += $1; count++ } END { if (count > 0) printf "%.0f", sum/count; }')
+
+    # --- TUNING KNOB: thermal-zone type-name allowlist (case glob) -----------
+    # Modem-relevant SoC sensors plus the AP CPU cores (cpuss-*), averaged into
+    # the single overall temperature. Edit this glob to tune the zone set
+    # for temperature parity. sysfs temp is in millidegrees C; non-positive
+    # values (e.g. -273000, -40960, empty) are unavailable sentinels and are
+    # excluded by the >0 filter below.
+    # -------------------------------------------------------------------------
+    result=$(for zone in /sys/class/thermal/thermal_zone*; do
+        [ -r "$zone/type" ] || continue
+        [ -r "$zone/temp" ] || continue
+        ztype=$(cat "$zone/type" 2>/dev/null)
+        case "$ztype" in
+            mdmss-*|mdmq6-*|sdr[0-9]*|xo-therm*|sys-therm-*|cpuss-*)
+                cat "$zone/temp" 2>/dev/null
+                ;;
+        esac
+    done | awk '$1 > 0' | \
+        awk '{ sum += $1; count++ } END { if (count > 0) printf "%.0f", sum/1000/count; }')
 
     if [ -n "$result" ]; then
-        t2_temperature="$result"
+        t1_temperature="$result"
     else
-        t2_temperature=""
+        t1_temperature=""
     fi
 }
 
@@ -995,7 +1016,8 @@ parse_wan_ip() {
 #   +QNWPREFCFG: "nrdc_nr5g_band",1:2:3:5:7:8:...
 #
 # Sets: boot_supported_lte_bands, boot_supported_nsa_nr5g_bands,
-#        boot_supported_sa_nr5g_bands (colon-delimited strings)
+#        boot_supported_sa_nr5g_bands, boot_supported_nrdc_nr5g_bands
+#        (colon-delimited strings)
 
 parse_policy_band() {
     local raw="$1"
@@ -1003,6 +1025,7 @@ parse_policy_band() {
     boot_supported_lte_bands=""
     boot_supported_nsa_nr5g_bands=""
     boot_supported_sa_nr5g_bands=""
+    boot_supported_nrdc_nr5g_bands=""
 
     # Extract colon-delimited band list after the key name for each type.
     # Format per line: +QNWPREFCFG: "<key>",<bands>
@@ -1024,7 +1047,12 @@ parse_policy_band() {
         boot_supported_sa_nr5g_bands=$(printf '%s' "$line" | sed 's/.*"nr5g_band",//' | tr -d '\r ')
     fi
 
-    qlog_debug "policy_band: LTE=$boot_supported_lte_bands NSA=$boot_supported_nsa_nr5g_bands SA=$boot_supported_sa_nr5g_bands"
+    line=$(printf '%s\n' "$raw" | grep '"nrdc_nr5g_band"' | head -1)
+    if [ -n "$line" ]; then
+        boot_supported_nrdc_nr5g_bands=$(printf '%s' "$line" | sed 's/.*"nrdc_nr5g_band",//' | tr -d '\r ')
+    fi
+
+    qlog_debug "policy_band: LTE=$boot_supported_lte_bands NSA=$boot_supported_nsa_nr5g_bands SA=$boot_supported_sa_nr5g_bands NRDC=$boot_supported_nrdc_nr5g_bands"
 }
 
 # =============================================================================

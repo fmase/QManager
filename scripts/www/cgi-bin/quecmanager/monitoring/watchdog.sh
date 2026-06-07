@@ -38,6 +38,10 @@ ensure_watchcat_config() {
     uci set quecmanager.watchcat.tier4_enabled=1
     uci set quecmanager.watchcat.backup_sim_slot=
     uci set quecmanager.watchcat.max_reboots_per_hour=3
+    uci set quecmanager.watchcat.quality_enabled=0
+    uci set quecmanager.watchcat.latency_ceiling_ms=800
+    uci set quecmanager.watchcat.loss_ceiling_pct=20
+    uci set quecmanager.watchcat.quality_consecutive=5
     uci commit quecmanager
 }
 
@@ -80,6 +84,7 @@ if [ "$REQUEST_METHOD" = "GET" ]; then
 
     enabled="" max_failures="" check_interval="" cooldown=""
     tier1="" tier2="" tier3="" tier4="" backup_sim="" max_reboots=""
+    quality_enabled="" latency_ceiling="" loss_ceiling="" quality_consecutive=""
 
     enabled=$(uci_get enabled 0)
     max_failures=$(uci_get max_failures 5)
@@ -91,6 +96,10 @@ if [ "$REQUEST_METHOD" = "GET" ]; then
     tier4=$(uci_get tier4_enabled 1)
     backup_sim=$(uci_get backup_sim_slot "")
     max_reboots=$(uci_get max_reboots_per_hour 3)
+    quality_enabled=$(uci_get quality_enabled 0)
+    latency_ceiling=$(uci_get latency_ceiling_ms 800)
+    loss_ceiling=$(uci_get loss_ceiling_pct 20)
+    quality_consecutive=$(uci_get quality_consecutive 5)
 
     # Read live status from watchcat daemon state file
     status_json='{}'
@@ -125,6 +134,10 @@ if [ "$REQUEST_METHOD" = "GET" ]; then
         --argjson tier4 "$tier4" \
         --arg backup_sim "$backup_sim" \
         --argjson max_reboots "$max_reboots" \
+        --argjson quality_enabled "$quality_enabled" \
+        --argjson latency_ceiling "$latency_ceiling" \
+        --argjson loss_ceiling "$loss_ceiling" \
+        --argjson quality_consecutive "$quality_consecutive" \
         --argjson status "$status_json" \
         --argjson sim_failover "$sim_failover_json" \
         --argjson sim_swap "$sim_swap_json" \
@@ -141,7 +154,11 @@ if [ "$REQUEST_METHOD" = "GET" ]; then
                 tier3_enabled: ($tier3 == 1),
                 tier4_enabled: ($tier4 == 1),
                 backup_sim_slot: (if $backup_sim == "" then null else ($backup_sim | tonumber) end),
-                max_reboots_per_hour: $max_reboots
+                max_reboots_per_hour: $max_reboots,
+                quality_enabled: ($quality_enabled == 1),
+                latency_ceiling_ms: $latency_ceiling,
+                loss_ceiling_pct: $loss_ceiling,
+                quality_consecutive: $quality_consecutive
             },
             status: $status,
             sim_failover: $sim_failover,
@@ -235,6 +252,29 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
         if [ -n "$val" ]; then
             validate_int "$val" 1 10 || reject_field "max_reboots_per_hour" "must be integer 1-10"
             uci set quecmanager.watchcat.max_reboots_per_hour="$val"
+        fi
+
+        val=$(printf '%s' "$POST_DATA" | jq -r '.quality_enabled | if . == null then empty else tostring end')
+        if [ -n "$val" ]; then
+            case "$val" in true) uci set quecmanager.watchcat.quality_enabled=1 ;; false) uci set quecmanager.watchcat.quality_enabled=0 ;; esac
+        fi
+
+        val=$(printf '%s' "$POST_DATA" | jq -r '.latency_ceiling_ms | if . == null then empty else tostring end')
+        if [ -n "$val" ]; then
+            validate_int "$val" 0 10000 || reject_field "latency_ceiling_ms" "must be integer 0-10000"
+            uci set quecmanager.watchcat.latency_ceiling_ms="$val"
+        fi
+
+        val=$(printf '%s' "$POST_DATA" | jq -r '.loss_ceiling_pct | if . == null then empty else tostring end')
+        if [ -n "$val" ]; then
+            validate_int "$val" 0 100 || reject_field "loss_ceiling_pct" "must be integer 0-100"
+            uci set quecmanager.watchcat.loss_ceiling_pct="$val"
+        fi
+
+        val=$(printf '%s' "$POST_DATA" | jq -r '.quality_consecutive | if . == null then empty else tostring end')
+        if [ -n "$val" ]; then
+            validate_int "$val" 1 60 || reject_field "quality_consecutive" "must be integer 1-60"
+            uci set quecmanager.watchcat.quality_consecutive="$val"
         fi
 
         uci commit quecmanager

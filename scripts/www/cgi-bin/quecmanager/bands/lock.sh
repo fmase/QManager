@@ -3,13 +3,18 @@
 # =============================================================================
 # lock.sh — CGI Endpoint: Apply Band Lock
 # =============================================================================
-# Locks bands for a single category (lte, nsa_nr5g, or sa_nr5g).
+# Locks bands for a single category (lte, nsa_nr5g, sa_nr5g, or nrdc_nr5g).
 # Per-card operation — each band card sends its own independent lock request.
+#
+# NR-DC IS lockable: writes to nrdc_nr5g_band were verified on-device to stick
+# verbatim (no coercion, including bands outside the policy set), so it uses the
+# same apply path as the other categories.
 #
 # POST body:
 #   {"band_type":"lte","bands":"1:3:7:28"}
 #   {"band_type":"nsa_nr5g","bands":"41:78"}
 #   {"band_type":"sa_nr5g","bands":"41:78"}
+#   {"band_type":"nrdc_nr5g","bands":"41:78:257"}
 #
 # On success, clears any previous failover activation flag and spawns the
 # failover watcher (if failover is enabled) to monitor connectivity.
@@ -39,8 +44,8 @@ fi
 cgi_read_post
 
 # --- Parse JSON fields -------------------------------------------------------
-BAND_TYPE=$(printf '%s' "$POST_DATA" | jq -r '.band_type // empty')
-BANDS=$(printf '%s' "$POST_DATA" | jq -r '.bands // empty')
+BAND_TYPE=$(printf '%s' "$POST_DATA" | jq -r 'if .band_type == null then empty else .band_type end')
+BANDS=$(printf '%s' "$POST_DATA" | jq -r 'if .bands == null then empty else .bands end')
 
 # --- Validate inputs ---------------------------------------------------------
 if [ -z "$BAND_TYPE" ]; then
@@ -59,8 +64,9 @@ case "$BAND_TYPE" in
     lte)        AT_PARAM="lte_band" ;;
     nsa_nr5g)   AT_PARAM="nsa_nr5g_band" ;;
     sa_nr5g)    AT_PARAM="nr5g_band" ;;
+    nrdc_nr5g)  AT_PARAM="nrdc_nr5g_band" ;;
     *)
-        cgi_error "invalid_band_type" "band_type must be lte, nsa_nr5g, or sa_nr5g"
+        cgi_error "invalid_band_type" "band_type must be lte, nsa_nr5g, sa_nr5g, or nrdc_nr5g"
         exit 0
         ;;
 esac
@@ -95,6 +101,11 @@ case "$result" in
 esac
 
 qlog_info "Band lock applied: $AT_PARAM=$BANDS"
+
+# --- Force an early poller Tier-2 refresh so the UI reflects the new band
+#     registration within ~2s instead of the next ~30s tier boundary ---
+sleep 2
+touch /tmp/qmanager_force_tier2
 
 # --- Clear failover activation flag (new lock supersedes previous failover) --
 rm -f "$FAILOVER_ACTIVATED_FLAG"

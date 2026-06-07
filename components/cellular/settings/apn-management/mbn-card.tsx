@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import {
@@ -59,8 +59,16 @@ const MBNCard = ({
   const [showRebootDialog, setShowRebootDialog] = useState(false);
   const [isRebooting, setIsRebooting] = useState(false);
 
-  // Sync form state from fetched data
-  useEffect(() => {
+  // Seed local form state from fetched data using the render-phase derived-state
+  // pattern (React docs: "You Might Not Need an Effect") instead of useEffect, so
+  // the sync lands in the same commit. The prev refs make this re-run only when a
+  // source changes — identical semantics to the previous [profiles, autoSel]
+  // effect.
+  const [prevAutoSel, setPrevAutoSel] = useState(autoSel);
+  const [prevProfiles, setPrevProfiles] = useState(profiles);
+  if (autoSel !== prevAutoSel || profiles !== prevProfiles) {
+    setPrevAutoSel(autoSel);
+    setPrevProfiles(profiles);
     if (autoSel !== null) {
       setLocalAutoSel(String(autoSel));
     }
@@ -68,7 +76,7 @@ const MBNCard = ({
       const active = profiles.find((p) => p.selected);
       setSelectedProfile(active?.name ?? "");
     }
-  }, [profiles, autoSel]);
+  }
 
   const handleSave = async (e: FormEvent) => {
     e.preventDefault();

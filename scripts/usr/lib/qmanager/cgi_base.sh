@@ -42,11 +42,6 @@ _CGI_BASE_LOADED=1
     qm_clear_attempts()     { :; }
 }
 
-# Auto-enforce auth unless the calling script set _SKIP_AUTH=1
-if [ "$_SKIP_AUTH" != "1" ]; then
-    require_auth
-fi
-
 # ---------------------------------------------------------------------------
 # HTTP Headers
 # Emit full JSON + CORS headers followed by the required blank line.
@@ -60,6 +55,24 @@ cgi_headers() {
     echo "Access-Control-Allow-Headers: Content-Type, Authorization"
     echo ""
 }
+
+# ---------------------------------------------------------------------------
+# Auto-enforce auth unless the calling script set _SKIP_AUTH=1.
+#
+# MUST stay below cgi_headers(): require_auth() calls cgi_headers on its 401
+# reject path, and POSIX sourcing runs top-to-bottom. If this block runs
+# before cgi_headers is defined, the reject emits no blank-line header
+# terminator, so uhttpd returns 502 instead of 401 — which silently breaks
+# the frontend's "401 -> redirect to login" recovery (e.g. after a reboot
+# wipes /tmp sessions, every auth-gated endpoint would 502 forever).
+#
+# This still runs during the source, before the calling script's own
+# post-source code, so unauthenticated requests are rejected before any
+# handler executes.
+# ---------------------------------------------------------------------------
+if [ "$_SKIP_AUTH" != "1" ]; then
+    require_auth
+fi
 
 # ---------------------------------------------------------------------------
 # CORS Preflight

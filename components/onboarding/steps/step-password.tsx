@@ -124,7 +124,7 @@ export function StepPassword({ onSuccess, onLoadingChange, onSubmitRef, onValidi
       setIsSubmitting(false);
       onLoadingChange(false);
     }
-  }, [displayName, password, confirm, useStrongPassword, onSuccess, onLoadingChange]);
+  }, [displayName, password, confirm, useStrongPassword, onSuccess, onLoadingChange, t]);
 
   useEffect(() => {
     onSubmitRef(handleSubmit);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, type FormEvent, type ChangeEvent } from "react";
+import { useState, type FormEvent, type ChangeEvent } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
@@ -96,8 +96,26 @@ const IPPassthroughCard = () => {
   // Pre-save confirmation dialog
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
 
-  // Sync form state when server data arrives
-  useEffect(() => {
+  // Seed local form state when server data arrives. Render-phase derived-state
+  // pattern (React docs: "You Might Not Need an Effect") instead of useEffect, so
+  // the sync lands in the same commit. prevSrc makes this re-run only when one of
+  // the source props changes — identical semantics to the previous
+  // [passthroughMode, targetMac, ipptNat, usbMode, dnsProxy] effect.
+  const [prevSrc, setPrevSrc] = useState({
+    passthroughMode,
+    targetMac,
+    ipptNat,
+    usbMode,
+    dnsProxy,
+  });
+  if (
+    prevSrc.passthroughMode !== passthroughMode ||
+    prevSrc.targetMac !== targetMac ||
+    prevSrc.ipptNat !== ipptNat ||
+    prevSrc.usbMode !== usbMode ||
+    prevSrc.dnsProxy !== dnsProxy
+  ) {
+    setPrevSrc({ passthroughMode, targetMac, ipptNat, usbMode, dnsProxy });
     if (passthroughMode !== null) setLocalMode(passthroughMode);
     if (ipptNat !== null) setLocalIpptNat(ipptNat === "1" ? "nat-on" : "nat-off");
     if (usbMode !== null) setLocalUsbMode(USB_MODE_FROM_API[usbMode] ?? "ecm");
@@ -117,7 +135,7 @@ const IPPassthroughCard = () => {
         setLocalMacInput(targetMac);
       }
     }
-  }, [passthroughMode, targetMac, ipptNat, usbMode, dnsProxy]);
+  }
 
   // Resolved MAC to send to backend
   const resolvedMac =

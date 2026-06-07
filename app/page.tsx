@@ -27,7 +27,7 @@ export default function Home() {
   return (
     <div className="bg-background flex min-h-svh items-center justify-center p-4 font-sans">
       {shouldRender && (
-        <main className="w-full max-w-md">
+        <main className="w-full max-w-lg">
           <OverviewCard />
         </main>
       )}

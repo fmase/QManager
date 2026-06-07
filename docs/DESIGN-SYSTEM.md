@@ -37,7 +37,8 @@ QManager uses OKLCH (Oklab Lightness, Chroma, Hue) for perceptually uniform colo
 | `--card` | `oklch(1 0 0)` | Card backgrounds |
 | `--primary` | `oklch(0.488 0.243 264.376)` | Primary actions, links (blue) |
 | `--primary-foreground` | `oklch(0.97 0.014 254.604)` | Text on primary bg |
-| `--secondary` | `oklch(0.967 0.001 286.375)` | Secondary backgrounds |
+| `--secondary` | `oklch(0.91 0.05 264)` | Quiet control surface — lighter shade of primary (not a brand color) |
+| `--secondary-foreground` | `oklch(0.39 0.15 264)` | Text on secondary surface |
 | `--muted` | `oklch(0.967 0.001 286.375)` | Muted backgrounds |
 | `--muted-foreground` | `oklch(0.552 0.016 285.938)` | Secondary text |
 | `--accent` | `oklch(0.967 0.001 286.375)` | Accent backgrounds |
@@ -56,7 +57,8 @@ QManager uses OKLCH (Oklab Lightness, Chroma, Hue) for perceptually uniform colo
 | `--background` | `oklch(0.141 0.005 285.823)` | Charcoal |
 | `--foreground` | `oklch(0.985 0 0)` | Near white |
 | `--card` | `oklch(0.21 0.006 285.885)` | Elevated dark |
-| `--secondary` | `oklch(0.274 0.006 286.033)` | Darker neutral |
+| `--secondary` | `oklch(0.40 0.08 264)` | Quiet control surface — lighter shade of primary (dark) |
+| `--secondary-foreground` | `oklch(0.97 0.014 264)` | Text on secondary surface (dark) |
 | `--muted-foreground` | `oklch(0.705 0.015 286.067)` | Lighter secondary text |
 | `--destructive` | `oklch(0.704 0.191 22.216)` | Brighter red for contrast |
 | `--success` | `oklch(0.65 0.17 149)` | Brighter green |
@@ -96,32 +98,30 @@ Six chart colors are defined for Recharts visualizations:
 
 ## Typography
 
-### Primary: Euclid Circular B
+### Primary (and only UI font): Manrope
 
-Clean, geometric, professional typeface loaded locally as WOFF2 files.
+The single interface typeface. Geometric without being severe, technical without being cold; tabular-numbers and stylistic alternates (`ss01`) carry dense modem-data readouts. Loaded via `next/font/google`. See `DESIGN.md` §3 for the full hierarchy and named rules.
 
-| Weight | File | Usage |
-|--------|------|-------|
-| 300 (Light) | `EuclidCircularB-Light.woff2` | Decorative headings |
-| 400 (Regular) | `EuclidCircularB-Regular.woff2` | Body text, inputs |
-| 400 (Italic) | `EuclidCircularB-Italic.woff2` | Emphasis |
-| 500 (Medium) | `EuclidCircularB-Medium.woff2` | Subheadings, labels |
-| 600 (SemiBold) | `EuclidCircularB-SemiBold.woff2` | Card titles |
-| 700 (Bold) | `EuclidCircularB-Bold.woff2` | Page titles |
+| Weight | Usage |
+|--------|-------|
+| 400 (Regular) | Body text, inputs, descriptions |
+| 500 (Medium) | Labels, table headers, button text, nav items |
+| 600 (SemiBold) | Headings, card titles, numeric readouts, emphasis |
+| 700 (Bold) | Wordmark / brand surfaces only |
 
-CSS Variable: `--font-euclid`
+CSS Variable: `--font-manrope`
 Tailwind: `font-sans` (mapped via `@theme inline`)
 
-### Secondary: Manrope
+**Weight discipline:** 400 body · 500 labels · 600 headings/emphasis · 700 brand only.
 
-Google Font, used as fallback. Clean geometric style that pairs well with Euclid.
+### Monospace (scoped): JetBrains Mono
 
-### Monospace: Geist Mono
+The one sanctioned non-Manrope face, used **only** in the AT terminal, raw-AT-response / log viewers, and inline `<code>` for AT command strings. Never a general UI font (The Machine-Voice Rule in `DESIGN.md`). Chosen for a disambiguated (slashed) zero and fixed advance width so device output stays column-aligned.
 
-System monospace, used for code, AT commands, and technical values.
-
-CSS Variable: `--font-geist-mono`
+CSS Variable: `--font-mono` (resolves to `'JetBrains Mono', ui-monospace, monospace`)
 Tailwind: `font-mono`
+
+> Note: the app previously shipped Euclid Circular B (commercial) as `--font-euclid` and pointed `--font-mono` at an undefined `--font-geist-mono`. Both are superseded: Manrope (free, SIL OFL) is the canonical UI font, JetBrains Mono the canonical scoped mono.
 
 ---
 

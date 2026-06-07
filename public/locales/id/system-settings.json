@@ -5,12 +5,12 @@
   "system": {
     "card_title": "Pengaturan Sistem",
     "card_description": "Konfigurasikan preferensi perangkat dan opsi tampilan.",
-    "wan_guard_label": "WAN Guard",
-    "wan_guard_info_aria": "Info WAN Guard",
-    "wan_guard_tooltip": "Memeriksa profil antarmuka WAN saat boot dan menonaktifkan yang tidak memiliki koneksi data aktif, mencegah penggunaan CPU yang tidak perlu.",
-    "wan_guard_toast_enabled": "WAN Guard diaktifkan",
-    "wan_guard_toast_disabled": "WAN Guard dinonaktifkan",
-    "wan_guard_toast_failed": "Gagal memperbarui WAN Guard",
+    "force_tailscale_fixes_label": "Paksa Perbaikan Tailscale",
+    "force_tailscale_fixes_info_aria": "Info Paksa Perbaikan Tailscale",
+    "force_tailscale_fixes_tooltip": "Menerapkan perbaikan firewall dan routing Tailscale milik QManager di atas firmware Anda. Direkomendasikan untuk firmware R02.",
+    "force_tailscale_fixes_toast_enabled": "Paksa Perbaikan Tailscale diaktifkan — menerapkan zona firewall dan pengecualian mwan3",
+    "force_tailscale_fixes_toast_disabled": "Paksa Perbaikan Tailscale dinonaktifkan — menghapus zona firewall",
+    "force_tailscale_fixes_toast_failed": "Gagal memperbarui Paksa Perbaikan Tailscale",
     "temperature_unit_label": "Satuan Suhu",
     "temperature_unit_aria": "Satuan suhu",
     "temperature_celsius": "Celsius",
@@ -411,6 +411,7 @@
       "install_started": "Menginstal {{name}}…",
       "install_success": "{{name}} terinstal",
       "install_failed": "Gagal menginstal {{name}}",
+      "install_failed_generic": "Gagal menginstal paket bahasa",
       "install_cancelled": "Instalasi dibatalkan",
       "install_in_progress": "Instalasi lain sedang berlangsung",
       "remove_success": "{{name}} dihapus",
@@ -546,5 +547,19 @@
       "tier_4": "Menghancurkan jaringan Anda",
       "tier_5": "Merusak inti sistem"
     }
+  },
+  "known_sims": {
+    "row_label": "SIM Dikenal",
+    "info_aria": "Info SIM dikenal",
+    "tooltip": "QManager mengingat SIM yang pernah terdeteksi, sehingga hanya memberi tahu Anda saat SIM yang benar-benar baru dipasang. Menghapus akan melupakan semua SIM kecuali yang sedang terpasang.",
+    "remembered_count_one": "{{count}} SIM",
+    "remembered_count_other": "{{count}} SIM",
+    "clear_button": "Hapus",
+    "clear_dialog_title": "Hapus SIM yang dikenal?",
+    "clear_dialog_description": "Ini akan melupakan setiap SIM yang pernah dikenali QManager, kecuali yang sedang terpasang — sehingga SIM aktif Anda tidak ditandai sebagai baru. SIM yang pernah digunakan akan diberitahukan lagi saat dipasang berikutnya.",
+    "clear_dialog_confirm": "Hapus",
+    "clear_dialog_clearing": "Menghapus…",
+    "toast_cleared": "SIM yang dikenal telah dihapus",
+    "toast_clear_failed": "Gagal menghapus SIM yang dikenal"
   }
 }

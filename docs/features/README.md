@@ -1,0 +1,42 @@
+# Feature Notes
+
+Per-feature deep-dives extracted from `CLAUDE.md` to keep the always-loaded prompt small. Read these on demand when working on a specific feature.
+
+## CGI Endpoint Reference
+
+| Feature | CGI Script | Hook | Types | Reboot? |
+|---|---|---|---|---|
+| Traffic Engine (Video Optimizer + Masquerade) | `network/video_optimizer.sh` | `use-video-optimizer.ts` + `use-cdn-hostlist.ts` + `use-traffic-masquerade.ts` | `video-optimizer.ts` | No |
+| NetBird VPN | `vpn/netbird.sh` | `use-netbird.ts` | inline | Yes (uninstall) |
+| Config Backup | `system/config-backup/{collect,apply,apply_status,apply_cancel}.sh` | `use-config-backup.ts` + `use-config-restore.ts` | `config-backup.ts` | Deferred (dialog + banner for IMEI/profile) |
+| Bandwidth Monitor | `monitoring/bandwidth.sh` | `use-bandwidth-monitor.ts` + `use-bandwidth-settings.ts` | `bandwidth-monitor.ts` | No |
+| Connection Scenarios | `scenarios/{activate,list,add,edit,delete}.sh` | `use-scenario-list.ts` | inline | No |
+| Scenario-to-Profile Binding | `scenarios/activate.sh` (guard) + `profiles/{deactivate,list,get,save}.sh` | `use-active-profile.ts` + `hooks/use-sim-profiles.ts` | `sim-profile.ts` (ScenarioSchedule, ProfileScenarioBinding) | No |
+| SMS Inbox + Alerts | `cellular/sms.sh` + `monitoring/sms_alerts.sh` + `monitoring/sms_alert_log.sh` | `use-sms-read-state.ts` (`useSmsReadState`, `smsFingerprint`, `parseSmsTimestamp`) | `SmsMessage` (`storage:"ME"\|"SM"`) | No (boot service: `qmanager_sms_storage`) |
+| APN Management | `cellular/apn.sh` (actions: save/activate/deactivate/clear); shared lib: `apn_mgr.sh` (v2 config I/O + COPS apply + `reapply_active_apn_slot` + `reconcile_active_apn_slot_at_boot` invoked from poller `collect_boot_data()`; `active=0` → no-op) | `use-wan-profiles.ts` (`saveProfile`, `activateProfile`, `deactivateProfile`, `clearProfile`, `patchCidApn`) | `wan-profiles.ts` (`WanProfile`, `CidContext`, `WanProfilesResponse`) | No |
+| Band Locking | `bands/current.sh` (per-category register query: `lte_band`/`nsa_nr5g_band`/`nr5g_band`/`nrdc_nr5g_band`) + `bands/lock.sh` (band_type: `lte`/`nsa_nr5g`/`sa_nr5g`/`nrdc_nr5g`) + `bands/failover_status.sh` + `bands/failover_toggle.sh` | `use-band-locking.ts` | `band-locking.ts` (`BandCategory`, `CurrentBands`, `BandLockResponse`); `modem-status.ts` (`hw_lte_bands`, `hw_nsa_nr5g_bands`, `hw_sa_nr5g_bands`) | No |
+| Known-SIMs Database | `system/known_sims.sh` (GET + POST list/clear) | — (fetched inline in `known-sims-row.tsx`) | — | No |
+| Connection Quality | `system/ping_profile.sh` (GET/POST) + `system/quality_thresholds.sh` (GET/POST) | `use-ping-profile.ts` + `use-quality-thresholds.ts` | `PingProfile`, `PING_PROFILES`, `QualityPreset`, `QUALITY_PRESETS`, `QualityThresholdsSettings` | No |
+| LAN Gateway / Subnet | `network/lan_config.sh` (GET/POST) | `use-lan-config.ts` | `LanConfigStatus`, `LanConfigSaveRequest`, `LanConfigSaveResponse` | No (network reload) |
+| Connection Watchdog | `monitoring/watchdog.sh` (GET/POST: `save_settings`, `dismiss_sim_swap`, `revert_sim`) | `use-watchdog-settings.ts` (`WatchdogSettings`, `WatchdogLiveStatus`, `WatchdogSavePayload`) | — (inline in hook) | Tier 4 only (token-bucketed `reboot`) |
+
+## Index
+
+| Doc | When to read |
+|---|---|
+| [DPI Settings](dpi-settings.md) | Traffic Engine (unified Video Optimizer + Masquerade at `/local-network/traffic-engine`), nfqws, NFQUEUE 200, persistent nft rules, mode takeover |
+| [Custom SIM Profiles](custom-sim-profiles.md) | APN/TTL/IMEI/MPDN apply pipeline, lock layering, Verizon MPDN, ICCID auto-apply, 2-col page (form card + list card), pills require per-row get.sh, flat save body, mismatch derived client-side |
+| [Config Backup & Restore](config-backup-restore.md) | `.qmbackup` format, AES-GCM, async restore worker, deferred-reboot pattern |
+| [Language Packs](language-packs.md) | Hybrid bundled/downloaded i18n, install/remove pipeline, publishing workflow, manifest |
+| [Error Code Vocabulary](error-codes.md) | Backend `{ error, detail }` contract, `resolveErrorMessage()`, `at-commands` namespace |
+| [Tower Lock Failover](tower-lock-failover.md) | Tower locking, signal failover daemon, unlock/stop semantics |
+| [Antenna Alignment](antenna-alignment.md) | `/cellular/antenna-alignment`, alignment meter scoring, antenna type toggle |
+| [Bandwidth Monitor](bandwidth-monitor.md) | `bridge_traffic_monitor_rm551` + `websocat:8838`, UCI config, dashboard 5-state row, security constraints |
+| [Scenario-to-Profile Binding](scenario-profile-binding.md) | `.scenario` schema, canonical resolution rule, cron install/teardown, teardown ordering, `scenario_locked_by_schedule` guard, schedule UI contract |
+| [SMS](sms.md) | `sms_tool` binary patches, `/dev/smd11` char-device invariant, shared lock, inbox CGI, alert library, phone-number handling, client-side read/unread (`localStorage` + fingerprint), timestamp-sort invariant (`MM/DD/YY` slice-reorder), deferred toast + forwarding |
+| [APN Management](apn-management.md) | 5-slot radio-select model, save vs. activate split, deactivate action (`active=0` carrier-default), honest "Not live" badge, `patchCidApn` optimistic CID patch, `reapply_active_apn_slot` durability (no auto-resurrect on `active=0`), COPS detach/attach cycle, IMS/SOS CID tagging + AlertDialog confirm, v2 config migration, Custom SIM Profile override gate |
+| [Band Locking](band-locking.md) | 4 lockable band types → AT param mapping (`lte`/`nsa_nr5g`/`sa_nr5g`/`nrdc_nr5g`), SA `nr5g_band` vs NR-DC `nrdc_nr5g_band`, NR-DC fully lockable (writes stick verbatim; no coercion), substring-match hazard + SA grep-v guard, SA⇄NR-DC swap UX (key-remount), failover revert (all four categories), `supported_bands.env` 4-field cache, `policy_band` vs `ue_capability_band`, no zero-band lock, `supported_bands_hw.env` static HW universe (force-copied), `hw_*_bands` poller fields, two-tone primary/warning UI split, `refresh_policy_band()` SIM-swap re-read + `/tmp/qmanager_refresh_policy_band` flag |
+| [Known-SIMs Database](known-sims.md) | Persistent ICCID set model, `sim_db_seed_if_absent` return semantics (fresh-device suppression + migration from `last_iccid`), byte-parity requirement, lock-free duplicate tolerance, `sim_db_clear_keep` keeps current SIM, CGI `known_sims.sh` list/clear contract, `previous_iccid` shape-compat |
+| [Connection Quality](connection-quality.md) | HTTP-probe daemon (curl, not ICMP), ping profile→params table (daemon-owned), `isDefault` absence semantics for quality_thresholds, ceil-division secs→samples, reload flags, GET/POST key asymmetry (`target1` vs `target_1`) |
+| [LAN Gateway / Subnet](lan-config.md) | LAN IP + prefix editor, self-severing apply pattern (response before `network reload`), hand-rolled POSIX validation (no `ipcalc.sh`, no jq regex), null-byte-in-shell-source / SCP deploy quirk, WoL removal artifact, `lan_address_changed` event |
+| [Connection Watchdog](connection-watchdog.md) | Dual-trigger model (reachability + quality), Tier 1 AT+COPS re-registration, reason-aware cooldown, quality UCI schema (`quality_enabled`, `latency_ceiling_ms`, `loss_ceiling_pct`, `quality_consecutive`), float-comparison awk rule, STATUS_STALE_THRESHOLD, NO-SIGNAL policy, state file fields, auto-disable token bucket |

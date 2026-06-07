@@ -31,6 +31,7 @@
     "ttl_mtu_settings": "TTL & MTU Settings",
     "video_optimizer": "Video Optimizer",
     "traffic_masquerade": "Traffic Masquerade",
+    "traffic_engine": "Traffic Engine",
     "network_events": "Network Events",
     "latency_monitor": "Latency Monitor",
     "email_alerts": "Email Alerts",
@@ -41,14 +42,18 @@
     "system_settings": "System Settings",
     "configuration_backup": "Configuration Backup",
     "ssh_password": "SSH Password",
+    "connection_quality": "Connection Quality",
     "bandwidth_monitor": "Bandwidth Monitor",
     "logs": "Logs",
     "software_update": "Software Update",
     "at_terminal": "AT Terminal",
-    "luci": "Luci",
+    "luci": "LuCI",
     "about_device": "About Device",
     "support": "Support",
     "donate": "Donate to the Project",
     "languages": "Languages"
+  },
+  "switcher": {
+    "opens_new_tab": "Opens in a new tab"
   }
 }

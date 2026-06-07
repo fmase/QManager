@@ -32,8 +32,8 @@ import { AddScenarioItem } from "./add-scenario-item";
 import { ActiveConfigCard } from "./active-config-card";
 import { ScenarioItem, Scenario } from "./scenario-item";
 import { useConnectionScenarios } from "@/hooks/use-connection-scenarios";
+import { useActiveProfile } from "@/hooks/use-active-profile";
 import {
-  NETWORK_MODE_OPTIONS,
   inputToBands,
   bandsToInput,
 } from "@/types/connection-scenario";
@@ -154,6 +154,11 @@ const ConnectionScenariosCard = () => {
     deleteCustomScenario,
   } = useConnectionScenarios();
 
+  // Active-profile schedule lock: when the active profile's scenario schedule
+  // is enabled, manual scenario selection is disabled (backend also enforces
+  // this with `scenario_locked_by_schedule`).
+  const { scheduleLocked, nextChangeAt } = useActiveProfile();
+
   // Convert backend StoredScenario[] → UI Scenario[] (add icon, pattern, isDefault)
   const customScenarios: Scenario[] = useMemo(
     () =>
@@ -177,6 +182,18 @@ const ConnectionScenariosCard = () => {
   // --- Dialog state ----------------------------------------------------------
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
+
+  // Deep link: arriving at /connection-scenarios?create=1 opens the New
+  // Scenario dialog immediately (fired by the "Create a new scenario" action in
+  // the profile form's scenario picker). Read in a post-mount effect to stay
+  // clear of the static-export CSR bailout, then strip the param so a refresh
+  // or back-nav doesn't reopen it.
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("create") === "1") {
+      setShowAddDialog(true);
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  }, []);
 
   // Add form state
   const [addName, setAddName] = useState("");
@@ -228,6 +245,13 @@ const ConnectionScenariosCard = () => {
     if (!selectedScenario || isActivating) return;
     if (selectedId === activeScenarioId) return;
 
+    // Defense-in-depth: backend returns scenario_locked_by_schedule, but block
+    // the request client-side too so the user gets immediate feedback.
+    if (scheduleLocked) {
+      toast.error(t("scenarios.schedule_lock.blocked_toast"));
+      return;
+    }
+
     const success = await activateScenario(selectedId, selectedScenario.config);
 
     if (success) {
@@ -245,6 +269,7 @@ const ConnectionScenariosCard = () => {
     activeScenarioId,
     isActivating,
     activateScenario,
+    scheduleLocked,
     t,
   ]);
 
@@ -434,6 +459,8 @@ const ConnectionScenariosCard = () => {
             isActivating={isActivating}
             onEdit={handleOpenEditDialog}
             onActivate={handleActivate}
+            scheduleLocked={scheduleLocked}
+            nextChangeAt={nextChangeAt}
           />
         )}
       </div>

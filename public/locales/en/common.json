@@ -1,6 +1,8 @@
 {
   "actions": {
     "save": "Save",
+    "saving": "Saving…",
+    "saved": "Saved!",
     "cancel": "Cancel",
     "confirm": "Confirm",
     "apply": "Apply",
@@ -26,6 +28,12 @@
     "on": "On",
     "off": "Off"
   },
+  "connection": {
+    "reconnecting": "Lost contact with the device. Reconnecting…"
+  },
+  "profile_override": {
+    "banner": "{{controls}} is managed by the <strong>{{profile_name}}</strong> Custom SIM Profile."
+  },
   "time": {
     "just_now": "Just now",
     "now": "Now",
@@ -41,20 +49,79 @@
     "label": "Language",
     "switch_aria": "Switch language"
   },
+  "login": {
+    "brand_label": "QManager operator console",
+    "welcome": "Welcome to QManager",
+    "password_label": "Password",
+    "submit": "Sign in",
+    "signing_in": "Signing in…",
+    "locked": "Locked ({{seconds}}s)",
+    "show_password": "Show password",
+    "hide_password": "Hide password",
+    "session_expired": "Your session ended because the device was unreachable for too long.",
+    "signing_in_to": "Signing in to {{hostname}}",
+    "signing_in_as": "Sign in as {{hostname}}",
+    "recovery": {
+      "toggle": "Can't sign in?",
+      "intro": "If you've lost the admin password, you have two recovery paths:",
+      "option_reset": "Open an SSH session to the device and run <code>qmanager_reset_password</code> to set a new admin password. (Requires SSH access to be enabled.)",
+      "option_backup": "If you saved a .qmbackup file, re-flash the device firmware and restore from it."
+    }
+  },
   "overview": {
-    "title": "Welcome to QManager",
+    "title": "QManager",
     "tagline": "Live modem status",
-    "login_button": "Login",
+    "login_button": "Sign in",
+    "header": {
+      "carrier": "Carrier",
+      "network": "Network",
+      "bands": "Bandwidth"
+    },
+    "status": {
+      "overall": "Overall",
+      "connectivity": "Internet",
+      "temperature": "Temperature"
+    },
+    "actions": {
+      "login": "Sign in",
+      "luci": "LuCI",
+      "luci_aria": "Open LuCI advanced interface",
+      "theme_toggle_aria": "Toggle theme",
+      "theme_light": "Light",
+      "theme_dark": "Dark",
+      "theme_system": "System"
+    },
     "field": {
       "carrier": "Carrier",
       "aggregation": "Bands",
       "uptime": "Uptime",
+      "temperature": "Temp",
+      "temp_warn": "Running hot",
+      "temp_danger": "Overheating",
       "empty": "—"
     },
     "aggregation": {
       "band_with_bw": "{{band}} ({{bandwidth}} MHz)",
       "band_only": "{{band}}",
       "pci_label": "PCI"
+    },
+    "bands": {
+      "toggle_multi_band": "Active bands",
+      "toggle_single_band": "Single carrier",
+      "section": "Bands",
+      "count_one": "{{count}} active",
+      "count_other": "{{count}} active",
+      "bandwidth": "{{bandwidth}} MHz",
+      "rsrp_unit": "{{rsrp}} dBm"
+    },
+    "metrics": {
+      "rsrp": "RSRP",
+      "rsrq": "RSRQ",
+      "sinr": "SINR",
+      "rsrp_value": "{{rsrp}} dBm",
+      "rsrq_value": "{{rsrq}} dB",
+      "sinr_value": "{{sinr}} dB",
+      "toggle_aria": "Switch band signal metric"
     },
     "signal": {
       "dual": "{{rsrp}} dBm · {{sinr}} dB SINR",
@@ -63,6 +130,7 @@
       "none": "—"
     },
     "quality": {
+      "overall_label": "Overall",
       "excellent": "Excellent",
       "good": "Good",
       "fair": "Fair",
@@ -80,6 +148,8 @@
       "modem_unreachable": "Modem unreachable"
     },
     "stale_indicator": "Data may be outdated",
+    "redirecting_setup": "Redirecting to first-time setup…",
+    "loading_status": "Loading modem status…",
     "empty": {
       "title": "Modem status unavailable",
       "subtitle": "Log in for diagnostic details.",
@@ -91,6 +161,6 @@
       "hours": "{{hours}}h {{minutes}}m",
       "minutes": "{{minutes}}m"
     },
-    "copyright": "© {{year}} QManager. All rights reserved."
+    "copyright": "© {{year}} QManager"
   }
 }

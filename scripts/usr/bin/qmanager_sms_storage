@@ -1,0 +1,90 @@
+#!/bin/sh
+# =============================================================================
+# qmanager_sms_storage — One-Shot SMS Storage Routing Daemon
+# =============================================================================
+# Spawned by /etc/init.d/qmanager_sms_storage at boot.
+#
+# Purpose: guarantee that incoming SMS are routed to ME (modem) storage even
+# if the SMS page is never opened. The RM551E defaults CPMS mem3 to SM (SIM),
+# so new messages land on the SIM (35 slots) while the inbox reads ME and
+# shows empty. We force AT+CPMS="ME","ME","ME" once the modem is ready so
+# mem3=ME (255 slots) catches future incoming.
+#
+# Flow:
+#   1. Poll `sms_tool status` under the shared lock until it exits 0 (modem
+#      ready), up to ~60s.
+#   2. Once ready, set AT+CPMS="ME","ME","ME" under the shared lock.
+#   3. Log result. Exit 0 on success, 1 on failure. No respawn.
+#
+# Does NOT reboot or call CFUN.
+#
+# Dependencies: sms_tool, flock, logger
+# Install location: /usr/bin/qmanager_sms_storage
+# =============================================================================
+
+SMS_DEV="/dev/smd11"
+LOCK_FILE="/var/lock/qmanager.lock"
+READY_TRIES=20
+READY_SLEEP=3
+
+# BusyBox-safe shared flock acquire (no -w in BusyBox flock). Creates the lock
+# file if absent — flock on a missing file returns 0 with no lock held, so the
+# creation step is load-bearing. Mirrors _sms_flock_wait in sms.sh.
+sms_flock_wait() {
+    _fd="$1"
+    _wait="$2"
+    _elapsed=0
+    while [ "$_elapsed" -lt "$_wait" ]; do
+        if flock -x -n "$_fd" 2>/dev/null; then
+            return 0
+        fi
+        sleep 1
+        _elapsed=$((_elapsed + 1))
+    done
+    flock -x -n "$_fd" 2>/dev/null
+}
+
+[ -e "$LOCK_FILE" ] || : > "$LOCK_FILE" 2>/dev/null
+
+# --- Wait for modem readiness ------------------------------------------------
+ready=0
+i=0
+while [ "$i" -lt "$READY_TRIES" ]; do
+    rc=1
+    (
+        sms_flock_wait 9 10 || exit 2
+        sms_tool -d "$SMS_DEV" status >/dev/null 2>&1
+        exit $?
+    ) 9<"$LOCK_FILE"
+    rc=$?
+
+    if [ "$rc" -eq 0 ]; then
+        ready=1
+        break
+    fi
+
+    i=$((i + 1))
+    sleep "$READY_SLEEP"
+done
+
+if [ "$ready" -ne 1 ]; then
+    logger -t qmanager_sms_storage "Modem not ready after $((READY_TRIES * READY_SLEEP))s — CPMS routing not applied"
+    exit 1
+fi
+
+# --- Apply routing -----------------------------------------------------------
+# Single-quote the AT string so the inner double quotes reach sms_tool intact.
+(
+    sms_flock_wait 9 10 || exit 2
+    sms_tool -d "$SMS_DEV" at 'AT+CPMS="ME","ME","ME"' >/dev/null 2>&1
+    exit $?
+) 9<"$LOCK_FILE"
+apply_rc=$?
+
+if [ "$apply_rc" -eq 0 ]; then
+    logger -t qmanager_sms_storage "CPMS routing set to ME (incoming SMS -> modem storage)"
+    exit 0
+fi
+
+logger -t qmanager_sms_storage "Failed to set CPMS routing (rc=$apply_rc)"
+exit 1

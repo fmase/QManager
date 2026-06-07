@@ -82,7 +82,7 @@ CONFLICT_PACKAGES="sms-tool socat-at-bridge socat"
 # UCI-gated services — only enabled if a prior install had them enabled.
 # Everything else is enabled unconditionally. This is the ONLY hardcoded
 # service list in this script.
-UCI_GATED_SERVICES="qmanager_tower_failover qmanager_watchcat qmanager_bandwidth qmanager_dpi qmanager_wan_guard qmanager_vpn_zone"
+UCI_GATED_SERVICES="qmanager_tower_failover qmanager_watchcat qmanager_bandwidth qmanager_dpi qmanager_vpn_zone"
 
 # Expected modem firmware signature (after normalization: upper + alnum only)
 REQUIRED_FIRMWARE="RM551EGL"
@@ -286,9 +286,26 @@ install_file() {
     mkdir -p "$(dirname "$dst")" 2>/dev/null || true
 
     local tmp="$dst.qm_install.$$"
+    local src_bytes
+    local tmp_bytes
 
     if ! cp "$src" "$tmp" 2>>"$LOG_FILE"; then
         _log_raw "install_file: cp failed: $src -> $tmp"
+        rm -f "$tmp"
+        return 1
+    fi
+
+    # Integrity check: the copied bytes must equal the source exactly. A
+    # truncated cp (interrupted transfer / ENOSPC) can leave a 0-byte or
+    # partial file that still passes `sh -n` and execs as a silent no-op —
+    # this shipped an empty qmanager_profile_apply once and broke profile
+    # activation with start_failed. Must run BEFORE the CRLF strip, where tmp
+    # is still byte-identical to src. wc -c is BusyBox-core (no stat/md5 dep);
+    # tr -d ' ' normalizes the leading whitespace some wc builds emit.
+    src_bytes=$(wc -c < "$src" 2>/dev/null | tr -d ' ')
+    tmp_bytes=$(wc -c < "$tmp" 2>/dev/null | tr -d ' ')
+    if [ "$src_bytes" != "$tmp_bytes" ]; then
+        _log_raw "install_file: SIZE MISMATCH (truncated copy) $src (${src_bytes} B) -> $tmp (${tmp_bytes} B)"
         rm -f "$tmp"
         return 1
     fi
@@ -352,12 +369,38 @@ install_dir_flat() {
 # .sh files and 644 to everything else.
 install_tree() {
     local src="$1" dst="$2"
+    local mismatch
 
     [ -d "$src" ] || { _log_raw "install_tree: missing source $src"; return 1; }
 
     rm -rf "$dst"
     mkdir -p "$dst"
     cp -r "$src"/. "$dst"/ || die "Failed to copy $src to $dst"
+
+    # Integrity sweep: every source file must have a destination counterpart
+    # of equal byte size. Same failure mode as install_file — a truncated
+    # cp -r can silently deploy a 0-byte CGI script. Must run BEFORE the CRLF
+    # strip, which legitimately changes dst sizes. The `find | while` body runs
+    # in a SUBSHELL (pipe), so a `die` there would only exit the subshell and
+    # let the install continue past a broken file — instead we record each
+    # mismatch to a marker file and `die` in the current shell after the loop.
+    mismatch="/tmp/qm_install_treechk.$$"
+    rm -f "$mismatch"
+    find "$src" -type f | while IFS= read -r sf; do
+        rel=${sf#"$src"/}
+        df="$dst/$rel"
+        sb=$(wc -c < "$sf" 2>/dev/null | tr -d ' ')
+        db=$(wc -c < "$df" 2>/dev/null | tr -d ' ')
+        if [ "$sb" != "$db" ]; then
+            printf '%s (src=%s dst=%s)\n' "$rel" "$sb" "$db" >> "$mismatch"
+        fi
+    done
+    if [ -f "$mismatch" ]; then
+        _log_raw "install_tree: truncated copies detected:"
+        cat "$mismatch" >> "$LOG_FILE" 2>/dev/null || true
+        rm -f "$mismatch"
+        die "install_tree: $src -> $dst copy truncated (see $LOG_FILE)"
+    fi
 
     # CRLF strip across the whole tree
     find "$dst" -type f -name "*.sh" | while IFS= read -r f; do
@@ -717,22 +760,6 @@ stop_services() {
 seed_uci_defaults() {
     step "Seeding UCI defaults"
 
-    # Wake-on-LAN disabled by default (CLAUDE.md / Ethernet WoL change).
-    # Only seed when the key is ABSENT — preserves any explicit user choice
-    # (whether 0=enabled or 1=disabled) across upgrades. The qmanager_wol_fix
-    # init.d picks up the value at next boot via its existing
-    # `disable_wol == "1"` guard; no live ethtool call needed here because
-    # install ends in a reboot.
-    if ! uci -q get quecmanager.network >/dev/null 2>&1; then
-        uci set quecmanager.network=network
-    fi
-    if ! uci -q get quecmanager.network.disable_wol >/dev/null 2>&1; then
-        uci set quecmanager.network.disable_wol=1
-        info "Seeded quecmanager.network.disable_wol=1 (WoL disabled by default)"
-    else
-        info "quecmanager.network.disable_wol already set — preserving user choice"
-    fi
-
     # Force Tailscale Fixes — opt-in toggle, default OFF. Re-enables the
     # historical fw4 zone + mwan3 ipset workarounds for tailscale0 on top of
     # any firmware that already handles routing (sdxpinn-patch). Recommended
@@ -747,6 +774,68 @@ seed_uci_defaults() {
         info "Seeded quecmanager.tailscale_workarounds.enabled=0 (off by default)"
     else
         info "quecmanager.tailscale_workarounds.enabled already set — preserving user choice"
+    fi
+
+    # Connection Quality — ping profile (drives qmanager_ping interval +
+    # fail/recover thresholds and the 2 HTTP probe targets). The profile NAME
+    # is the only knob persisted; the daemon holds the profile->params table.
+    # Seed concrete, user-editable defaults. NOTE: quality_thresholds is
+    # deliberately NOT seeded — its absence is the "default" signal that drives
+    # the frontend isDefault hint and the tolerant/tolerant fallback in the
+    # poller + quality_thresholds.sh CGI.
+    if ! uci -q get quecmanager.ping_profile >/dev/null 2>&1; then
+        uci set quecmanager.ping_profile=ping_profile
+    fi
+    if ! uci -q get quecmanager.ping_profile.profile >/dev/null 2>&1; then
+        uci set quecmanager.ping_profile.profile='relaxed'
+        info "Seeded quecmanager.ping_profile.profile=relaxed"
+    else
+        info "quecmanager.ping_profile.profile already set — preserving user choice"
+    fi
+    if ! uci -q get quecmanager.ping_profile.target_1 >/dev/null 2>&1; then
+        uci set quecmanager.ping_profile.target_1='https://cloudflare.com'
+        info "Seeded quecmanager.ping_profile.target_1=https://cloudflare.com"
+    else
+        info "quecmanager.ping_profile.target_1 already set — preserving user choice"
+    fi
+    if ! uci -q get quecmanager.ping_profile.target_2 >/dev/null 2>&1; then
+        uci set quecmanager.ping_profile.target_2='https://google.com'
+        info "Seeded quecmanager.ping_profile.target_2=https://google.com"
+    else
+        info "quecmanager.ping_profile.target_2 already set — preserving user choice"
+    fi
+
+    # Connection Watchdog (watchcat) — connection-quality trigger keys. The
+    # full watchcat section is otherwise seeded lazily by the watchdog.sh CGI
+    # (ensure_watchcat_config) on first read; seed only the quality keys here
+    # so fresh installs match that contract. Idempotent + preserve-user-choice,
+    # same shape as the blocks above. Defaults: quality off, 800ms / 20% / 5.
+    if ! uci -q get quecmanager.watchcat >/dev/null 2>&1; then
+        uci set quecmanager.watchcat=watchcat
+    fi
+    if ! uci -q get quecmanager.watchcat.quality_enabled >/dev/null 2>&1; then
+        uci set quecmanager.watchcat.quality_enabled=0
+        info "Seeded quecmanager.watchcat.quality_enabled=0 (off by default)"
+    else
+        info "quecmanager.watchcat.quality_enabled already set — preserving user choice"
+    fi
+    if ! uci -q get quecmanager.watchcat.latency_ceiling_ms >/dev/null 2>&1; then
+        uci set quecmanager.watchcat.latency_ceiling_ms=800
+        info "Seeded quecmanager.watchcat.latency_ceiling_ms=800"
+    else
+        info "quecmanager.watchcat.latency_ceiling_ms already set — preserving user choice"
+    fi
+    if ! uci -q get quecmanager.watchcat.loss_ceiling_pct >/dev/null 2>&1; then
+        uci set quecmanager.watchcat.loss_ceiling_pct=20
+        info "Seeded quecmanager.watchcat.loss_ceiling_pct=20"
+    else
+        info "quecmanager.watchcat.loss_ceiling_pct already set — preserving user choice"
+    fi
+    if ! uci -q get quecmanager.watchcat.quality_consecutive >/dev/null 2>&1; then
+        uci set quecmanager.watchcat.quality_consecutive=5
+        info "Seeded quecmanager.watchcat.quality_consecutive=5"
+    else
+        info "quecmanager.watchcat.quality_consecutive already set — preserving user choice"
     fi
 
     uci commit quecmanager 2>/dev/null || warn "uci commit quecmanager failed"
@@ -904,12 +993,16 @@ install_backend() {
     mkdir -p "$CONF_DIR/profiles" "$SESSION_DIR" "$UPDATES_DIR" /var/lock
 
     # --- Default config files (deploy ONLY if missing, never overwrite) ---
+    # Exception: supported_bands_hw.env is a manually-maintained spec-sheet file
+    # that MUST refresh on every upgrade, so it is force-copied below (outside the
+    # deploy-if-missing loop) rather than treated as user-owned config.
     if [ -d "$SRC_SCRIPTS/etc/qmanager" ]; then
         local deployed=0
         for f in "$SRC_SCRIPTS/etc/qmanager"/*; do
             [ -f "$f" ] || continue
             local fname
             fname="$(basename "$f")"
+            [ "$fname" = "supported_bands_hw.env" ] && continue
             if [ ! -f "$CONF_DIR/$fname" ]; then
                 cp "$f" "$CONF_DIR/$fname"
                 deployed=$(( deployed + 1 ))
@@ -917,6 +1010,13 @@ install_backend() {
             fi
         done
         [ "$deployed" = "0" ] && info "  All default configs already present"
+
+        # Force-copy the hardware band-capability file every install/upgrade so
+        # spec/firmware edits in the repo always reach the device.
+        if [ -f "$SRC_SCRIPTS/etc/qmanager/supported_bands_hw.env" ]; then
+            cp "$SRC_SCRIPTS/etc/qmanager/supported_bands_hw.env" "$CONF_DIR/supported_bands_hw.env"
+            info "  Force-deployed hardware band capability: supported_bands_hw.env"
+        fi
     fi
 
     # UCI config stub
@@ -1203,6 +1303,26 @@ cleanup_legacy_scripts() {
     step "Cleaning up legacy scripts"
 
     local removed=0 fname
+
+    # Retire the legacy qmanager_wan_guard daemon (removed in this version). OTA
+    # overlays do not prune absent-from-tree files, so remove it explicitly on
+    # upgraded devices. Idempotent — silent no-op on fresh installs. The generic
+    # loops below would also catch it, but this guarantees the running daemon is
+    # stopped and the binary gone before enable_services runs.
+    if [ -f "$INITD_DIR/qmanager_wan_guard" ]; then
+        "$INITD_DIR/qmanager_wan_guard" stop 2>/dev/null || true
+        "$INITD_DIR/qmanager_wan_guard" disable 2>/dev/null || true
+        rm -f "$INITD_DIR/qmanager_wan_guard"
+        info "  Retired legacy daemon: qmanager_wan_guard"
+    fi
+    rm -f "$BIN_DIR/qmanager_wan_guard"
+    rm -f /etc/rc.d/*qmanager_wan_guard 2>/dev/null || true
+
+    # Retire orphaned Wake-on-LAN UCI flag (WoL feature removed). Key-only
+    # delete — preserves the quecmanager.network section in case a SKU adds
+    # sibling keys. The qmanager_wol_fix init.d is auto-pruned by the stale
+    # init.d loop below; wol.sh CGI is harmless if it lingers.
+    uci -q delete quecmanager.network.disable_wol 2>/dev/null && uci -q commit quecmanager 2>/dev/null || true
 
     # Daemons: /usr/bin/qmanager_*, qcmd, bridge_traffic_monitor_*
     for f in "$BIN_DIR"/qmanager_* "$BIN_DIR/qcmd" "$BIN_DIR"/bridge_traffic_monitor_*; do

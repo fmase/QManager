@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { motion } from "motion/react";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
+import { rebootNow } from "@/lib/reboot";
 
 import {
   Card,
@@ -98,14 +99,7 @@ export function TailscaleConnectionCard({
   const handleReboot = (e: React.MouseEvent) => {
     e.preventDefault();
     setIsRebooting(true);
-    fetch("/cgi-bin/quecmanager/system/reboot.sh", { method: "POST" }).catch(
-      () => {}
-    );
-    setTimeout(() => {
-      sessionStorage.setItem("qm_rebooting", "1");
-      document.cookie = "qm_logged_in=; Path=/; Max-Age=0";
-      window.location.href = "/reboot/";
-    }, 2000);
+    rebootNow("tailscale");
   };
 
   // Reboot confirmation dialog (shown after successful uninstall)

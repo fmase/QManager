@@ -370,6 +370,11 @@ remove_backend() {
         rm -rf /etc/qmanager/bandwidth_certs
         info "Removed /etc/qmanager/bandwidth_certs (bandwidth SSL)"
     fi
+    # Hardware band-capability file (force-deployed by installer, not user config)
+    if [ -f /etc/qmanager/supported_bands_hw.env ]; then
+        rm -f /etc/qmanager/supported_bands_hw.env
+        info "Removed /etc/qmanager/supported_bands_hw.env (hardware band capability)"
+    fi
 
     # --- Cron jobs ---
     if crontab -l 2>/dev/null | grep -q qmanager; then
@@ -418,7 +423,7 @@ remove_runtime_state() {
     # JSON cache and state files
     for f in /tmp/qmanager_status.json \
              /tmp/qmanager_ping.json \
-             /tmp/qmanager_ping_history.json \
+             /tmp/qmanager_ping_history \
              /tmp/qmanager_signal_history.json \
              /tmp/qmanager_events.json \
              /tmp/qmanager_email_log.json \
@@ -448,7 +453,11 @@ remove_runtime_state() {
           /tmp/qmanager_*.pid \
           /tmp/qmanager_email_reload \
           /tmp/qmanager_sms_reload \
+          /tmp/qmanager_ping_reload \
+          /tmp/qmanager_quality_reload \
           /tmp/qmanager_imei_check_done \
+          /tmp/qmanager_refresh_policy_band \
+          /tmp/qmanager_supported_bands.env \
           /tmp/qmanager_long_running \
           /tmp/qmanager_low_power_active \
           /tmp/qmanager_recovery_active \

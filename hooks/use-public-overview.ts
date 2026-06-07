@@ -9,19 +9,34 @@ import type { PublicOverview } from "@/types/public-overview";
 // Mirrors useModemStatus' shape and lifecycle but uses plain `fetch` (NOT
 // authFetch). The endpoint is unauthenticated by design; sending a session
 // cookie would be harmless but pointless.
+//
+// Resilience: tracks consecutive fetch failures and applies exponential
+// backoff once a threshold is crossed. The component consumes the failure
+// count to swap from "stale data + chip" to a full EmptyState once misses
+// pile up, so users aren't left staring at indefinitely stale numbers.
 // =============================================================================
 
 const FETCH_ENDPOINT = "/cgi-bin/quecmanager/public/overview.sh";
 // Pre-login cadence: a passerby on the landing page does not need 0.5 Hz
 // refresh. 5 s keeps the card feeling live without hammering the device CGI.
 const POLL_INTERVAL = 5000;
+const MAX_POLL_INTERVAL = 60_000;
+// First N failures keep the base interval; after that, double per failure.
+const BACKOFF_THRESHOLD = 6;
 const STALE_THRESHOLD_SECONDS = 15;
+
+function computeNextInterval(failures: number): number {
+  if (failures < BACKOFF_THRESHOLD) return POLL_INTERVAL;
+  const exp = Math.min(failures - BACKOFF_THRESHOLD + 1, 4);
+  return Math.min(POLL_INTERVAL * 2 ** exp, MAX_POLL_INTERVAL);
+}
 
 export interface UsePublicOverviewReturn {
   data: PublicOverview | null;
   isLoading: boolean;
   isStale: boolean;
   error: string | null;
+  consecutiveFailures: number;
   refresh: () => void;
 }
 
@@ -30,10 +45,14 @@ export function usePublicOverview(): UsePublicOverviewReturn {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isStale, setIsStale] = useState(false);
+  const [consecutiveFailures, setConsecutiveFailures] = useState(0);
 
   const mountedRef = useRef(true);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  // Mirrors consecutiveFailures state for synchronous reads inside tick() —
+  // the next interval is computed before React commits the new state value.
+  const failuresRef = useRef(0);
 
   const fetchData = useCallback(async () => {
     // Cancel any in-flight request before starting a new one. Prevents an
@@ -57,6 +76,8 @@ export function usePublicOverview(): UsePublicOverviewReturn {
 
       setData(json);
       setError(null);
+      failuresRef.current = 0;
+      setConsecutiveFailures(0);
 
       if (json.state === "ok") {
         const now = Math.floor(Date.now() / 1000);
@@ -77,7 +98,11 @@ export function usePublicOverview(): UsePublicOverviewReturn {
       setError(message);
       setIsStale(true);
       setIsLoading(false);
+      failuresRef.current += 1;
+      setConsecutiveFailures(failuresRef.current);
       // Retain prior `data` — never blank a working card on a transient error.
+      // The component decides whether to swap to EmptyState based on the
+      // failure count.
     }
   }, []);
 
@@ -88,34 +113,38 @@ export function usePublicOverview(): UsePublicOverviewReturn {
   useEffect(() => {
     mountedRef.current = true;
 
-    const startPolling = () => {
-      if (intervalRef.current) return;
-      intervalRef.current = setInterval(fetchData, POLL_INTERVAL);
+    const cancelPending = () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
     };
 
-    const stopPolling = () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
+    // Recursive tick. Each iteration re-derives its own delay so the backoff
+    // takes effect immediately as failures accumulate, without needing to
+    // tear down and rebuild a setInterval.
+    const tick = async () => {
+      if (!mountedRef.current) return;
+      if (typeof document !== "undefined" && document.hidden) return;
+      await fetchData();
+      if (!mountedRef.current) return;
+      if (typeof document !== "undefined" && document.hidden) return;
+      cancelPending();
+      timeoutRef.current = setTimeout(tick, computeNextInterval(failuresRef.current));
     };
 
     // Initial fetch is unconditional (cold-start the card even if the tab is
     // hidden — first paint should still have data when the user comes back).
-    fetchData();
-    if (typeof document === "undefined" || !document.hidden) {
-      startPolling();
-    }
+    void tick();
 
     // Pause polling when the tab is hidden, refresh + resume when it returns.
     // Keeps a backgrounded landing page from waking the device CGI every 5 s
     // and conserves battery on mobile.
     const handleVisibility = () => {
       if (document.hidden) {
-        stopPolling();
+        cancelPending();
       } else {
-        fetchData();
-        startPolling();
+        void tick();
       }
     };
 
@@ -125,7 +154,7 @@ export function usePublicOverview(): UsePublicOverviewReturn {
 
     return () => {
       mountedRef.current = false;
-      stopPolling();
+      cancelPending();
       abortRef.current?.abort();
       if (typeof document !== "undefined") {
         document.removeEventListener("visibilitychange", handleVisibility);
@@ -133,5 +162,5 @@ export function usePublicOverview(): UsePublicOverviewReturn {
     };
   }, [fetchData]);
 
-  return { data, isLoading, isStale, error, refresh };
+  return { data, isLoading, isStale, error, consecutiveFailures, refresh };
 }

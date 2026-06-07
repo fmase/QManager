@@ -92,7 +92,7 @@ const BandwidthMonitorSettings = () => {
                       <AlertTriangleIcon className="size-4" />
                       <AlertDescription>
                         {t("bandwidth_monitor.dependency_warning")}{" "}
-                        <code className="text-xs">opkg install websocat</code>
+                        <code className="text-xs font-mono">opkg install websocat</code>
                       </AlertDescription>
                     </Alert>
                   </motion.div>

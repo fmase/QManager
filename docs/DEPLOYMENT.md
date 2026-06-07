@@ -47,6 +47,7 @@ The installer will:
 - Deploy frontend, backend scripts, CGI endpoints, and init.d services
 - Fix any CRLF line endings
 - Enable and start all services
+- Prune any legacy daemons absent from the current release (e.g., `qmanager_wan_guard`, retired in v0.1.24 — the installer stops, disables, and removes the binary, init.d script, and any `/etc/rc.d/` symlinks on upgraded devices)
 
 See `sh install.sh --help` for all options (`--frontend-only`, `--backend-only`, `--skip-packages`, `--uninstall`, etc.)
 
@@ -241,7 +242,6 @@ mkdir -p /etc/qmanager/profiles
 /etc/init.d/qmanager_eth_link enable
 /etc/init.d/qmanager_ttl enable
 /etc/init.d/qmanager_mtu enable
-/etc/init.d/qmanager_wan_guard enable
 /etc/init.d/qmanager_imei_check enable
 ```
 
@@ -305,7 +305,6 @@ cat /tmp/qmanager.log | tail -20
 ├── qmanager_tower_schedule
 ├── qmanager_mtu_apply
 ├── qmanager_imei_check
-├── qmanager_wan_guard
 ├── qmanager_reset_password
 └── qmanager_logread
 
@@ -327,7 +326,6 @@ cat /tmp/qmanager.log | tail -20
 ├── qmanager_ttl           # TTL/HL rules
 ├── qmanager_mtu           # MTU daemon
 ├── qmanager_imei_check    # IMEI backup check
-├── qmanager_wan_guard     # WAN profile guard
 └── qmanager_tower_failover # Tower failover
 
 /etc/qmanager/             # Persistent configuration

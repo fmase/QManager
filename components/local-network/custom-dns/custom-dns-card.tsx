@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 
 import { SaveButton, useSaveFlash } from "@/components/ui/save-button";
@@ -39,15 +39,19 @@ const CustomDNSCard = () => {
   const [dns2, setDns2] = useState("");
   const [dns3, setDns3] = useState("");
 
-  // Sync local state when data arrives from the backend
-  useEffect(() => {
-    if (data) {
-      setIsEnabled(data.mode === "enabled");
-      setDns1(data.dns1);
-      setDns2(data.dns2);
-      setDns3(data.dns3);
-    }
-  }, [data]);
+  // Seed local form state when data arrives from the backend. Uses the
+  // render-phase derived-state pattern (React docs: "You Might Not Need an
+  // Effect") instead of useEffect, so the sync lands in the same commit rather
+  // than a second render. prevData makes it re-run only when the source object
+  // reference changes — identical semantics to the previous [data] effect.
+  const [prevData, setPrevData] = useState(data);
+  if (data && data !== prevData) {
+    setPrevData(data);
+    setIsEnabled(data.mode === "enabled");
+    setDns1(data.dns1);
+    setDns2(data.dns2);
+    setDns3(data.dns3);
+  }
 
   // --- Dirty check: save button enabled only when something changed ----------
   const isDirty = useMemo(() => {

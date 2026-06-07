@@ -29,6 +29,6 @@
     "config_restore_section_failed": "Sezione non riuscita",
     "config_restore_section_skipped": "Sezione saltata",
     "config_restore_completed": "Ripristino completato",
-    "wol_changed": "Impostazione WoL modificata"
+    "lan_address_changed": "Indirizzo LAN modificato"
   }
 }

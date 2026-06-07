@@ -209,9 +209,11 @@ const NetworkEventsCard = () => {
       enabled: monitoringEnabled,
     });
 
-  // Track last successful data update
+  // Track wall-clock time of the last successful data arrival. This records "when
+  // did data change", which cannot be derived during render, so it stays an effect.
   useEffect(() => {
     if (events.length > 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- records the moment new data arrived; not derivable during render
       setLastUpdate(new Date());
     }
   }, [events]);

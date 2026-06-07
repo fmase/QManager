@@ -29,6 +29,6 @@
     "config_restore_section_failed": "Section Failed",
     "config_restore_section_skipped": "Section Skipped",
     "config_restore_completed": "Restore Completed",
-    "wol_changed": "WoL Setting Changed"
+    "lan_address_changed": "LAN Address Changed"
   }
 }

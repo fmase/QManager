@@ -338,11 +338,27 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
             sleep 1
         done
         if [ -n "$_as_iccid" ]; then
+            # Register the switched-to SIM in the known-SIMs database so the
+            # Known SIMs count reflects it immediately. A deliberate slot switch
+            # is an expected SIM (like a watchdog failover), not a physical swap
+            # to alert on — so this also suppresses a redundant "New SIM" toast
+            # on the next poller boot.
+            ( . /usr/lib/qmanager/sim_db.sh 2>/dev/null && sim_db_add "$_as_iccid" )
             ( . /usr/lib/qmanager/profile_mgr.sh && auto_apply_profile "$_as_iccid" "sim_switch" )
         else
             qlog_info "[sim_switch] ICCID query failed after SIM switch, skipping auto-apply"
         fi
         unset _as_iccid _as_iccid_raw _try
+    fi
+
+    # --- Force an early poller Tier-2 refresh so the UI shows the new SIM's
+    #     operator/APN/ICCID within ~2s instead of the next ~30s tier boundary ---
+    if [ -n "$sim_cfun_restored" ]; then
+        sleep 2
+        touch /tmp/qmanager_force_tier2
+        # New SIM may expose a different carrier band policy — have the poller
+        # re-read policy_band on its next cycle (pure flag drop, no AT here).
+        touch /tmp/qmanager_refresh_policy_band
     fi
 
     # 5. CFUN change (skip if SIM procedure already restored to user's desired value)

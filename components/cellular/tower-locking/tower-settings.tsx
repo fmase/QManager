@@ -27,7 +27,6 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { TbInfoCircleFilled } from "react-icons/tb";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
 import {
   Loader2,
   PercentIcon,

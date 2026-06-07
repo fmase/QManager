@@ -31,6 +31,7 @@
     "ttl_mtu_settings": "Impostazioni TTL e MTU",
     "video_optimizer": "Ottimizzatore video",
     "traffic_masquerade": "Traffic Masquerade",
+    "traffic_engine": "Traffic Engine",
     "network_events": "Eventi di rete",
     "latency_monitor": "Monitoraggio della latenza",
     "email_alerts": "Avvisi e-mail",
@@ -41,6 +42,7 @@
     "system_settings": "Impostazioni di sistema",
     "configuration_backup": "Backup della configurazione",
     "ssh_password": "Password SSH",
+    "connection_quality": "Qualità della connessione",
     "bandwidth_monitor": "Monitor banda",
     "logs": "Log",
     "software_update": "Aggiornamento del software",
@@ -50,5 +52,8 @@
     "support": "Supporto",
     "donate": "Dona al progetto",
     "languages": "Lingue"
+  },
+  "switcher": {
+    "opens_new_tab": "Si apre in una nuova scheda"
   }
 }

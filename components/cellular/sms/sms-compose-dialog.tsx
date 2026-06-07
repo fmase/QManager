@@ -100,7 +100,7 @@ export default function SmsComposeDialog({
                   isOverLimit
                     ? "text-destructive font-medium"
                     : charCount > maxChars * 0.9
-                      ? "text-warning"
+                      ? "text-warning-on-surface"
                       : "text-muted-foreground"
                 }`}
               >

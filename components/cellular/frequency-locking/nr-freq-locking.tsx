@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 
@@ -111,12 +111,19 @@ const NrFreqLockingComponent = ({
   const [showUnsupportedWarning, setShowUnsupportedWarning] = useState(false);
   const [pendingEntries, setPendingEntries] = useState<NrFreqLockEntry[]>([]);
 
-  // Sync form from modem state when data loads
-  useEffect(() => {
-    if (modemState?.nr_entries && modemState.nr_entries.length > 0) {
+  // Seed slot state from modem state using the render-phase derived-state pattern
+  // (React docs: "You Might Not Need an Effect") instead of useEffect, so the sync
+  // lands in the same commit. prevNrEntries keeps it to one sync per
+  // source-reference change — identical semantics to the previous
+  // [modemState?.nr_entries] effect.
+  const nrEntries = modemState?.nr_entries;
+  const [prevNrEntries, setPrevNrEntries] = useState(nrEntries);
+  if (nrEntries !== prevNrEntries) {
+    setPrevNrEntries(nrEntries);
+    if (nrEntries && nrEntries.length > 0) {
       setSlots((prev) =>
         prev.map((s, i) => {
-          const entry = modemState.nr_entries[i];
+          const entry = nrEntries[i];
           if (!entry) return s;
           return {
             arfcn: String(entry.arfcn),
@@ -126,7 +133,7 @@ const NrFreqLockingComponent = ({
         }),
       );
     }
-  }, [modemState?.nr_entries]);
+  }
 
   // --- Slot update helpers ---------------------------------------------------
   const updateSlotArfcn = useCallback((index: number, arfcn: string) => {

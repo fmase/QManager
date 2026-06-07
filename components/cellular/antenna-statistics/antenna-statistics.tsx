@@ -76,7 +76,7 @@ function AnimatedProgress({
 }) {
   return (
     <div
-      className="h-1.5 flex-1 min-w-0 overflow-hidden rounded-full bg-secondary"
+      className="h-1.5 flex-1 min-w-0 overflow-hidden rounded-full bg-muted"
       role="progressbar"
       aria-valuenow={Math.round(value)}
       aria-valuemin={0}

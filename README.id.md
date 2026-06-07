@@ -295,7 +295,6 @@ QManager menjalankan 11 layanan init.d di perangkat:
 | `qmanager_watchcat` | Watchdog koneksi — mesin status auto-recovery 4 tingkat |
 | `qmanager_bandwidth` | Monitor bandwidth langsung — WebSocket + biner trafik |
 | `qmanager_dpi` | Layanan DPI — nfqws dalam mode video optimizer atau traffic masquerade |
-| `qmanager_wan_guard` | Penjaga WAN — menonaktifkan profil CID bayangan saat boot |
 | `qmanager_tower_failover` | Failover tower — memulihkan kunci setelah kehilangan sel |
 | `qmanager_eth_link` | Kecepatan link Ethernet — menerapkan pengaturan kecepatan/duplex yang tersimpan |
 | `qmanager_ttl` | TTL/HL — menerapkan aturan iptables saat boot |

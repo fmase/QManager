@@ -133,6 +133,7 @@
   "rate_limited": "Too many failed attempts — please try again later",
   "remove_failed": "Failed to remove item",
   "save_failed": "Failed to save setting",
+  "scenario_locked_by_schedule": "Connection scenario is controlled by the active profile's schedule — turn off the schedule to change it manually",
   "select_failed": "Failed to select network mode",
   "send_failed": "Failed to send message",
   "service_running": "Service is currently running — stop it first",
@@ -153,8 +154,11 @@
   "updater_not_executable": "Updater binary is not executable",
   "usbnet_failed": "USB network interface configuration failed",
   "usb_mode_incompatible_for_verizon": "Verizon profiles require USB mode ECM or RNDIS — change USB mode in IP Passthrough settings before activating",
-  "wol_not_supported": "Wake-on-LAN control is not supported on this hardware",
-  "wol_save_failed": "Failed to save Wake-on-LAN setting",
+  "invalid_host_in_subnet": "That address can't be used as a host in the chosen subnet",
+  "invalid_ipaddr": "The IP address is not valid",
+  "invalid_prefix": "The subnet prefix is out of range",
+  "lan_read_failed": "Couldn't read the current LAN settings",
+  "lan_save_failed": "Couldn't save the LAN settings",
   "write_failed": "Failed to write configuration to storage",
   "wrong_schema": "Backup schema version does not match the current version"
 }

@@ -378,8 +378,8 @@ const ScanResultView = ({ data, onLockCell }: ScanResultViewProps) => {
           </TableBody>
         </Table>
       </div>
-      <div className="flex items-center justify-end space-x-2 py-4">
-        <div className="text-muted-foreground flex-1 text-sm">
+      <div className="flex flex-col @sm/card:flex-row @sm/card:items-center gap-2 py-4">
+        <div className="text-muted-foreground @sm/card:flex-1 text-sm">
           {(() => {
             const filtered = table.getFilteredRowModel().rows.length;
             const total = data.length;
@@ -389,10 +389,11 @@ const ScanResultView = ({ data, onLockCell }: ScanResultViewProps) => {
             return t("cell_scanner.result_table.footer_total", { count: total });
           })()}
         </div>
-        <div className="space-x-2">
+        <div className="flex gap-2 @sm/card:ml-auto">
           <Button
             variant="outline"
             size="sm"
+            className="flex-1 @sm/card:flex-none @max-sm/card:min-h-11"
             onClick={() => table.previousPage()}
             disabled={!table.getCanPreviousPage()}
           >
@@ -401,6 +402,7 @@ const ScanResultView = ({ data, onLockCell }: ScanResultViewProps) => {
           <Button
             variant="outline"
             size="sm"
+            className="flex-1 @sm/card:flex-none @max-sm/card:min-h-11"
             onClick={() => table.nextPage()}
             disabled={!table.getCanNextPage()}
           >

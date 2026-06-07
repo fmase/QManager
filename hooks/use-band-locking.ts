@@ -38,7 +38,7 @@ const CGI_BASE = "/cgi-bin/quecmanager/bands";
 const FAILOVER_POLL_INTERVAL = 1000; // 1s — watcher sleeps 5s then checks
 
 export interface UseBandLockingReturn {
-  /** Currently locked/configured bands from ue_capability_band */
+  /** Currently locked/configured bands from the per-category band registers */
   currentBands: CurrentBands | null;
   /** Failover safety mechanism state */
   failover: FailoverState;

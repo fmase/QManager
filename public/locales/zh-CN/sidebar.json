@@ -31,6 +31,7 @@
     "ttl_mtu_settings": "TTL 和 MTU 设置",
     "video_optimizer": "视频优化器",
     "traffic_masquerade": "流量伪装",
+    "traffic_engine": "流量引擎",
     "network_events": "网络事件",
     "latency_monitor": "延迟监控",
     "email_alerts": "邮件提醒",
@@ -41,14 +42,18 @@
     "system_settings": "系统设置",
     "configuration_backup": "配置备份",
     "ssh_password": "SSH 密码",
+    "connection_quality": "连接质量",
     "bandwidth_monitor": "带宽监控",
     "logs": "日志",
     "software_update": "软件更新",
     "at_terminal": "AT 终端",
-    "luci": "Luci",
+    "luci": "LuCI",
     "about_device": "关于设备",
     "support": "支持",
     "donate": "捐赠项目",
     "languages": "语言"
+  },
+  "switcher": {
+    "opens_new_tab": "在新标签页中打开"
   }
 }

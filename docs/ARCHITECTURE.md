@@ -182,9 +182,6 @@ init.d/qmanager_mtu (non-procd)
 init.d/qmanager_imei_check (non-procd, one-shot)
   └── qmanager_imei_check (boot-time IMEI rejection check)
 
-init.d/qmanager_wan_guard (non-procd, one-shot)
-  └── qmanager_wan_guard (disables orphaned WAN profiles)
-
 init.d/qmanager_tower_failover (non-procd)
   └── qmanager_tower_failover (tower failover watchdog)
 

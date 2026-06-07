@@ -19,6 +19,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import {
   AlertCircleIcon,
+  ArrowLeftRightIcon,
   LockIcon,
   LockOpenIcon,
   RotateCcwIcon,
@@ -26,11 +27,28 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { formatBandName, type BandCategory } from "@/types/band-locking";
+import { DUR, EASE_OUT_QUART } from "@/lib/motion";
+
+// Representative band counts per category for the loading skeleton, taken from
+// the static hardware band universe (supported_bands_hw.env) of the supported
+// RM5xx-class modems. The exact count varies per device, but rehearsing a
+// realistic number keeps the placeholder grid the same height as the real grid
+// so content resolves in place instead of jumping a few rows when data lands.
+const SKELETON_BAND_COUNT: Record<BandCategory, number> = {
+  lte: 33,
+  nsa_nr5g: 35,
+  sa_nr5g: 37,
+  nrdc_nr5g: 37,
+};
+
+// Mixed placeholder label widths so the skeleton row reads as the real B/N band
+// labels (B1 … B71, N257) rather than a mechanically uniform bar. Indexed by i % 6.
+const SKELETON_LABEL_WIDTHS = ["w-6", "w-7", "w-7", "w-8", "w-6", "w-9"] as const;
 
 // =============================================================================
 // BandCardsComponent — Per-Category Band Checkbox Grid + Lock/Unlock Actions
 // =============================================================================
-// One instance per band category (LTE, NSA NR5G, SA NR5G).
+// One instance per band category (LTE, NSA NR5G, SA NR5G, NR-DC).
 // All data flows in via props from BandLockingComponent (coordinator).
 //
 // Local state: checkbox selection (initialized from currentLockedBands).
@@ -42,9 +60,20 @@ interface BandCardsProps {
   description: string;
   /** Which band category this card manages */
   bandCategory: BandCategory;
-  /** All hardware-supported bands for this category (from policy_band, sorted) */
+  /**
+   * The checkbox universe — full hardware band capability for this category
+   * (from the static spec-sheet file, sorted). Superset of policyBands.
+   */
   supportedBands: number[];
-  /** Currently locked/configured bands (from ue_capability_band, sorted) */
+  /**
+   * Bands the network/SIM actually uses (from policy_band, sorted). A subset of
+   * supportedBands. Bands in supportedBands but NOT here are modem-supported-but-
+   * network-unused and render in warning/yellow. Used ONLY for coloring/legend —
+   * "Unlock all" and the count badge operate on the full supportedBands universe.
+   * Defaults to supportedBands when omitted (e.g. NR-DC view-only — no yellow bands).
+   */
+  policyBands?: number[];
+  /** Currently locked/configured bands (from the per-category band registers, sorted) */
   currentLockedBands: number[];
   /** Lock selected bands — returns success boolean */
   onLock: (bands: number[]) => Promise<boolean>;
@@ -58,6 +87,15 @@ interface BandCardsProps {
   error: string | null;
   /** True when a Connection Scenario controls bands — disables all interactions */
   disabled?: boolean;
+  /**
+   * When provided, renders a swap control in the header that flips this slot
+   * between SA NR5G and NR-DC. Only the shared SA/NR-DC slot passes this.
+   */
+  onSwapView?: () => void;
+  /** Short label of the mode the swap switches TO (e.g. "NR-DC"). */
+  swapLabel?: string;
+  /** Tooltip + accessible name for the swap control (e.g. "Switch to NR-DC bands"). */
+  swapTitle?: string;
 }
 
 const BandCardsComponent = ({
@@ -65,6 +103,7 @@ const BandCardsComponent = ({
   description,
   bandCategory,
   supportedBands,
+  policyBands,
   currentLockedBands,
   onLock,
   onUnlockAll,
@@ -72,6 +111,9 @@ const BandCardsComponent = ({
   isLoading,
   error,
   disabled = false,
+  onSwapView,
+  swapLabel,
+  swapTitle,
 }: BandCardsProps) => {
   const { t } = useTranslation("cellular");
   const { saved, markSaved } = useSaveFlash();
@@ -91,15 +133,33 @@ const BandCardsComponent = ({
     setCheckedBands(new Set(currentLockedBands));
   }
 
+  // --- Two-layer band model -------------------------------------------------
+  // policy = the network/SIM-used subset, used ONLY to color bands (primary vs
+  // yellow). The universe is `supportedBands` — that's what "Unlock all" locks and
+  // what the count/all-unlocked state measure against. Default policy to the full
+  // universe so cards that don't pass it (NR-DC view-only) render all-primary.
+  const policySet = useMemo(
+    () => new Set(policyBands ?? supportedBands),
+    [policyBands, supportedBands],
+  );
+  // Bands the modem supports but the network/SIM doesn't use — rendered yellow.
+  const hasUnusedBands = useMemo(
+    () => supportedBands.some((b) => !policySet.has(b)),
+    [supportedBands, policySet],
+  );
+
   // --- Derived state --------------------------------------------------------
+  // "All unlocked" = every modem-supported band is locked. "Unlock all" locks the
+  // full hardware universe, so this measures against supportedBands (not policy).
+  const supportedSet = useMemo(() => new Set(supportedBands), [supportedBands]);
+  const supportedCount = supportedBands.length;
   const isAllUnlocked = useMemo(() => {
-    if (supportedBands.length === 0 || currentLockedBands.length === 0)
-      return false;
+    if (supportedCount === 0 || currentLockedBands.length === 0) return false;
     return (
-      currentLockedBands.length === supportedBands.length &&
-      currentLockedBands.every((b) => supportedBands.includes(b))
+      currentLockedBands.length === supportedCount &&
+      currentLockedBands.every((b) => supportedSet.has(b))
     );
-  }, [supportedBands, currentLockedBands]);
+  }, [supportedCount, supportedSet, currentLockedBands]);
 
   // Whether the user's selection differs from what's currently on the modem
   const hasChanges = useMemo(() => {
@@ -160,23 +220,60 @@ const BandCardsComponent = ({
   };
 
   // --- Loading skeleton -----------------------------------------------------
+  // Rehearses the real card structure so nothing shifts when data lands: the
+  // real (already-translated) title + description, a header badge placeholder
+  // plus the swap control on the shared SA/NR-DC slot, the same responsive
+  // checkbox grid at a representative band count for this category, and the same
+  // two-group footer. The placeholder checkboxes fade+scale in on the motion
+  // system's curve with the same stagger as the live grid, so the skeleton
+  // resolves into the real staggered grid as one continuous motion.
   if (isLoading) {
+    const placeholderCount = SKELETON_BAND_COUNT[bandCategory];
     return (
       <Card className="@container/card">
         <CardHeader>
-          <CardTitle>{title}</CardTitle>
-          <CardDescription>{description}</CardDescription>
-        </CardHeader>
-        <CardContent className="grid @lg/card:grid-cols-8 @md/card:grid-cols-6 @sm/card:grid-cols-4 grid-cols-3 grid-flow-row gap-4">
-          {Array.from({ length: 12 }).map((_, i) => (
-            <div className="flex items-center space-x-2" key={i}>
-              <Skeleton className="size-4 rounded" />
-              <Skeleton className="h-4 w-8" />
+          <div className="flex items-center justify-between gap-2">
+            <div>
+              <CardTitle>{title}</CardTitle>
+              <CardDescription>{description}</CardDescription>
             </div>
-          ))}
+            <div className="flex shrink-0 items-center gap-2">
+              {onSwapView && <Skeleton className="h-7 w-20 rounded-md" />}
+              <Skeleton className="h-6 w-24 rounded-md" />
+            </div>
+          </div>
+        </CardHeader>
+
+        <CardContent>
+          <motion.div
+            className="grid @lg/card:grid-cols-8 @md/card:grid-cols-6 @sm/card:grid-cols-4 grid-cols-3 grid-flow-row gap-4 mt-2"
+            initial="hidden"
+            animate="visible"
+            variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.025 } } }}
+          >
+            {Array.from({ length: placeholderCount }).map((_, i) => (
+              <motion.div
+                key={i}
+                className="flex items-center space-x-2"
+                variants={{ hidden: { opacity: 0, scale: 0.88 }, visible: { opacity: 1, scale: 1 } }}
+                transition={{ duration: DUR.fast, ease: EASE_OUT_QUART }}
+              >
+                <Skeleton className="size-4 rounded" />
+                <Skeleton className={`h-4 ${SKELETON_LABEL_WIDTHS[i % SKELETON_LABEL_WIDTHS.length]}`} />
+              </motion.div>
+            ))}
+          </motion.div>
         </CardContent>
-        <CardFooter>
-          <Skeleton className="h-9 w-40" />
+
+        <CardFooter className="flex flex-wrap items-center justify-between gap-2 mt-4">
+          <div className="flex items-center gap-2">
+            <Skeleton className="h-9 w-32" />
+            <Skeleton className="size-9 rounded-md" />
+          </div>
+          <div className="flex items-center gap-2">
+            <Skeleton className="h-9 w-20" />
+            <Skeleton className="h-9 w-24" />
+          </div>
         </CardFooter>
       </Card>
     );
@@ -205,11 +302,26 @@ const BandCardsComponent = ({
   return (
     <Card className="@container/card" aria-disabled={disabled || undefined}>
       <CardHeader>
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-2">
           <div className={disabled ? "text-muted-foreground" : undefined}>
             <CardTitle>{title}</CardTitle>
             <CardDescription>{description}</CardDescription>
           </div>
+          <div className="flex shrink-0 items-center gap-2">
+          {onSwapView && (
+            <Button
+              size="xs"
+              variant="secondary"
+              onClick={onSwapView}
+              disabled={isDisabled}
+              aria-label={swapTitle}
+              title={swapTitle}
+              className="gap-1.5"
+            >
+              <ArrowLeftRightIcon className="size-3.5" />
+              {swapLabel}
+            </Button>
+          )}
           {disabled ? (
             <Badge
               variant="outline"
@@ -232,9 +344,10 @@ const BandCardsComponent = ({
               className="bg-warning/15 text-warning hover:bg-warning/20 border-warning/30"
             >
               <LockIcon className="h-3 w-3" />
-              {t("cell_locking.band_locking.card_badges.bands_locked", { locked: currentLockedBands.length, total: supportedBands.length })}
+              {t("cell_locking.band_locking.card_badges.bands_locked", { locked: currentLockedBands.length, total: supportedCount })}
             </Badge>
           )}
+          </div>
         </div>
       </CardHeader>
 
@@ -246,28 +359,51 @@ const BandCardsComponent = ({
           animate="visible"
           variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.025 } } }}
         >
-          {supportedBands.map((band) => (
+          {supportedBands.map((band) => {
+            // Modem-supported but network/SIM-unused → warning/yellow accent.
+            const unused = !policySet.has(band);
+            return (
             <motion.div
               key={band}
               className="flex items-center space-x-2"
               variants={{ hidden: { opacity: 0, scale: 0.88 }, visible: { opacity: 1, scale: 1 } }}
-              transition={{ duration: 0.18, ease: "easeOut" }}
+              transition={{ duration: DUR.fast, ease: EASE_OUT_QUART }}
             >
               <Checkbox
                 id={`${bandCategory}-${band}`}
                 checked={checkedBands.has(band)}
                 onCheckedChange={() => handleCheckboxChange(band)}
                 disabled={isDisabled}
+                className={
+                  unused
+                    ? "border-warning-on-surface/50 data-[state=checked]:bg-warning data-[state=checked]:border-warning data-[state=checked]:text-warning-foreground dark:data-[state=checked]:bg-warning"
+                    : undefined
+                }
               />
               <Label
                 htmlFor={`${bandCategory}-${band}`}
-                className={disabled ? "cursor-default" : "cursor-pointer"}
+                className={`${disabled ? "cursor-default" : "cursor-pointer"}${unused ? " text-warning-on-surface" : ""}`}
               >
                 {formatBandName(bandCategory, band)}
               </Label>
             </motion.div>
-          ))}
+            );
+          })}
         </motion.div>
+
+        {/* Legend — only when the card has modem-supported-but-unused (yellow) bands */}
+        {hasUnusedBands && (
+          <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-1.5 text-xs text-muted-foreground">
+            <span className="flex items-center gap-1.5">
+              <span className="size-2.5 shrink-0 rounded-[3px] bg-primary" aria-hidden="true" />
+              {t("cell_locking.band_locking.legend.used")}
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="size-2.5 shrink-0 rounded-[3px] bg-warning" aria-hidden="true" />
+              {t("cell_locking.band_locking.legend.unused")}
+            </span>
+          </div>
+        )}
       </CardContent>
 
       {/* Inline error — persistent until next operation */}

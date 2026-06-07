@@ -21,6 +21,7 @@ interface UseNeighbourScannerReturn {
   status: ScanStatus;
   results: NeighbourCellResult[];
   error: string | null;
+  elapsedSeconds: number;
   startScan: () => Promise<void>;
 }
 
@@ -29,7 +30,25 @@ export function useNeighbourScanner(): UseNeighbourScannerReturn {
   const [status, setStatus] = useState<ScanStatus>("idle");
   const [results, setResults] = useState<NeighbourCellResult[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const stopTimer = useCallback(() => {
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+  }, []);
+
+  const startTimer = useCallback(() => {
+    stopTimer();
+    const startTime = Date.now();
+    setElapsedSeconds(0);
+    timerRef.current = setInterval(() => {
+      setElapsedSeconds(Math.floor((Date.now() - startTime) / 1000));
+    }, 1000);
+  }, [stopTimer]);
 
   // --- Poll for scan status --------------------------------------------------
   const pollStatus = useCallback(async () => {
@@ -54,6 +73,7 @@ export function useNeighbourScanner(): UseNeighbourScannerReturn {
             clearInterval(pollRef.current);
             pollRef.current = null;
           }
+          stopTimer();
           break;
 
         case "error":
@@ -63,6 +83,7 @@ export function useNeighbourScanner(): UseNeighbourScannerReturn {
             clearInterval(pollRef.current);
             pollRef.current = null;
           }
+          stopTimer();
           break;
 
         default:
@@ -71,18 +92,20 @@ export function useNeighbourScanner(): UseNeighbourScannerReturn {
             setStatus("idle");
             clearInterval(pollRef.current);
             pollRef.current = null;
+            stopTimer();
           }
           break;
       }
     } catch {
       // Network error during poll — keep retrying
     }
-  }, []);
+  }, [stopTimer]);
 
   // --- Start a new scan ------------------------------------------------------
   const startScan = useCallback(async () => {
     setStatus("running");
     setError(null);
+    startTimer();
 
     try {
       const res = await authFetch(
@@ -99,6 +122,7 @@ export function useNeighbourScanner(): UseNeighbourScannerReturn {
         } else {
           setStatus("error");
           setError(resolveErrorMessage(t, data.error, data.detail, "Failed to start scan"));
+          stopTimer();
           return;
         }
       }
@@ -109,8 +133,9 @@ export function useNeighbourScanner(): UseNeighbourScannerReturn {
     } catch {
       setStatus("error");
       setError("Failed to connect to scanner");
+      stopTimer();
     }
-  }, [pollStatus, t]);
+  }, [pollStatus, startTimer, stopTimer, t]);
 
   // --- Check for existing results on mount -----------------------------------
   useEffect(() => {
@@ -120,8 +145,9 @@ export function useNeighbourScanner(): UseNeighbourScannerReturn {
         clearInterval(pollRef.current);
         pollRef.current = null;
       }
+      stopTimer();
     };
-  }, [pollStatus]);
+  }, [pollStatus, stopTimer]);
 
-  return { status, results, error, startScan };
+  return { status, results, error, elapsedSeconds, startScan };
 }

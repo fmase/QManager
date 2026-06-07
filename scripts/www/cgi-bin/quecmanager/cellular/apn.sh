@@ -1,24 +1,50 @@
 #!/bin/sh
 . /usr/lib/qmanager/cgi_base.sh
 . /usr/lib/qmanager/cgi_at.sh
+. /usr/lib/qmanager/apn_mgr.sh
 # =============================================================================
-# apn.sh — CGI Endpoint: APN Management (GET + POST)
+# apn.sh — CGI Endpoint: APN Profile Management (GET + POST), AT-only
 # =============================================================================
-# GET:  Reads all carrier profiles (AT+CGDCONT?) and determines the active CID
-#       (the one with WAN connectivity via AT+CGPADDR / AT+QMAP="WWAN").
-# POST: Applies APN change via AT+CGDCONT and optionally sets TTL/HL via
-#       iptables (for Auto APN presets).
+# RM551E-GL / RM520N-GL have no Casa RDB key-value store and no wmmd daemon, so
+# every live profile field is sourced directly from AT commands through qcmd.
+#
+# MODEL (v2): the device keeps exactly FIVE stored data-profile slots (ids 1-5)
+# in a JSON sidecar, plus a single "active" pointer. Activating a slot writes
+# its APN to the modem and makes it the mutually-exclusive live data profile —
+# there is only ever ONE active slot (the lone `active` field enforces this).
+#
+# A stored slot is decoupled from a modem CID: each slot carries its OWN target
+# `cid` (1-6), so the user can stage several profiles and flip the live one
+# without re-typing. Saving an INACTIVE slot is JSON-only; saving the ACTIVE
+# slot (or activating any slot) drives the COPS detach/attach cycle so the new
+# APN is negotiated with the carrier at attach time.
+#
+# Separately, the GET response still surfaces the modem's raw context table
+# (CIDs 1-6) under `cids`, with IMS/SOS contexts TAGGED (not dropped) via
+# apn_type_of(), so the UI can show what each hardware context currently holds.
+#
+# "Active CID" (the live WAN-bearing context) is derived inline from the
+# AT+QMAP="WWAN" / AT+CGPADDR sections of one compound query — never via
+# detect_active_cid(), which would re-query and negate the single round-trip.
+#
+# GET  -> { max_profiles, active_profile, active_cid, internet_cid,
+#           profiles[5], cids[6] }
+# POST -> {"action":"save"|"activate"|"deactivate"|"clear", ...} applies a change.
 #
 # AT commands used (GET):
-#   AT+CGDCONT?        -> All PDP contexts (CID, PDP type, APN)
-#   AT+CGPADDR         -> IP addresses per CID (find active WAN CID)
-#   AT+QMAP="WWAN"     -> Fallback: confirm WAN-connected CID
+#   AT+CGDCONT?;+CGACT?;+CGPADDR;+QMAP="WWAN"   -> one round-trip, four sections
+#     +CGDCONT: defined PDP contexts (CID, PDP type, APN)
+#     +CGACT:   per-context activation state
+#     +CGPADDR: per-CID assigned IP (active-CID fallback)
+#     +QMAP:    authoritative WAN CID + IP
 #
-# AT commands used (POST):
-#   AT+CGDCONT=<cid>,"<pdp_type>","<apn>"  -> Set APN for a CID
+# AT commands used (POST save/activate):
+#   AT+COPS=2                            -> deregister  (force full detach)
+#   AT+CGDCONT=<cid>,"<PDP_AT>","<apn>"  -> define APN + PDP type
+#   AT+COPS=0                            -> re-register (attaches with new APN)
 #
 # Endpoint: GET/POST /cgi-bin/quecmanager/cellular/apn.sh
-# Install location: /www/cgi-bin/quecmanager/cellular/apn.sh
+# Install location: <docroot>/cgi-bin/quecmanager/cellular/apn.sh
 # =============================================================================
 
 # --- Logging -----------------------------------------------------------------
@@ -26,28 +52,53 @@ qlog_init "cgi_apn"
 cgi_headers
 cgi_handle_options
 
-# --- Configuration -----------------------------------------------------------
-CMD_GAP=0.2
-TTL_FILE="/etc/firewall.user.ttl"
+# =============================================================================
+# Helpers
+# =============================================================================
+# v2 config I/O (MAX_SLOTS, MAX_CID, PROFILE_FILE, LEGACY_NAME_FILE, EMPTY_V2,
+# pdp_to_at/pdp_to_frontend, normalize_v2, read_config_v2, write_config_v2),
+# the COPS apply cycle (apply_apn_to_modem, cops_recover) and the active-slot
+# reapply helper all live in /usr/lib/qmanager/apn_mgr.sh (sourced above).
+
+# die <error_code> <detail> — emit a JSON error and stop. CGI exits 0; the
+# client distinguishes success via the "success" field, not the HTTP status.
+die() {
+    qlog_error "$1: ${2:-}"
+    cgi_error "$1" "${2:-}"
+    exit 0
+}
+
+# Carrier-provisioned APN classification (case-insensitive substring match).
+# IMS (VoLTE) and SOS/emergency/XCAP/RCS contexts are operator-managed. Unlike
+# the prior version, a non-empty result no longer DROPS the row — it only TAGS
+# the modem-context entry under `cids` so the UI can label it. The five stored
+# `profiles` slots are unaffected by this classifier.
+apn_type_of() {
+    _at_lc=$(printf '%s' "$1" | tr 'A-Z' 'a-z')
+    case "$_at_lc" in
+        *ims*)                               echo "ims" ;;
+        *sos*|*emergency*|*xcap*|*rcs*)      echo "emergency" ;;
+        *)                                   echo "" ;;
+    esac
+}
 
 # =============================================================================
-# GET — Fetch carrier profiles and active CID
+# GET — 5 stored slots + raw modem context table
 # =============================================================================
 if [ "$REQUEST_METHOD" = "GET" ]; then
-    qlog_info "Fetching APN settings"
+    qlog_info "Listing APN profiles (v2, AT)"
 
-    # --- Compound AT: fetch profiles + active CID in one call ---
-    raw=$(qcmd 'AT+CGDCONT?;+CGPADDR;+QMAP="WWAN"' 2>/dev/null)
-    [ -z "$raw" ] && qlog_warn "APN compound AT query returned empty response"
+    # One compound call. Each qcmd invocation carries a fixed per-call cost
+    # (process spawn + flock + modem channel handshake) that dominates the AT
+    # payload itself; chaining all four queries pays that cost once.
+    blob=$(run_at 'AT+CGDCONT?;+CGACT?;+CGPADDR;+QMAP="WWAN"')
+    cgdcont_raw=$(printf '%s\n' "$blob" | grep '+CGDCONT:')
 
-    # Parse: +CGDCONT: <cid>,"<pdp_type>","<apn>",...
-    cgdcont_lines=$(printf '%s\n' "$raw" | grep '+CGDCONT:')
-    profiles_json=$(parse_cgdcont "$cgdcont_lines")
-
-    # --- Determine active CID (cross-reference +CGPADDR + +QMAP from blob) ---
-    active_cid=""
-
-    cgpaddr_cids=$(printf '%s\n' "$raw" | awk -F'[,"]' '
+    # --- Active CID (inline, NOT detect_active_cid which re-queries) --------
+    # Copied verbatim from profiles/current_settings.sh: CGPADDR collects CIDs
+    # with a valid 4-octet IPv4 (first octet > 0); QMAP is authoritative (first
+    # non-zero IP wins); CGPADDR is the fallback; default "1".
+    cgpaddr_cids=$(printf '%s\n' "$blob" | awk -F'[,"]' '
         /\+CGPADDR:/ {
             cid = $1; gsub(/[^0-9]/, "", cid)
             ip = $3
@@ -59,8 +110,7 @@ if [ "$REQUEST_METHOD" = "GET" ]; then
             }
         }
     ')
-
-    qmap_cid=$(printf '%s\n' "$raw" | awk -F',' '
+    qmap_cid=$(printf '%s\n' "$blob" | awk -F',' '
         /\+QMAP:/ {
             gsub(/"/, "", $5)
             ip = $5
@@ -72,153 +122,286 @@ if [ "$REQUEST_METHOD" = "GET" ]; then
             }
         }
     ')
-
     if [ -n "$qmap_cid" ]; then
         active_cid="$qmap_cid"
     elif [ -n "$cgpaddr_cids" ]; then
         active_cid=$(printf '%s\n' "$cgpaddr_cids" | head -1)
+    else
+        active_cid="1"
     fi
-    [ -z "$active_cid" ] && active_cid="1"
 
-    qlog_info "Profiles: $(printf '%s' "$profiles_json" | jq -c length) entries, active_cid=$active_cid"
+    # --- Modem context table (cids[]): every CID 1..MAX_CID, tagged ---------
+    # No carrier-skip: IMS/SOS contexts are kept and TAGGED via apn_type_of so
+    # the UI can label them. apn = live CGDCONT string ("" if undefined),
+    # is_internet = (cid == active_cid). Streamed as TSV (apn last column; it
+    # may legitimately be empty) then assembled with jq for correct typing.
+    cids_tsv=""
+    cid=1
+    while [ "$cid" -le "$MAX_CID" ]; do
+        cgd_line=$(printf '%s\n' "$cgdcont_raw" | grep "^+CGDCONT: $cid,")
+        live_apn=""
+        if [ -n "$cgd_line" ]; then
+            live_apn=$(printf '%s' "$cgd_line" | awk -F'"' '{print $4}')
+        fi
+        apn_type=$(apn_type_of "$live_apn")
+        [ "$cid" = "$active_cid" ] && is_internet=1 || is_internet=0
+        # 4 columns: cid, apn_type, is_internet, apn. apn is LAST because it can
+        # be empty — a trailing empty field survives the awk/split round-trip.
+        cids_tsv="${cids_tsv}${cid}	${apn_type}	${is_internet}	${live_apn}
+"
+        cid=$((cid + 1))
+    done
+
+    cids_json=$(printf '%s' "$cids_tsv" | jq -Rsc '
+        split("\n") | map(select(length > 0) | split("\t") | {
+            cid:         (.[0] | tonumber),
+            apn_type:    (if .[1] == null then "" else .[1] end),
+            is_internet: (.[2] == "1"),
+            apn:         (if .[3] == null then "" else .[3] end)
+        })')
+    [ -z "$cids_json" ] && die "parse_failed" "Could not assemble modem context list"
+
+    # --- Stored slots (profiles[]): the 5 config slots, NOT the modem -------
+    config_json=$(read_config_v2)
+    active_profile=$(printf '%s' "$config_json" | jq -r '.active')
+
+    profiles_json=$(printf '%s' "$config_json" | jq -c '
+        (.active) as $act
+        | .profiles | map({
+            id:        .id,
+            name:      (if .name == null then "" else .name end),
+            apn:       (if .apn == null then "" else .apn end),
+            pdp_type:  (if .pdp_type == null then "ipv4v6" else .pdp_type end),
+            cid:       (if .cid == null then 1 else .cid end),
+            is_active: (.id == $act)
+        })')
+    [ -z "$profiles_json" ] && die "parse_failed" "Could not assemble stored profile list"
+
+    qlog_info "APN v2: 5 slots, active_profile=$active_profile, active_cid=$active_cid"
 
     jq -n \
         --argjson profiles "$profiles_json" \
-        --arg active_cid "$active_cid" \
+        --argjson cids "$cids_json" \
+        --argjson max "$MAX_SLOTS" \
+        --argjson active_profile "$active_profile" \
+        --argjson active_cid "$active_cid" \
         '{
             success: true,
+            max_profiles: $max,
+            active_profile: $active_profile,
+            active_cid: $active_cid,
+            internet_cid: $active_cid,
             profiles: $profiles,
-            active_cid: ($active_cid | tonumber)
+            cids: $cids
         }'
     exit 0
 fi
 
 # =============================================================================
-# POST — Apply APN change + optional TTL/HL
+# POST — {"action":"save"|"activate"|"clear", ...}
 # =============================================================================
 if [ "$REQUEST_METHOD" = "POST" ]; then
 
     cgi_read_post
+    ACTION=$(printf '%s' "$POST_DATA" | jq -r 'if .action == null then empty else .action end')
 
-    # --- Extract fields ---
-    CID=$(printf '%s' "$POST_DATA" | jq -r '.cid // empty | tostring')
-    PDP_TYPE=$(printf '%s' "$POST_DATA" | jq -r '.pdp_type // empty')
-    APN=$(printf '%s' "$POST_DATA" | jq -r '.apn // empty')
-    TTL=$(printf '%s' "$POST_DATA" | jq -r 'if has("ttl") then (.ttl | tostring) else "0" end')
-    HL=$(printf '%s' "$POST_DATA" | jq -r 'if has("hl") then (.hl | tostring) else "0" end')
-    # Track whether TTL/HL keys were explicitly provided (for 0 = disable)
-    has_ttl=$(printf '%s' "$POST_DATA" | jq 'has("ttl")')
-    has_hl=$(printf '%s' "$POST_DATA" | jq 'has("hl")')
+    # -----------------------------------------------------------------------
+    # action: save — persist a slot; re-apply to the modem only if it's active
+    # -----------------------------------------------------------------------
+    if [ "$ACTION" = "save" ]; then
+        ID=$(printf '%s' "$POST_DATA" | jq -r 'if .id == null then "" else (.id | tostring) end')
+        SLOT_CID=$(printf '%s' "$POST_DATA" | jq -r 'if .cid == null then "" else (.cid | tostring) end')
+        NAME=$(printf '%s' "$POST_DATA" | jq -r 'if .name == null then "" else .name end')
+        APN=$(printf '%s' "$POST_DATA" | jq -r 'if .apn == null then "" else .apn end')
+        PDP=$(printf '%s' "$POST_DATA" | jq -r 'if .pdp_type == null then "" else .pdp_type end')
 
-    qlog_info "Apply APN: cid=$CID pdp=$PDP_TYPE apn=$APN ttl=$TTL hl=$HL"
-
-    # --- Validate ---
-    if [ -z "$CID" ] || [ -z "$PDP_TYPE" ] || [ -z "$APN" ]; then
-        cgi_error "missing_fields" "cid, pdp_type, and apn are required"
-        exit 0
-    fi
-
-    # CID must be 1-15
-    if [ "$CID" -lt 1 ] 2>/dev/null || [ "$CID" -gt 15 ] 2>/dev/null; then
-        cgi_error "invalid_cid" "CID must be 1-15"
-        exit 0
-    fi
-    # Catch non-numeric CID
-    case "$CID" in
-        *[!0-9]*|"")
-            cgi_error "invalid_cid" "CID must be a number 1-15"
-            exit 0
-            ;;
-    esac
-
-    case "$PDP_TYPE" in
-        IP|IPV6|IPV4V6) ;;
-        *)
-            cgi_error "invalid_pdp_type" "PDP type must be IP, IPV6, or IPV4V6"
-            exit 0
-            ;;
-    esac
-
-    # TTL/HL must be 0-255
-    case "$TTL" in *[!0-9]*|"") TTL=0 ;; esac
-    case "$HL" in *[!0-9]*|"") HL=0 ;; esac
-    if [ "$TTL" -gt 255 ] 2>/dev/null; then
-        cgi_error "invalid_ttl" "TTL must be 0-255"
-        exit 0
-    fi
-    if [ "$HL" -gt 255 ] 2>/dev/null; then
-        cgi_error "invalid_hl" "HL must be 0-255"
-        exit 0
-    fi
-
-    # --- Step 1: Apply APN via AT+CGDCONT ---
-    result=$(qcmd "AT+CGDCONT=$CID,\"$PDP_TYPE\",\"$APN\"" 2>/dev/null)
-    case "$result" in
-        *ERROR*)
-            qlog_error "AT+CGDCONT failed: $result"
-            cgi_error "cgdcont_failed" "AT+CGDCONT returned ERROR"
-            exit 0
-            ;;
-        *)
-            qlog_info "AT+CGDCONT=$CID,\"$PDP_TYPE\",\"$APN\" OK"
-            ;;
-    esac
-
-    # --- Step 1b: Force live PDP session to re-negotiate with the new APN --------
-    # AT+CGDCONT alone updates NVM but the active session keeps the
-    # previously-negotiated APN until detach/reattach.
-    qlog_info "Detaching from network for APN reattach"
-    qcmd 'AT+COPS=2' >/dev/null 2>&1 || qlog_warn "AT+COPS=2 failed; new APN may not take effect until reboot"
-    sleep 2
-    qlog_info "Reattaching to network"
-    qcmd 'AT+COPS=0' >/dev/null 2>&1 || qlog_warn "AT+COPS=0 reattach failed; modem may be stuck detached"
-    sleep 2
-
-    # --- Step 2: Apply TTL/HL if explicitly provided (0 = disable custom values) ---
-    if [ "$has_ttl" = "true" ] || [ "$has_hl" = "true" ]; then
-        qlog_info "Applying TTL=$TTL, HL=$HL"
-
-        # Read current values from firewall rules file
-        current_ttl=0
-        current_hl=0
-        if [ -s "$TTL_FILE" ]; then
-            current_ttl=$(grep 'iptables.*--ttl-set' "$TTL_FILE" 2>/dev/null | awk '{for(i=1;i<=NF;i++){if($i=="--ttl-set"){print $(i+1)}}}' | head -1)
-            current_hl=$(grep 'ip6tables.*--hl-set' "$TTL_FILE" 2>/dev/null | awk '{for(i=1;i<=NF;i++){if($i=="--hl-set"){print $(i+1)}}}' | head -1)
+        # --- Validate slot id (1..MAX_SLOTS) -------------------------------
+        case "$ID" in
+            ''|*[!0-9]*) die "invalid_id" "id must be an integer 1-${MAX_SLOTS}" ;;
+        esac
+        if [ "$ID" -lt 1 ] || [ "$ID" -gt "$MAX_SLOTS" ]; then
+            die "invalid_id" "id must be 1-${MAX_SLOTS}"
         fi
-        [ -z "$current_ttl" ] && current_ttl=0
-        [ -z "$current_hl" ] && current_hl=0
 
-        # Only apply if values actually changed
-        if [ "$current_ttl" != "$TTL" ] || [ "$current_hl" != "$HL" ]; then
-            # Clear existing rules
-            if [ "$current_ttl" -gt 0 ] 2>/dev/null; then
-                iptables -t mangle -D POSTROUTING -o rmnet+ -j TTL --ttl-set "$current_ttl" 2>/dev/null
-            fi
-            if [ "$current_hl" -gt 0 ] 2>/dev/null; then
-                ip6tables -t mangle -D POSTROUTING -o rmnet+ -j HL --hl-set "$current_hl" 2>/dev/null
-            fi
+        # --- Validate target cid (1..MAX_CID) ------------------------------
+        case "$SLOT_CID" in
+            ''|*[!0-9]*) die "invalid_cid" "cid must be an integer 1-${MAX_CID}" ;;
+        esac
+        if [ "$SLOT_CID" -lt 1 ] || [ "$SLOT_CID" -gt "$MAX_CID" ]; then
+            die "invalid_cid" "cid must be 1-${MAX_CID}"
+        fi
 
-            # Write new rules file (atomic: temp + mv)
-            TTL_TMP="${TTL_FILE}.tmp"
-            > "$TTL_TMP"
-            if [ "$TTL" -gt 0 ] 2>/dev/null; then
-                echo "iptables -t mangle -A POSTROUTING -o rmnet+ -j TTL --ttl-set $TTL" >> "$TTL_TMP"
-                iptables -t mangle -A POSTROUTING -o rmnet+ -j TTL --ttl-set "$TTL"
-            fi
-            if [ "$HL" -gt 0 ] 2>/dev/null; then
-                echo "ip6tables -t mangle -A POSTROUTING -o rmnet+ -j HL --hl-set $HL" >> "$TTL_TMP"
-                ip6tables -t mangle -A POSTROUTING -o rmnet+ -j HL --hl-set "$HL"
-            fi
-            mv "$TTL_TMP" "$TTL_FILE"
+        # --- Validate apn + pdp_type ---------------------------------------
+        [ -z "$APN" ] && die "missing_fields" "apn is required"
+        case "$APN" in
+            *'"'*) die "invalid_value" "APN may not contain a double-quote" ;;
+        esac
+        PDP_AT=$(pdp_to_at "$PDP")
+        [ -z "$PDP_AT" ] && die "invalid_pdp_type" "pdp_type must be ipv4, ipv6, or ipv4v6"
 
-            qlog_info "TTL/HL applied: TTL=$TTL, HL=$HL"
+        qlog_info "Save slot $ID: apn=$APN pdp=$PDP_AT cid=$SLOT_CID"
+
+        # --- Persist the slot (merge by id) before touching the modem ------
+        config_json=$(read_config_v2)
+        new_config=$(printf '%s' "$config_json" | jq -c \
+            --argjson id "$ID" \
+            --arg name "$NAME" \
+            --arg apn "$APN" \
+            --arg pdp "$PDP" \
+            --argjson cid "$SLOT_CID" \
+            '.profiles |= map(
+                if .id == $id
+                then { id: .id, name: $name, apn: $apn, pdp_type: $pdp, cid: $cid }
+                else . end
+            )' 2>/dev/null)
+        [ -z "$new_config" ] && die "persist_failed" "Could not build updated config for slot $ID"
+        if ! write_config_v2 "$new_config"; then
+            die "persist_failed" "Could not write apn_profiles.json for slot $ID"
+        fi
+
+        # --- Re-apply to the modem ONLY if this slot is the active one -----
+        # An inactive-slot save is JSON-only; only the live profile drives the
+        # COPS cycle (and the brief WAN drop that comes with it).
+        active_id=$(printf '%s' "$new_config" | jq -r '.active')
+        if [ "$active_id" = "$ID" ]; then
+            qlog_info "Slot $ID is active — applying to modem (cid=$SLOT_CID)"
+            apply_apn_to_modem "$SLOT_CID" "$PDP_AT" "$APN" || die "$APN_APPLY_ERR_CODE" "$APN_APPLY_ERR_DETAIL"
+        fi
+
+        cgi_success
+        exit 0
+    fi
+
+    # -----------------------------------------------------------------------
+    # action: activate — make a slot the live, mutually-exclusive data profile
+    # -----------------------------------------------------------------------
+    if [ "$ACTION" = "activate" ]; then
+        ID=$(printf '%s' "$POST_DATA" | jq -r 'if .id == null then "" else (.id | tostring) end')
+        case "$ID" in
+            ''|*[!0-9]*) die "invalid_id" "id must be an integer 1-${MAX_SLOTS}" ;;
+        esac
+        if [ "$ID" -lt 1 ] || [ "$ID" -gt "$MAX_SLOTS" ]; then
+            die "invalid_id" "id must be 1-${MAX_SLOTS}"
+        fi
+
+        # --- Load the slot from config -------------------------------------
+        config_json=$(read_config_v2)
+        SLOT_APN=$(printf '%s' "$config_json" | jq -r \
+            --argjson id "$ID" '.profiles[] | select(.id == $id) | .apn')
+        SLOT_PDP=$(printf '%s' "$config_json" | jq -r \
+            --argjson id "$ID" '.profiles[] | select(.id == $id) | .pdp_type')
+        SLOT_CID=$(printf '%s' "$config_json" | jq -r \
+            --argjson id "$ID" '.profiles[] | select(.id == $id) | .cid')
+
+        [ -z "$SLOT_APN" ] && die "empty_profile" "cannot activate a profile with no APN"
+
+        PDP_AT=$(pdp_to_at "$SLOT_PDP")
+        # Slots normalize to a valid pdp_type, but guard anyway before AT.
+        [ -z "$PDP_AT" ] && PDP_AT="IPV4V6"
+
+        qlog_info "Activate slot $ID: apn=$SLOT_APN pdp=$PDP_AT cid=$SLOT_CID"
+
+        # --- Drive the modem first; the modem is the live source of truth --
+        apply_apn_to_modem "$SLOT_CID" "$PDP_AT" "$SLOT_APN" || die "$APN_APPLY_ERR_CODE" "$APN_APPLY_ERR_DETAIL"
+
+        # --- Persist the active pointer. If this fails AFTER a successful
+        # modem write, still report success: the modem is already live on the
+        # new profile, so failing the request would mislead the UI. Warn only.
+        new_config=$(printf '%s' "$config_json" | jq -c \
+            --argjson id "$ID" '.active = $id' 2>/dev/null)
+        if [ -n "$new_config" ] && write_config_v2 "$new_config"; then
+            :
         else
-            qlog_info "TTL/HL unchanged (TTL=$TTL, HL=$HL)"
+            qlog_warn "Activated slot $ID on modem but failed to persist active pointer"
         fi
+
+        jq -n --argjson id "$ID" '{success: true, active: $id}'
+        exit 0
     fi
 
-    cgi_success
-    exit 0
+    # -----------------------------------------------------------------------
+    # action: deactivate — revert the live modem to the carrier-default APN
+    # (blank APN, carrier reassigns its default on re-attach) and set active=0.
+    # No slot fields change; this is the deliberate inverse of activate.
+    # -----------------------------------------------------------------------
+    if [ "$ACTION" = "deactivate" ]; then
+        config_json=$(read_config_v2)
+        active_id=$(printf '%s' "$config_json" | jq -r '.active')
+
+        # Already carrier-default: nothing to revert, do NOT touch the modem.
+        if [ "$active_id" = "0" ]; then
+            jq -n '{success: true, active: 0}'
+            exit 0
+        fi
+
+        # --- Load the active slot's CID + PDP for the revert AT write -------
+        SLOT_CID=$(printf '%s' "$config_json" | jq -r \
+            --argjson id "$active_id" '.profiles[] | select(.id == $id) | .cid')
+        SLOT_PDP=$(printf '%s' "$config_json" | jq -r \
+            --argjson id "$active_id" '.profiles[] | select(.id == $id) | .pdp_type')
+
+        PDP_AT=$(pdp_to_at "$SLOT_PDP")
+        [ -z "$PDP_AT" ] && PDP_AT="IPV4V6"
+        # Active config is normalized, but guard the CID before driving AT.
+        case "$SLOT_CID" in
+            ''|*[!0-9]*) SLOT_CID=1 ;;
+        esac
+
+        qlog_info "Deactivate: reverting slot $active_id (cid=$SLOT_CID) to carrier default; active=0"
+
+        # --- Drive the modem first; empty APN -> carrier reassigns default --
+        apply_apn_to_modem "$SLOT_CID" "$PDP_AT" "" || die "$APN_APPLY_ERR_CODE" "$APN_APPLY_ERR_DETAIL"
+
+        # --- Persist active=0. As with activate, a persist failure AFTER a
+        # successful modem revert still reports success: the modem is already
+        # on carrier-default, so failing the request would mislead the UI.
+        new_config=$(printf '%s' "$config_json" | jq -c '.active = 0' 2>/dev/null)
+        if [ -n "$new_config" ] && write_config_v2 "$new_config"; then
+            :
+        else
+            qlog_warn "Reverted slot $active_id on modem but failed to persist active=0"
+        fi
+
+        jq -n '{success: true, active: 0}'
+        exit 0
+    fi
+
+    # -----------------------------------------------------------------------
+    # action: clear — empty a slot (refuse if it is the active one)
+    # -----------------------------------------------------------------------
+    if [ "$ACTION" = "clear" ]; then
+        ID=$(printf '%s' "$POST_DATA" | jq -r 'if .id == null then "" else (.id | tostring) end')
+        case "$ID" in
+            ''|*[!0-9]*) die "invalid_id" "id must be an integer 1-${MAX_SLOTS}" ;;
+        esac
+        if [ "$ID" -lt 1 ] || [ "$ID" -gt "$MAX_SLOTS" ]; then
+            die "invalid_id" "id must be 1-${MAX_SLOTS}"
+        fi
+
+        config_json=$(read_config_v2)
+        active_id=$(printf '%s' "$config_json" | jq -r '.active')
+        if [ "$active_id" = "$ID" ]; then
+            die "active_locked" "deactivate or switch profiles before clearing the active one"
+        fi
+
+        qlog_info "Clear slot $ID"
+        new_config=$(printf '%s' "$config_json" | jq -c \
+            --argjson id "$ID" \
+            '.profiles |= map(
+                if .id == $id
+                then { id: .id, name: "", apn: "", pdp_type: "ipv4v6", cid: 1 }
+                else . end
+            )' 2>/dev/null)
+        [ -z "$new_config" ] && die "persist_failed" "Could not build cleared config for slot $ID"
+        if ! write_config_v2 "$new_config"; then
+            die "persist_failed" "Could not write apn_profiles.json for slot $ID"
+        fi
+
+        cgi_success
+        exit 0
+    fi
+
+    die "invalid_action" "action must be save, activate, deactivate, or clear"
 fi
 
 # --- Method not allowed -------------------------------------------------------

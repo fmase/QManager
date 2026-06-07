@@ -187,6 +187,14 @@ const NeighbourScanResultView = ({
     React.useState<VisibilityState>({});
   const columns = React.useMemo(() => getColumns(t, onLockCell), [t, onLockCell]);
 
+  const columnLabels = React.useMemo<Record<string, string>>(() => ({
+    networkType: t("cell_scanner.neighbour.column_headers.network"),
+    cellType: t("cell_scanner.neighbour.column_headers.cell_type"),
+    frequency: t("cell_scanner.neighbour.column_headers.frequency"),
+    pci: t("cell_scanner.neighbour.column_headers.pci"),
+    signalStrength: t("cell_scanner.neighbour.column_headers.signal"),
+  }), [t]);
+
   const table = useReactTable({
     data,
     columns,
@@ -233,13 +241,12 @@ const NeighbourScanResultView = ({
                 return (
                   <DropdownMenuCheckboxItem
                     key={column.id}
-                    className="capitalize"
                     checked={column.getIsVisible()}
                     onCheckedChange={(value) =>
                       column.toggleVisibility(!!value)
                     }
                   >
-                    {column.id}
+                    {columnLabels[column.id] ?? column.id}
                   </DropdownMenuCheckboxItem>
                 );
               })}
@@ -298,16 +305,17 @@ const NeighbourScanResultView = ({
           </TableBody>
         </Table>
       </div>
-      <div className="flex items-center justify-end space-x-2 py-4">
-        <div className="text-muted-foreground flex-1 text-sm">
+      <div className="flex flex-col @sm/card:flex-row @sm/card:items-center gap-2 py-4">
+        <div className="text-muted-foreground @sm/card:flex-1 text-sm">
           {t("cell_scanner.neighbour.footer_count", {
             count: table.getFilteredRowModel().rows.length,
           })}
         </div>
-        <div className="space-x-2">
+        <div className="flex gap-2 @sm/card:ml-auto">
           <Button
             variant="outline"
             size="sm"
+            className="flex-1 @sm/card:flex-none @max-sm/card:min-h-11"
             onClick={() => table.previousPage()}
             disabled={!table.getCanPreviousPage()}
           >
@@ -316,6 +324,7 @@ const NeighbourScanResultView = ({
           <Button
             variant="outline"
             size="sm"
+            className="flex-1 @sm/card:flex-none @max-sm/card:min-h-11"
             onClick={() => table.nextPage()}
             disabled={!table.getCanNextPage()}
           >

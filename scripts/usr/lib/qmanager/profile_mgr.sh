@@ -40,7 +40,8 @@ mkdir -p "$PROFILE_DIR" 2>/dev/null
 # Format: p_<unix_timestamp>_<3-char-hex>
 # Uses /dev/urandom with hexdump (BusyBox-safe).
 _generate_profile_id() {
-    local ts suffix
+    local ts
+    local suffix
     ts=$(date +%s)
     suffix=$(hexdump -n 2 -e '"%04x"' /dev/urandom 2>/dev/null | cut -c1-3)
     # Fallback if hexdump fails
@@ -107,7 +108,8 @@ profile_count() {
 # Returns a JSON object with a profiles array (summaries) and active_profile_id.
 # Output: {"profiles":[...],"active_profile_id":"..."}
 profile_list() {
-    local active_id profiles_json
+    local active_id
+    local profiles_json
     active_id=$(get_active_profile)
 
     # Collect matching profile files
@@ -118,7 +120,19 @@ profile_list() {
 
     # Build profiles array: extract summary fields from each file
     if [ -n "$files" ]; then
-        profiles_json=$(jq -s '[.[] | {id, name, mno, sim_iccid, created_at, updated_at}]' $files 2>/dev/null)
+        profiles_json=$(jq -s '[.[] | {
+            id, name, mno, sim_iccid, created_at, updated_at,
+            scenario: (
+                (.scenario // {}) as $s
+                | {
+                    default: ($s.default // "balanced"),
+                    schedule: {
+                        enabled: ($s.schedule.enabled // false),
+                        blocks: ($s.schedule.blocks // [])
+                    }
+                  }
+            )
+        }]' $files 2>/dev/null)
         [ -z "$profiles_json" ] && profiles_json="[]"
     else
         profiles_json="[]"
@@ -136,7 +150,9 @@ profile_list() {
 
 # --- profile_get <id> --------------------------------------------------------
 # Returns the full profile JSON for a given ID.
-# Outputs the raw file content (it's already valid JSON).
+# Applies the read-time scenario default so legacy profiles (saved before the
+# scenario-binding feature) always expose a normalized .scenario block to the
+# editor. Falls back to raw cat if jq fails (never lose the profile data).
 # Returns 1 if profile not found.
 profile_get() {
     local id="$1"
@@ -147,7 +163,17 @@ profile_get() {
         return 1
     fi
 
-    cat "$file"
+    jq '
+        .scenario = (
+            (.scenario // {}) as $s
+            | {
+                default: ($s.default // "balanced"),
+                schedule: {
+                    enabled: ($s.schedule.enabled // false),
+                    blocks: ($s.schedule.blocks // [])
+                }
+              }
+        )' "$file" 2>/dev/null || cat "$file"
 }
 
 # --- profile_save ------------------------------------------------------------
@@ -166,24 +192,47 @@ profile_save() {
     fi
 
     # --- Extract all fields from input JSON ---
-    local name mno sim_iccid
-    local apn_cid apn_name apn_pdp_type
-    local imei ttl hl
+    local name
+    local mno
+    local sim_iccid
+    local apn_cid
+    local apn_name
+    local apn_pdp_type
+    local imei
+    local ttl
+    local hl
     local existing_id
 
-    name=$(printf '%s' "$input" | jq -r '.name // empty')
-    mno=$(printf '%s' "$input" | jq -r '.mno // empty')
-    sim_iccid=$(printf '%s' "$input" | jq -r '.sim_iccid // empty')
-    existing_id=$(printf '%s' "$input" | jq -r '.id // empty')
+    name=$(printf '%s' "$input" | jq -r '(.name) | if . == null then empty else tostring end')
+    mno=$(printf '%s' "$input" | jq -r '(.mno) | if . == null then empty else tostring end')
+    sim_iccid=$(printf '%s' "$input" | jq -r '(.sim_iccid) | if . == null then empty else tostring end')
+    existing_id=$(printf '%s' "$input" | jq -r '(.id) | if . == null then empty else tostring end')
 
     # APN settings — frontend sends these as flat keys
     apn_cid=$(printf '%s' "$input" | jq -r '(.cid) | if . == null then empty else tostring end')
-    apn_name=$(printf '%s' "$input" | jq -r '.apn_name // empty')
-    apn_pdp_type=$(printf '%s' "$input" | jq -r '.pdp_type // empty')
+    apn_name=$(printf '%s' "$input" | jq -r '(.apn_name) | if . == null then empty else tostring end')
+    apn_pdp_type=$(printf '%s' "$input" | jq -r '(.pdp_type) | if . == null then empty else tostring end')
 
-    imei=$(printf '%s' "$input" | jq -r '.imei // empty')
+    imei=$(printf '%s' "$input" | jq -r '(.imei) | if . == null then empty else tostring end')
     ttl=$(printf '%s' "$input" | jq -r '(.ttl) | if . == null then empty else tostring end')
     hl=$(printf '%s' "$input" | jq -r '(.hl) | if . == null then empty else tostring end')
+
+    # Scenario binding block. Normalize to {default, schedule:{enabled, blocks}}
+    # with read-time defaults so callers omitting it still produce a valid
+    # object. Must be threaded through the fixed jq output template below or it
+    # is silently dropped on save.
+    local scenario_in
+    scenario_in=$(printf '%s' "$input" | jq -c '
+        (.scenario // {}) as $s
+        | {
+            default: ($s.default // "balanced"),
+            schedule: {
+                enabled: ($s.schedule.enabled // false),
+                blocks: ($s.schedule.blocks // [])
+            }
+          }' 2>/dev/null)
+    [ -z "$scenario_in" ] && scenario_in='{"default":"balanced","schedule":{"enabled":false,"blocks":[]}}'
+
     # --- Apply defaults for optional fields ---
     [ -z "$apn_cid" ] && apn_cid=1
     [ -z "$apn_pdp_type" ] && apn_pdp_type="IPV4V6"
@@ -217,6 +266,25 @@ profile_save() {
         errors="${errors}HL must be 0-255. "
     fi
 
+    # Reject unknown scenario references (Risk #10). Both .default and every
+    # block .scenario must resolve to a known scenario (balanced|gaming|
+    # streaming|an existing custom-*.json). scenario_is_known lives in
+    # scenario_mgr.sh — lazy-source it (profile_mgr.sh callers may not have it).
+    if ! command -v scenario_is_known >/dev/null 2>&1; then
+        . /usr/lib/qmanager/scenario_mgr.sh 2>/dev/null
+    fi
+    if command -v scenario_is_known >/dev/null 2>&1; then
+        local _scn_ref
+        local _scn_bad
+        _scn_bad=""
+        for _scn_ref in $(printf '%s' "$scenario_in" | jq -r '[.default] + [.schedule.blocks[].scenario] | .[]' 2>/dev/null); do
+            scenario_is_known "$_scn_ref" || _scn_bad="$_scn_ref"
+        done
+        if [ -n "$_scn_bad" ]; then
+            errors="${errors}Unknown connection scenario: ${_scn_bad}. "
+        fi
+    fi
+
     if [ -n "$errors" ]; then
         jq -n --arg detail "$errors" \
             '{success: false, error: "validation_failed", detail: $detail}'
@@ -224,7 +292,9 @@ profile_save() {
     fi
 
     # --- Determine if create or update ---
-    local id created_at updated_at
+    local id
+    local created_at
+    local updated_at
     updated_at=$(date +%s)
 
     if [ -n "$existing_id" ] && [ -f "$PROFILE_DIR/${existing_id}.json" ]; then
@@ -264,6 +334,7 @@ profile_save() {
         --arg imei "$imei" \
         --argjson ttl "$ttl" \
         --argjson hl "$hl" \
+        --argjson scenario "$scenario_in" \
         '{
             id: $id,
             name: $name,
@@ -280,7 +351,8 @@ profile_save() {
                 imei: $imei,
                 ttl: $ttl,
                 hl: $hl
-            }
+            },
+            scenario: $scenario
         }' > "$tmp_file" || {
         qlog_error "jq failed writing profile: $id" 2>/dev/null
         rm -f "$tmp_file"
@@ -318,6 +390,12 @@ profile_delete() {
         return 1
     fi
 
+    # Capture the active id BEFORE removing the file: get_active_profile
+    # validates by file existence, so after rm -f it would return empty and the
+    # teardown branch below would never fire (orphaned scenario cron lines).
+    local active_id
+    active_id=$(get_active_profile)
+
     # Remove the file
     if ! rm -f "$file"; then
         qlog_error "Failed to delete profile: $id" 2>/dev/null
@@ -325,11 +403,11 @@ profile_delete() {
         return 1
     fi
 
-    # If this was the active profile, clear it
-    local active_id
-    active_id=$(get_active_profile)
+    # If this was the active profile, clear it + tear down scenario cron
     if [ "$active_id" = "$id" ]; then
         clear_active_profile
+        _profile_teardown_scenario_cron
+        _profile_reset_scenario_to_default
         qlog_info "Cleared active profile (deleted: $id)" 2>/dev/null
     fi
 
@@ -374,6 +452,50 @@ clear_active_profile() {
     rm -f "$ACTIVE_PROFILE_FILE"
 }
 
+# Acknowledge the current SIM as "seen" by adding its ICCID to the known-SIMs
+# set (the same set qmanager_poller's boot-time SIM-swap detector consults).
+# Called whenever a profile is successfully activated, so activating a profile
+# for a freshly-inserted SIM does not leave the SIM unknown and false-fire the
+# "New SIM detected" banner on the next reboot. Reads the ICCID with the SAME
+# parse pipeline as qmanager_poller (line ~414) so the stored value byte-matches
+# what the poller will read at next boot. Skips on empty read — never clobbers.
+mark_sim_acknowledged() {
+    . /usr/lib/qmanager/sim_db.sh
+    local _acked_iccid
+    _acked_iccid=$(qcmd 'AT+QCCID' 2>/dev/null | grep '+QCCID:' | sed 's/+QCCID: //g' | tr -d '\r ')
+    if [ -n "$_acked_iccid" ]; then
+        sim_db_add "$_acked_iccid"
+        qlog_info "Acknowledged current SIM in known set: ...$(printf '%s' "$_acked_iccid" | tail -c 4)" 2>/dev/null
+    fi
+}
+
+# _profile_teardown_scenario_cron
+# Lazy-source scenario_mgr.sh and remove the profile-scenario cron lines.
+# Called at every active-profile clear site (deactivate, SIM mismatch, delete
+# of active, worker failure) so a scheduled profile leaves no orphaned cron.
+# The cron worker's self-heal guard is the backstop, not the primary teardown.
+_profile_teardown_scenario_cron() {
+    if ! command -v scenario_teardown_cron >/dev/null 2>&1; then
+        . /usr/lib/qmanager/scenario_mgr.sh 2>/dev/null
+    fi
+    command -v scenario_teardown_cron >/dev/null 2>&1 && scenario_teardown_cron
+    return 0
+}
+
+# _profile_reset_scenario_to_default
+# Lazy-source scenario_mgr.sh and reset the radio + active_scenario marker to
+# Balanced (mode-only: AUTO). Called at every active-profile clear site so a
+# deactivated profile's custom scenario no longer keeps the modem locked to its
+# network mode. Mirrors _profile_teardown_scenario_cron. Best-effort: never
+# blocks the clear path.
+_profile_reset_scenario_to_default() {
+    if ! command -v scenario_reset_to_default >/dev/null 2>&1; then
+        . /usr/lib/qmanager/scenario_mgr.sh 2>/dev/null
+    fi
+    command -v scenario_reset_to_default >/dev/null 2>&1 && scenario_reset_to_default
+    return 0
+}
+
 # _profile_emit_event <type> <message> <severity>
 # Lazy-loads events.sh on first use with a no-op fallback if unavailable.
 # Matches the EVENTS_FILE/MAX_EVENTS convention used by qmanager_profile_apply
@@ -381,7 +503,12 @@ clear_active_profile() {
 # events.sh sourced (e.g. the subshell pattern from poller/watchcat), so we
 # lazy-source it on demand.
 _profile_emit_event() {
-    local etype="$1" msg="$2" severity="$3"
+    local etype
+    local msg
+    local severity
+    etype="$1"
+    msg="$2"
+    severity="$3"
     if ! command -v append_event >/dev/null 2>&1; then
         [ -z "$EVENTS_FILE" ] && EVENTS_FILE="/tmp/qmanager_events.json"
         [ -z "$MAX_EVENTS" ] && MAX_EVENTS=50
@@ -407,7 +534,14 @@ _profile_emit_event() {
 auto_apply_profile() {
     local current_iccid="$1"
     local caller="${2:-unknown}"
-    local iccid_suffix pf pf_iccid match_id _ap_id _ap_iccid _ap_name _ap_mno
+    local iccid_suffix
+    local pf
+    local pf_iccid
+    local match_id
+    local _ap_id
+    local _ap_iccid
+    local _ap_name
+    local _ap_mno
 
     if [ -z "$current_iccid" ]; then
         qlog_info "[$caller] auto_apply_profile: empty ICCID, skipping" 2>/dev/null
@@ -451,6 +585,8 @@ auto_apply_profile() {
                     : > /tmp/qmanager_pending_reboot_verizon
                 fi
                 clear_active_profile
+                _profile_teardown_scenario_cron
+                _profile_reset_scenario_to_default
                 _profile_emit_event "profile_deactivated" "Profile '${_ap_name:-unknown}' auto-deactivated (SIM mismatch)" "warning"
                 qlog_info "[$caller] Deactivated profile $_ap_id (SIM mismatch: current ICCID ...$iccid_suffix)" 2>/dev/null
             fi
@@ -568,7 +704,8 @@ profile_release_spawn_lock() {
 # connected / response cannot be parsed.
 # Returns 0 always — callers check the echoed value.
 mpdn_get_active_pdp() {
-    local response pdp
+    local response
+    local pdp
     response=$(qcmd 'AT+QMAP="WWAN"' 2>/dev/null)
     # Line format: +QMAP: "WWAN",<connected>,<pdp>,"IPV4","..."
     # $1=+QMAP: "WWAN"  $2=<connected>  $3=<pdp>
@@ -583,7 +720,8 @@ mpdn_get_active_pdp() {
 # Returns 0 (success) if the current USB net mode supports MPDN (ECM=1 or RNDIS=3).
 # Returns 1 for unsupported modes (RMNet=0, MBIM=2) or on parse failure.
 usb_mode_supports_mpdn() {
-    local response mode
+    local response
+    local mode
     response=$(qcmd 'AT+QCFG="usbnet"' 2>/dev/null)
     mode=$(printf '%s' "$response" | awk -F',' '/\+QCFG:.*"usbnet"/{print $2+0; exit}')
     case "$mode" in

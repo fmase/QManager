@@ -20,6 +20,11 @@ export interface WatchdogSettings {
   tier4_enabled: boolean;
   backup_sim_slot: number | null;
   max_reboots_per_hour: number;
+  // Connection-quality triggering (opt-in, default off)
+  quality_enabled: boolean;
+  latency_ceiling_ms: number;
+  loss_ceiling_pct: number;
+  quality_consecutive: number;
 }
 
 export type WatchdogSavePayload = WatchdogSettings & {
@@ -40,6 +45,9 @@ export interface WatchdogLiveStatus {
   original_sim_slot: number | null;
   current_sim_slot: number | null;
   reboots_this_hour: number;
+  quality_breach_count?: number;
+  quality_enabled?: boolean;
+  last_recovery_reason?: string;
 }
 
 export interface SimFailoverInfo {
@@ -134,6 +142,10 @@ export function useWatchdogSettings(): UseWatchdogSettingsReturn {
 
   useEffect(() => {
     fetchSettings();
+    const id = setInterval(() => {
+      fetchSettings(true);
+    }, 30_000);
+    return () => clearInterval(id);
   }, [fetchSettings]);
 
   // ---------------------------------------------------------------------------

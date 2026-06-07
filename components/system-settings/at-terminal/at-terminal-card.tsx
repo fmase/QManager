@@ -383,7 +383,7 @@ export default function ATTerminalCard() {
                 {t("at_terminal.warning_title")}
               </div>
               <p className="text-muted-foreground mb-2 text-sm">
-                <code className="bg-warning/10 rounded px-1 py-0.5 text-xs">
+                <code className="bg-warning/10 rounded px-1 py-0.5 text-xs font-mono">
                   {warning.command}
                 </code>{" "}
                 {warning.message}

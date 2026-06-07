@@ -101,6 +101,8 @@ Destroys all sessions (forces re-login).
 
 Main polling endpoint. Returns the cached modem status JSON (built by `qmanager_poller`).
 
+> ℹ️ NOTE: The response does **not** contain a `traffic` object. Live network traffic (rx/tx speeds) is served only by the opt-in WebSocket bandwidth monitor on port 8838, not by the poller cache. When the monitor is off, the dashboard shows a prompt to enable it. See [`docs/features/bandwidth-monitor.md`](../features/bandwidth-monitor.md).
+
 **Response:** Full `ModemStatus` object (see `types/modem-status.ts`)
 
 ```json
@@ -174,13 +176,8 @@ Main polling endpoint. Returns the cached modem status JSON (built by `qmanager_
     "mimo": "LTE 1x4 | NR 2x4",
     "supported_lte_bands": "B1:B2:B3:B5:B7:...",
     "supported_nsa_nr5g_bands": "N41:N71:N77:...",
-    "supported_sa_nr5g_bands": "N41:N71:N77:..."
-  },
-  "traffic": {
-    "rx_bytes_per_sec": 1562500,
-    "tx_bytes_per_sec": 125000,
-    "total_rx_bytes": 1073741824,
-    "total_tx_bytes": 134217728
+    "supported_sa_nr5g_bands": "N41:N71:N77:...",
+    "supported_nrdc_nr5g_bands": "1:2:3:5:7:8:12:14:25:26:28:30:40:41:48:66:71:77:78:79:257:258:259:260:261"
   },
   "connectivity": {
     "internet_available": true,
@@ -449,7 +446,7 @@ Start speed test, check results, and check if speedtest binary is available.
 
 ### GET/POST `/cellular/sms.sh`
 
-SMS inbox and send functionality. Backed by `sms_tool -d /dev/smd11`, serialized against `qcmd`/`atcli_smd11` via the shared `/var/lock/qmanager.lock`.
+SMS inbox and send functionality. Backed by `sms_tool -d /dev/smd11`, serialized against `qcmd`/`atcli_smd11` via the shared `/var/lock/qmanager.lock`. The `-d /dev/smd11` flag is belt-and-suspenders: the patched binary already defaults to `/dev/smd11` and guards termios calls via `isatty()`. See [`docs/features/sms.md`](features/sms.md) for binary patch details and the shared-lock contract.
 
 **GET Response:**
 ```json
@@ -497,19 +494,63 @@ Phone-number handling: the endpoint strips a leading `+` before calling `sms_too
 
 ## Band Locking
 
+See [`docs/features/band-locking.md`](features/band-locking.md) for the full contract, the SA grep-hazard invariant, the SA⇄NR-DC swap UX, and the failover flow.
+
 ### GET `/bands/current.sh`
 
-Current locked band configuration.
+Returns the currently configured (locked) band lists and failover state.
 
-### GET/POST `/bands/lock.sh`
-
-**POST Request:**
+**Response:**
 ```json
 {
-  "lte_bands": "B2:B66",
-  "nr_bands": "N41:N71"
+  "success": true,
+  "current": {
+    "lte_bands": "1:3:7:28:41",
+    "nsa_nr5g_bands": "41:78",
+    "sa_nr5g_bands": "41:78",
+    "nrdc_nr5g_bands": "41:78:257"
+  },
+  "failover": {
+    "enabled": true,
+    "activated": false
+  }
 }
 ```
+
+Source: `AT+QNWPREFCFG="ue_capability_band"` (live, not cached). Empty string means no lock is set for that category (all supported bands allowed).
+
+### POST `/bands/lock.sh`
+
+Lock bands for a single category. One request per card — each category is independent.
+
+**Request:**
+```json
+{ "band_type": "nrdc_nr5g", "bands": "41:78:257" }
+```
+
+- `band_type`: `"lte"` | `"nsa_nr5g"` | `"sa_nr5g"` | `"nrdc_nr5g"`
+- `bands`: non-empty colon-delimited band numbers, e.g. `"1:3:7:41"`. Sending an empty or zero value is rejected — there is no "lock zero bands" state. To remove a lock, use `AT+QNWPREFCFG="restore_band"` directly.
+
+**AT parameter mapping:**
+
+| `band_type` | AT parameter |
+|---|---|
+| `lte` | `lte_band` |
+| `nsa_nr5g` | `nsa_nr5g_band` |
+| `sa_nr5g` | `nr5g_band` |
+| `nrdc_nr5g` | `nrdc_nr5g_band` |
+
+**Response:**
+```json
+{
+  "success": true,
+  "band_type": "nrdc_nr5g",
+  "bands": "41:78:257",
+  "failover_armed": true
+}
+```
+
+**Error codes:** `no_band_type`, `no_bands`, `invalid_band_type`, `invalid_bands`, `modem_error`, `at_error`
 
 ### GET `/bands/failover_status.sh`
 
@@ -635,6 +676,50 @@ Custom DNS override settings.
 ### GET/POST `/network/ip_passthrough.sh`
 
 IP passthrough mode configuration.
+
+### GET/POST `/network/lan_config.sh`
+
+Read or write the LAN bridge (`br-lan`) IPv4 address and subnet. Auth-gated. See [`docs/features/lan-config.md`](features/lan-config.md) for the self-severing apply pattern and validation invariants.
+
+**GET Response:**
+
+```json
+{
+  "success": true,
+  "device": "br-lan",
+  "ipaddr": "192.168.1.1",
+  "netmask": "255.255.255.0",
+  "prefix": 24
+}
+```
+
+`prefix` is derived from the stored `netmask` by a pure-shell popcount; it is never stored independently.
+
+**POST Request:**
+
+```json
+{ "ipaddr": "192.168.2.1", "prefix": 24 }
+```
+
+- `ipaddr` — 4 dotted-decimal octets, each 0–255, no leading zeros, first octet 1–223 and not 127 (unicast only).
+- `prefix` — integer, **16–30** (enforced). Values outside this range are rejected.
+
+**POST Success Response:**
+
+```json
+{
+  "success": true,
+  "apply_in_progress": true,
+  "disconnect_window_seconds": 15,
+  "new_ipaddr": "192.168.2.1",
+  "netmask": "255.255.255.0",
+  "prefix": 24
+}
+```
+
+> ⚠️ WARNING: This response is emitted **before** the `network reload` fires. Changing the LAN IP severs the serving HTTP connection and makes the old origin unreachable. The frontend hook does not retry — it transitions directly to an applied state and shows a persistent banner with the new address.
+
+**Error codes:** `invalid_ipaddr`, `invalid_prefix`, `invalid_host_in_subnet` (IP is the network/broadcast address of the resulting subnet), `lan_read_failed`, `lan_save_failed`
 
 ---
 
@@ -833,6 +918,47 @@ Validation notes:
 
 Note: `recipient` mirrors the stored form in `sms_alerts.json` — raw digits, no leading `+`.
 
+### GET/POST `/monitoring/bandwidth.sh`
+
+Read and save bandwidth monitor settings. See [`docs/features/bandwidth-monitor.md`](../features/bandwidth-monitor.md) for the full contract.
+
+**GET Response:**
+```json
+{
+  "success": true,
+  "settings": {
+    "enabled": false,
+    "refresh_rate_ms": 1000,
+    "ws_port": 8838,
+    "interfaces": "br-lan,eth0,rmnet_data0,rmnet_data1,rmnet_ipa0"
+  },
+  "status": {
+    "websocat_running": false,
+    "monitor_running": false
+  },
+  "dependencies": {
+    "websocat_installed": true
+  }
+}
+```
+
+**POST (`save_settings`):**
+```json
+{
+  "action": "save_settings",
+  "enabled": true,
+  "refresh_rate_ms": 1000,
+  "ws_port": 8838,
+  "interfaces": "br-lan,eth0,rmnet_data0,rmnet_data1,rmnet_ipa0"
+}
+```
+
+All fields are optional except `action`. Enabling the monitor starts `init.d/qmanager_bandwidth` and its two procd instances (`websocat` + `bridge_traffic_monitor_rm551`). Disabling stops and disables the service.
+
+**Response:** `{ "success": true }`
+
+---
+
 ### GET/POST `/monitoring/watchdog.sh`
 
 **GET Response:**
@@ -875,6 +1001,127 @@ Device hardware and firmware information.
 
 System log output.
 
+### GET/POST `/system/known_sims.sh`
+
+Read or manage the persistent known-SIMs set. The poller fires the "New SIM detected" banner when the inserted SIM's ICCID is **not** in this set. See [`docs/features/known-sims.md`](../features/known-sims.md) for full invariants.
+
+**GET Response:**
+```json
+{ "success": true, "count": 3 }
+```
+
+`count` is the number of distinct ICCIDs currently in the set.
+
+**POST `{"action":"list"}` Response:** identical to GET.
+
+**POST `{"action":"clear"}` Response:**
+```json
+{ "success": true, "count": 1 }
+```
+
+Resets the set to contain only the currently-inserted SIM (read live via `AT+QCCID`). The current SIM is kept so clearing never immediately re-fires the banner. Also removes the stale `/tmp/qmanager_sim_swap_detected` banner flag. If no SIM is readable, the set is emptied (`count: 0`). No reboot.
+
+**Error response (unknown action):**
+```json
+{ "success": false, "error": "invalid_action", "detail": "Action must be: list or clear" }
+```
+
+### GET/POST `/system/ping_profile.sh`
+
+Read or write the ping-daemon sensitivity profile and probe targets. See [`docs/features/connection-quality.md`](../features/connection-quality.md) for the full apply pipeline and reload semantics.
+
+**GET Response:**
+
+```json
+{
+  "success": true,
+  "profile": "relaxed",
+  "target1": "https://google.com",
+  "target2": "https://cloudflare.com"
+}
+```
+
+`profile` is one of: `sensitive`, `regular`, `relaxed`, `quiet`. GET keys are `target1`/`target2` (no underscore).
+
+**POST Request (`action: "save"`):**
+
+```json
+{
+  "action": "save",
+  "profile": "sensitive",
+  "target_1": "https://google.com",
+  "target_2": "https://cloudflare.com"
+}
+```
+
+POST body keys are `target_1`/`target_2` (with underscore, matching UCI field names).
+
+**POST Success:**
+```json
+{ "success": true }
+```
+
+Drops `/tmp/qmanager_ping_reload`; the ping daemon re-reads UCI within one probe cycle (≤10 s on `quiet`, ≤1 s on `sensitive`). No reboot.
+
+**Error codes:** `invalid_profile`, `invalid_target`, `missing_action`, `unknown_action`
+
+---
+
+### GET/POST `/system/quality_thresholds.sh`
+
+Read or write the latency and packet-loss event-threshold presets. These control when QManager fires `high_latency` / `high_packet_loss` events into Recent Activities. See [`docs/features/connection-quality.md`](../features/connection-quality.md) for the preset→numeric mapping and the `isDefault` semantics.
+
+**GET Response (section present — user has saved at least once):**
+
+```json
+{
+  "success": true,
+  "thresholds": {
+    "latency": { "preset": "tolerant" },
+    "loss": { "preset": "tolerant" }
+  },
+  "isDefault": false
+}
+```
+
+**GET Response (section absent — factory / never saved):**
+
+```json
+{
+  "success": true,
+  "thresholds": {
+    "latency": { "preset": "tolerant" },
+    "loss": { "preset": "tolerant" }
+  },
+  "isDefault": true
+}
+```
+
+`isDefault: true` means the `quecmanager.quality_thresholds` UCI section does not exist; the tolerant/tolerant values are the hardcoded fallback, not a stored setting.
+
+**POST Request (`action: "save"`):**
+
+```json
+{
+  "action": "save",
+  "latency_preset": "standard",
+  "loss_preset": "tolerant"
+}
+```
+
+Each preset is one of: `standard`, `tolerant`, `very-tolerant`.
+
+**POST Success:**
+```json
+{ "success": true }
+```
+
+Creates the `quality_thresholds` UCI section on first save, then drops `/tmp/qmanager_quality_reload`; the poller re-maps presets to numeric thresholds within one poll cycle. No reboot.
+
+**Error codes:** `invalid_preset`, `missing_action`, `unknown_action`
+
+---
+
 ### GET/POST `/system/settings.sh`
 
 System preferences, scheduled reboot, and low power mode.
@@ -884,7 +1131,6 @@ System preferences, scheduled reboot, and low power mode.
 {
   "success": true,
   "settings": {
-    "wan_guard_enabled": true,
     "temp_unit": "celsius",
     "distance_unit": "km",
     "timezone": "UTC0",
@@ -908,7 +1154,6 @@ System preferences, scheduled reboot, and low power mode.
 ```json
 {
   "action": "save_settings",
-  "wan_guard_enabled": true,
   "temp_unit": "celsius",
   "distance_unit": "km",
   "timezone": "EST5EDT,M3.2.0,M11.1.0",
@@ -918,7 +1163,6 @@ System preferences, scheduled reboot, and low power mode.
 
 - `temp_unit`: `"celsius"` or `"fahrenheit"`
 - `distance_unit`: `"km"` or `"miles"`
-- `wan_guard_enabled`: toggles init.d symlink (enable/disable)
 - `hostname`/`timezone`/`zonename`: written to UCI `system.@system[0]`. Handler compares each incoming value to the current UCI value and only writes when changed. When any of these three actually change, the handler backgrounds `/etc/init.d/system reload` to republish `/tmp/TZ`, `/tmp/localtime`, and kernel hostname. When `timezone` or `zonename` changes, it additionally backgrounds `/etc/init.d/cron restart` so busybox crond (which caches TZ at startup) picks up the new zone for `qmanager_scheduled_reboot` and `qmanager_low_power` entries. Both spawns are fire-and-forget so the HTTP response returns promptly.
 
 **POST (save_scheduled_reboot):**

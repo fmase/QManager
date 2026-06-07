@@ -2,7 +2,8 @@
 
 import React from "react";
 import { usePathname } from "next/navigation";
-import { motion } from "motion/react";
+import { motion, AnimatePresence } from "motion/react";
+import { pageVariants } from "@/lib/motion";
 
 import {
   SidebarInset,
@@ -26,6 +27,7 @@ import { SimSwapBanner } from "@/components/monitoring/watchdog/sim-swap-banner"
 import { isLoggedIn } from "@/hooks/use-auth";
 import { useAutoLogout } from "@/hooks/use-auto-logout";
 import { useBootPendingReboot } from "@/hooks/use-boot-pending-reboot";
+import { ReconnectingBanner } from "@/components/reboot/reconnecting-banner";
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const breadcrumbs = useBreadcrumbs();
@@ -33,8 +35,12 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   useAutoLogout();
   useBootPendingReboot();
 
-  // Sync cookie check — no API call, no loading state
+  // Sync cookie check — no API call, no loading state. The redirect runs during
+  // render (not in an effect) on purpose: an effect-based redirect would briefly
+  // flash the protected layout to a logged-out user before navigating. The
+  // component unmounts on navigation, so this render-phase side effect is benign.
   if (typeof document !== "undefined" && !isLoggedIn()) {
+    // eslint-disable-next-line react-hooks/immutability -- intentional sync redirect to avoid flashing protected content; navigates away immediately
     window.location.href = "/login/";
     return null;
   }
@@ -83,16 +89,25 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           </div>
         </header>
         <SimSwapBanner />
-        <motion.div
-          id="main-content"
-          key={pathname}
-          className="px-2 lg:px-6 py-4"
-          initial={{ opacity: 0, y: 6 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.2, ease: "easeOut" }}
-        >
-          {children}
-        </motion.div>
+        <ReconnectingBanner />
+        {/* Route transition — the reference "refined rise + settle". The
+            outgoing page fades out (0.12s) before the incoming content rises
+            10px into place on the ease-out-expo curve (mode="wait"). Keyed on
+            pathname so each navigation re-triggers it. Reduced-motion users get
+            a clean cross-fade with no rise (handled by the root MotionConfig). */}
+        <AnimatePresence mode="wait">
+          <motion.div
+            id="main-content"
+            key={pathname}
+            className="px-2 lg:px-6 py-4"
+            variants={pageVariants}
+            initial="hidden"
+            animate="enter"
+            exit="exit"
+          >
+            {children}
+          </motion.div>
+        </AnimatePresence>
       </SidebarInset>
     </SidebarProvider>
   );

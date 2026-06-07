@@ -10,7 +10,7 @@
 #         LOCKED (maintenance mode — sleeps until lock removed)
 #
 # Escalation Tiers:
-#   Tier 1: Restart WAN interface (ifdown/ifup)
+#   Tier 1: Network re-registration (AT+COPS=2 -> AT+COPS=0)
 #   Tier 2: Radio toggle (AT+CFUN=0/1) — skipped if tower lock active
 #   Tier 3: SIM failover (AT+QUIMSLOT) — Golden Rule sequence
 #   Tier 4: System reboot — token bucket: max N/hour, auto-disables
@@ -41,6 +41,11 @@ MAX_EVENTS=50
     append_event() { :; }
 }
 
+# --- Known-SIMs database (for sim_db_add on SIM revert/failover) -------------
+. /usr/lib/qmanager/sim_db.sh 2>/dev/null || {
+    sim_db_add() { :; }
+}
+
 # --- File Paths --------------------------------------------------------------
 PING_CACHE="/tmp/qmanager_ping.json"
 STATE_FILE="/tmp/qmanager_watchcat.json"
@@ -68,6 +73,12 @@ CFG_TIER3_ENABLED=0
 CFG_TIER4_ENABLED=1
 CFG_BACKUP_SIM_SLOT=""
 CFG_MAX_REBOOTS_PER_HOUR=3
+CFG_QUALITY_ENABLED=0
+CFG_LATENCY_CEILING_MS=800
+CFG_LOSS_CEILING_PCT=20
+CFG_QUALITY_CONSECUTIVE=5
+STATUS_CACHE="/tmp/qmanager_status.json"
+STATUS_STALE_THRESHOLD=30
 BOOT_SETTLE=30
 PING_STALE_THRESHOLD=15
 MODEM_WAIT_TIMEOUT=60
@@ -85,6 +96,9 @@ sim_failover_active="false"
 original_sim_slot="null"
 current_sim_slot="null"
 reboots_this_hour=0
+cooldown_stale_retries=0
+quality_breach_counter=0
+recovery_reason="unreachable"   # "unreachable" | "quality" — why current/last recovery fired
 
 # =============================================================================
 # CONFIGURATION
@@ -122,8 +136,21 @@ read_config() {
     val=$(uci -q get quecmanager.watchcat.max_reboots_per_hour 2>/dev/null)
     [ -n "$val" ] && CFG_MAX_REBOOTS_PER_HOUR="$val"
 
+    CFG_QUALITY_ENABLED=$(uci -q get quecmanager.watchcat.quality_enabled 2>/dev/null)
+    [ -z "$CFG_QUALITY_ENABLED" ] && CFG_QUALITY_ENABLED=0
+
+    val=$(uci -q get quecmanager.watchcat.latency_ceiling_ms 2>/dev/null)
+    [ -n "$val" ] && CFG_LATENCY_CEILING_MS="$val"
+
+    val=$(uci -q get quecmanager.watchcat.loss_ceiling_pct 2>/dev/null)
+    [ -n "$val" ] && CFG_LOSS_CEILING_PCT="$val"
+
+    val=$(uci -q get quecmanager.watchcat.quality_consecutive 2>/dev/null)
+    [ -n "$val" ] && CFG_QUALITY_CONSECUTIVE="$val"
+
     qlog_info "Config loaded: interval=${CFG_CHECK_INTERVAL}s max_fail=${CFG_MAX_FAILURES} cooldown=${CFG_COOLDOWN}s"
     qlog_info "  Tiers: T1=${CFG_TIER1_ENABLED} T2=${CFG_TIER2_ENABLED} T3=${CFG_TIER3_ENABLED} T4=${CFG_TIER4_ENABLED} backup_sim=${CFG_BACKUP_SIM_SLOT:-none}"
+    qlog_info "  Quality: enabled=${CFG_QUALITY_ENABLED} latency_ceiling=${CFG_LATENCY_CEILING_MS}ms loss_ceiling=${CFG_LOSS_CEILING_PCT}% consecutive=${CFG_QUALITY_CONSECUTIVE}"
 }
 
 # =============================================================================
@@ -148,6 +175,9 @@ write_state() {
         --argjson sf_orig "${original_sim_slot:-null}" \
         --argjson sf_curr "${current_sim_slot:-null}" \
         --argjson reboots "$reboots_this_hour" \
+        --argjson quality_breach "$quality_breach_counter" \
+        --argjson quality_enabled "$CFG_QUALITY_ENABLED" \
+        --arg recovery_reason "$recovery_reason" \
         '{
             timestamp: $ts, enabled: ($enabled == 1),
             state: $state, current_tier: $tier,
@@ -159,7 +189,10 @@ write_state() {
             sim_failover_active: ($sf_active == "true"),
             original_sim_slot: $sf_orig,
             current_sim_slot: $sf_curr,
-            reboots_this_hour: $reboots
+            reboots_this_hour: $reboots,
+            quality_breach_count: $quality_breach,
+            quality_enabled: ($quality_enabled == 1),
+            last_recovery_reason: $recovery_reason
         }' > "$STATE_TMP"
 
     mv "$STATE_TMP" "$STATE_FILE"
@@ -192,7 +225,8 @@ check_locked() {
 # Check if tower lock is active (Tier 2 must be skipped)
 tower_lock_active() {
     [ ! -f "$TOWER_LOCK_CONFIG" ] && return 1
-    local lte_locked nr_locked
+    local lte_locked
+    local nr_locked
     lte_locked=$(jq -r '(.lte.enabled) | if . == null then "false" else tostring end' \
         "$TOWER_LOCK_CONFIG" 2>/dev/null)
     nr_locked=$(jq -r '(.nr_sa.enabled) | if . == null then "false" else tostring end' \
@@ -232,7 +266,8 @@ read_ping() {
     ping_during_recovery=$(printf '%s' "$_pdata" | cut -f4)
 
     # Staleness check
-    local now age
+    local now
+    local age
     now=$(date +%s)
     age=$((now - ping_ts))
     if [ "$age" -gt "$PING_STALE_THRESHOLD" ]; then
@@ -243,13 +278,101 @@ read_ping() {
     return 0
 }
 
+# Read poller status.json for connection-quality metrics, with a staleness
+# guard. The .connectivity object has no timestamp of its own, so freshness
+# is judged from the ROOT .timestamp. Returns 0 if FRESH+valid, 1 if
+# stale/missing/unparseable (= NO-SIGNAL).
+# Sets: q_avg_latency (may be "null"), q_packet_loss (sanitized int)
+q_avg_latency="null"
+q_packet_loss="0"
+read_quality() {
+    [ -f "$STATUS_CACHE" ] || return 1
+    local _qdata
+    _qdata=$(jq -r '[
+        (.timestamp | if . == null then "0" else tostring end),
+        (.connectivity.avg_latency_ms | if . == null then "null" else tostring end),
+        (.connectivity.packet_loss_pct | if . == null then "0" else tostring end)
+    ] | @tsv' "$STATUS_CACHE" 2>/dev/null)
+    [ -z "$_qdata" ] && return 1
+    local _ts
+    _ts=$(printf '%s' "$_qdata" | cut -f1)
+    q_avg_latency=$(printf '%s' "$_qdata" | cut -f2)
+    q_packet_loss=$(printf '%s' "$_qdata" | cut -f3)
+    # sanitize loss to a clean integer (avg_latency may legitimately be "null")
+    case "$q_packet_loss" in ''|*[!0-9]*) q_packet_loss=0 ;; esac
+    local _now
+    local _age
+    _now=$(date +%s)
+    _age=$((_now - _ts))
+    if [ "$_ts" -le 0 ] 2>/dev/null || [ "$_age" -gt "$STATUS_STALE_THRESHOLD" ]; then
+        qlog_warn "Quality data stale (age=${_age}s) — treating as no-signal"
+        return 1
+    fi
+    return 0
+}
+
+# Decide whether current quality (already read by read_quality) breaches the
+# configured ceilings. OR logic; a ceiling of 0 means IGNORE that metric.
+# avg_latency_ms is a FLOAT — comparison MUST use awk (BusyBox [ -gt ] errors
+# on decimals). Returns 0 if breached, 1 if not.
+quality_breached() {
+    # latency: only if ceiling > 0 AND we have a numeric latency
+    if [ "$CFG_LATENCY_CEILING_MS" -gt 0 ] 2>/dev/null && [ "$q_avg_latency" != "null" ]; then
+        if awk -v a="$q_avg_latency" -v c="$CFG_LATENCY_CEILING_MS" 'BEGIN{ exit !((a+0) > (c+0)) }'; then
+            qlog_warn "QUALITY breach: latency ${q_avg_latency}ms > ${CFG_LATENCY_CEILING_MS}ms"
+            return 0
+        fi
+    fi
+    # loss: only if ceiling > 0
+    if [ "$CFG_LOSS_CEILING_PCT" -gt 0 ] 2>/dev/null; then
+        if [ "$q_packet_loss" -ge "$CFG_LOSS_CEILING_PCT" ] 2>/dev/null; then
+            qlog_warn "QUALITY breach: loss ${q_packet_loss}% >= ${CFG_LOSS_CEILING_PCT}%"
+            return 0
+        fi
+    fi
+    return 1
+}
+
+# Accrue the consecutive-breach counter and, on reaching the threshold, kick
+# off the SAME Tier 1->4 recovery ladder used by the reachability path.
+# Returns 0 if it TRIGGERED recovery this cycle (caller skips rest of cycle),
+# 1 otherwise.
+evaluate_quality() {
+    [ "$CFG_QUALITY_ENABLED" = "1" ] || return 1
+    if ! read_quality; then
+        # no-signal: leave counter unchanged (never count as breach, never reset)
+        return 1
+    fi
+    if quality_breached; then
+        quality_breach_counter=$((quality_breach_counter + 1))
+        qlog_info "QUALITY: breach ${quality_breach_counter}/${CFG_QUALITY_CONSECUTIVE}"
+        if [ "$quality_breach_counter" -ge "$CFG_QUALITY_CONSECUTIVE" ]; then
+            qlog_warn "QUALITY threshold reached — entering recovery"
+            append_event "watchcat_recovery" "Watchcat: connection quality degraded (latency ${q_avg_latency}ms / loss ${q_packet_loss}%) — starting recovery" "warning"
+            quality_breach_counter=0
+            recovery_reason="quality"
+            state="recovery"
+            if [ "$current_tier" -eq 0 ]; then
+                find_next_tier 1
+            fi
+            do_recovery
+            return 0
+        fi
+    else
+        quality_breach_counter=0
+    fi
+    return 1
+}
+
 # Count reboots in the last hour from crash.log
 count_recent_reboots() {
     if [ ! -f "$CRASH_LOG" ]; then
         reboots_this_hour=0
         return
     fi
-    local now cutoff count
+    local now
+    local cutoff
+    local count
     now=$(date +%s)
     cutoff=$((now - 3600))
     count=$(awk -v cutoff="$cutoff" -F'|' '$1 >= cutoff { n++ } END { print n+0 }' "$CRASH_LOG" 2>/dev/null)
@@ -276,13 +399,13 @@ wait_for_modem() {
 # =============================================================================
 
 execute_tier1() {
-    qlog_info "TIER 1: Restarting WAN interface"
-    append_event "watchcat_recovery" "Watchcat: restarting WAN interface (Tier 1)" "warning"
+    qlog_info "TIER 1: Network re-registration (AT+COPS=2 -> AT+COPS=0)"
+    append_event "watchcat_recovery" "Watchcat: re-registering on network (Tier 1)" "warning"
 
     touch "$RECOVERY_FLAG"
-    ifdown wan 2>/dev/null
+    qcmd 'AT+COPS=2' >/dev/null 2>&1
     sleep 2
-    ifup wan 2>/dev/null
+    qcmd 'AT+COPS=0' >/dev/null 2>&1
     return 0
 }
 
@@ -326,7 +449,8 @@ execute_tier3() {
     fi
 
     # Read current SIM slot
-    local current_slot_raw current_slot
+    local current_slot_raw
+    local current_slot
     current_slot_raw=$(qcmd 'AT+QUIMSLOT?' 2>/dev/null)
     current_slot=$(printf '%s' "$current_slot_raw" | grep '+QUIMSLOT:' | sed 's/.*: *//' | tr -d '\r ')
 
@@ -383,7 +507,9 @@ execute_tier3() {
     fi
 
     # Read new ICCID for logging
-    local new_iccid_raw new_iccid iccid_suffix
+    local new_iccid_raw
+    local new_iccid
+    local iccid_suffix
     new_iccid_raw=$(qcmd 'AT+QCCID' 2>/dev/null)
     new_iccid=$(printf '%s' "$new_iccid_raw" | grep '+QCCID:' | sed 's/+QCCID: //g' | tr -d '\r ')
     iccid_suffix=$(printf '%s' "$new_iccid" | tail -c 4)
@@ -408,10 +534,21 @@ sim_failover_fallback() {
     sleep 2
     qcmd 'AT+CFUN=1' >/dev/null 2>&1
 
-    wait_for_modem
+    if ! wait_for_modem; then
+        qlog_error "SIM revert: modem unresponsive after CFUN=1, skipping profile auto-apply"
+        append_event "sim_failover" "Watchcat: SIM reverted but modem unresponsive — manual check needed" "error"
+        # Slot command was sent; record the intended state. Tower failover daemon
+        # will be (re)started by the next normal recovery cycle if modem recovers.
+        current_sim_slot="$original_sim_slot"
+        sim_failover_active="false"
+        original_sim_slot="null"
+        return
+    fi
 
     # Auto-apply profile matching reverted SIM (watchdog_revert)
-    local _rv_iccid_raw _rv_iccid _try
+    local _rv_iccid_raw
+    local _rv_iccid
+    local _try
     _rv_iccid=""
     for _try in 1 2 3; do
         _rv_iccid_raw=$(qcmd 'AT+QCCID' 2>/dev/null)
@@ -419,6 +556,12 @@ sim_failover_fallback() {
         [ -n "$_rv_iccid" ] && break
         sleep 1
     done
+    # Mark the reverted SIM as known so the poller's boot-time swap
+    # detector doesn't false-fire on the next reboot.
+    if [ -n "$_rv_iccid" ]; then
+        sim_db_add "$_rv_iccid"
+    fi
+
     if [ -n "$_rv_iccid" ]; then
         ( . /usr/lib/qmanager/profile_mgr.sh && auto_apply_profile "$_rv_iccid" "watchdog_revert" )
     else
@@ -549,30 +692,122 @@ do_recovery() {
 # COOLDOWN COMPLETION
 # =============================================================================
 
+# Shared failure path for cooldown — fallback if Tier 3, then escalate.
+_cooldown_handle_failure() {
+    qlog_warn "COOLDOWN failure path entered for Tier $current_tier"
+
+    # If Tier 3 failed to restore connectivity, fall back to original SIM
+    if [ "$current_tier" -eq 3 ] && [ "$current_sim_slot" != "$original_sim_slot" ] && [ "$original_sim_slot" != "null" ]; then
+        sim_failover_fallback
+    fi
+
+    # Escalate to next enabled tier
+    if find_next_tier $((current_tier + 1)); then
+        state="suspect"
+        failure_counter="$CFG_MAX_FAILURES"
+        qlog_info "Escalating to Tier $current_tier"
+    else
+        qlog_error "All recovery tiers exhausted — returning to monitor"
+        state="monitor"
+        current_tier=0
+        failure_counter=0
+    fi
+}
+
 finish_cooldown() {
     rm -f "$RECOVERY_FLAG"
 
-    # Re-read ping data to check if recovery worked
-    if read_ping && [ "$ping_reachable" = "true" ]; then
+    # --- Reason-aware success criteria ---
+    # A quality-triggered recovery cannot use reachability as the success
+    # signal: a degraded-but-reachable link reports reachable the whole time,
+    # so it would ALWAYS look "restored". Judge success from a FRESH quality
+    # read against the configured ceilings instead.
+    if [ "$recovery_reason" = "quality" ]; then
+        if ! read_quality; then
+            if [ "$cooldown_stale_retries" -lt 3 ]; then
+                cooldown_stale_retries=$((cooldown_stale_retries + 1))
+                qlog_warn "COOLDOWN(quality): status data stale (retry $cooldown_stale_retries/3) — extending by ${CFG_CHECK_INTERVAL}s"
+                cooldown_remaining="$CFG_CHECK_INTERVAL"
+                touch "$RECOVERY_FLAG"   # keep events suppressed during extension
+                return
+            fi
+            qlog_error "COOLDOWN(quality): status data still stale after 3 retries — treating as recovery failure"
+            cooldown_stale_retries=0
+            _cooldown_handle_failure
+            return
+        fi
+        cooldown_stale_retries=0
+
+        if ! quality_breached; then
+            qlog_info "COOLDOWN(quality) complete: quality RESTORED after Tier $current_tier"
+            # Quality path never engages the Tier-3 SIM-failover finalization
+            # block — that is only meaningful for the reachability path.
+            state="monitor"
+            current_tier=0
+            failure_counter=0
+            quality_breach_counter=0
+            return
+        fi
+
+        qlog_warn "COOLDOWN(quality) complete: quality STILL degraded after Tier $current_tier"
+        _cooldown_handle_failure
+        return
+    fi
+
+    # --- Reachability path (recovery_reason="unreachable") — unchanged ---
+    # Try to read fresh ping data
+    if ! read_ping; then
+        if [ "$cooldown_stale_retries" -lt 3 ]; then
+            cooldown_stale_retries=$((cooldown_stale_retries + 1))
+            qlog_warn "COOLDOWN: ping data stale (retry $cooldown_stale_retries/3) — extending by ${CFG_CHECK_INTERVAL}s"
+            cooldown_remaining="$CFG_CHECK_INTERVAL"
+            touch "$RECOVERY_FLAG"   # keep events suppressed during extension
+            return
+        fi
+        qlog_error "COOLDOWN: ping data still stale after 3 retries — treating as recovery failure"
+        cooldown_stale_retries=0
+        _cooldown_handle_failure
+        return
+    fi
+    cooldown_stale_retries=0
+
+    if [ "$ping_reachable" = "true" ]; then
         qlog_info "COOLDOWN complete: connectivity RESTORED after Tier $current_tier"
 
         # If this was Tier 3 SIM failover, finalize the failover state
         if [ "$current_tier" -eq 3 ] && [ "$current_sim_slot" != "$original_sim_slot" ] && [ "$original_sim_slot" != "null" ]; then
             sim_failover_active="true"
 
-            # Read ICCIDs for the state file
-            local orig_iccid curr_iccid_raw curr_iccid
-            orig_iccid=""  # we don't have it cached
-            curr_iccid_raw=$(qcmd 'AT+QCCID' 2>/dev/null)
-            curr_iccid=$(printf '%s' "$curr_iccid_raw" | grep '+QCCID:' | sed 's/+QCCID: //g' | tr -d '\r ')
+            # Read ICCID with 3×1s retry — matches sim_failover_fallback pattern
+            local curr_iccid_raw
+            local curr_iccid
+            local _try
+            curr_iccid=""
+            for _try in 1 2 3; do
+                curr_iccid_raw=$(qcmd 'AT+QCCID' 2>/dev/null)
+                curr_iccid=$(printf '%s' "$curr_iccid_raw" | grep '+QCCID:' | sed 's/+QCCID: //g' | tr -d '\r ')
+                [ -n "$curr_iccid" ] && break
+                sleep 1
+            done
 
             local ts
             ts=$(date +%s)
-            printf '{"active":true,"original_slot":%s,"current_slot":%s,"switched_at":%d,"reason":"connectivity_failure","original_iccid":"","current_iccid":"%s"}\n' \
-                "$original_sim_slot" "$current_sim_slot" "$ts" "$curr_iccid" \
+            jq -n -c \
+                --argjson orig "$original_sim_slot" \
+                --argjson curr "$current_sim_slot" \
+                --argjson ts "$ts" \
+                --arg iccid "$curr_iccid" \
+                '{active:true, original_slot:$orig, current_slot:$curr, switched_at:$ts, reason:"connectivity_failure", original_iccid:"", current_iccid:$iccid}' \
                 > "$SIM_FAILOVER_FILE"
 
+            # Mark this failover SIM as known so the poller's boot-time SIM
+            # swap detector treats it as expected (not a physical user swap).
+            if [ -n "$curr_iccid" ]; then
+                sim_db_add "$curr_iccid"
+            fi
+
             qlog_info "SIM failover state saved: slot $original_sim_slot → $current_sim_slot"
+            append_event "sim_failover" "Watchcat: SIM failover confirmed — running on slot $current_sim_slot" "info"
 
             # Auto-apply profile matching new SIM (watchdog)
             if [ -n "$curr_iccid" ]; then
@@ -584,26 +819,11 @@ finish_cooldown() {
         state="monitor"
         current_tier=0
         failure_counter=0
-    else
-        qlog_warn "COOLDOWN complete: connectivity NOT restored after Tier $current_tier"
-
-        # If Tier 3 failed to restore connectivity, fall back
-        if [ "$current_tier" -eq 3 ] && [ "$current_sim_slot" != "$original_sim_slot" ] && [ "$original_sim_slot" != "null" ]; then
-            sim_failover_fallback
-        fi
-
-        # Escalate to next tier
-        if find_next_tier $((current_tier + 1)); then
-            state="suspect"
-            failure_counter="$CFG_MAX_FAILURES"  # will trigger recovery immediately
-            qlog_info "Escalating to Tier $current_tier"
-        else
-            qlog_error "All recovery tiers exhausted — returning to monitor"
-            state="monitor"
-            current_tier=0
-            failure_counter=0
-        fi
+        return
     fi
+
+    qlog_warn "COOLDOWN complete: connectivity NOT restored after Tier $current_tier"
+    _cooldown_handle_failure
 }
 
 # =============================================================================
@@ -666,15 +886,30 @@ main() {
     count_recent_reboots
     qlog_info "Reboots in last hour: $reboots_this_hour"
 
-    # Check for stale SIM failover state from before reboot
+    # Check for stale SIM failover state from before reboot, verifying the
+    # live slot matches what the file records. If the modem is on a
+    # different slot than recorded, clear the file rather than carry stale
+    # state forward.
     if [ -f "$SIM_FAILOVER_FILE" ]; then
         local sf_active_val
         sf_active_val=$(jq -r '(.active) | if . == null then "false" else tostring end' "$SIM_FAILOVER_FILE" 2>/dev/null)
         if [ "$sf_active_val" = "true" ]; then
-            sim_failover_active="true"
-            original_sim_slot=$(jq -r '(.original_slot) | if . == null then "null" else tostring end' "$SIM_FAILOVER_FILE" 2>/dev/null)
-            current_sim_slot=$(jq -r '(.current_slot) | if . == null then "null" else tostring end' "$SIM_FAILOVER_FILE" 2>/dev/null)
-            qlog_info "Resuming SIM failover state: slot $original_sim_slot → $current_sim_slot"
+            local _sf_orig
+            local _sf_curr
+            local _live_slot
+            _sf_orig=$(jq -r '(.original_slot) | if . == null then "null" else tostring end' "$SIM_FAILOVER_FILE" 2>/dev/null)
+            _sf_curr=$(jq -r '(.current_slot) | if . == null then "null" else tostring end' "$SIM_FAILOVER_FILE" 2>/dev/null)
+            _live_slot=$(qcmd 'AT+QUIMSLOT?' 2>/dev/null | grep '+QUIMSLOT:' | sed 's/.*: *//' | tr -d '\r ')
+
+            if [ -n "$_live_slot" ] && [ "$_live_slot" = "$_sf_curr" ]; then
+                sim_failover_active="true"
+                original_sim_slot="$_sf_orig"
+                current_sim_slot="$_sf_curr"
+                qlog_info "Resumed SIM failover state: slot $original_sim_slot → $current_sim_slot (verified)"
+            else
+                qlog_warn "SIM failover file recorded slot $_sf_curr but modem is on slot ${_live_slot:-unknown} — clearing stale state"
+                rm -f "$SIM_FAILOVER_FILE"
+            fi
         fi
     fi
 
@@ -711,6 +946,8 @@ main() {
                 rm -f "$RECOVERY_FLAG"
                 current_tier=0
                 failure_counter=0
+                cooldown_stale_retries=0
+                quality_breach_counter=0
             fi
             write_state
             sleep "$CFG_CHECK_INTERVAL"
@@ -723,6 +960,8 @@ main() {
             state="monitor"
             current_tier=0
             failure_counter=0
+            cooldown_stale_retries=0
+            quality_breach_counter=0
         fi
 
         # --- COOLDOWN state ---
@@ -762,6 +1001,7 @@ main() {
                     qlog_info "SUSPECT → MONITOR: connectivity restored naturally"
                     state="monitor"
                     failure_counter=0
+                    quality_breach_counter=0
                 else
                     failure_counter=$((failure_counter + 1))
                     qlog_debug "SUSPECT: failure_counter=$failure_counter/$CFG_MAX_FAILURES"
@@ -769,6 +1009,7 @@ main() {
                     if [ "$failure_counter" -ge "$CFG_MAX_FAILURES" ]; then
                         qlog_warn "SUSPECT → RECOVERY: threshold breached ($failure_counter >= $CFG_MAX_FAILURES)"
                         state="recovery"
+                        recovery_reason="unreachable"
 
                         # Find first enabled tier
                         if [ "$current_tier" -eq 0 ]; then
@@ -789,6 +1030,14 @@ main() {
                 current_tier=0
                 ;;
         esac
+
+        # --- Quality-degradation trigger (independent of reachability) ---
+        # Only when the reachability path did NOT already move us into
+        # recovery/cooldown this cycle. evaluate_quality runs the same Tier
+        # ladder via do_recovery; if it triggers it sets state itself.
+        if [ "$state" = "monitor" ] || [ "$state" = "suspect" ]; then
+            evaluate_quality
+        fi
 
         write_state
         sleep "$CFG_CHECK_INTERVAL"

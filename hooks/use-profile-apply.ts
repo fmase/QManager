@@ -44,6 +44,19 @@ export function useProfileApply(): UseProfileApplyReturn {
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const mountedRef = useRef(true);
 
+  // Idle-race guard: between apply.sh returning success (worker PID is live) and
+  // the worker writing its state file, apply_status.sh transiently returns
+  // "idle". That gap must NOT be treated as terminal, or the first racing poll
+  // tears down the loop before any real progress is seen. While awaiting the
+  // first non-idle status we keep polling; idleStartPollsRef bounds the wait so
+  // a worker that never starts still fails out instead of polling forever.
+  const awaitingStartRef = useRef(false);
+  const idleStartPollsRef = useRef(0);
+
+  // ~30 polls * 500ms = ~15s safety net. apply.sh only returns success once the
+  // worker PID is live, so in practice the gap is < 2s.
+  const MAX_IDLE_START_POLLS = 30;
+
   useEffect(() => {
     mountedRef.current = true;
     return () => {
@@ -76,15 +89,35 @@ export function useProfileApply(): UseProfileApplyReturn {
       const data: ProfileApplyState = await resp.json();
       if (!mountedRef.current) return;
 
+      // --- Idle-race handling -------------------------------------------------
+      if (data.status === "idle") {
+        if (awaitingStartRef.current) {
+          // Worker PID is live but its state file isn't written yet. Don't
+          // surface "idle" and don't stop — just wait for the next poll, with a
+          // bounded safety net.
+          idleStartPollsRef.current += 1;
+          if (idleStartPollsRef.current >= MAX_IDLE_START_POLLS) {
+            awaitingStartRef.current = false;
+            idleStartPollsRef.current = 0;
+            setError("Apply did not start. Please try again.");
+            stopPolling();
+          }
+          return;
+        }
+        // Genuine reset-to-idle (not awaiting a fresh start): surface it and stop.
+        setApplyState(data);
+        stopPolling();
+        return;
+      }
+
+      // Any non-idle status means the worker is writing real progress now.
+      awaitingStartRef.current = false;
+      idleStartPollsRef.current = 0;
+
       setApplyState(data);
 
       // Stop polling on terminal states
-      const terminalStates: ApplyStatus[] = [
-        "complete",
-        "partial",
-        "failed",
-        "idle",
-      ];
+      const terminalStates: ApplyStatus[] = ["complete", "partial", "failed"];
       if (terminalStates.includes(data.status)) {
         stopPolling();
       }
@@ -109,6 +142,8 @@ export function useProfileApply(): UseProfileApplyReturn {
     async (id: string) => {
       setError(null);
       setApplyState(null);
+      awaitingStartRef.current = false;
+      idleStartPollsRef.current = 0;
 
       try {
         const resp = await authFetch(`${CGI_BASE}/apply.sh`, {
@@ -135,7 +170,9 @@ export function useProfileApply(): UseProfileApplyReturn {
           return;
         }
 
-        // Success — begin polling for progress
+        // Success — begin polling for progress. Mark that we're awaiting the
+        // worker's first state write so a transient "idle" doesn't end the loop.
+        awaitingStartRef.current = true;
         startPolling();
       } catch (err) {
         if (mountedRef.current) {
@@ -153,6 +190,8 @@ export function useProfileApply(): UseProfileApplyReturn {
   // ---------------------------------------------------------------------------
   const reset = useCallback(() => {
     stopPolling();
+    awaitingStartRef.current = false;
+    idleStartPollsRef.current = 0;
     setApplyState(null);
     setError(null);
   }, [stopPolling]);

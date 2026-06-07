@@ -49,8 +49,13 @@ interface BandSettingsProps {
 }
 
 /**
- * Extract unique active band names from carrier_components for a given technology.
- * Returns sorted, comma-separated display string (e.g., "B1, B3, B7").
+ * Extract active band names from carrier_components for a given technology.
+ * Returns sorted, comma-separated display string (e.g., "B1, B3, B41, B41").
+ *
+ * One entry per carrier component — NOT deduplicated. Intra-band carrier
+ * aggregation legitimately puts two carriers on the same band (e.g. two B41
+ * SCCs on different EARFCNs), and the band count must line up 1:1 with the
+ * active channel count from getActiveArfcnDisplay.
  */
 function getActiveBandDisplay(
   components: CarrierComponent[],
@@ -61,25 +66,24 @@ function getActiveBandDisplay(
     .map((c) => c.band)
     .filter(Boolean);
 
-  // Deduplicate (same band can appear as PCC + SCC in rare cases)
-  const unique = [...new Set(bands)];
-
-  if (unique.length === 0) return "—";
+  if (bands.length === 0) return "—";
 
   // Sort numerically by band number (strip prefix for comparison)
-  unique.sort((a, b) => {
+  bands.sort((a, b) => {
     const numA = parseInt(a.replace(/^[BN]/, ""), 10);
     const numB = parseInt(b.replace(/^[BN]/, ""), 10);
     return numA - numB;
   });
 
-  return unique.join(", ");
+  return bands.join(", ");
 }
 
 /**
  * Extract active E/ARFCNs from carrier_components for a given technology.
- * Returns comma-separated display string (e.g., "1850, 3050").
- * Includes duplicates since different carriers can share the same ARFCN.
+ * Returns sorted, comma-separated display string (e.g., "301, 1650, 40364").
+ *
+ * One entry per carrier component — NOT deduplicated, so the channel count
+ * lines up 1:1 with the band count from getActiveBandDisplay.
  */
 function getActiveArfcnDisplay(
   components: CarrierComponent[],
@@ -91,9 +95,9 @@ function getActiveArfcnDisplay(
 
   if (arfcns.length === 0) return "—";
 
-  // Sort numerically, deduplicate
-  const unique = [...new Set(arfcns)].sort((a, b) => a - b);
-  return unique.join(", ");
+  // Sort numerically (no dedup — one entry per carrier)
+  arfcns.sort((a, b) => a - b);
+  return arfcns.join(", ");
 }
 
 const BandSettingsComponent = ({

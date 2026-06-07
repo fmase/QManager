@@ -21,8 +21,9 @@ import { authFetch } from "@/lib/auth-fetch";
 import {
   usePendingReboot,
   clearPendingReboot,
-  setPendingReboot,
-} from "@/lib/config-backup/pending-reboot";
+  requestRebootLater,
+  enterRebootFlow,
+} from "@/lib/reboot";
 import { useTranslation } from "react-i18next";
 
 const ConfigurationBackupComponent = () => {
@@ -41,9 +42,9 @@ const ConfigurationBackupComponent = () => {
       if (!res.ok) {
         throw new Error(`reboot_failed: HTTP ${res.status}`);
       }
-      // Page will become unreachable shortly.
+      enterRebootFlow("config_restore");
     } catch {
-      setPendingReboot();
+      requestRebootLater("config_restore");
       setRebootBusy(false);
     }
   };

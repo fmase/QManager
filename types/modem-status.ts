@@ -28,8 +28,6 @@ export interface ModemStatus {
   nr: NrStatus;
   /** Device hardware and identity info */
   device: DeviceStatus;
-  /** Live traffic metrics */
-  traffic: TrafficStatus;
   /** Internet connectivity and latency (from ping daemon) */
   connectivity: ConnectivityStatus;
   /** Per-antenna signal values (from AT+QRSRP/QRSRQ/QSINR, Tier 1.5) */
@@ -246,19 +244,20 @@ export interface DeviceStatus {
   supported_nsa_nr5g_bands: string;
   /** Hardware-supported SA NR5G bands, colon-delimited (boot-only) */
   supported_sa_nr5g_bands: string;
+  /** Hardware-supported NR-DC bands, colon-delimited (boot-only, from AT+QNWPREFCFG="policy_band") */
+  supported_nrdc_nr5g_bands: string;
+  /**
+   * Full LTE band capability from the static spec-sheet file
+   * (/etc/qmanager/supported_bands_hw.env). Superset of supported_lte_bands.
+   * Drives the checkbox universe; supported_lte_bands marks the network/SIM-used subset.
+   */
+  hw_lte_bands: string;
+  /** Full NSA NR5G band capability (static spec-sheet file). Superset of supported_nsa_nr5g_bands. */
+  hw_nsa_nr5g_bands: string;
+  /** Full SA NR5G band capability (static spec-sheet file). Superset of supported_sa_nr5g_bands. */
+  hw_sa_nr5g_bands: string;
   /** QManager version string */
   qmanager_version: string;
-}
-
-export interface TrafficStatus {
-  /** Current download speed in bytes/second */
-  rx_bytes_per_sec: number;
-  /** Current upload speed in bytes/second */
-  tx_bytes_per_sec: number;
-  /** Total downloaded bytes since boot */
-  total_rx_bytes: number;
-  /** Total uploaded bytes since boot */
-  total_tx_bytes: number;
 }
 
 // --- Utility Types -----------------------------------------------------------
@@ -310,6 +309,31 @@ export function getSignalQuality(
   return "poor";
 }
 
+export type SignalQuality = ReturnType<typeof getSignalQuality>;
+
+const SIGNAL_QUALITY_RANK: Record<SignalQuality, number> = {
+  excellent: 4,
+  good: 3,
+  fair: 2,
+  poor: 1,
+  none: 0,
+};
+
+/**
+ * Returns the worst quality across the supplied metrics. "none" entries
+ * (missing/null values) are skipped; if every input is "none", returns "none".
+ * Used by the public overview "Overall" verdict so a strong RSRP can't mask
+ * a poor SINR.
+ */
+export function worstSignalQuality(...qualities: SignalQuality[]): SignalQuality {
+  const known = qualities.filter((q): q is Exclude<SignalQuality, "none"> => q !== "none");
+  if (known.length === 0) return "none";
+  return known.reduce<SignalQuality>(
+    (worst, q) => (SIGNAL_QUALITY_RANK[q] < SIGNAL_QUALITY_RANK[worst] ? q : worst),
+    known[0],
+  );
+}
+
 export type ConnectivityState =
   | "connected"
   | "degraded"
@@ -344,6 +368,37 @@ export interface ConnectivityStatus {
   history_size: number;
   /** Whether watchcat recovery is currently active */
   during_recovery: boolean;
+  /**
+   * Active ping-daemon sensitivity profile (mirrors the saved ping_profile).
+   * Optional: present once the daemon emits it; consumers must tolerate
+   * undefined for older poller output.
+   */
+  profile?: PingProfile;
+}
+
+// --- Connection Quality Settings ---------------------------------------------
+
+/**
+ * Ping-daemon sensitivity profiles. The daemon (`qmanager_ping`) is the source
+ * of truth for the profile→interval/threshold table; UCI stores only the name.
+ * The UI uses this list purely to render the segmented control and preview
+ * per-preset timing before save.
+ */
+export const PING_PROFILES = ["sensitive", "regular", "relaxed", "quiet"] as const;
+export type PingProfile = (typeof PING_PROFILES)[number];
+
+/** Latency / packet-loss tolerance presets for quality-event thresholds. */
+export const QUALITY_PRESETS = ["standard", "tolerant", "very-tolerant"] as const;
+export type QualityPreset = (typeof QUALITY_PRESETS)[number];
+
+/**
+ * Saved quality-threshold settings. The nested shape mirrors the GET envelope
+ * (`thresholds.latency.preset` / `thresholds.loss.preset`); the save hook
+ * flattens it to the flat wire keys the shell CGI parses.
+ */
+export interface QualityThresholdsSettings {
+  latency: { preset: QualityPreset };
+  loss: { preset: QualityPreset };
 }
 
 // --- Watchcat State (from /tmp/qmanager_watchcat.json via poller) ------------
@@ -529,7 +584,7 @@ export type NetworkEventType =
   | "config_restore_section_failed" // Single section failed after retries
   | "config_restore_section_skipped" // Single section skipped (incompatible or sim_mismatch)
   | "config_restore_completed" // Configuration restore completed
-  | "wol_changed"; // Wake-on-LAN setting changed by user
+  | "lan_address_changed"; // LAN IP address / subnet changed by user
 
 /** Severity level for UI icon coloring */
 export type EventSeverity = "info" | "warning" | "error";

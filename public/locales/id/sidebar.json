@@ -31,6 +31,7 @@
     "ttl_mtu_settings": "Pengaturan TTL & MTU",
     "video_optimizer": "Video Optimizer",
     "traffic_masquerade": "Traffic Masquerade",
+    "traffic_engine": "Traffic Engine",
     "network_events": "Peristiwa Jaringan",
     "latency_monitor": "Monitor Latensi",
     "email_alerts": "Peringatan Email",
@@ -41,14 +42,18 @@
     "system_settings": "Pengaturan Sistem",
     "configuration_backup": "Cadangan Konfigurasi",
     "ssh_password": "Kata Sandi SSH",
+    "connection_quality": "Kualitas Koneksi",
     "bandwidth_monitor": "Monitor Bandwidth",
     "logs": "Log",
     "software_update": "Pembaruan Perangkat Lunak",
     "at_terminal": "AT Terminal",
-    "luci": "Luci",
+    "luci": "LuCI",
     "about_device": "Tentang Perangkat",
     "support": "Dukungan",
     "donate": "Donasi untuk Proyek",
     "languages": "Bahasa"
+  },
+  "switcher": {
+    "opens_new_tab": "Membuka di tab baru"
   }
 }

@@ -35,9 +35,10 @@ import {
 } from "@/components/ui/alert-dialog";
 import { authFetch } from "@/lib/auth-fetch";
 import {
-  setPendingReboot,
+  requestRebootLater,
   clearPendingReboot,
-} from "@/lib/config-backup/pending-reboot";
+  enterRebootFlow,
+} from "@/lib/reboot";
 import { cn } from "@/lib/utils";
 import { useTranslation, Trans } from "react-i18next";
 
@@ -169,7 +170,7 @@ const RestoreConfigBackupCard = () => {
       (ui === "success" || ui === "partial_success") &&
       state.progress?.reboot_required === true
     ) {
-      setPendingReboot();
+      requestRebootLater("config_restore");
       setRebootDialogOpen(true);
     }
   }, [ui, state.progress?.reboot_required]);
@@ -184,8 +185,9 @@ const RestoreConfigBackupCard = () => {
       if (!res.ok) {
         throw new Error(`reboot_failed: HTTP ${res.status}`);
       }
+      enterRebootFlow("config_restore");
     } catch {
-      setPendingReboot();
+      requestRebootLater("config_restore");
       setRebootBusy(false);
       setRebootDialogOpen(false);
     }

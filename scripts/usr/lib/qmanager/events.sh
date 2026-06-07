@@ -220,13 +220,18 @@ detect_data_connection_events() {
         fi
     fi
 
-    # --- High latency detection (threshold: 90ms, debounce: 3 readings) ---
+    # --- High latency detection (threshold + debounce from poller globals) ---
+    # Thresholds come from quecmanager.quality_thresholds via the poller's
+    # resolve_quality_thresholds(). Default-guard each to the "tolerant" preset
+    # so a partially-initialized poller never compares against an empty value.
+    local _lat_threshold="${QUALITY_LAT_THRESHOLD:-250}"
+    local _lat_debounce="${QUALITY_LAT_DEBOUNCE:-3}"
     # Skip when ping daemon is stale (conn_latency="null") — don't touch streaks
     if [ "$conn_latency" != "null" ] && [ -n "$conn_latency" ]; then
         # Use awk for decimal comparison (POSIX shell has no float math)
-        if echo "$conn_latency" | awk '{exit !($1 > 90)}'; then
+        if echo "$conn_latency" | awk -v t="$_lat_threshold" '{exit !($1 > t)}'; then
             ev_high_lat_streak=$((ev_high_lat_streak + 1))
-            if [ "$ev_high_lat_streak" -ge 3 ] && [ "$ev_lat_alerted" = "false" ]; then
+            if [ "$ev_high_lat_streak" -ge "$_lat_debounce" ] && [ "$ev_lat_alerted" = "false" ]; then
                 append_event "high_latency" \
                     "High latency detected (${conn_latency}ms, avg ${conn_avg_latency}ms)" "warning"
                 ev_lat_alerted=true
@@ -242,11 +247,13 @@ detect_data_connection_events() {
         fi
     fi
 
-    # --- High packet loss detection (threshold: 20%, debounce: 3 readings) ---
+    # --- High packet loss detection (threshold + debounce from poller globals) ---
+    local _loss_threshold="${QUALITY_LOSS_THRESHOLD:-30}"
+    local _loss_debounce="${QUALITY_LOSS_DEBOUNCE:-3}"
     if [ "$conn_packet_loss" != "null" ] && [ -n "$conn_packet_loss" ]; then
-        if [ "$conn_packet_loss" -ge 20 ] 2>/dev/null; then
+        if [ "$conn_packet_loss" -ge "$_loss_threshold" ] 2>/dev/null; then
             ev_high_loss_streak=$((ev_high_loss_streak + 1))
-            if [ "$ev_high_loss_streak" -ge 3 ] && [ "$ev_loss_alerted" = "false" ]; then
+            if [ "$ev_high_loss_streak" -ge "$_loss_debounce" ] && [ "$ev_loss_alerted" = "false" ]; then
                 append_event "high_packet_loss" \
                     "High packet loss detected (${conn_packet_loss}%)" "warning"
                 ev_loss_alerted=true

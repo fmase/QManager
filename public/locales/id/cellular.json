@@ -2,13 +2,28 @@
   "custom_profiles": {
     "page": {
       "title": "Profil SIM Kustom",
-      "description": "Gabungkan pengaturan APN, IMEI, dan TTL/HL ke dalam profil sekali klik"
+      "description": "Gabungkan pengaturan APN, IMEI, dan TTL/HL ke dalam profil sekali klik",
+      "error_load_failed": "Gagal memuat profil. Periksa koneksi dan coba lagi."
     },
     "view": {
       "title": "Profil Tersimpan",
       "description": "Kelola profil SIM kustom Anda.",
       "count_one": "{{count}} Profil Tersimpan",
-      "count_other": "{{count}} Profil Tersimpan"
+      "count_other": "{{count}} Profil Tersimpan",
+      "subtitle": "Aktifkan, edit, atau hapus profil seluler di perangkat ini.",
+      "activating": "Mengaktifkan",
+      "scenario_scheduled": "{{scenario}} sesuai jadwal harian",
+      "scenario_always_on": "{{scenario}}, selalu aktif",
+      "delete_description": "Tindakan ini menghapus profil dari perangkat. Setiap jadwal yang terikat padanya akan dihapus. Tindakan ini tidak dapat dibatalkan.",
+      "delete_keep": "Pertahankan profil",
+      "mismatch_note": "SIM di modem tidak cocok dengan ICCID profil ini. Perangkat tetap menggunakan pengaturan saat ini hingga SIM yang cocok dipasang.",
+      "toast": {
+        "deactivated": "{{name}} dinonaktifkan",
+        "deactivate_error": "Gagal menonaktifkan profil",
+        "deleted": "{{name}} dihapus",
+        "delete_error": "Gagal menghapus profil"
+      },
+      "delete_title": "Hapus “{{name}}”?"
     },
     "table": {
       "headers": {
@@ -54,11 +69,17 @@
         "profile_name_label": "Nama Profil ",
         "profile_name_placeholder": "Profil LTE Saya",
         "profile_name_required": "Nama Profile diperlukan.",
+        "sim_iccid_required": "SIM ICCID diperlukan.",
+        "sim_iccid_duplicate": "Profil dengan SIM ICCID ini sudah ada.",
+        "apn_name_required": "Nama APN diperlukan.",
         "sim_iccid_label": "SIM ICCID",
         "sim_iccid_placeholder": "Isi otomatis dari SIM saat ini",
         "mno_label": "Operator Jaringan Seluler",
         "mno_placeholder": "Pilih operator…",
         "mno_custom": "Kustom",
+        "reuse_apn_label": "Profil APN",
+        "reuse_apn_placeholder": "Pilih APN tersimpan…",
+        "reuse_apn_custom": "Kustom",
         "apn_name_label": "Nama APN",
         "apn_name_placeholder": "internet",
         "ip_protocol_label": "Protokol IP",
@@ -74,18 +95,177 @@
         "ttl_error": "TTL Harus 0–255.",
         "hl_label": "Limit Hop",
         "hl_error": "HL Harus 0–255.",
-        "cid_locked_verizon": "Verizon memerlukan konteks PDP 3"
+        "cid_locked_verizon": "Verizon memerlukan konteks PDP 3",
+        "sim_iccid_hint": "Biarkan kosong untuk menerapkan profil ini ke semua SIM.",
+        "imei_danger": "Mengubah IMEI akan menulis ulang identitas modem dan memulai ulang modem saat aktivasi. Biarkan kosong untuk mempertahankan IMEI saat ini."
       },
       "buttons": {
         "create_submit": "Buat Profil",
         "update_submit": "Perbarui Profil",
-        "reset": "Atur Ulang"
+        "reset": "Atur Ulang",
+        "back": "Kembali",
+        "next": "Lanjut"
       },
       "toast": {
         "create_success": "Profil berhasil dibuat.",
         "create_error": "Gagal membuat profil",
         "update_success": "Profil berhasil diperbarui",
         "update_error": "Gagal memperbarui profil."
+      },
+      "scenario": {
+        "section_title": "Skenario",
+        "section_description": "Ikat profil ini ke skenario koneksi yang diterapkan otomatis saat profil diaktifkan. Opsional, atur jadwal skenario berbeda berdasarkan waktu.",
+        "default_label": "Skenario default",
+        "default_hint": "Diterapkan saat profil ini diaktifkan, dan digunakan sebagai fallback untuk waktu yang tidak tercakup oleh jadwal di bawah.",
+        "schedule_toggle_label": "Jadwalkan berdasarkan waktu",
+        "schedule_toggle_hint": "Ganti skenario secara otomatis sesuai jadwal harian.",
+        "add_block": "Tambah jendela",
+        "remove_block_aria": "Hapus jendela",
+        "block_label": "Jendela {{index}}",
+        "start_label": "Mulai",
+        "end_label": "Selesai",
+        "block_scenario_label": "Skenario",
+        "empty_schedule_hint": "Belum ada jendela — perilakunya sama seperti hanya menggunakan {{name}}.",
+        "overlap_warning": "Jendela ini tumpang tindih dengan jendela lain. Saat tumpang tindih, jendela paling atas yang berlaku.",
+        "schedule_invalid": "Perbaiki entri jadwal yang disorot sebelum menyimpan.",
+        "deleted_scenario": "(skenario dihapus)",
+        "block_errors": {
+          "invalid_start": "Masukkan waktu mulai yang valid (HH:MM).",
+          "invalid_end": "Masukkan waktu selesai yang valid (HH:MM).",
+          "zero_length": "Waktu mulai dan selesai harus berbeda.",
+          "no_days": "Pilih setidaknya satu hari."
+        },
+        "summary_line": "{{time}} → {{scenario}}",
+        "time_range": "{{start}}–{{end}}",
+        "move_up_aria": "Pindahkan jendela ke atas",
+        "move_down_aria": "Pindahkan jendela ke bawah",
+        "expand_rule_aria": "Edit jendela",
+        "active_now_line": "Sekarang → {{scenario}}",
+        "active_now_line_with_next": "Sekarang → {{scenario}} · berikutnya {{time}}",
+        "overnight_hint": "Ends next day",
+        "otherwise_label": "Selain itu",
+        "entries_cap_hint": "Maksimal {{max}} jendela waktu. Hapus satu untuk menambah yang lain.",
+        "create_new": "Buat skenario baru"
+      },
+      "loading_current": "Membaca SIM…",
+      "back_to_list": "Kembali ke profil",
+      "edit_loading": "Memuat profil…",
+      "steps": {
+        "nav_aria": "Langkah profil",
+        "identity_label": "Identitas & Operator",
+        "identity_short": "Identitas",
+        "apn_short": "APN",
+        "apn_label": "APN & Koneksi",
+        "advanced_label": "Lanjutan",
+        "advanced_short": "Lanjutan",
+        "advanced_desc": "Jarang diperlukan. Biarkan apa adanya kecuali Anda memang perlu mengubahnya.",
+        "scenario_label": "Skenario Koneksi",
+        "scenario_short": "Skenario",
+        "review_short": "Tinjau",
+        "review_label": "Tinjau",
+        "scenario_desc": "Pilih skenario yang diterapkan saat profil ini aktif, dan opsional jadwalkan perubahan sepanjang hari.",
+        "optional": "Opsional",
+        "step_of": "Langkah {{current}} dari {{total}}",
+        "state_current": "langkah saat ini",
+        "state_complete": "selesai",
+        "state_error": "ada kesalahan",
+        "state_upcoming": "berikutnya"
+      },
+      "sections": {
+        "identity_title": "Identitas",
+        "identity_desc": "Beri nama profil ini dan pilih operator yang dituju.",
+        "apn_title": "APN & Koneksi",
+        "apn_desc": "Cara modem terhubung ke jaringan data operator.",
+        "advanced_title": "Lanjutan",
+        "advanced_desc": "Jarang diperlukan. Ubah hanya jika Anda yakin perlu."
+      },
+      "summary": {
+        "title": "Pratinjau",
+        "desc": "Tampilan profil ini di registri Anda, dan apa yang diubahnya saat diaktifkan.",
+        "untitled": "Profil tanpa nama",
+        "reboot_note": "Mengaktifkan akan memulai ulang modem untuk menerapkan perubahan IMEI."
+      },
+      "advanced": {
+        "title": "Lanjutan",
+        "summary_imei": "Penggantian IMEI",
+        "summary_ttl": "TTL {{value}}",
+        "summary_hl": "HL {{value}}"
+      },
+      "discard_dialog": {
+        "title": "Buang perubahan?",
+        "description": "Anda memiliki perubahan yang belum disimpan. Keluar sekarang akan membuangnya.",
+        "confirm": "Buang",
+        "keep": "Tetap edit"
+      },
+      "add_title": "Tambah Profil",
+      "add_description": "Tambahkan profil seluler baru ke perangkat Anda.",
+      "edit_description_simple": "Perbarui profil seluler ini, lalu simpan perubahan Anda.",
+      "load_from_sim": "Muat dari SIM",
+      "loaded_from_sim": "Memuat pengaturan saat ini dari SIM",
+      "save_failed": "Gagal menyimpan profil",
+      "profile_added": "Profil ditambahkan",
+      "profile_updated": "Profil diperbarui",
+      "submit_add": "Kirim",
+      "submit_edit": "Simpan perubahan",
+      "cancel": "Batal",
+      "next": "Berikutnya",
+      "clear": "Bersihkan",
+      "tab_network": "Jaringan",
+      "network_desc": "Cara modem terhubung ke jaringan data operator.",
+      "identity_load_hint": "Beri nama profil ini dan pilih operator yang dituju.",
+      "sim_iccid_placeholder_inline": "Deteksi otomatis atau masukkan ICCID",
+      "sim_iccid_hint_inline": "Menentukan SIM mana yang dituju profil ini.",
+      "mno_hint": "Anda dapat memilih operator jaringan seluler yang telah dikonfigurasi di sini.",
+      "cid_default_option": "CID 1 (default)",
+      "cid_locked_verizon_inline": "Terkunci ke CID 3 — Verizon hanya mengirimkan data pada konteks PDP 3.",
+      "scenario_desc_inline": "Pilih skenario yang dijalankan profil ini, dan opsional ganti skenario pada waktu tertentu dalam sehari.",
+      "default_scenario_label": "Skenario Default",
+      "default_scenario_hint": "Berjalan kapan pun tidak ada jendela jadwal yang aktif.",
+      "create_scenario_option": "Buat skenario baru",
+      "schedule_inline_label": "Jadwal berbasis waktu",
+      "schedule_inline_hint": "Ganti skenario dalam maksimal dua jendela harian.",
+      "windows_empty": "Belum ada jendela. Tambahkan satu untuk mengganti skenario pada waktu tertentu.",
+      "window_label": "Jendela {{index}}",
+      "window_remove_aria": "Hapus jendela {{index}}",
+      "window_from": "Dari",
+      "window_to": "Sampai",
+      "windows_count": "{{count}} dari {{max}} jendela",
+      "add_window": "Tambah jendela",
+      "review_desc_add": "Tinjau profil Anda, lalu tambahkan ke perangkat.",
+      "review_desc_edit": "Tinjau profil Anda, lalu simpan perubahan Anda.",
+      "review_edit_aria": "Edit",
+      "review": {
+        "section_identity": "Identitas",
+        "section_network": "Jaringan",
+        "section_scenario": "Skenario",
+        "profile_name": "Nama Profil",
+        "sim_iccid": "SIM ICCID",
+        "all_sims": "Semua SIM",
+        "operator": "Operator",
+        "apn": "APN",
+        "ip_protocol": "Protokol IP",
+        "profile_slot": "Slot Profil",
+        "cid_value": "CID {{cid}}",
+        "cid_value_default": "CID {{cid}} (default)",
+        "preferred_imei": "IMEI Pilihan",
+        "ttl_hl": "TTL / Hop Limit",
+        "default": "Default",
+        "schedule": "Jadwal",
+        "schedule_on_no_windows": "Aktif, tanpa jendela",
+        "schedule_off": "Nonaktif",
+        "window_value": "{{scenario}} · {{start}}–{{end}}",
+        "not_set": "Belum diatur"
+      },
+      "verizon_inline": {
+        "dialog_title": "Gunakan aturan perutean data Verizon?",
+        "dialog_description": "Verizon hanya mengirimkan data pada konteks PDP 3, jadi profil ini mengunci CID ke 3 dan menulis aturan perutean MPDN saat aktivasi. Jangan lepaskan aturan itu secara manual setelahnya — pelepasan tanpa pengaman dan reboot dapat merusak modem hingga perlu flash ulang firmware. Untuk membatalkannya dengan aman, alihkan profil ini ke operator lain.",
+        "dialog_cancel": "Batal",
+        "dialog_confirm": "Gunakan Verizon"
+      },
+      "pdp_inline": {
+        "ipv4": "IPv4",
+        "ipv6": "IPv6",
+        "dual": "IPv4 & IPv6"
       }
     },
     "activate_dialog": {
@@ -113,7 +293,17 @@
         "imei": "IMEI",
         "mpdn_rule": "Perutean Data"
       },
-      "reboot_notice": "Modem sedang memulai ulang untuk menerapkan perubahan IMEI. Dashboard akan tersambung kembali secara otomatis."
+      "reboot_notice": "Modem sedang memulai ulang untuk menerapkan perubahan IMEI. Dashboard akan tersambung kembali secara otomatis.",
+      "step_state_unchanged": "Tidak berubah",
+      "preparing": "Menyiapkan…",
+      "step_progress": "Langkah {{current}} dari {{total}}",
+      "complete_headline": "Profil aktif",
+      "complete_sub": "Semua pengaturan yang berlaku kini ada di modem.",
+      "partial_headline": "Diaktifkan dengan pelewatan",
+      "partial_sub": "Beberapa langkah dilewati. Tinjau detail di bawah.",
+      "failed_headline": "Aktivasi gagal",
+      "failed_sub": "Modem tidak sepenuhnya dikonfigurasi ulang.",
+      "details_label": "Langkah"
     },
     "verizon_warning": {
       "title": "Verizon memerlukan aturan routing data khusus",
@@ -123,11 +313,54 @@
       "cancel": "Batal",
       "confirm": "Saya mengerti, lanjutkan"
     },
+    "pills": {
+      "ip_v4": "IPv4",
+      "ip_v6": "IPv6",
+      "ip_dual": "IPv4v6",
+      "apn": "APN {{name}}",
+      "apn_default": "APN Default",
+      "cid": "CID {{cid}}",
+      "ttl": "TTL {{value}}",
+      "hl": "HL {{value}}",
+      "imei_override": "Penggantian IMEI",
+      "mpdn_locked": "MPDN terkunci"
+    },
     "empty_state": {
       "title": "Tidak ada profil",
       "description": "Kelola profil SIM kustom Anda di sini.",
       "description_full": "Anda belum membuat profil SIM kustom. Gunakan formulir untuk membuat profil pertama Anda.",
-      "refresh": "Muat Ulang"
+      "refresh": "Muat Ulang",
+      "card_title": "Profil SIM Kustom",
+      "card_description": "Bundel APN, IMEI, dan pengaturan TTL yang diterapkan ke modem dalam satu langkah.",
+      "teaching_headline": "Belum ada profil",
+      "teaching_body": "Profil SIM Kustom menggabungkan nama APN, protokol IP, penggantian TTL/HL, dan IMEI opsional ke dalam satu preset tersimpan. Mengaktifkannya menerapkan semua pengaturan sekaligus, sehingga berpindah operator atau slot SIM hanya butuh detik.",
+      "cta_new": "Profil Baru",
+      "cta_refresh": "Muat Ulang"
+    },
+    "edit": {
+      "not_found_title": "Profil tidak ditemukan",
+      "not_found_desc": "Profil ini mungkin telah dihapus. Kembali ke profil tersimpan Anda."
+    },
+    "active_card": {
+      "none_title": "Tidak ada profil aktif",
+      "none_description": "Modem menggunakan pengaturan saat ini. Aktifkan profil tersimpan untuk menerapkan bundel.",
+      "subtitle": "Diterapkan ke modem sekarang",
+      "subtitle_with_mno": "Diterapkan sekarang · {{mno}}",
+      "mismatch_note": "Profil ini dibuat untuk SIM yang berbeda dari yang terpasang sekarang. Aktifkan ulang untuk SIM ini, atau aktifkan profil yang sesuai.",
+      "verizon_locked_note": "Perutean data terkunci ke konteks PDP 3. IP Passthrough tidak tersedia selama profil ini aktif.",
+      "edit_button": "Edit",
+      "scenario_default": "Skenario: {{name}}",
+      "scenario_scheduled": "Skenario: {{name}} (terjadwal)"
+    },
+    "card": {
+      "label_iccid": "SIM",
+      "label_updated": "Diperbarui"
+    },
+    "list": {
+      "new_button": "Baru",
+      "bound_sim": "Terikat ke SIM {{iccid}}",
+      "detail_unavailable": "Tidak dapat memuat pengaturan profil ini.",
+      "only_active_hint": "Satu-satunya profil Anda adalah yang sedang aktif. Buat profil lain untuk berpindah pengaturan."
     }
   },
   "scenarios": {
@@ -250,6 +483,12 @@
     "deletion_toast": {
       "success": "Skenario berhasil dihapus.",
       "error": "Skenario gagal dihapus."
+    },
+    "schedule_lock": {
+      "badge": "Terjadwal",
+      "hint": "Nonaktifkan jadwal profil ini untuk memilih skenario secara manual.",
+      "next_change": "Perubahan berikutnya pukul {{time}}",
+      "blocked_toast": "Skenario koneksi dikendalikan oleh jadwal profil aktif. Matikan jadwal untuk mengubahnya secara manual."
     }
   },
   "sms": {
@@ -274,7 +513,15 @@
         },
         "empty_row": "Tidak ada pesan ditemukan.",
         "select_all_aria": "Pilih semua",
-        "select_row_aria": "Pilih baris"
+        "select_row_aria": "Pilih baris",
+        "sim_badge": "SIM",
+        "empty_unread": "Tidak ada pesan belum dibaca.",
+        "empty_read": "Tidak ada pesan dibaca.",
+        "empty_search": "Tidak ada pesan yang cocok dengan pencarian Anda."
+      },
+      "empty_state": {
+        "title": "Belum ada pesan",
+        "description": "Pesan yang Anda terima akan muncul di sini. Kirim pesan untuk memulai."
       },
       "buttons": {
         "refresh_aria": "Muat ulang kotak masuk",
@@ -284,12 +531,21 @@
         "delete_all_aria": "Hapus semua pesan",
         "new_message": "Pesan Baru",
         "prev": "Sebelum",
-        "next": "Selanjutnya"
+        "next": "Selanjutnya",
+        "mark_all_read": "Tandai semua dibaca",
+        "mark_all_read_aria": "Tandai semua pesan sebagai dibaca",
+        "first_page": "Ke halaman pertama",
+        "prev_page": "Ke halaman sebelumnya",
+        "next_page": "Ke halaman berikutnya",
+        "last_page": "Ke halaman terakhir"
       },
       "pagination": {
         "total_one": "{{count}} pesan",
         "total_other": "{{count}} pesan",
-        "page_info": "{{current}} / {{total}}"
+        "page_info": "{{current}} / {{total}}",
+        "rows_per_page": "Baris per halaman",
+        "page_label": "Halaman {{current}} dari {{total}}",
+        "selected_info": "{{selected}} dari {{total}} dipilih"
       },
       "error": {
         "title": "Gagal memuat pesan",
@@ -324,7 +580,24 @@
         "delete_all_error": "Gagal menghapus pesan",
         "delete_selected_success_one": "{{count}} pesan terhapus",
         "delete_selected_success_other": "{{count}} pesan terhapus",
-        "delete_selected_error": "Gagal menghapus pesan yang dipilih"
+        "delete_selected_error": "Gagal menghapus pesan yang dipilih",
+        "mark_all_read_success": "Semua pesan ditandai sebagai dibaca"
+      },
+      "tabs": {
+        "all": "Semua",
+        "unread": "Belum dibaca",
+        "read": "Dibaca"
+      },
+      "unread_aria": "Pesan belum dibaca",
+      "search": {
+        "placeholder": "Cari pesan…",
+        "aria": "Cari pesan"
+      },
+      "sort": {
+        "label": "Urutkan",
+        "newest": "Terbaru dulu",
+        "oldest": "Terlama dulu",
+        "aria": "Urutan"
       }
     },
     "compose": {
@@ -390,26 +663,37 @@
         "sa_nr5g": {
           "title": "Penguncian Band SA",
           "description": "Pilih band 5G SA yang ingin dikunci (5G standalone)."
+        },
+        "nrdc_nr5g": {
+          "title": "Band NR-DC",
+          "description": "Band NR-DC dikelola oleh modem dan tidak dapat dikunci secara manual. Ini menampilkan band yang sedang digunakan."
         }
       },
       "card_badges": {
         "scenario_controlled": "Dikontrol oleh Skenario",
         "all_unlocked": "Semua Tidak Dikunci",
-        "bands_locked": "{{locked}} / {{total}} Bands"
+        "bands_locked": "{{locked}} / {{total}} Bands",
+        "view_only": "Hanya lihat"
       },
       "card_empty": "Tidak ada band yang didukung dilaporkan oleh modem untuk kategori ini.",
+      "legend": {
+        "used": "Digunakan oleh jaringan atau SIM",
+        "unused": "Didukung modem"
+      },
       "card_buttons": {
         "lock_selected": "Kunci band terpilih",
         "select_all": "Pilih semua",
         "deselect_all": "Batalkan Pilih Semua",
         "unlock_all_aria": "Buka kunci semua band",
-        "unlock_all_title": "Buka kunci semua band (reset)"
+        "unlock_all_title": "Buka kunci semua band (reset)",
+        "swap_view": "Beralih ke band {{target}}"
       },
       "card_live_region": "Menerapkan {{category_label}} kunci band…",
       "card_category_label": {
         "lte": "LTE",
         "nsa_nr5g": "NSA",
-        "sa_nr5g": "SA"
+        "sa_nr5g": "SA",
+        "nrdc_nr5g": "NR-DC"
       },
       "toast": {
         "select_one_band": "Pilih setidaknya satu band untuk dikunci",
@@ -478,6 +762,8 @@
         "title": "Penguncian Tower LTE",
         "description": "Kunci ke tower seluler LTE tertentu dengan memasukkan kanal dan ID sel.",
         "enabled_label": "Penguncian Tower LTE Aktif",
+        "enabled_tooltip": "Paksa modem untuk hanya terhubung ke sel LTE tertentu, yang diidentifikasi oleh EARFCN dan PCI. Berguna untuk menambatkan ke tower yang diketahui bagus saat modem terus berpindah ke sel yang lebih lemah.",
+        "enabled_info_aria": "Info Penguncian Tower LTE",
         "channel_label": "Channel (EARFCN)",
         "channel_label_n": "Channel (EARFCN) {{n}}",
         "channel_placeholder": "Masukkan EARFCN",
@@ -486,6 +772,16 @@
         "pci_label_n": "ID Sel (PCI) {{n}}",
         "pci_placeholder": "Masukkan PCI",
         "pci_placeholder_n": "Masukkan PCI {{n}}",
+        "simple_mode": {
+          "toggle_label": "Mode Sederhana",
+          "switch_aria": "Mode Sederhana LTE",
+          "info_aria": "Info Mode Sederhana LTE",
+          "info_tooltip": "Pilih dari carrier yang sedang aktif di modem Anda",
+          "empty_tooltip": "Tidak ada carrier LTE aktif yang terdeteksi — hubungkan terlebih dahulu, atau gunakan mode Kustom",
+          "select_placeholder": "Pilih carrier yang aktif",
+          "custom_value_label": "Kustom: {{earfcn}} / PCI {{pci}}",
+          "slot_used_suffix": "(digunakan di slot {{n}})"
+        },
         "lock_dialog": {
           "title": "Kunci ke Tower LTE?",
           "description_single": "Ini akan mengunci modem Anda ke EARFCN {{earfcn}}, PCI {{pci}}. Modem hanya akan terhubung ke tower ini dan mungkin akan terputus sebentar saat proses perpindahan.",
@@ -517,6 +813,8 @@
         "description_suffix_nsa_mode": " Tidak kompatibel dengan mode NR5G-NSA.",
         "description_suffix_lte_only": " Tidak ada koneksi NR tersedia.",
         "enabled_label": "Penguncian Tower NR Aktif",
+        "enabled_tooltip": "Paksa modem untuk hanya terhubung ke sel 5G NR tertentu, yang diidentifikasi oleh ARFCN, PCI, Band, dan SCS. Hanya tersedia dalam mode NR-SA.",
+        "enabled_info_aria": "Info Penguncian Tower NR",
         "arfcn_label": "channel (ARFCN)",
         "arfcn_placeholder": "Masukkan ARFCN",
         "pci_label": "ID Sel (PCI)",
@@ -525,6 +823,17 @@
         "band_placeholder": "Masukkan Band NR",
         "scs_label": "Subcarrier Spacing",
         "scs_placeholder": "SCS",
+        "simple_mode": {
+          "toggle_label": "Mode Sederhana",
+          "switch_aria": "Mode Sederhana NR",
+          "info_aria": "Info Mode Sederhana NR",
+          "info_tooltip": "Pilih dari carrier yang sedang aktif di modem Anda",
+          "empty_tooltip": "Tidak ada carrier 5G NR aktif yang terdeteksi — hubungkan terlebih dahulu, atau gunakan mode Kustom",
+          "select_placeholder": "Pilih carrier yang aktif",
+          "custom_value_label": "Kustom: {{arfcn}} / PCI {{pci}}",
+          "scs_band_default_warning": "Ini adalah SCS umum untuk N{{band}}. Operator Anda mungkin menggunakan nilai yang berbeda — verifikasi sebelum mengunci.",
+          "scs_warning_aria": "Peringatan subcarrier spacing"
+        },
         "lock_dialog": {
           "title": "Kunci ke Tower NR-SA?",
           "description": "Ini akan mengunci modem Anda ke NR ARFCN {{arfcn}}, PCI {{pci}} (Band {{band}}). Modem hanya akan terhubung ke tower ini dan mungkin akan terputus sebentar saat proses perpindahan.",
@@ -699,6 +1008,7 @@
       "scanning_hint": "Biasanya memakan waktu 2-3 menit. Operasi modem lainnya dijeda selama pemindaian.",
       "scanning_nav_warning": "Jangan tutup tab atau muat ulang halaman.",
       "scanning_elapsed_aria": "Waktu pemindaian berlalu: {{time}}",
+      "scanning_loading_aria": "Pemindaian sedang berlangsung",
       "error_fallback": "Pemindaian gagal",
       "error_description": "Modem mungkin sibuk atau tidak dapat dijangkau. Periksa koneksi Anda dan coba lagi.",
       "retry_scan": "Coba Lagi Pemindaian"
@@ -1005,46 +1315,118 @@
     "apn": {
       "page": {
         "title": "Manajemen APN",
-        "description": "Konfigurasi APN dan profil firmware operator.",
-        "error_load": "Gagal memuat pengaturan APN. Nilai yang ditampilkan mungkin sudah usang."
+        "description": "Kelola profil koneksi APN seluler dan konfigurasi operator.",
+        "error_load_title": "Gagal memuat profil WAN",
+        "error_load_description": "Nilai yang ditampilkan mungkin sudah usang."
       },
-      "card": {
-        "title": "Pengaturan APN",
-        "description": "Konfigurasi dan kelola Access Point Name (APN) untuk koneksi seluler Anda."
-      },
-      "fields": {
-        "active_apn": {
-          "label": "APN Aktif *",
-          "placeholder": "Masukkan APN Aktif"
+      "controls_label": "Konfigurasi APN",
+      "managed_by_profile_fallback": "Profil SIM Kustom aktif",
+      "list": {
+        "card": {
+          "title": "Profil APN",
+          "description": "Lima slot profil data. Aktifkan salah satu untuk menjadikannya APN Internet aktif — hanya satu yang bisa aktif pada satu waktu."
         },
-        "carrier_preset": {
-          "label": "Preset Operator",
-          "placeholder": "Pilih Preset Operator",
-          "option_none": "Tidak Ada"
+        "empty": {
+          "title": "Tidak ada slot profil",
+          "subtitle": "Slot profil tidak dapat dimuat."
         },
-        "connection_profile": {
-          "label": "Profil Koneksi",
-          "placeholder": "Pilih Profil Koneksi",
-          "option_template": "Profil {{cid}} — {{apn}}",
-          "option_empty_apn": "(kosong)",
-          "option_active_suffix": " (Aktif)"
+        "unnamed": "Tanpa Nama",
+        "no_apn": "APN belum diatur",
+        "slot": "Slot {{id}}",
+        "apn_on_cid": "{{apn}} · CID {{cid}}",
+        "status": {
+          "active": "Aktif",
+          "not_live": "Tidak aktif",
+          "idle": "Siaga",
+          "empty": "Kosong",
+          "overridden": "Ditimpa Profil"
         },
-        "ip_protocol": {
-          "label": "Protokol IP",
-          "placeholder": "Pilih Protokol IP",
-          "options": {
-            "ipv4v6": "IPv4 + IPv6 (Default)",
-            "ipv4": "Hanya IPv4",
-            "ipv6": "Hanya IPv6"
-          }
+        "live": {
+          "mismatch_title": "APN tersimpan tidak aktif",
+          "mismatch": "Jaringan menggunakan: {{apn}}",
+          "mismatch_default": "Jaringan menggunakan default operator"
+        },
+        "carrier_default": {
+          "title": "Tidak ada profil aktif",
+          "subtitle": "Operator Anda memilih APN secara otomatis."
+        },
+        "aria": {
+          "activate_switch": "Aktifkan {{name}}",
+          "active_switch": "{{name}} adalah profil aktif",
+          "deactivate_switch": "Nonaktifkan {{name}} dan biarkan operator memilih APN",
+          "edit_button": "Edit {{name}}"
+        },
+        "toast": {
+          "activating": "Mengaktifkan {{name}}…",
+          "activated": "{{name}} kini menjadi APN aktif Anda",
+          "activate_error": "Gagal mengaktifkan {{name}}",
+          "deactivating": "Menonaktifkan profil…",
+          "deactivated": "Profil dinonaktifkan — operator Anda kini memilih APN",
+          "deactivate_error": "Gagal menonaktifkan profil"
+        },
+        "deactivate": {
+          "title": "Nonaktifkan profil APN?",
+          "description": "Operator Anda akan memilih APN secara otomatis. Koneksi seluler akan terputus sebentar saat modem menyambung ulang.",
+          "confirm": "Nonaktifkan",
+          "cancel": "Batal"
         }
       },
-      "managed_by_profile": "Pengaturan APN dikelola oleh <strong>{{profile_name}}</strong>.",
-      "managed_by_profile_fallback": "Profil SIM Kustom aktif",
-      "reset_aria": "Atur ulang ke nilai tersimpan",
-      "toast": {
-        "success": "Pengaturan APN berhasil diterapkan",
-        "error": "Gagal menerapkan pengaturan APN"
+      "edit": {
+        "title": "Edit Slot {{id}}",
+        "description_default": "Konfigurasi profil data ini. Menyimpan akan menyimpannya; aktifkan dari daftar untuk menggunakannya.",
+        "fields": {
+          "name": {
+            "label": "Nama",
+            "placeholder": "Profil Data Saya"
+          },
+          "apn": {
+            "label": "APN *",
+            "placeholder": "fast.t-mobile.com",
+            "error_required": "APN wajib diisi"
+          },
+          "pdp_type": {
+            "label": "Tipe PDP",
+            "placeholder": "Pilih tipe PDP",
+            "aria": "Tipe PDP",
+            "options": {
+              "ipv4": "IPv4",
+              "ipv6": "IPv6",
+              "ipv4v6": "IPv4v6"
+            }
+          },
+          "modem_profile": {
+            "label": "CID",
+            "placeholder": "Pilih CID",
+            "aria": "Konteks PDP (CID)",
+            "option_template": "CID {{cid}}",
+            "for_internet": "Internet",
+            "ims_badge": "IMS",
+            "sos_badge": "SOS"
+          }
+        },
+        "cid_confirm": {
+          "title": "Gunakan konteks khusus?",
+          "description_ims": "CID {{cid}} dicadangkan oleh operator Anda untuk IMS (VoLTE / panggilan Wi-Fi). Menulis APN data di sini dapat mengganggu panggilan suara. Tetap lanjutkan?",
+          "description_sos": "CID {{cid}} dicadangkan untuk panggilan darurat (SOS). Menulis APN data di sini dapat mengganggu panggilan darurat. Tetap lanjutkan?",
+          "confirm": "Tetap gunakan",
+          "cancel": "Batal"
+        },
+        "clear": {
+          "button": "Kosongkan slot",
+          "disabled_active": "Beralih ke profil lain sebelum mengosongkan yang aktif",
+          "title": "Kosongkan slot ini?",
+          "description": "Ini akan mengosongkan nama dan APN profil. Tindakan ini tidak dapat dibatalkan.",
+          "confirm": "Kosongkan",
+          "cancel": "Batal",
+          "toast_success": "Slot dikosongkan",
+          "toast_error": "Gagal mengosongkan slot"
+        },
+        "save_button": "Simpan Profil",
+        "cancel": "Batal",
+        "toast": {
+          "saved": "{{name}} disimpan",
+          "save_error": "Gagal menyimpan profil"
+        }
       },
       "mbn": {
         "card": {

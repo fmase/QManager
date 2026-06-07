@@ -254,12 +254,17 @@ apply_network_mode_apn() {
 
 # =============================================================================
 # LTE/5G Bands — AT+QNWPREFCFG lte_band, nsa_nr5g_band, nr5g_band
+# NR-DC (nrdc_nr5g_band) is intentionally excluded: the modem manages it and
+# coerces manual writes, so it is neither backed up nor restored.
 # =============================================================================
 collect_bands() {
     local resp
     resp=$(qcmd 'AT+QNWPREFCFG="ue_capability_band"') || return 1
     # Each line: +QNWPREFCFG: "lte_band",1:3:7:28   (colon-delimited numeric list)
-    local lte nsa sa
+    # The "nr5g_band" match excludes nsa_/nrdc_ lines (substring-match hazard).
+    local lte
+    local nsa
+    local sa
     lte=$(echo "$resp" | awk -F',' '/"lte_band"/         {print $2; exit}')
     nsa=$(echo "$resp" | awk -F',' '/"nsa_nr5g_band"/    {print $2; exit}')
     sa=$(echo  "$resp" | awk -F',' '/"nr5g_band"/ && !/nsa_/ && !/nrdc_/ {print $2; exit}')
@@ -273,12 +278,16 @@ collect_bands() {
 }
 
 apply_bands() {
-    local input lte nsa sa failover
+    local input
+    local lte
+    local nsa
+    local sa
+    local failover
     input=$(cat)
     lte=$(echo "$input"       | jq -r '.lte_bands // empty')
     nsa=$(echo "$input"       | jq -r '.nsa_bands // empty')
     sa=$(echo "$input"        | jq -r '.sa_bands  // empty')
-    failover=$(echo "$input"  | jq -r '.failover_enabled // false')
+    failover=$(echo "$input"  | jq -r 'if .failover_enabled == null then "false" else (.failover_enabled | tostring) end')
 
     # Kill any running band failover watcher before re-locking
     if [ -f /tmp/qmanager_band_failover.pid ]; then
