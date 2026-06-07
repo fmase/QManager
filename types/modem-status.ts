@@ -246,6 +246,16 @@ export interface DeviceStatus {
   supported_sa_nr5g_bands: string;
   /** Hardware-supported NR-DC bands, colon-delimited (boot-only, from AT+QNWPREFCFG="policy_band") */
   supported_nrdc_nr5g_bands: string;
+  /**
+   * Full LTE band capability from the static spec-sheet file
+   * (/etc/qmanager/supported_bands_hw.env). Superset of supported_lte_bands.
+   * Drives the checkbox universe; supported_lte_bands marks the network/SIM-used subset.
+   */
+  hw_lte_bands: string;
+  /** Full NSA NR5G band capability (static spec-sheet file). Superset of supported_nsa_nr5g_bands. */
+  hw_nsa_nr5g_bands: string;
+  /** Full SA NR5G band capability (static spec-sheet file). Superset of supported_sa_nr5g_bands. */
+  hw_sa_nr5g_bands: string;
   /** QManager version string */
   qmanager_version: string;
 }

@@ -676,6 +676,10 @@
         "view_only": "仅查看"
       },
       "card_empty": "调制解调器未报告此类别的支持频段。",
+      "legend": {
+        "used": "网络或 SIM 卡使用",
+        "unused": "调制解调器支持"
+      },
       "card_buttons": {
         "lock_selected": "锁定所选频段",
         "select_all": "全选",

@@ -993,12 +993,16 @@ install_backend() {
     mkdir -p "$CONF_DIR/profiles" "$SESSION_DIR" "$UPDATES_DIR" /var/lock
 
     # --- Default config files (deploy ONLY if missing, never overwrite) ---
+    # Exception: supported_bands_hw.env is a manually-maintained spec-sheet file
+    # that MUST refresh on every upgrade, so it is force-copied below (outside the
+    # deploy-if-missing loop) rather than treated as user-owned config.
     if [ -d "$SRC_SCRIPTS/etc/qmanager" ]; then
         local deployed=0
         for f in "$SRC_SCRIPTS/etc/qmanager"/*; do
             [ -f "$f" ] || continue
             local fname
             fname="$(basename "$f")"
+            [ "$fname" = "supported_bands_hw.env" ] && continue
             if [ ! -f "$CONF_DIR/$fname" ]; then
                 cp "$f" "$CONF_DIR/$fname"
                 deployed=$(( deployed + 1 ))
@@ -1006,6 +1010,13 @@ install_backend() {
             fi
         done
         [ "$deployed" = "0" ] && info "  All default configs already present"
+
+        # Force-copy the hardware band-capability file every install/upgrade so
+        # spec/firmware edits in the repo always reach the device.
+        if [ -f "$SRC_SCRIPTS/etc/qmanager/supported_bands_hw.env" ]; then
+            cp "$SRC_SCRIPTS/etc/qmanager/supported_bands_hw.env" "$CONF_DIR/supported_bands_hw.env"
+            info "  Force-deployed hardware band capability: supported_bands_hw.env"
+        fi
     fi
 
     # UCI config stub

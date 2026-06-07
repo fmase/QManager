@@ -676,6 +676,10 @@
         "view_only": "Hanya lihat"
       },
       "card_empty": "Tidak ada band yang didukung dilaporkan oleh modem untuk kategori ini.",
+      "legend": {
+        "used": "Digunakan oleh jaringan atau SIM",
+        "unused": "Didukung modem"
+      },
       "card_buttons": {
         "lock_selected": "Kunci band terpilih",
         "select_all": "Pilih semua",

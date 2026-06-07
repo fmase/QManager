@@ -12,21 +12,25 @@ NR-DC bands are **view-only**: the modem manages NR-DC band selection internally
 | Apply lock | `POST /cgi-bin/quecmanager/bands/lock.sh` |
 | Failover state | `GET /cgi-bin/quecmanager/bands/failover_status.sh` |
 | Failover toggle | `POST /cgi-bin/quecmanager/bands/failover_toggle.sh` |
-| Supported bands (poller) | `data.device.supported_{lte,nsa_nr5g,sa_nr5g,nrdc_nr5g}_bands` |
-| AT command (read current) | `AT+QNWPREFCFG="ue_capability_band"` |
+| HW universe (poller) | `data.device.hw_{lte,nsa_nr5g,sa_nr5g}_bands` (static hardware spec) |
+| Policy marker (poller) | `data.device.supported_{lte,nsa_nr5g,sa_nr5g,nrdc_nr5g}_bands` (policy_band) |
+| AT command (read current) | `AT+QNWPREFCFG="lte_band";+QNWPREFCFG="nsa_nr5g_band";+QNWPREFCFG="nr5g_band";+QNWPREFCFG="nrdc_nr5g_band"` (single appended command) |
 | AT command (read supported) | `AT+QNWPREFCFG="policy_band"` |
 | AT command (unlock / restore) | `AT+QNWPREFCFG="restore_band"` |
+| Static HW spec file | `/etc/qmanager/supported_bands_hw.env` (force-copied on every install/upgrade) |
 | Env cache | `/tmp/qmanager_supported_bands.env` |
+| SIM-swap policy refresh flag | `/tmp/qmanager_refresh_policy_band` |
 | Failover PID | `/tmp/qmanager_band_failover.pid` |
 | Failover activated flag | `/tmp/qmanager_band_failover` |
 | Failover enabled flag | `/etc/qmanager/band_failover_enabled` |
 | Reboot on lock? | No |
-| Types | `types/band-locking.ts` |
+| Types | `types/band-locking.ts`, `types/modem-status.ts` |
 | Hook | `hooks/use-band-locking.ts` |
-| Component | `components/cellular/band-locking/band-locking.tsx` |
+| Component | `components/cellular/band-locking/band-locking.tsx` + `band-cards.tsx` |
 | Backend scripts | `scripts/www/cgi-bin/quecmanager/bands/` |
 | Parse lib | `scripts/usr/lib/qmanager/parse_at.sh` — `parse_policy_band` |
 | Failover daemon | `scripts/usr/bin/qmanager_band_failover` |
+| HW spec repo source | `scripts/etc/qmanager/supported_bands_hw.env` |
 
 ---
 
@@ -49,7 +53,7 @@ Note the asymmetry on the SA row: the frontend key is `sa_nr5g` but the AT param
 
 ## Critical Invariant: The SA grep Substring-Match Hazard
 
-`AT+QNWPREFCFG="policy_band"` and `AT+QNWPREFCFG="ue_capability_band"` both return lines containing the string `nr5g_band`. Naively grepping for `"nr5g_band"` would match three lines:
+`AT+QNWPREFCFG="policy_band"` and the per-category registers queried by `current.sh` all return lines containing the string `nr5g_band`. Naively grepping for `"nr5g_band"` would match three lines:
 
 ```
 +QNWPREFCFG: "nsa_nr5g_band",41:78
@@ -69,35 +73,93 @@ Removing either `grep -v` would silently assign the NSA or NR-DC band list to SA
 
 ---
 
-## Supported vs. Locked Bands: Two Different AT Queries
+## Critical Invariant: grep Anchoring in Multi-Sub-Command `qcmd` Output
 
-| Purpose | AT command | When queried | Where stored |
-|---|---|---|---|
-| Hardware-supported (all bands the modem can physically use) | `AT+QNWPREFCFG="policy_band"` | Boot-only | `/tmp/qmanager_supported_bands.env` (4 lines), then emitted in `status.json` as `device.supported_*_bands` |
-| Currently locked (what the modem is actually restricted to) | `AT+QNWPREFCFG="ue_capability_band"` | On demand (`current.sh`) | Not cached — always live |
+When `qcmd` executes a semicolon-appended multi-statement AT command (e.g. `AT+QNWPREFCFG="lte_band";+QNWPREFCFG="nsa_nr5g_band";...`), its output **line 1 is the echoed AT command itself** — a single line containing every key string in the command. Response lines that follow start with `+QNWPREFCFG:`.
 
-**Why:** `policy_band` reflects modem radio hardware capabilities and never changes at runtime; it is safe to cache across the poller's lifetime. `ue_capability_band` reflects the current locked configuration; it must be read live so the UI shows what's actually in effect.
-
-The env cache file has exactly four shell variable assignments, in this order:
+A bare `grep '"lte_band"'` matches the echo line first and extracts garbage. The fix is to anchor the grep to the response-line prefix:
 
 ```sh
-boot_supported_lte_bands="..."
-boot_supported_nsa_nr5g_bands="..."
-boot_supported_sa_nr5g_bands="..."
-boot_supported_nrdc_nr5g_bands="..."
+# WRONG — matches the echo line (contains all key strings)
+line=$(printf '%s\n' "$result" | grep '"lte_band"' | head -1)
+
+# CORRECT — +QNWPREFCFG: appears only on response lines; the echo starts with AT+
+line=$(printf '%s\n' "$result" | grep '+QNWPREFCFG:.*"lte_band"' | head -1)
 ```
 
-**Stale-cache tolerance:** A pre-upgrade cache from before NR-DC support was added will lack the fourth line. That line feeds only the NR-DC view-only display — nothing writes NR-DC — so its absence just means the NR-DC card shows no bands until the poller rewrites the full four-line cache on the next cold boot (once `/tmp` is cleared). Stale caches are self-healing.
+**Why:** The `AT+` echo prefix and the `+QNWPREFCFG:` response prefix are distinct strings — anchoring to the latter is a reliable discriminator even when the command string itself contains all the keys you are searching for. This pattern bit `current.sh` and was fixed; all four band-register greps in that file now use the `+QNWPREFCFG:.*"<key>"` anchor form.
+
+> ⚠️ WARNING: Any future CGI that issues a multi-sub-command `qcmd` call MUST anchor its response-line greps to the `+<PREFIX>:` response prefix, not to the bare key string. A bare grep will silently match the echo line and return the entire AT command string as the "value."
+
+---
+
+## Universe vs. Marker vs. Locked: Three Band Layers
+
+The Band Locking page works with three distinct band sets. Confusing any two of them causes subtle bugs (failover resets to the wrong set, or the UI shows an incorrect checkbox universe).
+
+| Layer | Source | AT command / file | When queried | `status.json` fields | UI role |
+|---|---|---|---|---|---|
+| **HW universe** | `/etc/qmanager/supported_bands_hw.env` (spec sheet) | — (no AT command; static file) | Sourced at poller boot | `device.hw_lte_bands`, `device.hw_nsa_nr5g_bands`, `device.hw_sa_nr5g_bands` | Checkbox universe — all bands the modem hardware can use |
+| **Policy marker** | `AT+QNWPREFCFG="policy_band"` | On boot + SIM swap | `/tmp/qmanager_supported_bands.env` cache → `device.supported_*_bands` | `device.supported_{lte,nsa_nr5g,sa_nr5g,nrdc_nr5g}_bands` | Subset of the HW universe the current SIM/network actually uses — coloring only |
+| **Currently locked** | per-category registers via `current.sh` | On demand (`current.sh`) | Not cached — always live | (not emitted in status.json) | What the modem is restricted to right now |
+
+**Why three layers exist:** `policy_band` was the original universe source but it can narrow when a SIM or firmware limits the advertised set. The static HW spec file ensures the UI always shows the full physical capability — bands the modem can use even if the current SIM doesn't announce them. The policy set then serves as a visual marker only.
+
+**Why `hw_*` does NOT feed failover.** `qmanager_band_failover` resets to the `supported_*` (policy_band) set — the set the modem has confirmed it can register on with the current SIM. Resetting to the full HW universe could include bands the SIM never activates, leaving the modem unable to re-register. `hw_*` is additive/display-only; it never enters the write path.
+
+**Boot fallback.** If `/etc/qmanager/supported_bands_hw.env` is missing (pre-upgrade device that hasn't re-run install), the poller falls back to the `boot_supported_*` (policy_band) values for all three HW fields. The page degrades to the old single-layer behavior: every band checkbox uses the policy set as its universe, and no yellow bands appear. The fallback is self-healing — it resolves on the next `install.sh` run.
+
+**NR-DC has no HW field.** NR-DC remains view-only with no hardware-universe extension; `device.supported_nrdc_nr5g_bands` is still sourced from `policy_band` only.
+
+### UI Two-Tone Coloring
+
+`band-locking.tsx` derives two props per lockable card:
+
+- `supportedBands` — set to `hwBands` (from `device.hw_*`, falling back to `device.supported_*` when absent). This is the checkbox universe.
+- `policyBands` — set to the `device.supported_*` value for that category. Used **only** for coloring.
+
+Inside `band-cards.tsx`, a band checkbox renders in **primary** (Signal Indigo) when it is in `policyBands` ("network/SIM uses this band") and in **warning/yellow** when it is in `supportedBands` but not `policyBands` ("modem supports it, network/SIM doesn't use it"). A two-swatch legend (`cell_locking.band_locking.legend.used` / `cell_locking.band_locking.legend.unused`) is shown only when a card has at least one yellow band.
+
+**Critical:** `onUnlockAll`, the "all unlocked" detection, and the count badge in the card header (`X / Y locked`) all measure against the full `supportedBands` universe — NOT the `policyBands` set. "Unlock all" (the reset button) locks the entire hardware-spec universe for that category, not just the policy-confirmed bands.
+
+> ⚠️ WARNING: The modem may reject locking bands that lie outside its current policy set. A Reset that includes yellow (modem-supported-but-policy-unused) bands can therefore fail at the modem. This is an accepted tradeoff — the user can see every band they chose to lock rather than having policy silently shrink the display.
+
+**NR-DC view-only card:** NR-DC has no dedicated HW band list. `band-locking.tsx` borrows `hwBands.sa_nr5g` as the NR-DC checkbox universe (NR-DC bands are NR bands ⊆ the SA set), falling back to `policyBands.nrdc_nr5g` on pre-upgrade devices. Because the NR-DC card is read-only, its `policyBands` prop is set to its own universe (`supportedBands.nrdc_nr5g`), so every band renders in primary and no yellow appears — the legend is suppressed entirely for this card.
+
+### Static HW Spec File
+
+`/etc/qmanager/supported_bands_hw.env` is a manually-maintained shell env file holding the RM551E-GL band capability for LTE, NSA NR5G, and SA NR5G. Its repo source is `scripts/etc/qmanager/supported_bands_hw.env`.
+
+`install.sh` **force-copies** this file on every install and upgrade — it is carved out of the deploy-if-missing loop that governs all other `/etc/qmanager/*` files. This ensures that spec or firmware corrections in the repo reach existing installs without requiring a factory reset or manual file placement. The OTA worker `qmanager_update` re-runs `install.sh`, so no separate update-script edit is needed.
+
+`uninstall.sh` removes the file along with `/tmp/qmanager_supported_bands.env` and `/tmp/qmanager_refresh_policy_band`.
+
+---
+
+## Policy-Band Re-Read on SIM Swap
+
+`policy_band` was previously queried only at poller boot and cached for the poller's lifetime. A SIM swap can narrow or widen the policy set (different SIMs may expose different band subsets). To keep the yellow/primary UI split accurate after a swap, `cellular/settings.sh` drops the flag `/tmp/qmanager_refresh_policy_band` after a successful SIM swap.
+
+The poller's `poll_cycle` checks for this flag after the `LONG_FLAG` early-return block. When present, it consumes the flag (`rm -f`) and calls the new `refresh_policy_band()` helper, which re-queries `AT+QNWPREFCFG="policy_band"`, re-parses, and rewrites `/tmp/qmanager_supported_bands.env` and the relevant `device.supported_*` fields in the next `status.json` write.
+
+**The HW universe is NOT re-read on SIM swap.** `/etc/qmanager/supported_bands_hw.env` is hardware-spec, not SIM-dependent; sourcing it again would be redundant and waste an AT round-trip.
+
+**Why the re-read is harmless even when redundant.** `policy_band` reflects modem hardware capabilities and is hardware-fixed in most deployments. The re-read typically returns the same set. The invariant noted in the previous version of this doc — "never changes at runtime" — holds for normal use, but the re-read is cheap insurance for edge cases (SIM firmware/carrier provisioning that narrows the advertised set) and ensures the yellow/primary split is always fresh after a swap.
+
+**Flag placement in `poll_cycle`.** The flag is consumed after the `LONG_FLAG` early-return on purpose: a long-running cell scan short-circuits `poll_cycle` before reaching the flag check. The flag survives until the next normal cycle, guaranteeing it is eventually processed without interrupting a scan.
 
 ---
 
 ## Env Cache and `status.json` Emission
 
-After `parse_policy_band` runs during the poller's boot sequence, the poller writes the cache and later emits the four values into `status.json` under `device.*`:
+After `parse_policy_band` runs during the poller's boot sequence (or during a SIM-swap refresh), the poller writes the cache and emits values into `status.json` under `device.*`. The full set of band-related fields now emitted:
 
 ```json
 {
   "device": {
+    "hw_lte_bands": "1:2:3:4:5:7:8:12:...",
+    "hw_nsa_nr5g_bands": "41:66:71:77:78:...",
+    "hw_sa_nr5g_bands": "41:66:71:77:78:...",
     "supported_lte_bands": "1:2:3:4:5:7:8:12:...",
     "supported_nsa_nr5g_bands": "41:66:71:77:78:...",
     "supported_sa_nr5g_bands": "41:66:71:77:78:...",
@@ -106,7 +168,20 @@ After `parse_policy_band` runs during the poller's boot sequence, the poller wri
 }
 ```
 
-The frontend reads these via `useModemStatus()` and passes them as `supportedBands` props to the band cards.
+`hw_*` fields are absent on a pre-upgrade device until `install.sh` has placed `supported_bands_hw.env`. The frontend falls back to `supported_*` in that case (see "Boot fallback" above).
+
+The env cache file retains exactly four shell variable assignments for the policy set (unchanged):
+
+```sh
+boot_supported_lte_bands="..."
+boot_supported_nsa_nr5g_bands="..."
+boot_supported_sa_nr5g_bands="..."
+boot_supported_nrdc_nr5g_bands="..."
+```
+
+**Stale-cache tolerance (pre-NR-DC):** A cache written before NR-DC support was added will lack the fourth line. That line feeds only the NR-DC view-only display; its absence means the NR-DC card shows no bands until the next cold boot clears `/tmp` and the poller rewrites the full cache. Self-healing.
+
+**Cache rewrite on SIM swap:** Since `refresh_policy_band()` rewrites the same cache file, the env cache now reflects the current SIM's policy set rather than only the boot-time set. The `hw_*` binds are emitted from the in-memory variables sourced at boot; they are not re-read from disk on swap.
 
 ---
 
@@ -206,7 +281,7 @@ The UI reads `failover_status.sh` to surface the `activated` flag as a banner.
 
 ## i18n
 
-NR-DC added keys in all four locales (`public/locales/{en,id,it,zh-CN}/cellular.json`):
+All four locales (`public/locales/{en,id,it,zh-CN}/cellular.json`) carry these band-locking keys:
 
 | Key path | Purpose |
 |---|---|
@@ -215,6 +290,10 @@ NR-DC added keys in all four locales (`public/locales/{en,id,it,zh-CN}/cellular.
 | `cell_locking.band_locking.card_category_label.nrdc_nr5g` | Swap button label (shows target mode) |
 | `cell_locking.band_locking.card_buttons.swap_view` | Swap button tooltip template (`"Switch to {{target}}"`) |
 | `cell_locking.band_locking.card_badges.view_only` | "View only" badge shown on the read-only NR-DC card |
+| `cell_locking.band_locking.legend.used` | Legend swatch label — bands the network/SIM uses (primary color) |
+| `cell_locking.band_locking.legend.unused` | Legend swatch label — "Supported by modem" (warning/yellow). Previously included "· not used by network"; that clause was removed in all four locales to keep the label concise. |
+
+The legend row renders only when a card has at least one yellow band (i.e., when `hw_*` is populated and differs from the policy set). On a pre-upgrade device where `hw_*` is absent, the legend is hidden and all bands render in the primary color as before.
 
 ---
 

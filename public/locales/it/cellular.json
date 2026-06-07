@@ -676,6 +676,10 @@
         "view_only": "Sola lettura"
       },
       "card_empty": "Nessuna banda supportata segnalata dal modem per questa categoria.",
+      "legend": {
+        "used": "Usata dalla rete o dalla SIM",
+        "unused": "Supportata dal modem"
+      },
       "card_buttons": {
         "lock_selected": "Blocca le bande selezionate",
         "select_all": "Seleziona tutto",

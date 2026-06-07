@@ -85,12 +85,40 @@ const BandLockingComponent = () => {
     { category: "nsa_nr5g" as BandCategory, title: t("cell_locking.band_locking.cards.nsa_nr5g.title"), description: t("cell_locking.band_locking.cards.nsa_nr5g.description") },
   ], [t]);
 
-  // --- Derive supported bands from poller boot data -------------------------
-  const supportedBands: Record<BandCategory, number[]> = {
+  // --- Two band layers ------------------------------------------------------
+  // policyBands: bands the network/SIM actually uses (AT+QNWPREFCFG="policy_band",
+  //   re-read on boot + SIM swap). These render in primary; bands outside this set
+  //   render yellow. Coloring only — "Unlock all" locks the full hardware universe.
+  // hwBands: the full hardware spec-sheet capability (static file, device.hw_*_bands).
+  //   This is the checkbox universe. Bands present here but NOT in policyBands are
+  //   modem-supported-but-network-unused → rendered in warning/yellow.
+  // hwBands falls back to policyBands when the static field is absent (pre-upgrade
+  //   device) so the page degrades to the old behavior. NR-DC is view-only with no
+  //   dedicated hw list, so it borrows the SA hardware list as its universe (NR-DC
+  //   bands are NR bands ⊆ the SA set) and renders all-primary (no yellow — see the
+  //   per-card policyBands override below).
+  const policyBands: Record<BandCategory, number[]> = {
     lte: parseBandString(data?.device.supported_lte_bands),
     nsa_nr5g: parseBandString(data?.device.supported_nsa_nr5g_bands),
     sa_nr5g: parseBandString(data?.device.supported_sa_nr5g_bands),
     nrdc_nr5g: parseBandString(data?.device.supported_nrdc_nr5g_bands),
+  };
+
+  const hwBands: Record<BandCategory, number[]> = {
+    lte: parseBandString(data?.device.hw_lte_bands),
+    nsa_nr5g: parseBandString(data?.device.hw_nsa_nr5g_bands),
+    sa_nr5g: parseBandString(data?.device.hw_sa_nr5g_bands),
+    nrdc_nr5g: [],
+  };
+
+  // The checkbox universe per category — hw capability when known, else policy set.
+  const supportedBands: Record<BandCategory, number[]> = {
+    lte: hwBands.lte.length > 0 ? hwBands.lte : policyBands.lte,
+    nsa_nr5g: hwBands.nsa_nr5g.length > 0 ? hwBands.nsa_nr5g : policyBands.nsa_nr5g,
+    sa_nr5g: hwBands.sa_nr5g.length > 0 ? hwBands.sa_nr5g : policyBands.sa_nr5g,
+    // NR-DC borrows the SA hardware universe so the read-only card shows the
+    // modem's full NR band support; falls back to policy nrdc pre-upgrade.
+    nrdc_nr5g: hwBands.sa_nr5g.length > 0 ? hwBands.sa_nr5g : policyBands.nrdc_nr5g,
   };
 
   // --- Derive active bands from carrier_components (QCAINFO) ----------------
@@ -142,6 +170,7 @@ const BandLockingComponent = () => {
             description={description}
             bandCategory={category}
             supportedBands={supportedBands[category]}
+            policyBands={policyBands[category]}
             currentLockedBands={
               currentBands
                 ? parseBandString(getBandsForCategory(currentBands, category))
@@ -167,6 +196,13 @@ const BandLockingComponent = () => {
           )}
           bandCategory={saSlotView}
           supportedBands={supportedBands[saSlotView]}
+          // NR-DC is view-only: pass its full universe as the policy set so every
+          // band renders primary (no yellow), with active bands shown checked.
+          policyBands={
+            saSlotView === "nrdc_nr5g"
+              ? supportedBands.nrdc_nr5g
+              : policyBands.sa_nr5g
+          }
           currentLockedBands={
             currentBands
               ? parseBandString(getBandsForCategory(currentBands, saSlotView))

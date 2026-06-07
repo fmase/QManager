@@ -44,9 +44,20 @@ interface BandCardsProps {
   description: string;
   /** Which band category this card manages */
   bandCategory: BandCategory;
-  /** All hardware-supported bands for this category (from policy_band, sorted) */
+  /**
+   * The checkbox universe — full hardware band capability for this category
+   * (from the static spec-sheet file, sorted). Superset of policyBands.
+   */
   supportedBands: number[];
-  /** Currently locked/configured bands (from ue_capability_band, sorted) */
+  /**
+   * Bands the network/SIM actually uses (from policy_band, sorted). A subset of
+   * supportedBands. Bands in supportedBands but NOT here are modem-supported-but-
+   * network-unused and render in warning/yellow. Used ONLY for coloring/legend —
+   * "Unlock all" and the count badge operate on the full supportedBands universe.
+   * Defaults to supportedBands when omitted (e.g. NR-DC view-only — no yellow bands).
+   */
+  policyBands?: number[];
+  /** Currently locked/configured bands (from the per-category band registers, sorted) */
   currentLockedBands: number[];
   /** Lock selected bands — returns success boolean */
   onLock: (bands: number[]) => Promise<boolean>;
@@ -82,6 +93,7 @@ const BandCardsComponent = ({
   description,
   bandCategory,
   supportedBands,
+  policyBands,
   currentLockedBands,
   onLock,
   onUnlockAll,
@@ -112,15 +124,33 @@ const BandCardsComponent = ({
     setCheckedBands(new Set(currentLockedBands));
   }
 
+  // --- Two-layer band model -------------------------------------------------
+  // policy = the network/SIM-used subset, used ONLY to color bands (primary vs
+  // yellow). The universe is `supportedBands` — that's what "Unlock all" locks and
+  // what the count/all-unlocked state measure against. Default policy to the full
+  // universe so cards that don't pass it (NR-DC view-only) render all-primary.
+  const policySet = useMemo(
+    () => new Set(policyBands ?? supportedBands),
+    [policyBands, supportedBands],
+  );
+  // Bands the modem supports but the network/SIM doesn't use — rendered yellow.
+  const hasUnusedBands = useMemo(
+    () => supportedBands.some((b) => !policySet.has(b)),
+    [supportedBands, policySet],
+  );
+
   // --- Derived state --------------------------------------------------------
+  // "All unlocked" = every modem-supported band is locked. "Unlock all" locks the
+  // full hardware universe, so this measures against supportedBands (not policy).
+  const supportedSet = useMemo(() => new Set(supportedBands), [supportedBands]);
+  const supportedCount = supportedBands.length;
   const isAllUnlocked = useMemo(() => {
-    if (supportedBands.length === 0 || currentLockedBands.length === 0)
-      return false;
+    if (supportedCount === 0 || currentLockedBands.length === 0) return false;
     return (
-      currentLockedBands.length === supportedBands.length &&
-      currentLockedBands.every((b) => supportedBands.includes(b))
+      currentLockedBands.length === supportedCount &&
+      currentLockedBands.every((b) => supportedSet.has(b))
     );
-  }, [supportedBands, currentLockedBands]);
+  }, [supportedCount, supportedSet, currentLockedBands]);
 
   // Whether the user's selection differs from what's currently on the modem
   const hasChanges = useMemo(() => {
@@ -276,7 +306,7 @@ const BandCardsComponent = ({
               className="bg-warning/15 text-warning hover:bg-warning/20 border-warning/30"
             >
               <LockIcon className="h-3 w-3" />
-              {t("cell_locking.band_locking.card_badges.bands_locked", { locked: currentLockedBands.length, total: supportedBands.length })}
+              {t("cell_locking.band_locking.card_badges.bands_locked", { locked: currentLockedBands.length, total: supportedCount })}
             </Badge>
           )}
           </div>
@@ -291,7 +321,10 @@ const BandCardsComponent = ({
           animate="visible"
           variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.025 } } }}
         >
-          {supportedBands.map((band) => (
+          {supportedBands.map((band) => {
+            // Modem-supported but network/SIM-unused → warning/yellow accent.
+            const unused = !policySet.has(band);
+            return (
             <motion.div
               key={band}
               className="flex items-center space-x-2"
@@ -303,16 +336,36 @@ const BandCardsComponent = ({
                 checked={readOnly ? currentLockedBands.includes(band) : checkedBands.has(band)}
                 onCheckedChange={readOnly ? undefined : () => handleCheckboxChange(band)}
                 disabled={isDisabled || readOnly}
+                className={
+                  unused
+                    ? "border-warning-on-surface/50 data-[state=checked]:bg-warning data-[state=checked]:border-warning data-[state=checked]:text-warning-foreground dark:data-[state=checked]:bg-warning"
+                    : undefined
+                }
               />
               <Label
                 htmlFor={`${bandCategory}-${band}`}
-                className={disabled || readOnly ? "cursor-default" : "cursor-pointer"}
+                className={`${disabled || readOnly ? "cursor-default" : "cursor-pointer"}${unused ? " text-warning-on-surface" : ""}`}
               >
                 {formatBandName(bandCategory, band)}
               </Label>
             </motion.div>
-          ))}
+            );
+          })}
         </motion.div>
+
+        {/* Legend — only when the card has modem-supported-but-unused (yellow) bands */}
+        {hasUnusedBands && !readOnly && (
+          <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-1.5 text-xs text-muted-foreground">
+            <span className="flex items-center gap-1.5">
+              <span className="size-2.5 shrink-0 rounded-[3px] bg-primary" aria-hidden="true" />
+              {t("cell_locking.band_locking.legend.used")}
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="size-2.5 shrink-0 rounded-[3px] bg-warning" aria-hidden="true" />
+              {t("cell_locking.band_locking.legend.unused")}
+            </span>
+          </div>
+        )}
       </CardContent>
 
       {/* Inline error — persistent until next operation */}

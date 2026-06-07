@@ -39,7 +39,7 @@ export const BAND_PREFIX: Record<BandCategory, string> = {
 
 // --- API Response Types ------------------------------------------------------
 
-/** Currently configured (locked) bands from ue_capability_band */
+/** Currently configured (locked) bands from the per-category band registers */
 export interface CurrentBands {
   lte_bands: string; // colon-delimited: "1:3:41"
   nsa_nr5g_bands: string;

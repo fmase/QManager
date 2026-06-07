@@ -356,6 +356,9 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
     if [ -n "$sim_cfun_restored" ]; then
         sleep 2
         touch /tmp/qmanager_force_tier2
+        # New SIM may expose a different carrier band policy — have the poller
+        # re-read policy_band on its next cycle (pure flag drop, no AT here).
+        touch /tmp/qmanager_refresh_policy_band
     fi
 
     # 5. CFUN change (skip if SIM procedure already restored to user's desired value)
