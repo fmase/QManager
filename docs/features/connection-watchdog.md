@@ -312,13 +312,24 @@ Config changes take effect within one `check_interval` cycle (5–60 s). No full
 
 ## Frontend Files
 
+The page was redesigned (June 2026) from one monolithic settings card into a
+uniform grid of grouped cards (the Custom SIM Profiles shape), split along the
+backend's own dual-trigger model: Status → Recovery Triggers → Recovery Ladder.
+The two triggers (reachability + quality) share one card via tabs. Because the
+backend save is atomic (one `save_settings` POST), all cards share a single
+form-state coordinator and one save action, and the Save / Discard pair lives in
+the Triggers card footer (it commits every pending change on the page, not just
+that card's tab).
+
 | File | Purpose |
 |---|---|
 | `hooks/use-watchdog-settings.ts` | Fetch (30s poll) + save + SIM-dismiss/revert; types `WatchdogSettings`, `WatchdogLiveStatus` |
-| `components/monitoring/watchdog/watchdog-settings-card.tsx` | Settings form: tiers, quality sub-section, validation |
-| `components/monitoring/watchdog/watchdog-status-card.tsx` | Live status readout (state, tier, counters) |
-| `components/monitoring/watchdog/sim-swap-banner.tsx` | SIM swap / SIM failover alert banner |
-| `components/monitoring/watchdog/watchdog.tsx` | Page shell |
+| `components/monitoring/watchdog/watchdog.tsx` | Page coordinator: owns `useWatchdogSettings`, remounts the form on a settings signature, lays out the card grid |
+| `components/monitoring/watchdog/use-watchdog-form.ts` | Single form-state coordinator: all 14 fields, validation (mirrors CGI ranges), dirty check, `submit`, `discard` |
+| `components/monitoring/watchdog/watchdog-overview-card.tsx` | Master toggle (in `CardAction`) + live state hero + pill-tiles + SIM-failover revert; reads `useModemStatus` (5s) |
+| `components/monitoring/watchdog/watchdog-triggers-card.tsx` | Tabbed card: Reachability (always-on) + Connection Quality (opt-in, with live tab dot); owns the shared Save / Discard footer |
+| `components/monitoring/watchdog/watchdog-recovery-ladder.tsx` | Numbered Tier 1→4 escalation stepper; backup-SIM picker nested in Tier 3, reboot cap in Tier 4 |
+| `components/monitoring/watchdog/sim-swap-banner.tsx` | SIM swap / SIM failover toast (rendered globally in `app-layout.tsx`) |
 
 **`WatchdogLiveStatus`** fields `quality_breach_count`, `quality_enabled`, and `last_recovery_reason` are typed as optional (`?`) because older daemon versions will not emit them. Consumers must handle their absence.
 

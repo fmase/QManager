@@ -14,6 +14,8 @@ This release adds LAN address configuration to the Local Network page and polish
 
 - **The watchdog's first recovery step now re-registers the modem on the network** instead of bouncing the software WAN interface. This gives the modem a real chance to recover a stalled network attach and is a more effective first action before escalating to a radio toggle or reboot.
 
+- **The Connection Watchdog page has been redesigned for clarity.** Now that quality monitoring is part of the watchdog, the settings are reorganized into clean grouped cards: reachability and connection-quality detection share one tabbed card with a single save, the recovery actions read as a clear numbered escalation ladder, and the live status always shows cooldown and last-recovery at a glance (showing "—" until there's something to report). A green pulse marks Connection Quality when it's armed.
+
 - **Band Locking now shows every band you've actually locked, including ones outside your carrier's plan.** Previously, bands locked outside the network policy silently vanished from the readback. The display now reflects what's configured on the modem verbatim.
 - **Reset (Unlock all) now restores the modem's full hardware band support,** not just the carrier-policy subset. Every band the modem is physically capable of using is included in the reset.
 - **NR-DC bands can now be locked and reset, just like LTE, NSA, and SA.** The NR-DC card in Band Locking is no longer view-only — you can select specific NR-DC bands, save the lock, and reset to the full supported set. Failover also resets NR-DC bands automatically on connectivity loss.
