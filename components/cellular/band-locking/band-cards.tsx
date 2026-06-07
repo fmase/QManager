@@ -27,6 +27,23 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { formatBandName, type BandCategory } from "@/types/band-locking";
+import { DUR, EASE_OUT_QUART } from "@/lib/motion";
+
+// Representative band counts per category for the loading skeleton, taken from
+// the static hardware band universe (supported_bands_hw.env) of the supported
+// RM5xx-class modems. The exact count varies per device, but rehearsing a
+// realistic number keeps the placeholder grid the same height as the real grid
+// so content resolves in place instead of jumping a few rows when data lands.
+const SKELETON_BAND_COUNT: Record<BandCategory, number> = {
+  lte: 33,
+  nsa_nr5g: 35,
+  sa_nr5g: 37,
+  nrdc_nr5g: 37,
+};
+
+// Mixed placeholder label widths so the skeleton row reads as the real B/N band
+// labels (B1 … B71, N257) rather than a mechanically uniform bar. Indexed by i % 6.
+const SKELETON_LABEL_WIDTHS = ["w-6", "w-7", "w-7", "w-8", "w-6", "w-9"] as const;
 
 // =============================================================================
 // BandCardsComponent — Per-Category Band Checkbox Grid + Lock/Unlock Actions
@@ -203,23 +220,60 @@ const BandCardsComponent = ({
   };
 
   // --- Loading skeleton -----------------------------------------------------
+  // Rehearses the real card structure so nothing shifts when data lands: the
+  // real (already-translated) title + description, a header badge placeholder
+  // plus the swap control on the shared SA/NR-DC slot, the same responsive
+  // checkbox grid at a representative band count for this category, and the same
+  // two-group footer. The placeholder checkboxes fade+scale in on the motion
+  // system's curve with the same stagger as the live grid, so the skeleton
+  // resolves into the real staggered grid as one continuous motion.
   if (isLoading) {
+    const placeholderCount = SKELETON_BAND_COUNT[bandCategory];
     return (
       <Card className="@container/card">
         <CardHeader>
-          <CardTitle>{title}</CardTitle>
-          <CardDescription>{description}</CardDescription>
-        </CardHeader>
-        <CardContent className="grid @lg/card:grid-cols-8 @md/card:grid-cols-6 @sm/card:grid-cols-4 grid-cols-3 grid-flow-row gap-4">
-          {Array.from({ length: 12 }).map((_, i) => (
-            <div className="flex items-center space-x-2" key={i}>
-              <Skeleton className="size-4 rounded" />
-              <Skeleton className="h-4 w-8" />
+          <div className="flex items-center justify-between gap-2">
+            <div>
+              <CardTitle>{title}</CardTitle>
+              <CardDescription>{description}</CardDescription>
             </div>
-          ))}
+            <div className="flex shrink-0 items-center gap-2">
+              {onSwapView && <Skeleton className="h-7 w-20 rounded-md" />}
+              <Skeleton className="h-6 w-24 rounded-md" />
+            </div>
+          </div>
+        </CardHeader>
+
+        <CardContent>
+          <motion.div
+            className="grid @lg/card:grid-cols-8 @md/card:grid-cols-6 @sm/card:grid-cols-4 grid-cols-3 grid-flow-row gap-4 mt-2"
+            initial="hidden"
+            animate="visible"
+            variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.025 } } }}
+          >
+            {Array.from({ length: placeholderCount }).map((_, i) => (
+              <motion.div
+                key={i}
+                className="flex items-center space-x-2"
+                variants={{ hidden: { opacity: 0, scale: 0.88 }, visible: { opacity: 1, scale: 1 } }}
+                transition={{ duration: DUR.fast, ease: EASE_OUT_QUART }}
+              >
+                <Skeleton className="size-4 rounded" />
+                <Skeleton className={`h-4 ${SKELETON_LABEL_WIDTHS[i % SKELETON_LABEL_WIDTHS.length]}`} />
+              </motion.div>
+            ))}
+          </motion.div>
         </CardContent>
-        <CardFooter>
-          <Skeleton className="h-9 w-40" />
+
+        <CardFooter className="flex flex-wrap items-center justify-between gap-2 mt-4">
+          <div className="flex items-center gap-2">
+            <Skeleton className="h-9 w-32" />
+            <Skeleton className="size-9 rounded-md" />
+          </div>
+          <div className="flex items-center gap-2">
+            <Skeleton className="h-9 w-20" />
+            <Skeleton className="h-9 w-24" />
+          </div>
         </CardFooter>
       </Card>
     );
