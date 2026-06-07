@@ -77,14 +77,24 @@ export function WatchdogTriggersCard({
             </TabsTrigger>
             <TabsTrigger value="quality">
               {t("watchdog.tab_quality")}
-              {/* Live indicator: quality is opt-in, so flag when it's armed —
-                  the same green pulse the Traffic Engine tabs use when running. */}
-              {qualityOn && (
-                <span
-                  aria-hidden
-                  className="bg-success ml-1.5 size-2.5 animate-pulse rounded-full motion-reduce:animate-none"
-                />
-              )}
+              {/* Live indicator. Quality monitoring only actually runs while the
+                  watchdog master is on, so the dot has two meanings:
+                  - master ON  + quality armed → green pulse (the same the Traffic
+                    Engine tabs use when a service is live);
+                  - master OFF + quality armed → steady secondary dot (configured
+                    but dormant — the daemon is stopped, so nothing is running). */}
+              {qualityOn &&
+                (masterOff ? (
+                  <span
+                    aria-hidden
+                    className="bg-secondary ml-1.5 size-2.5 rounded-full"
+                  />
+                ) : (
+                  <span
+                    aria-hidden
+                    className="bg-success ml-1.5 size-2.5 animate-pulse rounded-full motion-reduce:animate-none"
+                  />
+                ))}
             </TabsTrigger>
           </TabsList>
 

@@ -26,6 +26,66 @@
 
 ---
 
+## How It Works (End-to-End)
+
+The watchdog has **two independent ways to decide "the connection is bad," and both pull the same recovery lever.** They are not two features — they are two *triggers* feeding one engine. This is why the settings UI merges them into one tabbed card with a single save.
+
+```
+        ┌─────────────────────────────────────────────────┐
+        │         CONNECTION WATCHDOG (enabled = 0/1)       │
+        └─────────────────────────────────────────────────┘
+                              │
+              master OFF → daemon exits at the enable gate.
+              Nothing below runs (neither trigger evaluates).
+                              │ master ON
+                              ▼
+   ┌──────────────────────────────────────────────────────────┐
+   │            qmanager_watchcat  (single while-loop)         │
+   │                                                            │
+   │   TRIGGER A: Reachability        TRIGGER B: Quality        │
+   │   (always on)                    (opt-in — green tab dot)  │
+   │   reads qmanager_ping.json       reads status.json         │
+   │   "can I reach anything?"        ".connectivity"           │
+   │   fail × max_failures            "is it good enough?"      │
+   │        │                         latency OR loss breach    │
+   │        │                         × quality_consecutive     │
+   │        │                              │                    │
+   │        └──────────────┬───────────────┘                    │
+   │     recovery_reason=          recovery_reason=             │
+   │       "unreachable"             "quality"                  │
+   │                       ▼                                    │
+   │            find_next_tier 1 → do_recovery                  │
+   │                                                            │
+   │   THE SHARED LADDER (climbs on repeat failure):           │
+   │     Tier 1 ─ Network re-registration (AT+COPS)            │
+   │     Tier 2 ─ Radio toggle (AT+CFUN)                       │
+   │     Tier 3 ─ SIM failover (off by default)               │
+   │     Tier 4 ─ System reboot ◄── BOTH triggers can reach    │
+   │                                this, gated only by the     │
+   │                                Tier 4 enable flag + the    │
+   │                                reboot-per-hour token bucket│
+   │   After acting → COOLDOWN (reason-aware success test) →    │
+   │   restored? back to MONITOR : escalate to next tier.      │
+   └──────────────────────────────────────────────────────────┘
+```
+
+**Both triggers share the ladder all the way to the top.** The trigger source (`recovery_reason`) does **not** cap the ladder height — `find_next_tier` and `do_recovery` never inspect it. A sustained Connection Quality breach that Tier 1 (re-register) and Tier 2 (radio toggle) fail to fix **will escalate to Tier 4 (reboot)**, exactly as a full outage would, provided Tier 4 is enabled (the default). This is deliberate: a degraded link is often a stuck RF/attach condition that only a radio cycle or reboot clears, so capping quality at the gentle tiers would let the watchdog watch the link rot without applying the fix that works.
+
+The only thing that stops a quality breach from rebooting is therefore **not** the trigger — it is (1) the Tier 4 **enable flag** (uncheck it and *neither* trigger can reboot) and (2) the **`max_reboots_per_hour` token bucket**, which auto-disables the daemon when exhausted (§8). "Can quality reboot?" reduces to "is Tier 4 enabled and is the token bucket unexhausted?", never to which sensor fired.
+
+The trigger source changes only two things, both at cooldown time, never the ladder:
+
+| Aspect | Reachability (`"unreachable"`) | Quality (`"quality"`) |
+|---|---|---|
+| Ladder range | Tier 1 → 4 | **Tier 1 → 4 (identical)** |
+| Cooldown success test | fresh ping `reachable = true` | fresh `read_quality` not breaching ceilings |
+| Tier 3 SIM-failover finalization | runs | **skipped** (meaningless for latency/loss) |
+| Tier 4 token bucket | applies | **applies identically** |
+
+See §5 (Reason-aware cooldown) for *why* the success test must differ: a degraded link reports `reachable = true` the whole time, so judging a quality recovery by reachability would always declare false success and the daemon would burn through every tier in seconds.
+
+---
+
 ## Dual-Trigger Model
 
 The watchdog has two independent paths into the recovery ladder.
