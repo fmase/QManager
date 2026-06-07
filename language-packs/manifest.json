@@ -1,17 +1,17 @@
 {
   "manifest_version": 1,
-  "generated_at": "2026-06-07T02:44:20Z",
+  "generated_at": "2026-06-07T02:45:18Z",
   "packs": [
     {
       "code": "id",
       "native_name": "Indonesia",
       "english_name": "Indonesian",
       "rtl": false,
-      "version": "2026.05.03",
-      "completeness": 0.971,
-      "size_bytes": 36502,
-      "sha256": "65d457fbb114a067d3b7db9637e47f073194cdc9b10a6d621e1a31c4a4753345",
-      "url": "https://github.com/dr-dolomite/QManager/releases/download/language-packs/qmanager-lang-id-2026.05.03.tar.gz",
+      "version": "2026.06.07",
+      "completeness": 1,
+      "size_bytes": 46021,
+      "sha256": "67b85cf7065364c11a668dcfd059b7220b11f6fa2095201e8f5562a49f9c08e3",
+      "url": "https://github.com/dr-dolomite/QManager/releases/download/language-packs/qmanager-lang-id-2026.06.07.tar.gz",
       "contributors": [
         "@ikhsanh"
       ]
