@@ -367,7 +367,7 @@ const BandCardsComponent = ({
               key={band}
               className="flex items-center space-x-2"
               variants={{ hidden: { opacity: 0, scale: 0.88 }, visible: { opacity: 1, scale: 1 } }}
-              transition={{ duration: 0.18, ease: "easeOut" }}
+              transition={{ duration: DUR.fast, ease: EASE_OUT_QUART }}
             >
               <Checkbox
                 id={`${bandCategory}-${band}`}
