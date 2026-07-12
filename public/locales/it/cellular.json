@@ -35,7 +35,7 @@
       "status_badge": {
         "active": "Attivo",
         "inactive": "Inattivo",
-        "sim_mismatch": "SIM Mancata corrispondenza"
+        "sim_mismatch": "SIM non corrispondente"
       },
       "pagination": {
         "total_one": "{{count}} totale profilo",
@@ -142,7 +142,7 @@
         "expand_rule_aria": "Modifica finestra",
         "active_now_line": "Adesso → {{scenario}}",
         "active_now_line_with_next": "Adesso → {{scenario}} · prossimo cambio {{time}}",
-        "overnight_hint": "Ends next day",
+        "overnight_hint": "Termina il giorno successivo",
         "otherwise_label": "Altrimenti",
         "entries_cap_hint": "Fino a {{max}} finestre orarie. Rimuovine una per aggiungerne un'altra.",
         "create_new": "Crea un nuovo scenario"
@@ -275,7 +275,7 @@
     },
     "deactivate_dialog": {
       "title": "Disattiva profilo",
-      "description": "Cancellare l'indicatore del profilo attivo? Le impostazioni correnti del modem (APN, IMEI, TTL) non verranno ripristinate: verrà rimosso solo il badge \"Attivo\".",
+      "description": "Vuoi rimuovere l'indicatore del profilo attivo? Le impostazioni correnti del modem (APN, IMEI, TTL) non verranno ripristinate: verrà rimosso solo il badge \"Attivo\".",
       "confirm": "Disattiva",
       "deactivating": "Disattivazione…"
     },
@@ -404,7 +404,7 @@
       "config_labels": {
         "network_mode": "Modalità di rete",
         "optimization": "Ottimizzazione",
-        "lte_bands": "LTE Bande",
+        "lte_bands": "Bande LTE",
         "nrsa_bands": "Bande NR5G-SA",
         "nrsa_nsa_bands": "Bande NR5G-NSA"
       },
@@ -427,11 +427,11 @@
         "description_placeholder": "ad esempio, ottimizzato per le videochiamate",
         "network_mode_label": "Modalità di rete",
         "network_mode_aria": "Modalità di rete",
-        "lte_bands_label": "LTE Blocco cinturino",
+        "lte_bands_label": "Blocco banda LTE",
         "lte_bands_placeholder": "ad esempio, 1, 3, 7, 28 (vuoto = Auto)",
-        "sa_bands_label": "Blocco cinturino NR5G-SA",
+        "sa_bands_label": "Blocco banda NR5G-SA",
         "sa_bands_placeholder": "ad esempio, 41, 78",
-        "nsa_bands_label": "Blocco cinturino NR5G-NSA",
+        "nsa_bands_label": "Blocco banda NR5G-NSA",
         "nsa_bands_placeholder": "ad esempio, 41, 78",
         "theme_label": "Tema della carta",
         "preview_label": "Anteprima",
@@ -457,11 +457,11 @@
         "network_mode_aria": "Modalità di rete",
         "optimization_label": "Etichetta di ottimizzazione",
         "optimization_placeholder": "ad esempio, Latenza, Velocità effettiva, Personalizzata",
-        "lte_bands_label": "LTE Blocco cinturino",
+        "lte_bands_label": "Blocco banda LTE",
         "lte_bands_placeholder": "ad esempio, 1, 3, 7, 28 (vuoto = Auto)",
-        "sa_bands_label": "Blocco cinturino NR5G-SA",
+        "sa_bands_label": "Blocco banda NR5G-SA",
         "sa_bands_placeholder": "ad esempio, 41, 78",
-        "nsa_bands_label": "Blocco cinturino NR5G-NSA",
+        "nsa_bands_label": "Blocco banda NR5G-NSA",
         "nsa_bands_placeholder": "ad esempio, 41, 78",
         "theme_label": "Tema della carta",
         "preview_label": "Anteprima",
@@ -653,16 +653,16 @@
       },
       "cards": {
         "lte": {
-          "title": "LTE Blocco del cinturino",
-          "description": "Seleziona i cinturini LTE da bloccare per il tuo dispositivo."
+          "title": "Blocco banda LTE",
+          "description": "Seleziona le bande LTE da bloccare sul dispositivo."
         },
         "nsa_nr5g": {
           "title": "Blocco della banda NSA",
-          "description": "Seleziona le 5G bande NSA da bloccare (5G tramite LTE ancora)."
+          "description": "Seleziona le bande 5G NSA da bloccare (5G collegato alla rete LTE)."
         },
         "sa_nr5g": {
-          "title": "Chiusura della banda SA",
-          "description": "Selezionare le bande SA 5G da bloccare (standalone 5G)."
+          "title": "Blocco banda SA",
+          "description": "Seleziona le bande 5G SA da bloccare (5G autonomo)."
         },
         "nrdc_nr5g": {
           "title": "Bande NR-DC",
@@ -688,7 +688,7 @@
         "unlock_all_title": "Sblocca tutte le bande (reimposta)",
         "swap_view": "Passa alle bande {{target}}"
       },
-      "card_live_region": "Applicazione del blocco del cinturino {{category_label}}…",
+      "card_live_region": "Applicazione del blocco banda {{category_label}}…",
       "card_category_label": {
         "lte": "LTE",
         "nsa_nr5g": "NSA",
@@ -698,7 +698,7 @@
       "toast": {
         "select_one_band": "Seleziona almeno una banda da bloccare",
         "locked_success": "{{category_label}} bande bloccate con successo",
-        "lock_error": "Impossibile applicare il blocco del cinturino",
+        "lock_error": "Impossibile applicare il blocco banda",
         "unlocked_success": "{{category_label}} bande sbloccate",
         "unlock_error": "Impossibile sbloccare le bande"
       }
@@ -996,15 +996,15 @@
   "cell_scanner": {
     "page": {
       "title": "Scanner celle",
-      "description": "Scansiona le torri vicine su tutti i vettori. Migliori risultati senza un SIM attivo."
+      "description": "Scansiona le celle vicine su tutte le reti. I risultati sono migliori senza una SIM attiva."
     },
     "scanner": {
       "scanning": "Scansione...",
       "start_new_scan": "Avvia nuova scansione",
       "download_csv_aria": "Scarica CSV",
       "empty_title": "Nessun risultato di scansione",
-      "empty_description": "Scopri le torri vicine di tutti i vettori e le bande.",
-      "scanning_title": "Scansione delle torri vicine...",
+      "empty_description": "Scopri le celle vicine, le reti disponibili e le relative bande.",
+      "scanning_title": "Scansione delle celle vicine...",
       "scanning_hint": "Di solito ci vogliono 2-3 minuti. Le altre operazioni del modem vengono messe in pausa durante la scansione.",
       "scanning_nav_warning": "Si prega di non chiudere la scheda o aggiornare la pagina.",
       "scanning_elapsed_aria": "Tempo trascorso della scansione: {{time}}",
@@ -1061,7 +1061,7 @@
     "neighbour": {
       "page": {
         "title": "Scanner delle cellule vicine",
-        "description": "Analizza le torri vicine visibili dall'attuale cella di servizio."
+        "description": "Analizza le celle vicine visibili dalla cella a cui sei attualmente collegato."
       },
       "filter_placeholder": "Filtra per tipo di cella...",
       "column_headers": {
@@ -1442,8 +1442,8 @@
           }
         },
         "configuration": {
-          "label": "Configurazione del corriere",
-          "placeholder": "Scegli Configurazione operatore",
+          "label": "Configurazione dell'operatore",
+          "placeholder": "Scegli la configurazione dell'operatore",
           "option_active_suffix": " (Attivo)"
         },
         "save": "Salva impostazioni",
@@ -1575,20 +1575,20 @@
     "fplmn": {
       "page": {
         "title": "Impostazioni FPLMN del dispositivo",
-        "description": "Controlla e cancella l'elenco delle reti vietate sul tuo SIM."
+        "description": "Controlla e cancella l'elenco delle reti vietate sulla tua SIM."
       },
       "card": {
         "title": "Reti bloccate",
-        "description": "Il tuo SIM memorizza un elenco di reti che in precedenza hanno rifiutato il tuo dispositivo. La cancellazione di questo elenco potrebbe ripristinare la connettività e migliorare il roaming. <link>Ulteriori informazioni</link>."
+        "description": "La tua SIM memorizza un elenco di reti che in passato hanno rifiutato il dispositivo. Se cancelli questo elenco, potresti ripristinare la connessione e migliorare il roaming. <link>Ulteriori informazioni</link>."
       },
       "states": {
         "error_title": "Impossibile controllare",
         "found_title": "Reti bloccate trovate",
-        "found_description": "Il tuo SIM ha bloccato una o più reti, il che potrebbe impedire la connessione. Si consiglia di cancellare l'elenco.",
+        "found_description": "La tua SIM ha bloccato una o più reti e questo potrebbe impedire la connessione. Ti consigliamo di cancellare l'elenco.",
         "found_clear": "Cancella reti bloccate",
         "found_clearing": "Cancellazione…",
         "none_title": "Nessuna rete bloccata",
-        "none_description": "Il tuo SIM non ha reti bloccate. Nessuna azione necessaria.",
+        "none_description": "La tua SIM non ha reti bloccate. Non devi fare nulla.",
         "none_refresh": "Aggiorna stato"
       },
       "toast": {
@@ -1618,8 +1618,8 @@
           "tac": "Prefisso di monitoraggio",
           "tac_hex_tooltip": "Esadecimale:",
           "total_bandwidth": "Larghezza di banda totale in uso",
-          "carrier_aggregation": "Aggregazione dei vettori",
-          "active_mimo": "Attivo MIMO",
+          "carrier_aggregation": "Aggregazione delle portanti",
+          "active_mimo": "MIMO attivo",
           "active_mimo_link": "Per antenna",
           "wan_ipv4": "WAN IPv4",
           "wan_ipv6": "WAN IPv6",
@@ -1636,10 +1636,10 @@
           "lte": "LTE"
         },
         "carrier_aggregation": {
-          "lte_carriers_one": "LTE ({{count}} corriere)",
-          "lte_carriers_other": "LTE ({{count}} vettori)",
-          "nr_carriers_one": "NR ({{count}} corriere)",
-          "nr_carriers_other": "NR ({{count}} vettori)",
+          "lte_carriers_one": "LTE ({{count}} portante)",
+          "lte_carriers_other": "LTE ({{count}} portanti)",
+          "nr_carriers_one": "NR ({{count}} portante)",
+          "nr_carriers_other": "NR ({{count}} portanti)",
           "lte_anchor": "LTE",
           "nr_leg": "NR",
           "inactive": "Inattivo"

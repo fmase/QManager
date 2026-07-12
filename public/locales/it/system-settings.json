@@ -22,8 +22,8 @@
     "force_tailscale_fixes_label": "Forza correzioni Tailscale",
     "force_tailscale_fixes_info_aria": "Informazioni su Forza correzioni Tailscale",
     "force_tailscale_fixes_tooltip": "Applica le correzioni di firewall e routing Tailscale di QManager sopra il firmware. Consigliato per il firmware R02.",
-    "force_tailscale_fixes_toast_enabled": "Forza correzioni Tailscale abilitato — applicazione della zona firewall e dell'eccezione mwan3 in corso",
-    "force_tailscale_fixes_toast_disabled": "Forza correzioni Tailscale disabilitato — rimozione della zona firewall in corso",
+    "force_tailscale_fixes_toast_enabled": "Correzioni Tailscale forzate — applicazione della zona firewall e dell'eccezione mwan3 in corso",
+    "force_tailscale_fixes_toast_disabled": "Correzioni Tailscale disattivate — rimozione della zona firewall in corso",
     "force_tailscale_fixes_toast_failed": "Impossibile aggiornare Forza correzioni Tailscale"
   },
   "scheduled_operations": {
@@ -41,7 +41,7 @@
     "reboot_toast_update_failed": "Impossibile aggiornare la pianificazione del riavvio",
     "low_power_section_title": "Modalità di risparmio energetico",
     "low_power_info_aria": "Informazioni sulla modalità a basso consumo",
-    "low_power_tooltip": "Disabilita la radio del modem durante la finestra programmata. Watchdog, gli avvisi e-mail e gli eventi di rete vengono automaticamente sospesi per la durata.",
+    "low_power_tooltip": "Disabilita la radio del modem durante la fascia oraria programmata. Il controllo connessione, gli avvisi e-mail e gli eventi di rete vengono sospesi automaticamente per tutta la durata.",
     "low_power_enable_label": "Abilita la modalità di risparmio energetico",
     "low_power_start_label": "Ora di inizio",
     "low_power_end_label": "Ora di fine",
@@ -121,7 +121,7 @@
       "imei": "Impostazioni IMEI",
       "profiles": "Profili SIM personalizzati",
       "sms_alerts": "SMS Configurazione avvisi",
-      "watchdog": "Configurazione Watchdog/Watchcat"
+      "watchdog": "Configurazione del controllo connessione"
     },
     "create": {
       "card_title": "Crea backup",
@@ -188,7 +188,7 @@
     },
     "progress": {
       "status_restored": "Restaurato",
-      "status_running": "Correre",
+      "status_running": "In corso",
       "status_retrying": "Nuovo tentativo ({{n}}/3)",
       "status_failed": "Fallito",
       "status_skipped": "Saltato",
@@ -555,7 +555,7 @@
     "remembered_count_one": "{{count}} SIM",
     "remembered_count_other": "{{count}} SIM",
     "clear_button": "Cancella",
-    "clear_dialog_title": "Cancellare le SIM note?",
+    "clear_dialog_title": "Vuoi cancellare le SIM memorizzate?",
     "clear_dialog_description": "Verranno dimenticate tutte le SIM viste da QManager, tranne quella attualmente inserita, così la tua SIM attiva non verrà segnalata come nuova. Le SIM già usate verranno segnalate di nuovo al prossimo inserimento.",
     "clear_dialog_confirm": "Cancella",
     "clear_dialog_clearing": "Cancellazione…",

@@ -7,7 +7,7 @@
     "button_skip": "Salta",
     "button_saving": "Salvataggio…",
     "step_label_welcome": "Benvenuto",
-    "step_label_password": "Parola d'ordine",
+    "step_label_password": "Password",
     "step_label_network_mode": "Modalità di rete",
     "step_label_connection": "Connessione",
     "step_label_band_preferences": "Preferenze della banda",
@@ -20,7 +20,7 @@
   "welcome": {
     "main_title": "Il tuo modem,\ngestiti in modo intelligente.",
     "subtitle": "Ti aiuteremo a configurarlo in pochi rapidi passaggi. È richiesta solo la tua password: tutto il resto è facoltativo e modificabile in qualsiasi momento.",
-    "step_preview_password": "Parola d'ordine",
+    "step_preview_password": "Password",
     "step_preview_network_mode": "Modalità di rete",
     "step_preview_apn_sim": "Profilo APN o SIM",
     "step_preview_band_preferences": "Preferenze della fascia"
@@ -32,7 +32,7 @@
     "label_name_optional_suffix": "(facoltativo)",
     "placeholder_name": "ad es. Alex",
     "hint_name": "Mostrato nella barra laterale. Puoi modificarlo in qualsiasi momento.",
-    "label_password": "Parola d'ordine",
+    "label_password": "Password",
     "placeholder_password": "Crea una password",
     "aria_hide_password": "Nascondi la password",
     "aria_show_password": "Mostra password",
@@ -72,8 +72,8 @@
     "heading": "Preferenze della fascia",
     "description": "Blocca bande di frequenza specifiche per un segnale migliore sulla tua rete.",
     "error_bands_unavailable": "Impossibile caricare le bande supportate dal modem. Puoi saltare questo passaggio e configurare le bande in un secondo momento.",
-    "section_lte_title": "LTE Bande",
-    "section_5g_title": "5G Bande (NSA + SA)",
+    "section_lte_title": "Bande LTE",
+    "section_5g_title": "Bande 5G (NSA + SA)",
     "preset_label_all": "Tutte le bande (predefinito)",
     "preset_label_low": "Solo banda bassa",
     "preset_label_mid": "Solo fascia media",
@@ -105,7 +105,7 @@
   "done": {
     "heading": "È tutto pronto!",
     "description": "QManager è pronto. Tutto ciò che hai configurato è attivo e puoi modificare qualsiasi impostazione in qualsiasi momento dalla barra laterale.",
-    "callout_body": "<bold>Suggerimento per i professionisti:</bold> visita <menu>Cellulare › Blocco banda</menu> per ottimizzare la potenza del segnale oppure <menu>Monitoraggio › Watchdog</menu> per impostare il ripristino automatico.",
+    "callout_body": "<bold>Suggerimento:</bold> visita <menu>Cellulare › Blocco banda</menu> per migliorare il segnale oppure <menu>Monitoraggio › Controllo connessione</menu> per impostare il ripristino automatico.",
     "button_dashboard": "Vai alla dashboard"
   }
 }

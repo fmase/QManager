@@ -64,7 +64,7 @@
     "recovery": {
       "toggle": "Non riesci ad accedere?",
       "intro": "Se hai perso la password di amministratore, hai due opzioni di ripristino:",
-      "option_reset": "Apri una sessione SSH sul dispositivo ed esegui <code>qmanager_reset_password</code> per impostare una nuova password di amministratore. (Richiede l'accesso SSH già abilitato.)",
+      "option_reset": "Apri una sessione SSH sul dispositivo ed esegui <code>qmanager_reset_password</code>: questo comando reimposta la password di amministratore. (L'accesso SSH deve essere già attivo.)",
       "option_backup": "Se hai salvato un file .qmbackup, riprogramma il firmware del dispositivo e ripristina da quel file."
     }
   },
