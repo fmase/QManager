@@ -1,6 +1,6 @@
 # Feature Notes
 
-Per-feature deep-dives extracted from `CLAUDE.md` to keep the always-loaded prompt small. Read these on demand when working on a specific feature.
+Per-feature deep-dives for the QManager codebase. Read these on demand when working on a specific feature.
 
 ## CGI Endpoint Reference
 

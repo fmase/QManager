@@ -44,10 +44,5 @@ next-env.d.ts
 qmanager-build/
 qmanager_install/
 
-# claude superpowers
-/.superpowers
-/docs/superpowers
-/.claude
-
 # simpleadmin source
 /simpleadmin-source

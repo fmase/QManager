@@ -101,7 +101,7 @@ On a LAN bridge there is no `network.lan.gateway` key — the router's own LAN I
 
 Changing the LAN IP and running `network reload` rebinds `br-lan` to the new address. This drops the TCP connection the browser used to make the POST request, and if the IP changed, the old origin is gone. The CGI **must** flush the HTTP response before the reload fires.
 
-The pattern mirrors the no-in-flight-reboot rule in CLAUDE.md: the response encodes `new_ipaddr` so the frontend can tell the user exactly where to reconnect. The hook (`use-lan-config.ts`) therefore has **no retry loop** against the old origin — on a successful POST it transitions immediately to an "applied" state, and the card shows a persistent `Alert` banner linking the new address.
+The response encodes `new_ipaddr` so the frontend can tell the user exactly where to reconnect. The hook (`use-lan-config.ts`) therefore has **no retry loop** against the old origin — on a successful POST it transitions immediately to an "applied" state, and the card shows a persistent `Alert` banner linking the new address.
 
 **Why:** A retry loop against the now-dead old origin would hang until timeout and then report a spurious error. Acknowledging the deliberate disconnect upfront is the correct pattern for any self-severing apply.
 

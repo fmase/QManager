@@ -24,7 +24,7 @@
 
 ## Constraints (don't violate these)
 
-From `CLAUDE.md` and project memory:
+From the project architecture notes:
 - **Line endings:** All files in `scripts/**/*.sh` MUST be LF. CRLF will silently break CGI execution.
 - **POSIX only:** No bashisms, no `[[ ]]`, no `local` outside functions, no `setsid`. BusyBox sh.
 - **`jq` has no `test()` regex** — use `endswith()` / `startswith()` / `contains()`.
@@ -620,7 +620,7 @@ Expected: exit 0, no missing-key warnings.
 4. Pick a slot — error disappears, Save enables.
 5. Disable Tier 3 — backup-SIM Field hides, error clears, Save enables.
 
-Report explicitly if you cannot run the dev server (per `CLAUDE.md`: type-check verifies code correctness, not feature correctness).
+Report explicitly if you cannot run the dev server: type-check verifies code correctness, not feature correctness.
 
 - [ ] **Step 10: Commit**
 
@@ -734,7 +734,7 @@ echo "## Watchdog Audit Follow-Up
 
 ## Task 10: Update `RELEASE_NOTE.md`
 
-**Why:** Per `CLAUDE.md`, every shipped change goes in `RELEASE_NOTE.md` with user-facing language.
+**Why:** Every shipped change goes in `RELEASE_NOTE.md` with user-facing language.
 
 **Files:**
 - Modify: `RELEASE_NOTE.md`
@@ -817,7 +817,7 @@ Expected: zero missing-key warnings across en, zh-CN, it, id.
 
 - [ ] **Update auto-memory if anything new was learned**
 
-Any new gotcha discovered while implementing (e.g., "AT+QUIMSLOT? returns empty during boot for X seconds") should be added under `C:\Users\RUS-LEGION5\.claude\projects\D--Projects-QM-PROJECT-QManager\memory\` as a new `feedback_*.md` file with an entry in `MEMORY.md`.
+Any new implementation gotcha (for example, an AT command returning empty during boot) should be documented in the relevant project documentation.
 
 ---
 

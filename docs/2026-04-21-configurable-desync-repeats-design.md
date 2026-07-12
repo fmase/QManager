@@ -129,5 +129,5 @@ Single risk: a user sets repeats=10 and notices upload bandwidth bump during hea
 
 ## Not touched
 
-- `CLAUDE.md` DPI section — existing notes remain accurate (split2, hostlist, mutex with masquerade all unchanged).
+- DPI behavior notes — existing split2, hostlist, and mutex behavior remain unchanged.
 - Config backup — Video Optimizer is not currently a backed-up section (scope: Network Mode/APN, bands, tower lock, TTL/HL, IMEI, profiles, SMS alerts, watchdog). No change needed; adding VO to backup is a separate future feature.

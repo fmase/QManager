@@ -34,7 +34,7 @@ cp -r "$OUT_DIR" "$STAGING_DIR/out"
 
 # Strip non-bundled locales. BUNDLED_CODES in lib/i18n/available-languages.ts
 # is the single source of truth — packs marked bundled: false are downloaded
-# from the remote manifest at runtime (see `Language Packs` in CLAUDE.md).
+# from the remote manifest at runtime (see the language-pack documentation).
 # Shipping them here wastes firmware space AND defeats the manifest update
 # path (the user's Languages card wouldn't be able to update them).
 BUNDLED_CODES="en zh-CN"
